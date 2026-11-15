@@ -81,12 +81,22 @@ volumes:
         role: 上手路径
       - path: docs/guides/fde/README.md
         role: FDE 交付场景入口
+      - path: docs/guides/fde/templates/template-signoff.md
+        role: ORG / 现场签收模板
+      - path: docs/guides/management.md
+        role: Workbench / 管理端操作
+      - path: docs/guides/knowledge/knowledge-system.md
+        role: 知识 / 本体 / RAG 手册
+      - path: packages/aiplat-evaluation/README.md
+        role: 评测治理入口
       - path: docs/architecture/execution-decision-matrix.md
         role: 执行选型（产品/技术评估共用）
       - path: docs/architecture/plans/pi-thin-runtime.md
         role: 厂外薄交付边界（Pi）
       - path: packages/aiplat-pi-runtime/README.md
         role: Pi Package 用户侧说明
+      - path: docs/reference/security/security-architecture.md
+        role: 治理下执行（产品嵌入视图）
 
   - id: commercial-value
     name: 商业价值白皮书

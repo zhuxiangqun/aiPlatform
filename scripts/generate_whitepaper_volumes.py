@@ -646,36 +646,147 @@ def _build_volume(
             note="与 §3.3.2 共用 `slo.md`；本节强调质量属性目标而非压测脚本入口。",
         )
     elif vid == "product-capability":
+        _wb_mgmt = (
+            "docs/guides/management.md"
+            if _rel("docs/guides/management.md").is_file()
+            else "docs/guides/getting-started.md"
+        )
+        _wb_know = (
+            "docs/guides/knowledge/knowledge-system.md"
+            if _rel("docs/guides/knowledge/knowledge-system.md").is_file()
+            else "docs/guides/ontology.md"
+        )
+        _wb_guides = (
+            "docs/guides/README.md"
+            if _rel("docs/guides/README.md").is_file()
+            else "docs/guides/getting-started.md"
+        )
         parts += [
-            "### 3.0 典型产品场景 → 权威入口（场景切片，非第二清单）",
+            "### 3.0 典型产品场景（索引 + 正文）",
             "",
-            "| 场景 | 客户要解决的问题 | 从哪里看能力/怎么做 |",
-            "|------|------------------|---------------------|",
+            "本卷用**场景切片**回答「能解决什么问题」：索引表指路 + 权威源节选。"
+            "节选随权威源再生；**禁止**在卷内手写第二份能力清单或编造客户 ROI。"
+            "接线以 "
+            f"{_link('AIPLAT_CAPABILITIES.md')} 为准。",
+            "",
+            "#### 3.0.0 场景索引",
+            "",
+            "| 场景 | 客户要解决的问题 | 权威源（优先） | 正文节 |",
+            "|------|------------------|----------------|--------|",
             "| **FDE 交付** | 把业务问题做成可签收的 AI 交付 | "
-            f"{_link('docs/guides/fde/README.md')} · CAPABILITIES「平台治理 / FDE」 |",
+            f"{_link('docs/guides/fde/README.md')} · CAPABILITIES「平台治理 / FDE」 | §3.0.1 |",
             "| **App 工厂 / Builder** | 从需求到 Agent/应用产物 | "
-            f"管理端 Builder · {_link('docs/architecture/plans/pi-thin-runtime.md')}（厂外交付边界） |",
-            "| **Workbench** | 开发与调试工作台 | "
-            f"{_link('docs/guides/management.md') if _rel('docs/guides/management.md').is_file() else _link('docs/guides/getting-started.md')} · CAPABILITIES「Workbench」 |",
-            "| **评测治理** | 评测流程与治理规则 | CAPABILITIES「评测 / Governance」 |",
-            "| **ORG 签收** | 组织级签收与现场闭环 | CAPABILITIES「apps/org」· manuals |",
-            "| **渠道接入** | 多渠道消息与集成 | CAPABILITIES「Channel」· 应用端 channels |",
-            "| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | "
-            f"{_link('docs/guides/knowledge/knowledge-system.md') if _rel('docs/guides/knowledge/knowledge-system.md').is_file() else _link('docs/guides/ontology.md')} · CAPABILITIES「知识引擎 / RAG」 |",
+            f"管理端 Builder · {_link('docs/architecture/plans/pi-thin-runtime.md')} | §3.0.2 |",
+            f"| **Workbench** | 开发与调试工作台 | {_link(_wb_mgmt)} · "
+            "CAPABILITIES「Workbench」 | §3.0.3 |",
+            "| **评测治理** | 评测流程与治理规则 | "
+            f"{_link('packages/aiplat-evaluation/README.md')} · "
+            "CAPABILITIES「评测 / Governance」 | §3.0.4 |",
+            "| **ORG 签收** | 组织级签收与现场闭环 | "
+            f"{_link('docs/guides/fde/templates/template-signoff.md')} · "
+            "CAPABILITIES「apps/org」 | §3.0.5 |",
+            "| **渠道接入** | 多渠道消息与集成 | CAPABILITIES「Channel」· 分卷 04 | §3.0.6 |",
+            f"| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | {_link(_wb_know)} · "
+            "CAPABILITIES「知识引擎 / RAG」 | §3.0.7 |",
             "| **Agent / Skill 运行** | 多步工具调用与技能执行 | "
-            "CAPABILITIES「Agent 系统 / Skill 系统」· "
-            f"{_link('docs/architecture/execution-decision-matrix.md')} |",
+            f"{_link('docs/architecture/execution-decision-matrix.md')} · "
+            "CAPABILITIES「Agent / Skill」 | §3.0.8 |",
             "| **治理下执行** | 权限、审批、审计可证明 | "
-            "安全与治理分卷 · CAPABILITIES「Gate / 安全与治理」 |",
+            f"{_link('docs/reference/security/security-architecture.md')} · "
+            "分卷 05 · CAPABILITIES「Gate」 | §3.0.9 |",
             "| **薄交付（Pi）** | 用户侧轻量跑快照、不装全栈 | "
             f"{_link('docs/architecture/plans/pi-thin-runtime.md')} · "
-            f"{_link('packages/aiplat-pi-runtime/README.md')} |",
+            f"{_link('packages/aiplat-pi-runtime/README.md')} | §3.0.10 |",
             "",
-            "> 上表只指路。**接线以 "
-            f"{_link('AIPLAT_CAPABILITIES.md')} 行为为准**；"
-            f"{_link('docs/guides/README.md') if _rel('docs/guides/README.md').is_file() else _link('docs/guides/getting-started.md')} "
-            "仅提供操作说明，不作为行为契约。",
+            "> 索引指路；各 §3.0.x 为权威源节选（可再生）。"
+            f"{_link(_wb_guides)} 仅提供操作说明，不作为行为契约。",
             "",
+        ]
+        _append_eng_section(
+            parts,
+            "3.0.1 FDE 交付",
+            "现场如何把业务问题做成可签收的 AI 交付？",
+            [("docs/guides/fde/README.md", 4500)],
+            note="操作细节见 `docs/guides/fde/` 分册；接线以 CAPABILITIES「FDE」为准。",
+        )
+        _append_eng_section(
+            parts,
+            "3.0.2 App 工厂 / Builder",
+            "工厂产物与厂外交付边界如何划清？",
+            [("docs/architecture/plans/pi-thin-runtime.md", 4500)],
+            extra_links=["管理端 Builder（运行时入口）"],
+            note="Builder UI 以管理端为准；本卷只节选厂外薄交付边界，避免与 §3.0.10 重复粘贴 Package README。",
+        )
+        _append_eng_section(
+            parts,
+            "3.0.3 Workbench",
+            "开发与调试工作台从哪里上手？",
+            [(_wb_mgmt, 4500)],
+            note="CAPABILITIES「Workbench」为接线真相；手册只描述操作路径。",
+        )
+        _append_eng_section(
+            parts,
+            "3.0.4 评测治理",
+            "评测服务如何本地/共置运行，证据与准确率声明边界是什么？",
+            [("packages/aiplat-evaluation/README.md", 5000)],
+            note="准确率/authorize 声明以评测包文档与 CAPABILITIES「评测」为准，禁止卷内另编通过率。",
+        )
+        _append_eng_section(
+            parts,
+            "3.0.5 ORG 签收",
+            "组织级签收与现场闭环用什么模板？",
+            [("docs/guides/fde/templates/template-signoff.md", 4000)],
+            note="apps/org 运行时行为以 CAPABILITIES 为准；模板只示范签收字段。",
+        )
+        parts += [
+            "#### 3.0.6 渠道接入",
+            "",
+            "**尽调问题**：多渠道消息与集成从哪里看？",
+            "",
+            "**权威源**： CAPABILITIES「Channel」 · 分卷 04（MCP/API/生态）",
+            "",
+            "渠道适配器随应用端演进；本卷不复制渠道清单。"
+            "接入面与开放边界见生态卷，避免与分卷 04 双写。",
+            "",
+        ]
+        _append_eng_section(
+            parts,
+            "3.0.7 知识 / 本体 / RAG",
+            "企业知识如何组织、检索与治理？",
+            [(_wb_know, 5500)],
+            note="知识引擎接线以 CAPABILITIES 为准；本节只节选知识体系手册。",
+        )
+        _append_eng_section(
+            parts,
+            "3.0.8 Agent / Skill 运行",
+            "多步工具调用与技能执行如何选型？",
+            [("docs/architecture/execution-decision-matrix.md", 5500)],
+            note="矩阵同时服务产品评估与技术选型；实现细节见技术卷。",
+        )
+        _append_eng_section(
+            parts,
+            "3.0.9 治理下执行",
+            "权限、审批、审计如何嵌进产品路径？",
+            [("docs/reference/security/security-architecture.md", 3500)],
+            note="完整威胁模型与 L 级定级见分卷 05；此处只给产品路径嵌入视图。",
+        )
+        _append_eng_section(
+            parts,
+            "3.0.10 薄交付（Pi）",
+            "用户侧如何轻量跑快照、不装全栈？",
+            [
+                ("docs/architecture/plans/pi-thin-runtime.md", 4000),
+                ("packages/aiplat-pi-runtime/README.md", 4000),
+            ],
+            extra_links=[
+                _link("packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md"),
+            ],
+            note=(
+                "厂外默认 **Pi-only**；可选 **Pi + aiPlat 回连** ≠ 完整 Enterprise Runtime，"
+                "也不等于在用户机默认安装全栈。"
+            ),
+        )
+        parts += [
             "### 3.1 能力统计（摘自 CAPABILITIES）",
             "",
         ]
@@ -703,19 +814,23 @@ def _build_volume(
             parts += [
                 excerpt,
                 "",
-                "### 3.3 交付边界（Pi 薄 Runtime）",
+                "### 3.3 变更影响矩阵（节选）",
                 "",
-                "厂外默认 **Pi-only**（薄 Runtime 跑工厂产物）；企业厚度为可选 "
-                "**Pi + aiPlat 回连**，**不等于**五产品目标方案中的完整 Enterprise Runtime，"
-                "也不等于在用户机默认安装全栈。",
+                "产品评估「改一处影响哪」以矩阵为准，不在卷内另维护影响表。",
                 "",
-                "| 权威源 | 读什么 |",
-                "|--------|--------|",
-                f"| {_link('docs/architecture/plans/pi-thin-runtime.md')} | 产品定位、轴 A/B、Thin≠Enterprise |",
-                f"| {_link('packages/aiplat-pi-runtime/README.md')} | 包入口、Pi-only / 企业回连用法 |",
-                f"| {_link('packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md')} | 企业混合阶梯（技术） |",
+            ]
+            excerpt, _ = _read_excerpt(
+                _rel("docs/reference/matrix/capability-impact-matrix.md"), 5000
+            )
+            parts += [
+                excerpt,
                 "",
-                "> 本卷**不粘贴**上述 living 正文。接线以 "
+                "### 3.4 交付边界摘要（Pi）",
+                "",
+                "厂外默认 **Pi-only**；企业厚度为可选 **Pi + aiPlat 回连**。"
+                "正文节选见 §3.0.10；技术混合阶梯见 "
+                f"{_link('packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md')}。"
+                "接线以 "
                 f"{_link('AIPLAT_CAPABILITIES.md')} 为准；完整能力表见总白皮书第 3 章。",
                 "",
             ]
