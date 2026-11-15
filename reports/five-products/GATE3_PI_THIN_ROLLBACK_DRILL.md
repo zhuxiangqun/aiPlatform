@@ -91,11 +91,11 @@ GATE3_OBS_LABEL=observation-close-2026-10-24 \
 
 | Field | Value |
 |-------|-------|
-| Authority | [`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md) · PG/HA `staging_ready=false` |
+| Authority | [`ops/LOCAL_DEFER.md`](../products/five-products/ops/LOCAL_DEFER.md) · PG/HA `staging_ready=false` |
 | Helper | `bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh` |
 | Scope | hermetic D1 install/smoke/backup/upgrade/runtime+bundle rollback + Gate3 a/b/c |
 | Environment | **local** — not staging; **no** `production_signed` / authorize |
-| Result | **PASS** — see [`ops/PI_D1_LOCAL_REGRESSION.md`](./ops/PI_D1_LOCAL_REGRESSION.md) |
+| Result | **PASS** — see [`ops/PI_D1_LOCAL_REGRESSION.md`](../products/five-products/ops/PI_D1_LOCAL_REGRESSION.md) |
 | Fix landed | same-version `d1_upgrade` → `versions/<ver>+<UTC>` so `--runtime` rollback flips |
 
 ```bash

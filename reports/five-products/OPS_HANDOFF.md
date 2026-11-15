@@ -30,7 +30,7 @@ export AIPLAT_LIVE_DRILL_OPERATOR=$USER
 ## 第一刀：PG/HA（推荐先做）
 
 > **当前决策：路径 B — 正式 defer（四轨）** — `staging_ready=false`；只跑 local/docker rehearsal（🟨），不签 live、不 authorize。  
-> 见 [`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md) · [`ops/PGHA_LIVE_RUNLOG.md`](./ops/PGHA_LIVE_RUNLOG.md) · [`ops/STAGING_READY.md`](./ops/STAGING_READY.md)。复审 **2026-11-08**。
+> 见 [`ops/LOCAL_DEFER.md`](../products/five-products/ops/LOCAL_DEFER.md) · [`ops/PGHA_LIVE_RUNLOG.md`](../products/five-products/ops/PGHA_LIVE_RUNLOG.md) · [`ops/STAGING_READY.md`](../products/five-products/ops/STAGING_READY.md)。复审 **2026-11-08**。
 
 ```bash
 # 本机（允许）
