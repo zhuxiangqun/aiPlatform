@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T23:45:00+08:00",
+  "reviewed_at": "2026-11-16T00:28:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2c5aebbd6b9968087058069168e12a65ac82f68c",
-  "diff_sha256": "651a0811849149525e8e6ef54ae1a452dfea26bca62815a667aa221c4c901bf1",
-  "head_sha": "e765d2e4914bdd16f302ee7dee784a88eab74c77",
+  "merge_base": "f8e1141f43e49b30bf418572acc1413f9c51f297",
+  "diff_sha256": "4859f5581c04ff31864e741dc4e078edf0c61fa598a7690e3a924c727e96ffc5",
+  "head_sha": "d5af86e47c093df7a3f068ed83b10728f347ad1d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G2 confirm: harness→CoreFacade only; L1 via ActionRegistry; caps 2723 aligned. Local lock only."
+  "note": "Wiki read-model: config-driven collection gate on manual HTTP only; compilers use write_page. Local lock only."
 }

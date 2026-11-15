@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2723
+total_capabilities: 2728
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 261
+    caps_count: 266
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -2918,6 +2918,14 @@ domains:
         module: core/harness/knowledge/wiki_engine.py
         type: module
         signature: "write_page, search_pages, generate_index_md, list_all_pages, read_page"
+      - symbol: "assert_manual_wiki_write_allowed"
+        module: core/harness/knowledge/wiki_read_model.py
+        type: function
+        signature: "Deny manual wiki write when collection in AIPLAT_WIKI_READ_MODEL_COLLECTIONS"
+      - symbol: "is_wiki_read_model_collection"
+        module: core/harness/knowledge/wiki_read_model.py
+        type: function
+        signature: "True when collection listed in AIPLAT_WIKI_READ_MODEL_COLLECTIONS"
       - symbol: "llm_summarize"
         module: core/harness/knowledge/doc_compressor.py
         type: function
@@ -3856,6 +3864,18 @@ domains:
         type: function
         signature: 'from_graph_health(health)'
         module: aiPlat-core/core/harness/knowledge/ontology_api.py
+      - symbol: WikiManualWriteDenied
+        type: class
+        signature: '读模型 collection 上禁止人工直接写 Wiki。'
+        module: aiPlat-core/core/harness/knowledge/wiki_read_model.py
+      - symbol: wiki_manual_write_break_glass
+        type: function
+        signature: 'True 时允许绕过读模型硬门（运维破窗；须显式 env）。'
+        module: aiPlat-core/core/harness/knowledge/wiki_read_model.py
+      - symbol: read_model_collections
+        type: function
+        signature: '返回处于读模型模式的 collection 集合。'
+        module: aiPlat-core/core/harness/knowledge/wiki_read_model.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/wiki.py"
