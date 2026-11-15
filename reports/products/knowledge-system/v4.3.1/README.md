@@ -13,9 +13,7 @@ authority: supporting
 
 | 文件 | 内容 |
 |------|------|
-| [phase0-standard-pack-baseline.md](./phase0-standard-pack-baseline.md) | 标准 schema/语义校验结果 |
-| [phase0-schema-validate.log](./phase0-schema-validate.log) | 结构校验原始日志 |
-| [phase0-semantics-validate.log](./phase0-semantics-validate.log) | 语义校验原始日志 |
+| [phase0-standard-pack-baseline.md](./phase0-standard-pack-baseline.md) | 标准 schema/语义校验结果（原始 `*.log` 被 `.gitignore`，以本摘要为准） |
 | [phase0-asset-inventory.md](./phase0-asset-inventory.md) | 资产 / owner 盘点 |
 | [phase0-conformance-gap-n24.md](./phase0-conformance-gap-n24.md) | 附录 N 24 项差距表 |
 | [phase0-pilot-lock-service.md](./phase0-pilot-lock-service.md) | 试点域边界与 G0 |

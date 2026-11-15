@@ -19,10 +19,12 @@ pilot_domain: lock-service
 | `docs/standards/knowledge-system/v4.3.1/schemas/validate_examples_v4.3.1.py` | 0 | `validated=22 failed=0`（含 2 份 approval-record） |
 | `docs/standards/knowledge-system/v4.3.1/schemas/validate_semantics_v4.3.1.py` | 0 | `semantic_examples=22 failed=0`；`cases=30 failed=0` |
 
-原始日志：
+原始终端输出（本地可复现；`*.log` 不入库）：
 
-- [`phase0-schema-validate.log`](./phase0-schema-validate.log)
-- [`phase0-semantics-validate.log`](./phase0-semantics-validate.log)
+```text
+validate_examples: validated=22 failed=0
+validate_semantics: semantic_examples=22 failed=0; cases=30 failed=0
+```
 
 ## 说明
 
