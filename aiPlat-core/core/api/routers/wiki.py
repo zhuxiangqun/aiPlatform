@@ -238,6 +238,15 @@ async def delete_page(title: str, collection: str = "default"):
         collection: collection 参数。
     """
     from core.api.core_facade import delete_page as _del
+    from core.harness.knowledge.wiki_read_model import (
+        WikiManualWriteDenied,
+        assert_manual_wiki_write_allowed,
+    )
+
+    try:
+        assert_manual_wiki_write_allowed(collection)
+    except WikiManualWriteDenied as e:
+        raise HTTPException(status_code=403, detail=e.reason) from e
     ok = _del(title, collection_id=collection)
     if not ok:
         raise HTTPException(status_code=404, detail="wiki_page_not_found")
@@ -252,6 +261,15 @@ async def delete_all_pages(collection: str = "default"):
         collection: collection 参数。
     """
     from core.harness.knowledge.wiki_engine import delete_all_pages
+    from core.harness.knowledge.wiki_read_model import (
+        WikiManualWriteDenied,
+        assert_manual_wiki_write_allowed,
+    )
+
+    try:
+        assert_manual_wiki_write_allowed(collection)
+    except WikiManualWriteDenied as e:
+        raise HTTPException(status_code=403, detail=e.reason) from e
     result = delete_all_pages(collection_id=collection)
     return {"deleted": result["deleted"], "message": f"已清空 {result['deleted']} 个 Wiki 页面"}
 
@@ -789,6 +807,15 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
     """
     from core.harness.knowledge.wiki_engine import auto_link_page
     from core.harness.knowledge.wiki_engine import write_page, auto_link_page, search_pages, update_page
+    from core.harness.knowledge.wiki_read_model import (
+        WikiManualWriteDenied,
+        assert_manual_wiki_write_allowed,
+    )
+
+    try:
+        assert_manual_wiki_write_allowed(collection)
+    except WikiManualWriteDenied as e:
+        raise HTTPException(status_code=403, detail=e.reason) from e
     try:
         path = write_page(body.title, body.body, category=body.category,
                           tags=body.tags, related=body.related, summary=body.summary,

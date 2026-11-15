@@ -20,10 +20,10 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 | 2 | 语义模型版本化 | partial | 域 YAML `version: "1.2.0"`（`lock-service.yaml:4`）；无附录 B 版本化 ObjectType 发布/人审流水线 | 有数据无契约 | W2 / P1 |
 | 3 | Fact/Claim 有 evidence | missing | FAIL：无 Fact Store；抽取仅有 string evidence（`extractor.py:136-149`） | 有实现无证据（字符串≠记录） | W3 / P1 |
 | 4 | 来源策略与冲突裁决 | missing | FAIL：无 `source_policy` / Claim 冲突裁决实现（生产知识路径） | 缺失 | W3 / P1 |
-| 5 | Wiki/索引有条件重建 | partial | 写后 invalidate + rebuild（`wiki_engine.py:631-646`）；缺重建条件分类契约 | 有 Wiki 无事实源 | W4 / P2 |
+| 5 | Wiki/索引有条件重建 | partial | 写后 invalidate + rebuild（`wiki_engine.py:631-646`）；人工写硬门 `wiki_read_model.py`（`AIPLAT_WIKI_READ_MODEL_COLLECTIONS` → 403）；缺重建条件分类契约 | 有 Wiki 无事实源（人工写可配置硬门） | W4 / P2 |
 | 6 | Gateway 查询契约 | missing | FAIL：无附录 M Query Gateway 统一入口；检索分散在 syscalls/KB/Wiki | 缺失 | W6 / P1–P2 |
 | 7 | 权限召回前过滤 | partial | KB SQL `tenant_id=?`（`sqlite_retriever.py:325-327`）；Wiki mismatch 阻断（`wiki_retriever.py:326-331`）；非全入口 + 无字段级 | 有查询无权限（不完整） | W6 / W8 / P1 |
-| 8 | 动作执行走 Policy/Approval/Audit | partial | `AsyncActionRegistry` 审批（`action_registry.py:341-359`）；`ActionContractModel`（`action_contract.py:111-116`）；知识抽取确认未强制走同一 L1 | 有动作无门禁（部分路径） | W5 / W7 / P2 |
+| 8 | 动作执行走 Policy/Approval/Audit | partial | `AsyncActionRegistry` 审批（`action_registry.py:341-359`）；`ActionContractModel`（`action_contract.py:111-116`）；抽取 confirm 已走 L1（`platform_action:knowledge:confirm_extraction`）；审批队列仍可 bypass | 有动作无门禁（审批未全强制） | W5 / W7 / P2 |
 | 9 | 跨租户 0 泄漏 | partial | 有租户分库与 mismatch 阻断（上列）；缺专项跨租户负向套件证明 0 泄漏 | 有实现无证据 | W8 / P1 |
 | 10 | 评测有定义/数据集/门槛 | missing | FAIL：知识域无绑定 v4.3.1 的 gold/门槛；评测包存在但非本标准 O 节 | 缺失 | W10 / P4 |
 | 11 | 迁移/回滚方案 | partial | 计划 §8 有文字方案（`knowledge-system-v4.3.1-implementation-plan.md` §8）；无已执行双写/对账/回滚演练记录 | 有数据无契约（仅设计） | W10 / P4 |
