@@ -13,7 +13,7 @@ doc_type: Reference
 1. **Schema 字符串**（结果信封）：  
    - `eval.scoring.semantics.v1` — runner `scoring` 块  
    - `eval.scoring.composite.v1` — composite 块（外层 schema 名保持稳定）  
-   - 语义变更用 **`policy.composite_version`**（当前 **`v1.2`**：`text_quality` + `content_safety`/`refusal` report-only）区分，避免静默改写历史 JSON schema 名导致解析器全挂。
+   - 语义变更用 **`policy.composite_version`**（当前 **`v1.3`**：v1.2 + 去掉 safety 死权重 + 未知指标默认 report-only）区分，避免静默改写历史 JSON schema 名导致解析器全挂。
 
 2. **何时升 `composite_version`（v1.x）**：metric_role / 族权重 / 归一化规则变更，导致同输入可能得到不同 `score`。  
 3. **何时升外层 schema（v2）**：字段删除/重命名、或无法向后兼容读取。须迁移说明 + 影子运行。  

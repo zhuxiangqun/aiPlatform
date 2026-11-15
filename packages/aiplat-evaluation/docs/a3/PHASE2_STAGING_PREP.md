@@ -11,7 +11,8 @@ doc_type: Reference
 
 | 项 | 状态 |
 |---|---|
-| 政策 `process_split_authorized` | **true**（owner 覆盖） |
+| 政策 `process_split_policy_authorized` | **true**（owner 覆盖） |
+| 运行时 `process_split_authorized` | **false** |
 | 本机 B4-S rehearsal | ✅ |
 | B4-S ↔ Option B 本机演练 | ✅ [`OPTION_B_B4S_LAST_RUN.md`](../../../../reports/products/five-products/ops/OPTION_B_B4S_LAST_RUN.md) |
 | B4-S staging 脚手架 / unfreeze 草稿 | ✅ `draft_blocked` |

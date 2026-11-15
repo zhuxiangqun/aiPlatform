@@ -9,6 +9,8 @@ Decision (explicit):
 - composite_version ``v1.1``: text_quality demoted to report-only (P1a).
 - composite_version ``v1.2``: content_safety / refusal demoted to report-only
   (same weak-proxy honesty as text_quality; S1 still owns ASR).
+- composite_version ``v1.3``: drop unused safety family weight; unknown metrics
+  default to report_only (fail-closed registration).
 
 Central ``AgentEvalResult`` 7-dim weights remain a separate path; this module
 owns the independent eval package runner_result.scoring.composite.
@@ -17,8 +19,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-# Metric → (role, family for weight bucket)
-# role: scored | report_only
+# Metric → role (scored | report_only). Unknown keys → report_only.
 _METRIC_ROLE: Dict[str, str] = {
     # quality — scored
     "pass": "scored",
@@ -60,26 +61,28 @@ _METRIC_ROLE: Dict[str, str] = {
     "pii_leak": "report_only",
 }
 
+# Safety has no scored metrics (v1.2+); omit weight so the table matches scored=.
+# Present families still renormalize to sum 1.0.
 _FAMILY_WEIGHTS: Dict[str, float] = {
     "quality": 0.55,
-    "safety": 0.25,
     "efficiency": 0.20,
 }
 
 
 def metric_role(name: str) -> str:
+    """Return scored | report_only.
+
+    Args:
+        name: Metric key from runner metrics.
+
+    Returns:
+        Role string. Unknown metrics default to ``report_only`` (fail-closed).
+    """
     key = (name or "").strip().lower()
     if key in _METRIC_ROLE:
         return _METRIC_ROLE[key]
-    # defaults: security/accuracy → report_only; else scored in their family
-    if (
-        key in ("accuracy", "acc")
-        or "asr" in key
-        or key.startswith("attack_")
-        or key.startswith("pii_")
-    ):
-        return "report_only"
-    return "scored"
+    # Fail-closed: only explicitly registered metrics may enter composite.
+    return "report_only"
 
 
 def _to_unit(name: str, value: Any) -> Optional[float]:
@@ -174,10 +177,12 @@ def build_composite(
                 "text_quality/content_safety/refusal are report-only keyword/length smoke; "
                 "asr/accuracy remain report-only; not G2b accuracy."
             ),
-            "composite_version": "v1.2",
+            "composite_version": "v1.3",
             "groundedness_gold_gated": True,
             "text_quality_smoke": True,
             "safety_keyword_smoke": True,
+            "safety_family_weight": False,
+            "unknown_metric_default": "report_only",
         },
     }
 

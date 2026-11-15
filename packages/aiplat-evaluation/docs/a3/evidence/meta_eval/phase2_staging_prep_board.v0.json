@@ -1,7 +1,8 @@
 {
   "schema": "eval.phase2.staging_prep_board.v0",
   "recorded_at": "2026-11-14T22:45:00+08:00",
-  "process_split_authorized": true,
+  "process_split_policy_authorized": true,
+  "process_split_authorized": false,
   "process_split_authorize_mode": "owner_policy_override",
   "chart_a3_process_split_authorized": false,
   "production_independent_claim": false,

@@ -53,7 +53,12 @@ if not rows:
 
 all_green = all(mark == "✅" for _, mark in rows)
 marks = {n: m for n, m in rows}
-authorized_doc = "process_split_authorized: true" in text and "process_split_authorized: false" not in text
+# Policy vs runtime must not share one bare key (see PHASE3_PROCESS_SPLIT_AUTHORIZE.md).
+policy_authorized = "process_split_policy_authorized: true" in text
+runtime_true = "process_split_authorized: true" in text
+runtime_false = "process_split_authorized: false" in text
+# Runtime authorize stamp only (ignore policy field).
+authorized_doc = runtime_true and not runtime_false
 status = json.loads(status_path.read_text(encoding="utf-8")) if status_path.is_file() else {}
 status_flag = bool(status.get("process_split_authorized"))
 chart_ok = chart.is_file() and 'aiplat.a3_process_split_authorized: "false"' in chart.read_text(encoding="utf-8")
@@ -65,6 +70,7 @@ report = {
     "all_green": all_green,
     "live_evidence": live_summary,
     "live_production_signed": live_ok,
+    "process_split_policy_authorized_doc": policy_authorized,
     "process_split_authorized_doc": authorized_doc,
     "process_split_authorized_status_json": status_flag,
     "chart_split_false_annotation": chart_ok,

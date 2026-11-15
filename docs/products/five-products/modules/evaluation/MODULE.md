@@ -84,7 +84,7 @@ See [`EVAL_PROTOCOL.md`](./EVAL_PROTOCOL.md).
 | `POST …/code-review-gold/evaluate` (+ reevaluate) | `eval_protocol` | 已修复（顶层协议字段保留） |
 | `POST …/kb-eval/run` | `eval_protocol` | 已修复 |
 | `POST …/prompts/eval/runs` (+ GET run) | `eval_protocol` | 已修复 |
-| `POST …/arena/run` | `eval_protocol` | 已核实/对齐（随 StatusResponse extra） |
+| `POST …/arena/run` | `eval_protocol` | 已核实（`arena_wiring` 直接返回 `Dict`，无 `response_model`；协议字段靠裸 dict 保留） |
 | Adapter | `core.harness.evaluation.eval_protocol` via CoreFacade | 服务层已接线 |
 | `GET /api/core/eval/healthz` | `product_id=evaluation` | 已接线 |
 

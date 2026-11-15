@@ -1,10 +1,10 @@
 {
   "schema": "eval.tier_matrix.v0",
   "domain": "evaluation-system",
-  "recorded_at": "2026-11-14T23:18:36+08:00",
+  "recorded_at": "2026-11-15T16:22:29+08:00",
   "source": "r12 in_both after H5 tranche clear",
   "accuracy_claim": false,
-  "process_split_authorized": true,
+  "process_split_authorized": false,
   "meta_eval_blocks_tier_a_claim": false,
   "r12_h5_open": 0,
   "counts": {
@@ -662,9 +662,10 @@
       "wilson_score_ci"
     ]
   },
-  "honesty": "meta_eval_families_green=true. tier_a_expansion_authorized=true from honesty locks. Chart a3_process_split_authorized remains a separate runtime gate.",
+  "honesty": "meta_eval_families_green=true. tier_a_expansion_authorized=true from honesty locks. process_split_policy_authorized ≠ Chart a3_process_split_authorized.",
   "meta_eval_families_green": true,
   "tier_a_expansion_authorized": true,
   "l5_declare_authorized": true,
-  "security_certification": false
+  "security_certification": false,
+  "process_split_policy_authorized": true
 }

@@ -7,7 +7,8 @@
     "accuracy_claim": false,
     "accuracy_claim_authorized": true,
     "l5_declare_authorized": true,
-    "process_split_authorized": true,
+    "process_split_policy_authorized": true,
+    "process_split_authorized": false,
     "phase4_routing_authorized": true,
     "security_certification": false,
     "tier_b_coverage_complete_claim": false,
@@ -31,5 +32,5 @@
     "scaffold_page": "docs/a3/B4S_STAGING_SCAFFOLD.md",
     "drill_template": "docs/a3/templates/live-scaffold-b4s-staging-template.v0.json"
   },
-  "honesty": "Policy flags include b_cycle1_owner_signoff_authorized. Tier B coverage complete / Chart / staging live remain false."
+  "honesty": "Policy flags include b_cycle1_owner_signoff_authorized and process_split_policy_authorized. Runtime process_split_authorized / Chart / staging live remain false."
 }

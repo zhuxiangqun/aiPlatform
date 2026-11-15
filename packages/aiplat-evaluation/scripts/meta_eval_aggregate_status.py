@@ -85,7 +85,9 @@ def main() -> int:
     accuracy_claim_authorized = bool(
         flags.get("accuracy_claim_authorized", flags.get("accuracy_claim", False))
     )
-    process_split = bool(flags.get("process_split_authorized", False))
+    process_split_policy = bool(flags.get("process_split_policy_authorized", False))
+    # Runtime SoT from locks (false until Checklist/Chart flip); never reuse policy key.
+    process_split_runtime = bool(flags.get("process_split_authorized", False))
     l5 = bool(flags.get("l5_declare_authorized", False))
     security = bool(flags.get("security_certification", False))
     chart_split = bool(flags.get("chart_a3_process_split_authorized", False))
@@ -99,13 +101,14 @@ def main() -> int:
         "accuracy_claim": accuracy_claim,
         "accuracy_claim_authorized": accuracy_claim_authorized,
         "security_certification": security,
-        "process_split_authorized": process_split,
+        "process_split_policy_authorized": process_split_policy,
+        "process_split_authorized": process_split_runtime,
         "l5_declare_authorized": l5,
         "chart_a3_process_split_authorized": chart_split,
         "honesty": (
             "META_EVAL F1–F4 rollup. families_green is a ruler prerequisite only. "
-            "Policy flags mirrored from phase3_honesty_locks (not invented here). "
-            "Chart runtime split stays independent."
+            "process_split_policy_authorized ≠ process_split_authorized (runtime) ≠ Chart. "
+            "Policy flags mirrored from phase3_honesty_locks (not invented here)."
         ),
     }
     OUT_JSON.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -159,11 +162,12 @@ def main() -> int:
         tier["meta_eval_blocks_tier_a_claim"] = not tier_a_exp
         tier["tier_a_expansion_authorized"] = tier_a_exp
         tier["accuracy_claim"] = accuracy_claim
-        tier["process_split_authorized"] = process_split
+        tier["process_split_policy_authorized"] = process_split_policy
+        tier["process_split_authorized"] = process_split_runtime
         tier["honesty"] = (
             f"meta_eval_families_green={str(all_green).lower()}. "
             f"tier_a_expansion_authorized={str(tier_a_exp).lower()} from honesty locks. "
-            "Chart a3_process_split_authorized remains a separate runtime gate."
+            "process_split_policy_authorized ≠ Chart a3_process_split_authorized."
         )
         TIER_JSON.write_text(json.dumps(tier, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         counts = tier.get("counts") if isinstance(tier.get("counts"), dict) else {}

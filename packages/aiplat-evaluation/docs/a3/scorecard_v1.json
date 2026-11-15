@@ -2,7 +2,7 @@
   "schema": "eval.scorecard.v1",
   "scope_doc": "docs/a3/SCORE_SCOPE_V1.md",
   "product_id": "evaluation",
-  "recorded_at": "2026-11-05",
+  "recorded_at": "2026-11-15",
   "accuracy_claim": false,
   "process_split_authorized": false,
   "not_production_authorization": true,
@@ -22,7 +22,7 @@
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 architecture in-scope",
       "full_score_eligible": true,
-      "note": "v1.5: single mount+308; thin routes; contracts SSOT; PRODUCT_ROOT_V1; legacy_7dim frozen deprecated_for_engineering; package composite_version=v1.2 (text_quality+content_safety+refusal report-only smoke); STORE_SURFACE_V0 honest subset; G2B_RE_REVIEW_PROCEDURE living",
+      "note": "v1.6: single mount+308; thin routes; contracts SSOT; PRODUCT_ROOT_V1; legacy_7dim frozen deprecated_for_engineering; package composite_version=v1.3 (safety weight dropped; unknown metrics report_only); STORE_SURFACE_V0 honest subset; G2B_RE_REVIEW_PROCEDURE living; process_split_policy_authorized≠runtime",
       "gaps": []
     },
     "local_independence_no_microvm": {

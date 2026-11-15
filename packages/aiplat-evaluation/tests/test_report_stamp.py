@@ -7,7 +7,7 @@ from app.scoring.report_stamp import ensure_report_scoring
 
 def test_stamps_composite_when_known_metrics():
     out = ensure_report_scoring({"exact_match": 1.0, "content_safety": 1.0})
-    assert extract_composite_version(out) == "v1.2"
+    assert extract_composite_version(out) == "v1.3"
     assert out["scoring"]["accuracy_claim"] is False
     assert out["scoring"]["composite"]["score"] is not None
 
@@ -54,7 +54,7 @@ def test_meta_promotes_runner_and_composite_version():
     assert out["meta"]["runner_id"] == "prompt_eval"
     assert out["meta"]["judge_id"] == "j1"
     assert out["meta"]["dataset_version"] == "d1"
-    assert out["meta"]["composite_version"] == "v1.2"
+    assert out["meta"]["composite_version"] == "v1.3"
     assert out["meta"]["evidence_level"] == "gold"
     only = ensure_report_meta({"runner_version": "rv1"})
     assert only["meta"]["runner_version"] == "rv1"

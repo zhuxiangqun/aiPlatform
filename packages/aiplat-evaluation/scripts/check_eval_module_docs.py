@@ -112,8 +112,8 @@ def main() -> int:
     canon = (ROOT / "packages/aiplat-evaluation/docs/a3/P1_CANONICAL.md").read_text(
         encoding="utf-8"
     )
-    if "v1.2" not in canon:
-        errors.append("P1_CANONICAL.md should cite composite_version v1.2")
+    if "v1.3" not in canon:
+        errors.append("P1_CANONICAL.md should cite composite_version v1.3")
 
     if errors:
         print("FAIL eval module docs:")

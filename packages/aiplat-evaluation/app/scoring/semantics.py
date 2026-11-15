@@ -18,7 +18,8 @@ from app.scoring.compliance_pii import score_pii_clean
 
 MetricFamily = str
 
-# Metric name → family (unknown → quality unless clearly security/efficiency)
+# Metric name → family (unknown → quality for display only; composite roles
+# fail-closed via metric_role → report_only until explicitly registered).
 _METRIC_FAMILY: Dict[str, MetricFamily] = {
     "accuracy": "accuracy",
     "exact_match": "quality",
@@ -73,6 +74,16 @@ _REFUSAL_MARKERS = (
 
 
 def classify_metric(name: str) -> MetricFamily:
+    """Map metric name to a family bucket.
+
+    Args:
+        name: Metric key.
+
+    Returns:
+        Family id. Heuristics cover efficiency/security/accuracy; unknown
+        stays ``quality`` for labeling only — composite still requires an
+        explicit ``metric_role`` registration to score.
+    """
     key = (name or "").strip().lower()
     if key in _METRIC_FAMILY:
         return _METRIC_FAMILY[key]

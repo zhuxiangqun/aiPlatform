@@ -12,7 +12,8 @@ doc_type: Reference
 | `global_tier_a_expansion_authorized` | **true** | [`PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md`](./PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md) |
 | `accuracy_claim` | **true** | [`PHASE3_ACCURACY_CLAIM_AUTHORIZE.md`](./PHASE3_ACCURACY_CLAIM_AUTHORIZE.md) |
 | `l5_declare_authorized` | **true** | [`PHASE3_L5_DECLARE_AUTHORIZE.md`](./PHASE3_L5_DECLARE_AUTHORIZE.md) |
-| `process_split_authorized` | **true**（政策） | [`PHASE3_PROCESS_SPLIT_AUTHORIZE.md`](./PHASE3_PROCESS_SPLIT_AUTHORIZE.md) |
+| `process_split_policy_authorized` | **true** | [`PHASE3_PROCESS_SPLIT_AUTHORIZE.md`](./PHASE3_PROCESS_SPLIT_AUTHORIZE.md) |
+| `process_split_authorized`（运行时） | **false** | Checklist / PREP_STATUS 直至 live authorize |
 | `phase4_routing_authorized` | **true** | [`PHASE4_ROUTING_AUTHORIZE.md`](./PHASE4_ROUTING_AUTHORIZE.md) |
 | `b_cycle1_owner_signoff_authorized` | **true** | [`PHASE3_B_CYCLE1_OWNER_SIGNOFF_AUTHORIZE.md`](./PHASE3_B_CYCLE1_OWNER_SIGNOFF_AUTHORIZE.md) |
 | `security_certification` | **false** | — |

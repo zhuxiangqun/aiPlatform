@@ -32,7 +32,7 @@ Reports 列表可按 `composite_version` 客户端过滤；对比「快捷填入
 
 ## 写入侧（P1b stamp）
 
-`create_report` 经 `ensure_report_scoring`：若 metrics 含已知工程指标且尚无 `composite_version`，自动挂上 `build_composite`（当前 `v1.2`）。已有版本不改写；纯运维字段（如 `phase`）不戳章 → 对比仍 incomparable。跨 `v1.1`/`v1.2` 不可静默混比。
+`create_report` 经 `ensure_report_scoring`：若 metrics 含已知工程指标且尚无 `composite_version`，自动挂上 `build_composite`（当前 `v1.3`）。已有版本不改写；纯运维字段（如 `phase`）不戳章 → 对比仍 incomparable。跨 `v1.1`/`v1.2`/`v1.3` 不可静默混比。
 
 同时 `ensure_report_meta` 将 `runner_id` / `judge_*` / `dataset_*` / `schema_version` / `evidence_level` 归入 `metrics.meta`（可显式传 `meta`），并把已有 `composite_version` 抄进 meta，供列表与对比追溯。`evidence_level` 由 `infer_evidence_level` 推断（smoke/fixture/gold/human）；≠ accuracy_claim。
 
