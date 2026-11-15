@@ -46,7 +46,8 @@ PYTHONPATH=aiPlat-core:aiPlat-platform:. python3 -m pytest \
 
 ## 明确未做（后续）
 
-- ObjectSet / SDK / Interface
+- ObjectSet → 见 `phase2-objectset-evidence.md`（本批另切片）
+- SDK / Interface
 - 函数副作用白名单分级（本切片一律禁副作用）
 - 字段级 ACL；管理端 Function publish 流水线
 - 附录 N 全量符合

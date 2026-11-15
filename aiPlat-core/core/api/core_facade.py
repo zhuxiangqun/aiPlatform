@@ -5039,6 +5039,33 @@ async def invoke_function(
     )
 
 
+async def query_object_set(
+    request: Dict[str, Any],
+    *,
+    tenant_id: str,
+    permissions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """W6：ObjectSet 只读查询（租户前置 + L1 kb:read）。
+
+    Args:
+        request: 附录 E.1 请求 dict（object_type / filter / sort / limit）。
+        tenant_id: 租户 ID（必填）。
+        permissions: 调用方权限/scopes。
+
+    Returns:
+        附录 E.2 形状回执（或 policy_denied / not_found）。
+    """
+    from core.harness.knowledge_pipeline.object_set import (
+        query_object_set as _query,
+    )
+
+    return await _query(
+        request,
+        tenant_id=tenant_id,
+        permissions=permissions,
+    )
+
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 
@@ -14446,6 +14473,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     record_extraction_as_claim,
 )
 from core.harness.knowledge_pipeline.fact_projector import project_facts_to_graph  # noqa: boundary
+from core.harness.knowledge_pipeline.object_set import ObjectSetRequest  # noqa: boundary
 from core.harness.infrastructure.gates.marking_propagation import get_entity_max_marking_level, MARKING_LABELS  # noqa: boundary
 
 
