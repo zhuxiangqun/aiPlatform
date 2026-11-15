@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3490
+total_capabilities: 3494
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -2144,6 +2144,10 @@ scan_hash: 8f9548ec24f4
 ## 六、Skill 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| tool_dry_run_impl_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| tool_discard_impl_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| tool_preview_impl_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| skill_dry_run_handler_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | skill_discard_handler_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | skill_preview_handler_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | write_handler_draft_from_script | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
@@ -2263,7 +2267,8 @@ scan_hash: 8f9548ec24f4
 | BaseSkill | `apps/skills/base.py` | ✅ | 自动同步 | 已合入 |
 | SkillManager | `aiPlat-core/core/management/skill_manager.py` | ✅ | 自动同步 | 已合入 |
 | Skill asset compat（Phase A） | `harness/maintenance/asset_compat.py`（apps re-export）+ InstallReport `assets[]` + `sys_skill_call` gate + `POST …/enable-handler-draft` + Skills「可用性」列 | ✅ | `COMPAT.yaml` tier/schedulable；脚本仅写 `handler.py.draft`；列表/导入三态；生成物适用：已接线（Skill 导入横切） | 本批 |
-| Skill §5.4 升格预览页 | `preview_handler_draft` / `discard_handler_draft` + `GET …/handler-draft-preview` + `POST …/discard-handler-draft` + `HandlerDraftUpgradeModal` | ✅ | 预览草稿摘要/权限/SOP 差异→确认启用或丢弃（**非**一键直启用）；启用审计含 `draft_sha256`+`permissions_at_enable`；生成物适用：已接线（Skill 升格横切） | 本批 |
+| Skill §5.4 升格预览页 | `preview_handler_draft` / `discard_handler_draft` / `dry_run_handler_draft` + `GET …/handler-draft-preview` + `POST …/discard|dry-run|enable-handler-draft` + `HandlerDraftUpgradeModal` | ✅ | 预览摘要/可改权限/SOP 差异→静态试跑→确认启用或丢弃（**非**一键直启用）；启用审计含 `draft_sha256`+`permissions_at_enable`；生成物适用：已接线（Skill 升格横切） | 本批 |
+| Tool §5.4 升格预览页 | `preview_tool_impl_draft` / `discard_tool_impl_draft` / `dry_run_tool_impl_draft` + `ToolImplUpgradeModal` | ✅ | 对齐 Skill：预览→静态试跑→启用/丢弃，替代 Tools 一键直启用；生成物适用：已接线（Tool 升格横切） | 本批 |
 | Hermetic MCP install→sync E2E | `test_mcp_install_sync_hermetic_e2e.py` + `local_tools_server` stdio | ✅ | 本地假服务器（非公网/GitHub）；install→COMPAT connectable→sync→connected（失败诚实回落 connectable）；生成物适用：已接线（MCP 导入横切） | 本批 |
 | Agent asset compat（Phase B） | `harness/maintenance/asset_compat.py` + `AgentInstaller` InstallReport `assets[]` + `run_workspace_agent` chat-lite gate + Agents「可用性」列 | ✅ | `persona_ready`/`bound_ready`/`needs_binding`/`blocked`；缺依赖仍可对话、全功能受限；生成物适用：已接线（Agent 导入横切） | 本批 |
 | finalize_agent_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 写出 Agent `COMPAT.yaml`（依赖级联） | 本批 |
@@ -4395,7 +4400,7 @@ scan_hash: 8f9548ec24f4
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 204 | 0 | 204 |
+| Skill 系统 | 208 | 0 | 208 |
 | 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -4434,7 +4439,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3479** | **11** | **3490** |
+| **总计** | **3483** | **11** | **3494** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -9,6 +9,7 @@ import ToolChatCreateModal from '../../../components/workspace/ToolChatCreateMod
 import WorkspacePageGuide from '../../../components/workspace/WorkspacePageGuide';
 import AssetAuditPanel, { auditRemainToast } from '../../../components/workspace/AssetAuditPanel';
 import type { AssetAuditResult } from '../../../components/workspace/AssetAuditPanel';
+import ToolImplUpgradeModal from '../../../components/workspace/ToolImplUpgradeModal';
 import { workspaceToolApi, toolApi } from '../../../services';
 import type { ToolInfo } from '../../../services';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
@@ -139,6 +140,10 @@ const WorkspaceTools: React.FC = () => {
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; tool: ToolInfo | null }>({ open: false, tool: null });
   const [deleting, setDeleting] = useState(false);
+  const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; tool: ToolInfo | null }>({
+    open: false,
+    tool: null,
+  });
 
   const [seedsModalOpen, setSeedsModalOpen] = useState(false);
   const [seeds, setSeeds] = useState<any[]>([]);
@@ -533,17 +538,9 @@ TOOL_DEF = {
         <div className="flex items-center justify-center gap-0.5">
           {record.compat?.tier === 'needs_impl' && (
             <button
-              onClick={async () => {
-                try {
-                  await workspaceToolApi.enableImplDraft(record.name);
-                  toast.success(`已启用实现：${record.name}`);
-                  fetchTools();
-                } catch (e: any) {
-                  toastGateError(e, '启用实现失败');
-                }
-              }}
+              onClick={() => setUpgradeModal({ open: true, tool: record })}
               className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-400/10 transition-colors"
-              title="启用 .py.draft"
+              title="打开升格页确认权限与差异"
             >
               <Plus size={14} />
             </button>
@@ -631,6 +628,13 @@ TOOL_DEF = {
 
       {/* Execute Modal */}
       <ExecuteToolModal open={executeOpen} tool={executeTool} onClose={() => { setExecuteOpen(false); setExecuteTool(null); }} />
+
+      <ToolImplUpgradeModal
+        open={upgradeModal.open}
+        tool={upgradeModal.tool}
+        onClose={() => setUpgradeModal({ open: false, tool: null })}
+        onDone={() => fetchTools()}
+      />
 
       {/* ============================== EDIT MODAL ============================== */}
       <Modal open={editOpen} onClose={() => { setEditOpen(false); setEditTool(null); }}

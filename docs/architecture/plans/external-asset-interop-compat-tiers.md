@@ -1,16 +1,16 @@
 ---
 doc_type: Architecture
 title: 外源资产互通完整改善方案（Agent / Skill / Tool / MCP）
-status: proposed
+status: partially-implemented
 authority: design-target
 language: zh-CN
 created: 2026-11-12
-updated: 2026-11-13
+updated: 2026-11-15
 ---
 
 # 外源资产互通完整改善方案（Agent / Skill / Tool / MCP）
 
-> **设计目标态，不是实施 diff。** 先读 §0；实施读 §1 起。  
+> **设计目标态 + 落地进度。** 先读 §0；实施读 §1 起。  
 > 全文长稿曾因 physical-merge `max_net_lines=200` 拆为本文（契约口径）+ 后续 detail PR。
 
 ## 0. 白话版
@@ -45,7 +45,7 @@ updated: 2026-11-13
 | 还差几步 | 少数 | 列出缺什么、怎么补 |
 | 不能用 | 极少数 | 给原因 |
 
-**确认（仅 handler 草稿）** = 管理台看权限/差异 →（可选试跑）→ 点「启用 handler」并审计；未点前草稿不可正式调度。
+**确认（handler / Tool 实现草稿）** = 管理台升格页看摘要/权限/差异 →（可选静态试跑）→ 点「启用」并审计；未点前草稿不可正式调度。
 
 ## 1. 问题与原则
 
@@ -124,29 +124,35 @@ updated: 2026-11-13
 
 ### 5.4 「启用」流程（确认定义）
 
-仅 needs_handler / 已有草稿时：
+仅 needs_handler / needs_impl / 已有草稿时：
 
 1. 提示：还差几步 · 草稿未启用  
-2. 升格页：草稿做什么、权限清单、与 SOP 差异  
-3. 可选试跑 / 改权限 / 丢弃草稿继续 prompt  
-4. 点「启用」→ 转正 `handler.py` + 审计（谁/何时）  
+2. 升格页：草稿做什么、权限清单（可改）、与 SOP/schema 差异  
+3. 可选静态试跑（compile + 签名/TOOL_DEF；**不**执行任意代码）/ 丢弃草稿  
+4. 点「启用」→ 转正 `handler.py` / `{name}.py` + 审计（谁/何时/指纹/权限）  
 5. 生产上架另走审核（不挡工作区试用）
 
-工作区：导入人可点启用。团队/生产：有权限管理员或审核流。
+工作区：导入人可点启用（RBAC update）。团队/生产：上架走 marketplace；**专用 enable 审批流仍为后续**。
 
 ## 6. 分资产口径（校正）
 
 - **Skill**：无 handler 默认 `prompt_ready`；假绿自动 handler 禁止；启用走 §5.4  
 - **Agent**：默认 `persona_ready` 能聊；缺依赖不关对话；全功能要 `bound_ready`  
-- **Tool**：映射/MCP 后立刻能调；实现草稿要启用；高风险 effects 要确认  
+- **Tool**：映射/MCP 后立刻能调；实现草稿要升格页启用；高风险 effects 要确认  
 - **MCP**：保存后自动连接；连上即用；高风险工具个别 gated；断连不假成功  
 
-## 7. 交付切片（摘要）
+## 7. 交付切片（摘要）与落地
 
-- A：Skill `_compat` + InstallReport + 切断假绿 handler + UI 三态  
-- B：Agent 依赖级联 + 对话/全功能分流  
-- C：Tool 三路径 + MCP 生命周期  
-- D：发现闭环 + 生产上架门禁 + 守卫  
+| 切片 | 状态 |
+|------|:----:|
+| A：Skill `_compat` + InstallReport + 切断假绿 handler + UI 三态 | ✅ |
+| B：Agent 依赖级联 + 对话/全功能分流 | ✅ |
+| C：Tool 三路径 + MCP 生命周期 | ✅ |
+| D：发现闭环 + 生产上架门禁 + 守卫 | ✅ |
+| §5.4 Skill 升格预览 / 丢弃 / 改权限 / 静态试跑 | ✅ |
+| §5.4 对齐 Tool 升格预览 / 丢弃 / 静态试跑 | ✅ |
+| SecureScan + majority `import_failed` + marketplace 队列 | ✅ |
+| Hermetic MCP install→sync E2E（本地 stdio） | ✅ |
 
 ## 8. 讨论修订记录
 
@@ -160,6 +166,20 @@ updated: 2026-11-13
 | Tool 立刻能用？ | 映射或 MCP 投影后 |
 | MCP 立刻能用？ | 自动连接成功后默认能用 |
 
-## 9. 非目标
+## 9. 非目标 / 仍开放缺口
 
-不保证任意生态比特级复刻；不默认执行任意下载代码；不把「多数待升格」当成默认体验。
+**非目标**：不保证任意生态比特级复刻；不默认执行任意下载代码；不把「多数待升格」当成默认体验；**不做公网/GitHub MCP E2E**（有 hermetic 本地 stdio）。
+
+**仍开放（诚实）**：
+
+| 缺口 | 说明 |
+|------|------|
+| MCP `gated` 个别确认 UI | tier/策略已有；管理端尚无与升格页同级的逐工具确认 |
+| 生产「启用」专用审批流 | 工作区 RBAC + 上架 marketplace；非独立 enable 审批产品 |
+| 运行时试跑 | 仅静态 compile；不执行草稿（安全） |
+
+## 10. 验证入口
+
+- Skill：`test_asset_compat_phase_a.py`（含 preview/discard/dry_run/enable 权限）  
+- Tool/MCP：`test_asset_compat_phase_c.py` / `phase_d.py` + `test_mcp_install_sync_hermetic_e2e.py`  
+- 系统契约 clause 82–85；`architecture_guard.sh §98`

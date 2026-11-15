@@ -8,6 +8,7 @@ from core.harness.maintenance.asset_compat import (
     TIER_NEEDS_HANDLER,
     TIER_PROMPT_READY,
     discard_handler_draft,
+    dry_run_handler_draft,
     enable_handler_draft,
     finalize_skill_compat,
     is_skill_schedulable,
@@ -152,11 +153,15 @@ def test_preview_discard_enable_handler_draft_audit(tmp_path: Path):
     assert not (discarded_dir / "handler.py.draft").exists()
     assert discard_handler_draft(discarded_dir)["ok"] is False
 
-    # enable + audit fields
-    en = enable_handler_draft(s)
+    dry = dry_run_handler_draft(s)
+    assert dry["compile_ok"] is True and dry["has_execute"] is True
+
+    # enable + audit fields + permission override
+    en = enable_handler_draft(s, permissions=["filesystem:read", "network"])
     assert en["ok"] is True and (s / "handler.py").is_file()
     assert isinstance(en.get("draft_sha256"), str) and len(en["draft_sha256"]) == 64
-    assert "filesystem:read" in (en.get("permissions_at_enable") or [])
+    assert en.get("permissions_updated") is True
+    assert "network" in (en.get("permissions_at_enable") or [])
     post = preview_handler_draft(s)
     assert post["has_handler"] is True
     assert enable_handler_draft(s)["ok"] is False  # already enabled

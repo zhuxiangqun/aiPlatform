@@ -11,6 +11,7 @@ from core.harness.maintenance.asset_compat import (  # noqa: F401
     TIER_TOOL_MAPPED,
     compute_skill_compat,
     discard_handler_draft,
+    dry_run_handler_draft,
     enable_handler_draft,
     finalize_skill_compat,
     is_skill_schedulable,

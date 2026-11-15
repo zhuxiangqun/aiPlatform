@@ -352,11 +352,62 @@ def discard_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
     }
 
 
-def enable_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
+def dry_run_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
+    """§5.4 可选试跑：静态编译 + execute 签名检查（不执行任意代码）。
+
+    Args:
+        skill_dir: Skill 目录路径。
+
+    Returns:
+        ``compile_ok`` / ``has_execute``；失败时 ``ok=False`` 并带 ``errors``。
+    """
+    import ast
+    import hashlib
+    import re
+
+    root = Path(skill_dir)
+    draft = root / HANDLER_DRAFT
+    if not draft.is_file():
+        return {"ok": False, "error": "no_handler_draft", "compile_ok": False, "has_execute": False}
+    text = draft.read_text(encoding="utf-8", errors="replace")
+    errors: List[str] = []
+    compile_ok = False
+    has_execute = False
+    try:
+        compile(text, str(draft), "exec")
+        compile_ok = True
+        tree = ast.parse(text)
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "execute":
+                has_execute = True
+                break
+        if not has_execute and re.search(r"\bdef\s+execute\s*\(", text):
+            has_execute = True
+    except SyntaxError as exc:
+        errors.append(f"syntax:{exc.msg}@{exc.lineno}")
+    if compile_ok and not has_execute:
+        errors.append("missing_execute")
+    return {
+        "ok": compile_ok and has_execute,
+        "error": None if (compile_ok and has_execute) else (errors[0] if errors else "dry_run_failed"),
+        "compile_ok": compile_ok,
+        "has_execute": has_execute,
+        "errors": errors,
+        "draft_sha256_16": hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
+        "note": "static_only: compile+execute signature; no runtime exec",
+    }
+
+
+def enable_handler_draft(
+    skill_dir: Path | str,
+    *,
+    permissions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     """Promote handler.py.draft → handler.py after human enable.
 
     Args:
-        skill_dir: skill_dir 参数。
+        skill_dir: Skill 目录路径。
+        permissions: 可选；升格页改权限后写入 SKILL.md frontmatter。
     """
     import hashlib
 
@@ -369,11 +420,14 @@ def enable_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
     draft_text = draft.read_text(encoding="utf-8")
     draft_sha = hashlib.sha256(draft_text.encode("utf-8")).hexdigest()
     fm_before = _read_frontmatter(root)
-    perms = fm_before.get("permissions") or fm_before.get("required_permissions") or []
+    perms = permissions
+    if perms is None:
+        perms = fm_before.get("permissions") or fm_before.get("required_permissions") or []
     if isinstance(perms, str):
         perms = [perms]
     if not isinstance(perms, list):
         perms = []
+    perms = [str(p).strip() for p in perms if str(p).strip()]
     target.write_text(draft_text, encoding="utf-8")
     md = root / "SKILL.md"
     if md.is_file():
@@ -388,6 +442,9 @@ def enable_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
                     if isinstance(fm, dict):
                         fm["execution_type"] = "handler"
                         fm.pop("block_reason", None)
+                        if permissions is not None:
+                            fm["permissions"] = perms
+                            fm.pop("required_permissions", None)
                         header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
                         md.write_text(f"---\n{header}\n---{parts[2]}", encoding="utf-8")
                 except Exception as exc:
@@ -401,6 +458,7 @@ def enable_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
         # §5.4 审计字段：谁启用见 HTTP 层；此处落草稿指纹与权限快照
         "draft_sha256": draft_sha,
         "permissions_at_enable": [str(p) for p in perms],
+        "permissions_updated": permissions is not None,
     }
 
 
@@ -1243,21 +1301,170 @@ def write_tool_impl_draft(tool_py: Path | str, code: str) -> Path:
     return draft
 
 
-def enable_tool_impl_draft(tool_py: Path | str) -> Dict[str, Any]:
-    """Promote {name}.py.draft → {name}.py after human enable.
+def preview_tool_impl_draft(tool_py: Path | str) -> Dict[str, Any]:
+    """§5.4 对齐：Tool 实现草稿预览（摘要 / 权限暗示 / schema 差异）。
 
     Args:
-        tool_py: tool_py 参数。
+        tool_py: 目标 ``{name}.py`` 路径（草稿为同 stem 的 ``.py.draft``）。
+    """
+    import hashlib
+    import re
+
+    target = Path(tool_py)
+    draft = tool_draft_path(target)
+    schema_sidecar = target.parent / f"{target.stem}.schema.json"
+    draft_text = draft.read_text(encoding="utf-8", errors="replace") if draft.is_file() else ""
+    digest = hashlib.sha256(draft_text.encode("utf-8")).hexdigest()[:16] if draft_text else ""
+    summary = ""
+    m = re.search(r'"""(.*?)"""', draft_text, re.DOTALL)
+    if m:
+        summary = " ".join(m.group(1).strip().split())[:400]
+    if not summary:
+        for line in draft_text.splitlines():
+            s = line.strip()
+            if s.startswith("#") and len(s) > 1:
+                summary = s.lstrip("# ").strip()[:400]
+                break
+    if not summary and draft_text:
+        summary = " ".join(draft_text.split())[:240]
+    # TOOL_DEF / effects / risk hints from draft text (best-effort)
+    has_tool_def = "TOOL_DEF" in draft_text
+    risk_hints: List[str] = []
+    for key in ("subprocess", "os.system", "eval(", "exec(", "socket", "requests."):
+        if key in draft_text:
+            risk_hints.append(key)
+    diffs: List[str] = []
+    if draft.is_file() and not target.exists():
+        diffs.append("启用前不可调度（needs_impl）；启用后写入 .py 并按 mapped 注册")
+    if schema_sidecar.is_file() and not target.exists():
+        diffs.append("存在 .schema.json；启用实现后以代码 TOOL_DEF 为准")
+    if not has_tool_def and draft.is_file():
+        diffs.append("草稿未见 TOOL_DEF；启用后可能无法自动注册")
+    if risk_hints:
+        diffs.append(f"草稿含潜在高风险调用: {', '.join(risk_hints)}")
+    if not diffs and draft.is_file():
+        diffs.append("启用后以实现代码为准调度；未启用前保持 needs_impl")
+    compat = read_tool_compat(target) or compute_tool_compat(target)
+    return {
+        "ok": bool(draft.is_file()),
+        "error": None if draft.is_file() else "no_impl_draft",
+        "tool_id": target.stem,
+        "has_draft": draft.is_file(),
+        "has_impl": target.is_file(),
+        "draft_summary": summary,
+        "draft_sha256_16": digest,
+        "draft_preview": "\n".join(draft_text.splitlines()[:80]),
+        "has_tool_def": has_tool_def,
+        "risk_hints": risk_hints,
+        "schema_sidecar": schema_sidecar.is_file(),
+        "sop_vs_draft": diffs,
+        "compat": {
+            "tier": compat.get("tier"),
+            "schedulable": compat.get("schedulable"),
+            "ui_state": compat.get("ui_state"),
+            "upgrade": compat.get("upgrade") or {},
+            "issues": compat.get("issues") or [],
+        },
+    }
+
+
+def discard_tool_impl_draft(tool_py: Path | str) -> Dict[str, Any]:
+    """丢弃 ``{name}.py.draft``，保持 schema_only / needs_impl（§5.4 对齐）。
+
+    Args:
+        tool_py: 目标 ``{name}.py`` 路径。
     """
     target = Path(tool_py)
     draft = tool_draft_path(target)
     if not draft.is_file():
         return {"ok": False, "error": "no_impl_draft"}
     if target.exists():
+        return {"ok": False, "error": "impl_already_enabled"}
+    try:
+        draft.unlink()
+    except OSError as exc:
+        return {"ok": False, "error": f"unlink_failed:{exc}"}
+    compat = finalize_tool_compat(target, adapt_summary={"adapted": True, "pattern": "impl_draft_discarded"})
+    return {
+        "ok": True,
+        "discarded": True,
+        "tier": compat.get("tier"),
+        "schedulable": compat.get("schedulable"),
+        "compat": compat,
+    }
+
+
+def dry_run_tool_impl_draft(tool_py: Path | str) -> Dict[str, Any]:
+    """Tool 草稿静态试跑：compile + TOOL_DEF 检查（不执行）。
+
+    Args:
+        tool_py: 目标 ``{name}.py`` 路径。
+    """
+    import ast
+    import hashlib
+
+    target = Path(tool_py)
+    draft = tool_draft_path(target)
+    if not draft.is_file():
+        return {"ok": False, "error": "no_impl_draft", "compile_ok": False, "has_tool_def": False}
+    text = draft.read_text(encoding="utf-8", errors="replace")
+    errors: List[str] = []
+    compile_ok = False
+    has_tool_def = False
+    try:
+        compile(text, str(draft), "exec")
+        compile_ok = True
+        tree = ast.parse(text)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if isinstance(t, ast.Name) and t.id == "TOOL_DEF":
+                        has_tool_def = True
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                if node.target.id == "TOOL_DEF":
+                    has_tool_def = True
+    except SyntaxError as exc:
+        errors.append(f"syntax:{exc.msg}@{exc.lineno}")
+    if "TOOL_DEF" in text:
+        has_tool_def = True
+    if compile_ok and not has_tool_def:
+        errors.append("missing_TOOL_DEF")
+    return {
+        "ok": compile_ok and has_tool_def,
+        "error": None if (compile_ok and has_tool_def) else (errors[0] if errors else "dry_run_failed"),
+        "compile_ok": compile_ok,
+        "has_tool_def": has_tool_def,
+        "errors": errors,
+        "draft_sha256_16": hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
+        "note": "static_only: compile+TOOL_DEF; no runtime exec",
+    }
+
+
+def enable_tool_impl_draft(tool_py: Path | str) -> Dict[str, Any]:
+    """Promote {name}.py.draft → {name}.py after human enable.
+
+    Args:
+        tool_py: tool_py 参数。
+    """
+    import hashlib
+
+    target = Path(tool_py)
+    draft = tool_draft_path(target)
+    if not draft.is_file():
+        return {"ok": False, "error": "no_impl_draft"}
+    if target.exists():
         return {"ok": False, "error": "impl_already_exists"}
-    target.write_text(draft.read_text(encoding="utf-8"), encoding="utf-8")
+    draft_text = draft.read_text(encoding="utf-8")
+    draft_sha = hashlib.sha256(draft_text.encode("utf-8")).hexdigest()
+    target.write_text(draft_text, encoding="utf-8")
     compat = finalize_tool_compat(target, adapt_summary={"adapted": True, "pattern": "impl_enabled"})
-    return {"ok": True, "tier": compat.get("tier"), "schedulable": compat.get("schedulable"), "compat": compat}
+    return {
+        "ok": True,
+        "tier": compat.get("tier"),
+        "schedulable": compat.get("schedulable"),
+        "compat": compat,
+        "draft_sha256": draft_sha,
+    }
 
 
 # ── InstallReport / discovery row alignment ───────────────────────────────────

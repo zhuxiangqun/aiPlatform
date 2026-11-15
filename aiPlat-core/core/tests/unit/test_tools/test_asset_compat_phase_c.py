@@ -51,11 +51,28 @@ def test_tool_enable_impl_draft(tmp_path: Path):
     py = tmp_path / "promo.py"
     code = "TOOL_DEF={'name':'promo','execute':lambda p:{'ok':True}}\n"
     write_tool_impl_draft(py, code)
+    # §5.4-aligned preview / dry-run / discard + enable audit
+    from core.harness.maintenance.asset_compat import (
+        discard_tool_impl_draft,
+        dry_run_tool_impl_draft,
+        preview_tool_impl_draft,
+    )
+
+    prev = preview_tool_impl_draft(py)
+    assert prev["ok"] is True and prev["has_draft"] is True
+    dry = dry_run_tool_impl_draft(py)
+    assert dry["compile_ok"] is True
+    # keep draft for enable below; discard tested on sibling
+    other = tmp_path / "to_discard.py"
+    write_tool_impl_draft(other, "TOOL_DEF={'name':'to_discard'}\n")
+    assert discard_tool_impl_draft(other)["ok"] is True
+    assert not (tmp_path / "to_discard.py.draft").exists()
     finalize_tool_compat(py, adapt_summary={"adapted": True, "pattern": "import_draft"})
     res = enable_tool_impl_draft(py)
     assert res["ok"] is True
     assert py.is_file()
     assert res["tier"] == TIER_MAPPED
+    assert isinstance(res.get("draft_sha256"), str) and len(res["draft_sha256"]) == 64
     assert is_tool_schedulable(py) is True
 
 

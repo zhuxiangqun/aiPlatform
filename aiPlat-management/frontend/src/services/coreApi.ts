@@ -1205,7 +1205,7 @@ export const workspaceSkillApi = {
   },
 
   /** Phase A §5.4: promote handler.py.draft → handler.py */
-  enableHandlerDraft: async (skillId: string) => {
+  enableHandlerDraft: async (skillId: string, body: { permissions?: string[] } = {}) => {
     return apiClient.post<{
       status: string;
       skill_id: string;
@@ -1214,7 +1214,8 @@ export const workspaceSkillApi = {
       ok?: boolean;
       draft_sha256?: string;
       permissions_at_enable?: string[];
-    }>(`/core/workspace/skills/${skillId}/enable-handler-draft`, {});
+      permissions_updated?: boolean;
+    }>(`/core/workspace/skills/${skillId}/enable-handler-draft`, body);
   },
 
   /** §5.4 丢弃草稿，继续 prompt */
@@ -1223,6 +1224,19 @@ export const workspaceSkillApi = {
       `/core/workspace/skills/${skillId}/discard-handler-draft`,
       {},
     );
+  },
+
+  /** §5.4 可选试跑：静态 compile + execute */
+  handlerDraftDryRun: async (skillId: string) => {
+    return apiClient.post<{
+      status: string;
+      skill_id: string;
+      ok?: boolean;
+      compile_ok?: boolean;
+      has_execute?: boolean;
+      error?: string;
+      errors?: string[];
+    }>(`/core/workspace/skills/${skillId}/handler-draft-dry-run`, {});
   },
 
   disable: async (skillId: string) => {
@@ -2455,11 +2469,50 @@ export const workspaceToolApi = {
     return apiClient.post<{ status: string; name: string; path: string; compat?: ToolCompat }>('/core/workspace/tools', data);
   },
 
-  enableImplDraft: async (toolName: string) => {
-    return apiClient.post<{ status: string; name: string; ok?: boolean; tier?: string; schedulable?: boolean; compat?: ToolCompat }>(
-      `/core/workspace/tools/${encodeURIComponent(toolName)}/enable-impl-draft`,
+  implDraftPreview: async (toolName: string) => {
+    return apiClient.get<{
+      status: string;
+      name: string;
+      ok?: boolean;
+      draft_summary?: string;
+      draft_preview?: string;
+      draft_sha256_16?: string;
+      has_tool_def?: boolean;
+      risk_hints?: string[];
+      sop_vs_draft?: string[];
+      compat?: ToolCompat;
+    }>(`/core/workspace/tools/${encodeURIComponent(toolName)}/impl-draft-preview`);
+  },
+
+  implDraftDryRun: async (toolName: string) => {
+    return apiClient.post<{
+      status: string;
+      name: string;
+      ok?: boolean;
+      compile_ok?: boolean;
+      has_tool_def?: boolean;
+      error?: string;
+      errors?: string[];
+    }>(`/core/workspace/tools/${encodeURIComponent(toolName)}/impl-draft-dry-run`, {});
+  },
+
+  discardImplDraft: async (toolName: string) => {
+    return apiClient.post<{ status: string; name: string; ok?: boolean; discarded?: boolean }>(
+      `/core/workspace/tools/${encodeURIComponent(toolName)}/discard-impl-draft`,
       {},
     );
+  },
+
+  enableImplDraft: async (toolName: string) => {
+    return apiClient.post<{
+      status: string;
+      name: string;
+      ok?: boolean;
+      tier?: string;
+      schedulable?: boolean;
+      draft_sha256?: string;
+      compat?: ToolCompat;
+    }>(`/core/workspace/tools/${encodeURIComponent(toolName)}/enable-impl-draft`, {});
   },
 
   getSource: async (toolName: string) => {
