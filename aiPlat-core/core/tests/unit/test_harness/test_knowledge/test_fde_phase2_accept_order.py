@@ -11,6 +11,7 @@ from core.harness.ontology_engine.builtin_actions import register_all
 from core.harness.ontology_engine.graph_index import GraphIndex
 
 CANONICAL = "customer_action:lock-service:accept_order"
+ACCEPT_PERMS = ["action:lock-service:accept_order"]
 
 
 @pytest.fixture()
@@ -103,6 +104,7 @@ async def test_accept_order_execute_canonical(aiplat_home):
         {"assigned_technician": "tech-9", "scheduled_at": "2026-09-15T09:00:00+08:00"},
         actor="fda-1",
         role="agent",
+        permissions=ACCEPT_PERMS,
         _bypass_approval=True,
     )
     assert r1.get("status") == "executed", r1
@@ -118,6 +120,7 @@ async def test_accept_order_execute_canonical(aiplat_home):
         {"technician_id": "tech-2"},
         actor="fda-1",
         role="agent",
+        permissions=ACCEPT_PERMS,
         _bypass_approval=True,
     )
     assert r2.get("status") == "executed", r2
@@ -139,6 +142,7 @@ async def test_bench_sample_20_zero_fail(aiplat_home):
             {"assigned_technician": "t1"},
             actor="bench",
             role="agent",
+            permissions=ACCEPT_PERMS,
             _bypass_approval=True,
         )
         if r.get("status") != "executed":

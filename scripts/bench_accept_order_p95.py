@@ -55,6 +55,7 @@ async def _run(count: int, prefix: str, domain_id: str, home: str) -> int:
             {"assigned_technician": "tech-1", "scheduled_at": "2026-09-15T09:00:00+08:00"},
             actor="bench",
             role="agent",
+            permissions=["action:lock-service:accept_order"],
             _bypass_approval=True,
         )
         dt = (time.perf_counter() - t0) * 1000.0

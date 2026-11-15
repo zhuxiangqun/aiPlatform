@@ -20,7 +20,8 @@ pilot_domain: lock-service
 > 标准生效日：2027-01-01。本文按“先试点域、再平台化、最后规模化”的方式实施。
 >
 > **Phase 0 证据（测量，非符合声明）**：[`reports/products/knowledge-system/v4.3.1/`](../../../reports/products/knowledge-system/v4.3.1/) · 试点域 `lock-service` · G0 见该目录 `phase0-pilot-lock-service.md`。  
-> **Phase 1 / G1 证据**：同目录 [`phase1-g1-evidence.md`](../../../reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md)（Fact Ledger 最小闭环；非 Core 全量符合）。
+> **Phase 1 / G1 证据**：同目录 [`phase1-g1-evidence.md`](../../../reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md)（Fact Ledger 最小闭环；非 Core 全量符合）。  
+> **Phase 2 / G2 证据**：同目录 [`phase2-g2-evidence.md`](../../../reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md)（L1 required_permissions + Fact→Graph 可重建；非 Extended 全量）。
 
 ## 0. 结论先行
 

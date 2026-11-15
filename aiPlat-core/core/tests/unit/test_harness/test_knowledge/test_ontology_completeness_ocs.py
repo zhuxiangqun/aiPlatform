@@ -219,12 +219,22 @@ async def test_lifecycle_full_chain_writes_relations(aiplat_home):
     g.save()
     GraphIndex._loaded_instances.clear()
 
-    async def run(aid, params):
+    async def run(aid, params, permissions=None):
         return await reg.execute(
-            aid, (DOMAIN, "IO-1"), params, actor="t", role="agent", _bypass_approval=True
+            aid,
+            (DOMAIN, "IO-1"),
+            params,
+            actor="t",
+            role="agent",
+            permissions=permissions,
+            _bypass_approval=True,
         )
 
-    r1 = await run("customer_action:lock-service:accept_order", {})
+    r1 = await run(
+        "customer_action:lock-service:accept_order",
+        {},
+        permissions=["action:lock-service:accept_order"],
+    )
     assert r1.get("status") == "executed", r1
     r2 = await run(
         "customer_action:lock-service:assign_technician",

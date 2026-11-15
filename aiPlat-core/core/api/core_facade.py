@@ -14388,6 +14388,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     load_object_type_bindings,
     record_extraction_as_claim,
 )
+from core.harness.knowledge_pipeline.fact_projector import project_facts_to_graph  # noqa: boundary
 from core.harness.infrastructure.gates.marking_propagation import get_entity_max_marking_level, MARKING_LABELS  # noqa: boundary
 
 
@@ -14422,6 +14423,29 @@ async def fact_ledger_query_gateway(
         domain_id=domain_id,
         top_k=top_k,
         require_citations=require_citations,
+    )
+
+
+async def fact_ledger_project_to_graph(
+    *,
+    tenant_id: str,
+    domain_id: str,
+    clear_projected: bool = False,
+) -> dict:
+    """CoreFacade：Fact → GraphIndex 投影（可重建）。
+
+    Args:
+        tenant_id: 租户 ID。
+        domain_id: 域 ID。
+        clear_projected: 是否先清除既有投影实体。
+
+    Returns:
+        投影回执。
+    """
+    return await project_facts_to_graph(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        clear_projected=clear_projected,
     )
 
 # v2.7.2 — de-privatized internal symbols

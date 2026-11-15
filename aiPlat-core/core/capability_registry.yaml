@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2719
+total_capabilities: 2721
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 257
+    caps_count: 259
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3010,6 +3010,14 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "fact_ledger_query_gateway(tenant_id,query,...)→Dict appendix-M query"
+      - symbol: "project_facts_to_graph"
+        module: core/harness/knowledge_pipeline/fact_projector.py
+        type: function
+        signature: "project_facts_to_graph(tenant_id,domain_id,...)→rebuild receipt"
+      - symbol: "fact_ledger_project_to_graph"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_project_to_graph(tenant_id,domain_id,clear_projected)→Dict"
       - symbol: "confirm_extraction_k1"
         module: core/apps/fde/service/k_wave_signal.py
         type: function

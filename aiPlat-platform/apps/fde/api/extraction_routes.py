@@ -18,6 +18,7 @@ from core.api.core_facade import (
     ExtractionResult,
     record_extraction_as_claim,
     fact_ledger_query_gateway,
+    fact_ledger_project_to_graph,
     load_object_type_bindings,
 )
 
@@ -181,6 +182,26 @@ async def query_extraction_facts(
     return result
 
 
+@router.post("/extractions/facts/rebuild")
+async def rebuild_facts_projection(
+    tenant_id: str = Query(..., description="Tenant id (required; pre-filter)"),
+    domain_id: str = Query(..., description="Domain to rebuild"),
+    clear_projected: bool = Query(True, description="Clear prior fact projections first"),
+):
+    """从 Fact Ledger 重建 GraphIndex 投影（G2：对象/索引可重建）。
+
+    Args:
+        tenant_id: 租户 ID。
+        domain_id: 域 ID。
+        clear_projected: 是否先清除既有投影实体。
+    """
+    return await fact_ledger_project_to_graph(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        clear_projected=clear_projected,
+    )
+
+
 @router.post("/extractions/{extraction_id}/confirm")
 async def confirm_extraction(
     extraction_id: str,
@@ -258,6 +279,20 @@ async def confirm_extraction(
                         text=summary,
                         evidence_quote=summary,
                     )
+                    # G2：确认后投影 Fact→Graph（可重建；失败不阻断确认）
+                    try:
+                        fact_ledger["projection"] = await fact_ledger_project_to_graph(
+                            tenant_id=tenant_id,
+                            domain_id=domain_id,
+                            clear_projected=False,
+                        )
+                    except Exception:
+                        logger.warning(
+                            "factory confirm: fact projection failed for %s",
+                            extraction_id,
+                            exc_info=True,
+                        )
+                        fact_ledger["projection"] = {"error": "projection_failed"}
                 except Exception:
                     logger.warning(
                         "factory confirm: fact_ledger write failed for %s",
