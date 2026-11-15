@@ -87,8 +87,8 @@ for name in ("SPLIT_CHECKLIST.md", "README.md"):
         fail(f"runbook_{name}", "missing")
 
 # --- ADR Accepted（有条件）; draft kept as对照 ---
-adr = root / "reports/five-products/ADR-ONTOLOGY-A3.md"
-draft = root / "reports/five-products/ADR-DRAFT-ontology-a3.md"
+adr = root / "docs/decisions/products/five-products/ADR-ONTOLOGY-A3.md"
+draft = root / "docs/decisions/products/five-products/ADR-DRAFT-ontology-a3.md"
 if adr.is_file():
     body = adr.read_text(encoding="utf-8")
     if "Accepted（有条件）" in body and "SPLIT_CHECKLIST" in body:

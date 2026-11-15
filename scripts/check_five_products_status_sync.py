@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assert reports/five-products/STATUS.md mirrors capabilities.manifest.yaml.
+"""Assert reports/products/five-products/program/STATUS.md mirrors capabilities.manifest.yaml.
 
 Fails if Autonomy / Delivery / delivery_mode / hard gates disagree.
 Does not Accept ADRs or flip authorize flags.
@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "capabilities.manifest.yaml"
-STATUS = ROOT / "reports/five-products/STATUS.md"
+STATUS = ROOT / "reports/products/five-products/program/STATUS.md"
 
 
 def _load_yaml(path: Path) -> dict:

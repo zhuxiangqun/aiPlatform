@@ -25,7 +25,7 @@ bash packages/aiplat-pi-runtime/scripts/d1_smoke.sh
 
 - 多租户治理中心化  
 - 替代 Ontology / Evaluation / FDE  
-- 宣称 D3 生产就绪（见另批 [`ADR-PI-D3`](../../../reports/five-products/ADR-PI-D3.md)；须 `d3_production_authorized`）  
+- 宣称 D3 生产就绪（见另批 [`ADR-PI-D3`](../../../docs/decisions/products/five-products/ADR-PI-D3.md)；须 `d3_production_authorized`）  
 - 五产品全拆 / E4  
 
 ## 与 D3

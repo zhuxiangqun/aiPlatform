@@ -84,8 +84,8 @@ for name in ("SPLIT_CHECKLIST.md", "README.md"):
     else:
         fail(f"runbook_{name}", "missing")
 
-adr = root / "reports/five-products/ADR-EVALUATION-A3.md"
-draft = root / "reports/five-products/ADR-DRAFT-evaluation-a3.md"
+adr = root / "docs/decisions/products/five-products/ADR-EVALUATION-A3.md"
+draft = root / "docs/decisions/products/five-products/ADR-DRAFT-evaluation-a3.md"
 if adr.is_file():
     body = adr.read_text(encoding="utf-8")
     if "Accepted（有条件）" in body and "SPLIT_CHECKLIST" in body:

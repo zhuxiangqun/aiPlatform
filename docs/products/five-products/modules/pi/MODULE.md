@@ -62,7 +62,7 @@ authority: supporting
 | Smoke | `d1_smoke.sh` → `GET /healthz` |
 | Docs | `packages/aiplat-pi-runtime/docs/INSTALL.md` |
 | Contract | `packages/aiplat-pi-runtime/contracts/schemas/healthz.schema.json` |
-| Rollback drill | `reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md` |
+| Rollback drill | `reports/products/five-products/program/GATE3_PI_THIN_ROLLBACK_DRILL.md` |
 
 ADR-08 **not revised** — packaging only, no new update channel.
 
@@ -81,7 +81,7 @@ Default remains offline / `AIPLAT_ENTERPRISE=0`. Enterprise reconnect stays opt-
 
 | Item | Path |
 |------|------|
-| ADR | `reports/five-products/ADR-PI-D3.md` |
+| ADR | `docs/decisions/products/five-products/ADR-PI-D3.md` |
 | Checklist / prep | `docs/d3/D3_CHECKLIST.md` · `scripts/d3_prep_check.sh` |
 | Local rehearsal | `d3_local_rehearsal` + `d3_soc_local_rehearsal`（#3–#6→🟨） |
 | Live evidence | `docs/d3/LIVE_DRILL_EVIDENCE.md` · `d3_record_live_drill.sh` |

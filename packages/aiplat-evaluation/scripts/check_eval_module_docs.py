@@ -8,6 +8,7 @@ Does not Accept ADRs or flip authorize flags.
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -92,13 +93,22 @@ def main() -> int:
             errors.append(f"{rel}: missing SSOT validate_sample.py reference")
 
     # B4 staging draft must be called out in lifecycle (not counted as archived stub).
-    life = ROOT / "reports" / "five-products" / "ops" / "EVAL_DOCS_LIFECYCLE.md"
+    life = (
+        ROOT
+        / "reports"
+        / "products"
+        / "five-products"
+        / "ops"
+        / "EVAL_DOCS_LIFECYCLE.md"
+    )
     if life.is_file():
         lt = life.read_text(encoding="utf-8")
         if "ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING" not in lt:
             errors.append("EVAL_DOCS_LIFECYCLE.md missing A3_B4_STAGING draft note")
         if "17" not in lt:
             errors.append("EVAL_DOCS_LIFECYCLE.md should mention ops-root count 17")
+    else:
+        errors.append("missing reports/products/five-products/ops/EVAL_DOCS_LIFECYCLE.md")
 
     for rel in (
         "packages/aiplat-evaluation/docs/a3/STORE_SURFACE_V0.md",
@@ -114,6 +124,37 @@ def main() -> int:
     )
     if "v1.3" not in canon:
         errors.append("P1_CANONICAL.md should cite composite_version v1.3")
+
+    # Policy vs runtime process_split names must stay distinct.
+    split = ROOT / "packages" / "aiplat-evaluation" / "docs" / "a3" / "SPLIT_CHECKLIST.md"
+    phase3 = (
+        ROOT
+        / "packages"
+        / "aiplat-evaluation"
+        / "docs"
+        / "a3"
+        / "PHASE3_PROCESS_SPLIT_AUTHORIZE.md"
+    )
+    for path in (split, phase3):
+        if not path.is_file():
+            errors.append(f"missing process_split honesty doc: {path.relative_to(ROOT)}")
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "process_split_policy_authorized" not in text:
+            errors.append(
+                f"{path.relative_to(ROOT)}: missing process_split_policy_authorized"
+            )
+        has_runtime_true = bool(
+            re.search(r"(?<!policy_)process_split_authorized:\s*true", text)
+        )
+        has_runtime_false = bool(
+            re.search(r"(?<!policy_)process_split_authorized:\s*false", text)
+        )
+        if has_runtime_true and has_runtime_false:
+            errors.append(
+                f"{path.relative_to(ROOT)}: process_split_authorized true+false "
+                "in one file — use process_split_policy_authorized for policy"
+            )
 
     if errors:
         print("FAIL eval module docs:")

@@ -38,9 +38,10 @@ docs/products/five-products/modules/
 
 ```text
 reports/products/five-products/ops/          运行证据/收口
+reports/products/five-products/program/      程序/状态/验收叙事
 docs/contracts/products/five-products/       产品叙事契约
-reports/five-products/ADR-*                  决策/方案
-reports/five-products/*.md                   方案/报告/快照
+docs/decisions/products/five-products/       ADR/Gate/决策（旧 reports/five-products/*.md 为 Index stub）
+reports/five-products/versions.yaml          五包 semver SSOT（keep）
 ```
 
 ## 4. 边界
@@ -49,7 +50,8 @@ reports/five-products/*.md                   方案/报告/快照
 产品定义/模块边界 → docs/products/
 产品叙事契约       → docs/contracts/products/
 运行证据/收口     → reports/products/**/ops
-决策              → reports/ 或 docs/decisions/
+程序/状态叙事     → reports/products/**/program
+决策              → docs/decisions/
 ```
 
 ## 5. 验证

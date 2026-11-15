@@ -24,7 +24,7 @@ errors = []
 for rel in (
     "packages/aiplat-fde/docs/DATA_RESIDENCY.md",
     "packages/aiplat-fde/docs/D2_FIELD.md",
-    "reports/five-products/ADR-FDE-FIELD-DEPLOY.md",
+    "docs/decisions/products/five-products/ADR-FDE-FIELD-DEPLOY.md",
 ):
     p = root / rel
     if "acceptance/signoff" not in p.read_text(encoding="utf-8", errors="replace"):

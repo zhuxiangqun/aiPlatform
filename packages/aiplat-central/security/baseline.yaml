@@ -37,7 +37,7 @@ checks:
       - "AIPLAT_SECURITY_BASELINE"
   - id: pi_d3_adr_conditional
     description: Pi D3 ADR Accepted conditional + checklist hard gate
-    path: reports/five-products/ADR-PI-D3.md
+    path: docs/decisions/products/five-products/ADR-PI-D3.md
     must_contain:
       - "Accepted（有条件）"
       - "D3_CHECKLIST"
@@ -66,7 +66,7 @@ checks:
       - "d3_record_live_drill"
   - id: five_products_ops_live_runbook
     description: Ops live runbook is read-only and does not authorize
-    path: reports/five-products/OPS_LIVE_RUNBOOK.md
+    path: reports/products/five-products/program/OPS_LIVE_RUNBOOK.md
     must_contain:
       - "禁止"
       - "ops_live_status"
@@ -127,7 +127,7 @@ checks:
       - "does not authorize"
   - id: five_products_ops_handoff
     description: Ops handoff card warns against fake signoff
-    path: reports/five-products/OPS_HANDOFF.md
+    path: reports/products/five-products/program/OPS_HANDOFF.md
     must_contain:
       - "production_signed"
       - "禁止"
@@ -160,12 +160,12 @@ checks:
       - '"field_d1_adr":"accepted"'
   - id: fde_field_adr_doc
     description: Field deploy ADR Accepted document exists
-    path: reports/five-products/ADR-FDE-FIELD-DEPLOY.md
+    path: docs/decisions/products/five-products/ADR-FDE-FIELD-DEPLOY.md
     must_contain:
       - "**Accepted**"
   - id: pg_ha_adr_conditional
     description: PG/HA ADR Accepted conditional + cutover checklist
-    path: reports/five-products/ADR-CONTROL-PLANE-PG-HA.md
+    path: docs/decisions/products/five-products/ADR-CONTROL-PLANE-PG-HA.md
     must_contain:
       - "Accepted（有条件）"
       - "cutover"
@@ -220,7 +220,7 @@ checks:
       - "pg_ha_record_live_drill"
   - id: five_products_engineering_closeout
     description: Engineering closeout doc points at ops live backlog
-    path: reports/five-products/ENGINEERING_CLOSEOUT.md
+    path: reports/products/five-products/program/ENGINEERING_CLOSEOUT.md
     must_contain:
       - "cutover_authorized=false"
       - "运维 backlog"
@@ -231,7 +231,7 @@ checks:
       - 'aiplat.pg_ha_cutover_authorized: "false"'
   - id: ontology_a3_adr_conditional
     description: Ontology A3 ADR Accepted conditional + split checklist
-    path: reports/five-products/ADR-ONTOLOGY-A3.md
+    path: docs/decisions/products/five-products/ADR-ONTOLOGY-A3.md
     must_contain:
       - "Accepted（有条件）"
       - "SPLIT_CHECKLIST"
@@ -254,7 +254,7 @@ checks:
       - "dual_write"
   - id: evaluation_a3_adr_conditional
     description: Evaluation A3 ADR Accepted conditional + split checklist
-    path: reports/five-products/ADR-EVALUATION-A3.md
+    path: docs/decisions/products/five-products/ADR-EVALUATION-A3.md
     must_contain:
       - "Accepted（有条件）"
       - "SPLIT_CHECKLIST"
@@ -330,7 +330,7 @@ checks:
       - "environment=staging"
   - id: fde_field_compose_adr_draft
     description: Field compose long-running ADR remains Draft
-    path: reports/five-products/ADR-DRAFT-fde-field-compose.md
+    path: docs/decisions/products/five-products/ADR-DRAFT-fde-field-compose.md
     must_contain:
       - "Draft"
       - "非 Accepted"

@@ -27,4 +27,4 @@ contracts:
   - packages/aiplat-evaluation/contracts/schemas/eval_compliance_pii.schema.json
 migrations:
   path: packages/aiplat-evaluation/migrations
-adr_for_a3: reports/five-products/ADR-EVALUATION-A3.md
+adr_for_a3: docs/decisions/products/five-products/ADR-EVALUATION-A3.md

@@ -1,0 +1,41 @@
+---
+generated_at: 2026-11-11
+doc_type: Report
+---
+
+# 五产品域角色与临时 R
+
+> 与 [L1_AUTHORIZATION.md](../../../../docs/decisions/products/five-products/L1_AUTHORIZATION.md) §3、[GATE2_DECISION.md](../../../../docs/decisions/products/five-products/GATE2_DECISION.md) 同步。  
+> **日期**：2026-10-23（L1）· **2026-10-24 Gate2 转正**
+
+## 关键角色
+
+| 角色 | 任职 |
+|------|------|
+| 架构决策 owner | 本仓库维护者（L1/Gate2 授权确认人） |
+| 业务场景 owner | 同上（兼任） |
+| 业务验收人 | 同上（兼任） |
+| Gate 1/2 / 暂停 / 恢复 | 架构 × 业务联合签署（兼任则一人双签并注明） |
+| 安全/身份 reviewer | **架构决策 owner 兼任** |
+| 测试/验收 owner（过程） | **业务验收人兼任** |
+| 运维 owner（隔离） | **架构决策 owner 兼任** |
+
+## 产品 R（Gate2 转正 · 2026-10-24）
+
+| 产品域 | 正式 R | 备注 |
+|--------|--------|------|
+| aiPlat | 本仓库维护者（架构决策 owner） | 原临时 R 转正 |
+| Pi | 本仓库维护者（架构决策 owner） | 原临时 R 转正 |
+| 本体 | 本仓库维护者（架构决策 owner） | 未使用本体时仍不得标「已具备」 |
+| FDE | 本仓库维护者（业务场景 owner） | 原临时 R 转正 |
+| 诊断 | 本仓库维护者（架构决策 owner） | 原临时 R 转正；**ADR-10 Accepted**：诊断 MVP 第二产品 R / on-call=运维兼任（无 7×24） |
+
+转正清单签字效力见 [MB04_OWNER_TRANSFER.md](./MB04_OWNER_TRANSFER.md)（与 Gate2 同日生效）。
+
+## ADR-10 第二产品 R（2026-10-24）
+
+| 产品 | 正式 R | on-call | 范围 |
+|------|--------|---------|------|
+| 诊断（MVP） | 架构决策 owner | 运维 owner 兼任（无独立 7×24） | 仅 slice ingest/report/验收绑定；禁全功能中台 |
+
+签字：架构 × 业务 × 诊断 R（兼任）· 2026-10-24 · 对话「合 ADR-09 #2、合 ADR-10」。

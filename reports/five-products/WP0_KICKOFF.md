@@ -1,28 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_WP0_KICKOFF_MD
+last_reviewed: 2026-11-15
 ---
 
-# WP0 启动说明（L1 生效后）
+# WP0_KICKOFF.md（已迁移）
 
-> 时间盒：**≤10 工作日**  
-> 纪律：落地方案 §3.0 / §3.6；目标路径 ≠ 现状已通  
+> 正文已迁至 [`../products/five-products/program/WP0_KICKOFF.md`](../products/five-products/program/WP0_KICKOFF.md)。
 
-## 本周只做
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-1. 对 SCENE 主路径**每一条边**登记：入口、真实 caller、证据等级、分类（As-Is / Known Gap / Blocker）。  
-2. 切片外模块标「后置」，不阻塞。  
-3. 本体维度：本场景标「切片未使用」。  
-4. 核实隔离环境「能/不能」；改判不能 → 只出缺口，挡 Gate 1。  
-5. 产出提交物：路径事实清单（表 A–F 按落地方案 WP0 DoD）。
-
-## 明确不做
-
-- 不改生产默认路径  
-- 不开始 WP3–WP4 实现  
-- 不把 Known Gap 写成「已接线」  
-- 不要求整路径已有端到端 E3  
-
-## 出口
-
-WP0 尾 → 可并行 WP1；无未关闭 Blocker 且 Known Gap 字段齐全 → 准备提交 Gate 1（另批）。

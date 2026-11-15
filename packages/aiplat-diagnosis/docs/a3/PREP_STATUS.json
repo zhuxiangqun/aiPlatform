@@ -23,7 +23,7 @@
     },
     "5_adr_accept_cosign": {
       "ok": false,
-      "detail": "reports/five-products/ADR-DRAFT-diagnosis-d1.md still draft"
+      "detail": "docs/decisions/products/five-products/ADR-DRAFT-diagnosis-d1.md still draft"
     },
     "1_healthz_schema": {
       "ok": true,

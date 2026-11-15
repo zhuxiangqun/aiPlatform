@@ -1,12 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR09_E4_STEP3_DRAFT_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 建议顺序第 3 步 — 对外 E4（草案）
+# ADR09_E4_STEP3_DRAFT.md（已迁移）
 
-- **状态**：**已升格 Accepted（窄）** · 2026-10-26 — 见 `ADR09_E4_STEP3_DECISION.md`  
-- **范围**：仅 (b) 对外 E4；**不含** (a) ADR-09 Accepted / 全拆；**不含** (c) compose 长驻  
-- **翻签**：宣传侧拒签已翻（COPY / CLEAN_ENV / ROLES）
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR09_E4_STEP3_DRAFT.md`](../../docs/decisions/products/five-products/ADR09_E4_STEP3_DRAFT.md)。
 
-获批前检查表与批准句模板已归档于 git 历史；本文件仅保留升格指针。
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
+

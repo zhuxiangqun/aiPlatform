@@ -90,8 +90,8 @@ docs/reference/framework/aiplat-autonomy-framework.md
 ### C. ADR 草案
 
 ```text
-reports/five-products/ADR-DRAFT-evaluation-a3.md
-reports/five-products/ADR-DRAFT-ontology-a3.md
+docs/decisions/products/five-products/ADR-DRAFT-evaluation-a3.md
+docs/decisions/products/five-products/ADR-DRAFT-ontology-a3.md
 ```
 
 主题不同，保留；补交叉边界，避免被误读为重复。

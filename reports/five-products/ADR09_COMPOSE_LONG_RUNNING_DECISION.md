@@ -1,38 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR09_COMPOSE_LONG_RUNNING_DECISION_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 决定 — compose 长驻（可选运维 profile）
+# ADR09_COMPOSE_LONG_RUNNING_DECISION.md（已迁移）
 
-- **状态**：**Accepted（窄）** · 2026-10-27  
-- **批准句**：批准 ADR-09：**compose 长驻**。接受兼任并承担全拆后果。范围：仅该项。compose 长驻：**含**。不含超边界 E4 承诺。  
-- **填空理由**：五产品单产品边界均已收口；批句点名长驻且填 **含**  
-- **不含**：超边界 E4；默示改 Identity 双重权威；一次强制全环境改生产默认长驻；本决定 PR 大搬仓
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR09_COMPOSE_LONG_RUNNING_DECISION.md`](../../docs/decisions/products/five-products/ADR09_COMPOSE_LONG_RUNNING_DECISION.md)。
 
-## 授权 / 禁止
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-| 项 | |
-|----|--|
-| ✅ | 为已批单产品提供**正式可选** compose 长驻 profile（显式 `up -d` / 文档化停机） |
-| ✅ | 回滚默认：`docker compose … down -v`；切回 one-shot / 主机脚本路径 |
-| ❌ | 超边界 E4 承诺 |
-| ❌ | 强制把所有环境的生产默认从 one-shot 改为长驻（须分环境另决） |
-| ❌ | 借机拆第二 Identity / PolicyGate 或改 ADR-02 |
-
-## 与既有 compose 关系
-
-| 既有 | 关系 |
-|------|------|
-| `compose.adr10-diagnosis-mvp.yml`（`run --rm`） | one-shot 保留；长驻为**另文件/另 profile**，不覆盖 |
-| `compose.gate3-pi-thin.yml` / `compose.pi-thin-optional.yml` | 试点/可选仍有效；长驻升格须 BOUNDARY 分 PR |
-| FDE / 本体 / 控制面 | 仅健康探针 one-shot 已有；长驻 compose 另立 |
-
-## 后续（另 PR）
-
-1. compose 长驻边界清单 → ✅ `ADR09_COMPOSE_LONG_RUNNING_BOUNDARY.md`（BOUNDARY A）  
-2. 分 PR 落地（BOUNDARY 序 B/C）；禁止一次全仓写满五套长驻  
-
-## 签署
-
-架构 × 业务（兼任）· 2026-10-27 · **仅 compose 长驻；≠ 强制生产默认；≠ E4**

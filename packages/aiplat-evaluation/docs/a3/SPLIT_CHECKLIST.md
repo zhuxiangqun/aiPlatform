@@ -6,7 +6,7 @@ doc_type: Reference
 
 > 政策 `process_split_policy_authorized: true`（owner AUTHORIZE · 覆盖）；🟨 = 本地演练；  
 > 运行时 `process_split_authorized` / Chart `a3_process_split_authorized` 仍 **false** 直至 staging live。  
-> ADR：[`ADR-EVALUATION-A3.md`](../../../../reports/five-products/ADR-EVALUATION-A3.md) **Accepted（有条件）**  
+> ADR：[`ADR-EVALUATION-A3.md`](../../../../docs/decisions/products/five-products/ADR-EVALUATION-A3.md) **Accepted（有条件）**  
 > 刷新：`bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh` → `a3_prep_check.sh`
 
 | # | 项 | Owner | Done |

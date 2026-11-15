@@ -64,7 +64,7 @@ else:
     fail("7_enterprise_default_off", "missing")
 
 # #8 ADR
-adr = root / "reports/five-products/ADR-PI-D3.md"
+adr = root / "docs/decisions/products/five-products/ADR-PI-D3.md"
 if adr.is_file() and "Accepted（有条件）" in adr.read_text(encoding="utf-8") and "D3_CHECKLIST" in adr.read_text(encoding="utf-8"):
     ok("8_adr_accept_cosign", str(adr.relative_to(root)))
 else:

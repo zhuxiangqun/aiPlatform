@@ -12,7 +12,7 @@ authority: supporting
 > **状态**：P0 契约已齐 · **B1-L/B2-L 本地开发已解冻**（[`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)）  
 > **前置已完成**：A-local A0–A6（#529）· B0 JWKS（#531）· P0 docs（#533）  
 > **P0 契约**：[`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · [`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md) · [`EVAL_DATA_MIGRATION.md`](./EVAL_DATA_MIGRATION.md)  
-> **关联**：[`eval-a3-independent-service.md`](./eval-a3-independent-service.md) · [`eval-v1-charter.md`](./eval-v1-charter.md) · [`ADR-EVALUATION-A3.md`](../../../reports/five-products/ADR-EVALUATION-A3.md) · [`SPLIT_CHECKLIST.md`](../../../packages/aiplat-evaluation/docs/a3/SPLIT_CHECKLIST.md)  
+> **关联**：[`eval-a3-independent-service.md`](./eval-a3-independent-service.md) · [`eval-v1-charter.md`](./eval-v1-charter.md) · [`ADR-EVALUATION-A3.md`](../../../docs/decisions/products/five-products/ADR-EVALUATION-A3.md) · [`SPLIT_CHECKLIST.md`](../../../packages/aiplat-evaluation/docs/a3/SPLIT_CHECKLIST.md)  
 > **诚实性**：本稿不设 `process_split_authorized=true`；不宣称 accuracy / 安全认证。  
 > **闸门**：staging = **验收/授权证**（B4-S/B6），**不是** B1-L/B2-L 开工证。本地证据 `environment=local`，不得标 staging。
 

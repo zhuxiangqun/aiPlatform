@@ -12,7 +12,7 @@ authority: supporting
 
 > **范围**：先证明 Evaluation **本地独立进程/DB/API**；不做生产拆分  
 > **解冻**：[`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md)  
-> **A3 ADR**：[`ADR-EVALUATION-A3.md`](../../../reports/five-products/ADR-EVALUATION-A3.md)（Accepted 有条件）  
+> **A3 ADR**：[`ADR-EVALUATION-A3.md`](../../../docs/decisions/products/five-products/ADR-EVALUATION-A3.md)（Accepted 有条件）  
 > **拆分清单**：[`SPLIT_CHECKLIST.md`](../../../packages/aiplat-evaluation/docs/a3/SPLIT_CHECKLIST.md)  
 > **EVAL 产品**：[`eval-v1-charter.md`](./eval-v1-charter.md)  
 > **本文件不是**：生产拆分授权；`process_split_authorized` 仍为 false。

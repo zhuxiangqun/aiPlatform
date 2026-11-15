@@ -1,47 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_GATE3_OBSERVATION_WINDOW_DECISION_MD
+last_reviewed: 2026-11-15
 ---
 
-# Gate3 试点观察窗口决定（2026-10-24）
+# GATE3_OBSERVATION_WINDOW_DECISION.md（已迁移）
 
-**结论：批准 Pi Thin 试点观察窗口为「同日双端」复跑；结束复跑已于同日执行。**
+> 正文已迁至 [`../../docs/decisions/products/five-products/GATE3_OBSERVATION_WINDOW_DECISION.md`](../../docs/decisions/products/five-products/GATE3_OBSERVATION_WINDOW_DECISION.md)。
 
-## 依据
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-| 项 | 内容 |
-|----|------|
-| 授权人 | 架构决策 owner × 业务场景 owner（兼任） |
-| 对话授权 | 2026-10-24「需要批可以批的窄项」；同日修订「批准观察窗口改为同日双端，立即跑结束复跑」 |
-| 前置 | Gate3 Phase A–F 已合入；ADR-09 仍为 **Proposed** |
-| 真源 | ADR-08 · ADR-09 前置清单 #1 · `GATE3_PI_THIN_ROLLBACK_DRILL.md` |
-
-## 批准范围（可执行）
-
-| ID | 范围 |
-|----|------|
-| G3-OBS1 | **观察窗口（修订）**：**同日双端**（2026-10-24 起跑 + 同日结束）；**废止**原 7 日历日（至 10-31）等待要求 |
-| G3-OBS2 | **窗口起跑复跑**：已执行并记录（ROLLBACK「observation kickoff」） |
-| G3-OBS3 | **窗口结束复跑**：同日再跑一轮同等 a+d；PASS → ADR-09 前置 #1 可标「窗口证据齐（同日双端）」**候选** |
-| G3-OBS4 | 文书：本文件 + ROLLBACK；**不**改生产默认路径 |
-| G3-OBS5 | 辅助脚本：`packages/aiplat-pi-runtime/scripts/gate3_observation_rerun.sh` |
-
-## 明确不在本批
-
-| 项 |
-|----|
-| ADR-09 **Accepted** / 五产品全拆落地 |
-| 对外 E4 宣传或日期承诺 |
-| 第二产品拆分落地（ADR-10） |
-| 本体进主路径 / 拆 FDE·诊断中台 |
-
-## 修订说明
-
-| 原约定 | 修订后 |
-|--------|--------|
-| 7 日窗口 + 10-31 结束复跑 | **同日双端**；立即结束复跑 |
-| PR #411「等到 10-31」执行计划 | **废止**（若未合入则关闭；已合入则以本文件为准） |
-
-## 签署
-
-架构 × 业务（兼任）：**批准同日双端观察窗口 + 立即结束复跑** · 2026-10-24  

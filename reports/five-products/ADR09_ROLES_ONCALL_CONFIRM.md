@@ -1,29 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR09_ROLES_ONCALL_CONFIRM_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 前置 #3 · 产品 R / on-call 再确认
+# ADR09_ROLES_ONCALL_CONFIRM.md（已迁移）
 
-- **状态**：**知情接受已签** · 2026-10-26；宣传 E4 **第 3 步已翻签** — 见 `ADR09_E4_STEP3_DECISION.md`  
-- **真源**：`ROLES.md` · `MB04_OWNER_TRANSFER.md` · ADR-10 诊断 MVP R · `ADR09_E4_STEP3_DECISION.md`  
-- **效力**：有正式 R + 无独立 7×24、维持兼任；**对外 E4（窄）已批**；**全拆仍须另批**
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR09_ROLES_ONCALL_CONFIRM.md`](../../docs/decisions/products/five-products/ADR09_ROLES_ONCALL_CONFIRM.md)。
 
-## 核对结论
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-| 项 | 现状 | 联签含义 |
-|----|------|----------|
-| 五产品正式 R | ✅ 已转正（兼任，见 `ROLES.md`） | 可作「有 R」证据 |
-| 诊断 MVP 第二产品 R / on-call | ✅ ADR-10：运维兼任 | 仅诊断 MVP 范围 |
-| 独立 7×24 on-call | ❌ **无** | 已知情接受兼任；**不**因此批全拆 |
-| 对外 E4（窄） | ✅ 第 3 步已批 | 宣传兼任承担口径后果 |
-
-## 知情接受栏
-
-| 角色 | 接受「无独立 7×24、维持兼任 on-call」 | 日期 |
-|------|:---:|------|
-| 架构决策 owner | ✅ 已签（本仓库维护者 · 兼任） | 2026-10-26 |
-| 业务场景 owner | ✅ 已签（同上 · 双签注明） | 2026-10-26 |
-| 产品宣传 owner（对外 E4） | ✅ **已翻签**（第 3 步窄 E4；见 STEP3_DECISION） | 2026-10-26 |
-
-本页不代替 ADR-09 Accepted，也不授权五产品全拆或 compose 长驻。

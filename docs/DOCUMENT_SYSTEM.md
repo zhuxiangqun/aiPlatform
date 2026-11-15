@@ -76,7 +76,9 @@ workspace-root/
 │   │   ├── knowledge/                ← Ontology 契约正文
 │   │   └── products/five-products/   ← 五产品叙事契约
 │   │
-│   ├── decisions/                    ← v2.4 顶层 ADR（architecture/ 正文已迁入）
+│   ├── decisions/                    ← v2.4 顶层 ADR
+│   │   ├── architecture/             ← 架构 ADR
+│   │   └── products/five-products/   ← 五产品 ADR/Gate（自 reports/five-products 根迁入）
 │   ├── products/                     ← 产品定义（five-products/modules 已就位）
 │   ├── reference/                    ← 参考/API/模板/非规范解释材料
 │   │   └── explanatory/
@@ -648,6 +650,9 @@ docs/doc-paths.yaml
 | `docs/architecture/decisions/**` | `docs/decisions/architecture/` | done（正文已迁；旧位留 Index stub） |
 | `reports/five-products/contracts/**` | `docs/contracts/products/five-products/`（旧路径留 Index stub） | done（2026-11-15） |
 | `reports/five-products/ops/**` | `reports/products/five-products/ops/`（`scripts/lib/aiplat_five_products_paths.sh` SoT；旧路径留 Index stub） | done（2026-11-15） |
+| `reports/five-products/ADR*` · `GATE*` · 根级决策/草案 `*.md` | `docs/decisions/products/five-products/`（旧路径留 Index stub） | done（2026-11-15） |
+| `reports/five-products/` 根级程序/状态叙事（非 ADR） | `reports/products/five-products/program/`（旧路径留 Index stub） | done（2026-11-15） |
+| `reports/five-products/versions.yaml` | 保留（五包 semver SSOT） | keep |
 | `docs/architecture/plans/**` | 保留 `architecture/plans/`（非 canonical） | keep |
 | `docs/products/five-products/modules/**` | `docs/products/five-products/modules/` | keep |
 | `packages/*/docs/**` | 保留包内；根 docs 只索引 | keep |
@@ -725,10 +730,10 @@ docs/doc-paths.yaml
 | # | 问题 | 状态 |
 |---|---|---|
 | 1 | `docs/index.md` 已合并到 `docs/README.md` | 关闭（2026-11-11） |
-| 2 | 文档尚未全部迁入目标目录（计数以 `verify_doc_metadata` 为准，现 ~1078；§11.1） | 关闭（2026-11-15）：可迁项已 done；`ops` → `reports/products/five-products/ops/`；`contracts` → `docs/contracts/products/five-products/`（见 §11.1） |
+| 2 | 文档尚未全部迁入目标目录（计数以 `verify_doc_metadata` 为准，现 ~1078；§11.1） | 关闭（2026-11-15）：可迁项已 done；含五产品根级 ADR → `docs/decisions/products/five-products/`、program → `reports/products/five-products/program/`（见 §11.1） |
 | 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
-| 5 | `reports/` 生命周期仍在迁移 | 关闭（2026-11-15）：round 变更日志 + findings 已入 `_archive/`；`ops` → `reports/products/five-products/ops/`；`contracts` → `docs/contracts/products/five-products/`；`cleanup_reports` undated=0 |
+| 5 | `reports/` 生命周期仍在迁移 | 关闭（2026-11-15）：round/findings 归档；ops/contracts/program/ADR 根级收口；`cleanup_reports` undated=0 |
 | 6 | `authority: canonical` / `doc_id` 铺开 | 关闭（2026-11-15）：canonical=15 且 `verify_canonical --strict` 通过；`docs/**`（非 archive）机读 `doc_id` 已铺满；`reports/` 按生命周期不参与 canonical 铺开 |
 | 7 | ADR 正文已迁至 `docs/decisions/architecture/`；旧位仅 Index stub | 关闭（2026-11-15） |
 

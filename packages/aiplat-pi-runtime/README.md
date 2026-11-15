@@ -128,7 +128,7 @@ bash scripts/d1_install.sh --smoke
 
 ## Pi Thin independent process (optional · ADR-09)
 
-**Status**: Gate3 pilot remains the operational path; ADR-09 accepted **Pi Thin** as a single-product optional deploy (`reports/five-products/ADR09_NEXT_PI_THIN_DECISION.md`). Boundary: `ADR09_PI_THIN_BOUNDARY.md`.
+**Status**: Gate3 pilot remains the operational path; ADR-09 accepted **Pi Thin** as a single-product optional deploy (`docs/decisions/products/five-products/ADR09_NEXT_PI_THIN_DECISION.md`). Boundary: `ADR09_PI_THIN_BOUNDARY.md`.
 
 - **Optional** process separation from the aiPlat control plane — **not** a forced production default.
 - Independent env (`AIPLAT_ENTERPRISE` must stay `0`). Do **not** reuse control-plane secret files.
@@ -146,7 +146,7 @@ bash scripts/pi_thin_optional_pilot.sh                       # alias → gate3_p
 #   docker compose -f compose.pi-thin-long-running.yml up -d
 #   docker compose -f compose.pi-thin-long-running.yml down -v
 #   # or: bash ../../scripts/adr09_compose_pi_thin_long_running_smoke.sh
-# Rollback (Bundle-first): reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
+# Rollback (Bundle-first): reports/products/five-products/program/GATE3_PI_THIN_ROLLBACK_DRILL.md
 ```
 
 | ADR-09 name | Gate3 canonical (unchanged) |
@@ -156,7 +156,7 @@ bash scripts/pi_thin_optional_pilot.sh                       # alias → gate3_p
 | `compose.pi-thin-optional.yml` | `compose.gate3-pi-thin.yml` |
 | `compose.pi-thin-long-running.yml` | `compose.gate3-pi-thin.yml` + `restart: unless-stopped` |
 
-Historical Gate3 pilot spec: `reports/five-products/GATE3_PI_THIN_PILOT.md`.
+Historical Gate3 pilot spec: `reports/products/five-products/program/GATE3_PI_THIN_PILOT.md`.
 
 
 Agent mode (OpenAI-compatible — Ollama default):

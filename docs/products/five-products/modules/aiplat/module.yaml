@@ -17,6 +17,6 @@ contracts:
   - contracts/schemas/control_plane.schema.json
 migrations:
   path: null
-adr_for_a3: reports/five-products/ADR-CONTROL-PLANE-PG-HA.md
+adr_for_a3: docs/decisions/products/five-products/ADR-CONTROL-PLANE-PG-HA.md
 pg_ha_adr: accepted_conditional
 pg_ha_cutover_authorized: false

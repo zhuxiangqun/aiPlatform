@@ -1,11 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR_DRAFT_FDE_FIELD_DEPLOY_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-DRAFT — FDE 现场部署（Field D1）
+# ADR-DRAFT-fde-field-deploy.md（已迁移）
 
-> **状态**：已被 [`ADR-FDE-FIELD-DEPLOY.md`](./ADR-FDE-FIELD-DEPLOY.md) **Accepted** 取代（2026-10-30）  
-> 本文保留为草案对照，勿再按 Draft 实施门禁。
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR-DRAFT-fde-field-deploy.md`](../../docs/decisions/products/five-products/ADR-DRAFT-fde-field-deploy.md)。
 
-原草案正文见 git 历史；生效决策以 **ADR-FDE-FIELD-DEPLOY** 为准。
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
+

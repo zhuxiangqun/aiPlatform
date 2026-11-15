@@ -1,14 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR_04_PI_BUNDLE_COMPAT_DRAFT_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-04 Pi 形态与 Bundle 兼容（草稿）
+# ADR-04-pi-bundle-compat-draft.md（已迁移）
 
-- **状态**：**Accepted（本切片）** · WP5 2026-10-23 · 含 export `*.mjs` 修复  
-- **决策**：首切片 **Pi Thin**；Bundle 经 `export_pi_bundle`（`runtime-mode=thin`）；夹具 `fixtures/sample-app`。  
-- **离线**：执行态见 `docs/contracts/products/five-products/pi-thin-offline.md`；发布与诊断查 aiPlat **仍可依赖在线**。  
-- **兼容**：`runtime_compat_range` + integrity；坏包安装前拒绝；`permission_claims` 不单独授权。  
-- **回滚**：回滚 Bundle 版本优先于 Runtime。  
-- **未采纳**：Enterprise 必经；厂内 Pi 主路径。  
-- **重评**：改 Enterprise 子集；或夹具更换。
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR-04-pi-bundle-compat-draft.md`](../../docs/decisions/products/five-products/ADR-04-pi-bundle-compat-draft.md)。
+
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
+

@@ -15,5 +15,5 @@
 
 ## Pi pointer (As-Is)
 
-Reuse Gate3 drill: `reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md` +
+Reuse Gate3 drill: `reports/products/five-products/program/GATE3_PI_THIN_ROLLBACK_DRILL.md` +
 `packages/aiplat-pi-runtime` compose/scripts — do not invent a parallel path in P0.

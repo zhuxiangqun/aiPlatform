@@ -24,7 +24,7 @@ authority: supporting
 ```text
 docs/decisions/
   architecture/
-  product/
+  products/five-products/   ← 五产品 ADR / Gate / 边界决策（含草案）
   security/
   process/
 ```
@@ -38,8 +38,14 @@ docs/decisions/
 | [architecture/evaluator_calibration.md](architecture/evaluator_calibration.md) | Evaluator 自校准（设计归档） |
 | [architecture/tot_reserve.md](architecture/tot_reserve.md) | ToT 延期决策 |
 
+## 五产品 ADR
+
+正文在 [`products/five-products/`](products/five-products/)（2026-11-15 自 `reports/five-products/` 根迁入）。  
+旧路径 `reports/five-products/ADR*.md` 仅 Index stub。程序/状态叙事见 [`reports/products/five-products/program/`](../../reports/products/five-products/program/)。
+
 ## 状态
 
 - 本目录为 v2.4 目标结构；
 - 架构 ADR 正文已迁入 `architecture/`（2026-11-15）；
+- 五产品根级 ADR/草案已迁入 `products/five-products/`（2026-11-15）；
 - 新增 ADR 应写入本目录对应分类。

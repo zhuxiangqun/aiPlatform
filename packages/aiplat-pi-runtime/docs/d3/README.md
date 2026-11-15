@@ -4,7 +4,7 @@ doc_type: Index
 
 # Pi D3 prep（Accepted 有条件 · 未授权生产宣称）
 
-> ADR: [`ADR-PI-D3.md`](../../../../reports/five-products/ADR-PI-D3.md) — **Accepted（有条件）**  
+> ADR: [`ADR-PI-D3.md`](../../../../docs/decisions/products/five-products/ADR-PI-D3.md) — **Accepted（有条件）**  
 > 默认交付仍为 **D1 Thin + D2 admin**；D3 为批准路径。
 
 | Doc | Purpose |

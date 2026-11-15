@@ -1,7 +1,7 @@
 {
   "schema_version": "aiplat.pi.d3.prep.v0",
   "capability_id": "pi",
-  "checked_at": "2026-11-01T03:19:20Z",
+  "checked_at": "2026-11-15T09:38:22Z",
   "d3_production_authorized": false,
   "adr_status": "accepted_conditional",
   "items": {
@@ -35,7 +35,7 @@
     },
     "8_adr_accept_cosign": {
       "ok": true,
-      "detail": "reports/five-products/ADR-PI-D3.md"
+      "detail": "docs/decisions/products/five-products/ADR-PI-D3.md"
     },
     "3_bundle_local_rehearsal": {
       "ok": true,

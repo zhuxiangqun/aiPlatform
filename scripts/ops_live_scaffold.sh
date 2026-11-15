@@ -46,4 +46,4 @@ print("PASS: ops_live_scaffold (all tracks have live-*.json; production_signed=f
 PY
 
 echo "NOTE: fill items → set production_signed=true → checklist ✅ → authorize"
-echo "See reports/five-products/OPS_LIVE_RUNBOOK.md"
+echo "See reports/products/five-products/program/OPS_LIVE_RUNBOOK.md"

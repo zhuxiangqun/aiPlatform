@@ -5,7 +5,7 @@ doc_type: Reference
 # Diagnosis A3 进程拆分硬门清单
 
 > `process_split_authorized` 仅当下列全部为 ✅（🟨 = 本地演练，≠ 授权）。  
-> ADR：[`ADR-DRAFT-diagnosis-d1.md`](../../../../reports/five-products/ADR-DRAFT-diagnosis-d1.md) **Draft**（未 Accepted）  
+> ADR：[`ADR-DRAFT-diagnosis-d1.md`](../../../../docs/decisions/products/five-products/ADR-DRAFT-diagnosis-d1.md) **Draft**（未 Accepted）  
 > 刷新：`bash packages/aiplat-diagnosis/scripts/a3_local_rehearsal.sh`
 
 | # | 项 | Owner | Done |

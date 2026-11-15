@@ -1,32 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR_09_FIVE_PRODUCTS_FULL_SPLIT_E4_DRAFT
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 五产品全拆 / 对外 E4
+# ADR-09-five-products-full-split-e4-draft.md（已迁移）
 
-- **状态**：**Accepted（窄 · 单产品）** · 2026-10-26 — 见 `ADR09_STEP4_DECISION.md`  
-- **范围**：**仅诊断 MVP** 独立部署立项；**不是**五产品一次全拆  
-- **关联**：ADR-08 · ADR-10 · `ADR09_E4_STEP3_DECISION.md`（第 3 步 E4）· `DECISIONS_AND_AUTHORIZATIONS.md`  
-- **决策人**：架构 × 业务（兼任）；扩缩容 ⬜ 已知情接受
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR-09-five-products-full-split-e4-draft.md`](../../docs/decisions/products/five-products/ADR-09-five-products-full-split-e4-draft.md)。
 
-## 已决（窄）
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-1. **全拆**：仅批准 **诊断 MVP** 单产品立项；禁止一次五服务。其余产品须另批。  
-2. **对外 E4**：第 3 步已批（窄）；措辞上限仍为 `ADR09_E4_COPY_DRAFT.md`。  
-3. 控制面默认仍为 aiPlat；**不含**控制面拆库；**不含** compose 长驻（本批未点名）。  
-4. 诊断 MVP 落地须 **分 PR**（inflation）；回滚=切回共部署。
-
-## 前置清单（归档）
-
-| # | 前置 | 进度 |
-|---|------|------|
-| 1–5 | 见历史 PARK / E4 / ROLES / CLEAN_ENV | 齐；第 4 步另批单产品 |
-
-## 仍禁止
-
-| 项 |
-|----|
-| 其余四产品一次拆 / 未点名产品微服务大搬仓 |
-| compose 长驻（除非另批） |
-| 超边界 E4 / 7×24 SLA 暗示 |

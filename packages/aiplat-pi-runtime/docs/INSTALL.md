@@ -54,7 +54,7 @@ Local regression (hermetic; **not** staging authorize):
 bash packages/aiplat-pi-runtime/scripts/d1_local_regression.sh
 ```
 
-Drill record: [`GATE3_PI_THIN_ROLLBACK_DRILL.md`](../../../reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md) · [`PI_D1_LOCAL_REGRESSION.md`](../../../reports/products/five-products/ops/PI_D1_LOCAL_REGRESSION.md)
+Drill record: [`GATE3_PI_THIN_ROLLBACK_DRILL.md`](../../../reports/products/five-products/program/GATE3_PI_THIN_ROLLBACK_DRILL.md) · [`PI_D1_LOCAL_REGRESSION.md`](../../../reports/products/five-products/ops/PI_D1_LOCAL_REGRESSION.md)
 
 ## Backup
 

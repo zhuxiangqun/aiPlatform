@@ -1,39 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR09_NEXT_FDE_DECISION_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 下一单产品决定 — FDE（交付验收面）
+# ADR09_NEXT_FDE_DECISION.md（已迁移）
 
-- **状态**：**Accepted（窄）** · 2026-10-26  
-- **批准句**（用户 + 填空）：产品为 **FDE**。接受兼任并承担全拆后果。范围：仅该产品；不含其余未点名产品。compose 长驻：**不含**（用户留「含/不含」未删选 → 按草案默认 **不含**）。不含超边界 E4 承诺。  
-- **填空理由**：交付验收已与诊断签收接线；爆破大于 Pi，已知情接受兼任  
-- **不含**：compose 长驻；本体 / 控制面拆；超边界 E4；一次五产品
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR09_NEXT_FDE_DECISION.md`](../../docs/decisions/products/five-products/ADR09_NEXT_FDE_DECISION.md)。
 
-## 授权 / 禁止
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-| 项 | |
-|----|--|
-| ✅ | FDE：单产品独立部署**立项**（文书 + 分 PR 边界设计） |
-| ✅ | 回滚默认：切回与控制面共部署 FDE API / 工作台路径 |
-| ❌ | compose 长驻（本批明确 **不含**） |
-| ❌ | 本体 / 控制面 aiPlat 未另批 |
-| ❌ | 新建第二套验收系统（须沿用既有 `acceptance/signoff` 等入口） |
-
-## 与已有能力关系
-
-| 既有 | 关系 |
-|------|------|
-| `POST …/fde/acceptance/signoff` + 诊断 report 绑定 | **保留唯一签收入口**；本决定不另起验收系统 |
-| ADR-10 / 诊断 MVP | 消费者关系不变；不扩大诊断范围 |
-| Pi Thin | 独立；本决定不改 Pi |
-
-## 后续（另 PR）
-
-1. FDE 部署边界清单 → ✅ `ADR09_FDE_BOUNDARY.md`（BOUNDARY A）  
-2. 分 PR 落地（BOUNDARY 序 B/C）；禁止一次大搬仓；**不含** compose 长驻  
-
-
-## 签署
-
-架构 × 业务 × FDE R（兼任）· 2026-10-26 · **仅 FDE；compose 长驻 / 本体 / 控制面仍须另批**

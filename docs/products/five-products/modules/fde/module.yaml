@@ -19,4 +19,4 @@ contracts:
 migrations:
   path: null
 adr_for_a3: null
-field_deploy_adr: reports/five-products/ADR-FDE-FIELD-DEPLOY.md
+field_deploy_adr: docs/decisions/products/five-products/ADR-FDE-FIELD-DEPLOY.md

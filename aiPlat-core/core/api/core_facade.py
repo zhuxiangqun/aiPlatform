@@ -2304,7 +2304,7 @@ def fde_healthz_payload(*, version: str = "", mode: str = "field_d1") -> Dict[st
         "signoff": "POST /api/platform/apps/fde/acceptance/signoff",
         "field_d1_adr": "accepted",
         "production_field": True,
-        "adr": "reports/five-products/ADR-FDE-FIELD-DEPLOY.md",
+        "adr": "docs/decisions/products/five-products/ADR-FDE-FIELD-DEPLOY.md",
     }
 
 

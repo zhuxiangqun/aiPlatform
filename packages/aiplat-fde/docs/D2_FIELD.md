@@ -5,7 +5,7 @@ doc_type: Reference
 # FDE Field D2 — ops / security / compat pack
 
 > **Status**：Field D2 工程包（本地可验）· **非** compose 长驻 · **非** PG/HA  
-> 前置：Field D1 Accepted（[`ADR-FDE-FIELD-DEPLOY.md`](../../../reports/five-products/ADR-FDE-FIELD-DEPLOY.md)）
+> 前置：Field D1 Accepted（[`ADR-FDE-FIELD-DEPLOY.md`](../../../docs/decisions/products/five-products/ADR-FDE-FIELD-DEPLOY.md)）
 
 ## 决策
 

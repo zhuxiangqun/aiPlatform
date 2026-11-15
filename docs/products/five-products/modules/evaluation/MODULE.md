@@ -114,7 +114,7 @@ A3 process/DB split **forbidden** without ADR Accepted + `process_split_authoriz
 
 | Item | Path |
 |------|------|
-| ADR | `reports/five-products/ADR-EVALUATION-A3.md` **Accepted（有条件）**（`module.yaml` `adr_for_a3` 已指向） |
+| ADR | `docs/decisions/products/five-products/ADR-EVALUATION-A3.md` **Accepted（有条件）**（`module.yaml` `adr_for_a3` 已指向） |
 | Chart skeleton | `packages/aiplat-evaluation/chart/` (`a3_process_split_authorized=false`) |
 | Checklist / prep | `docs/a3/SPLIT_CHECKLIST.md` · `scripts/a3_prep_check.sh` |
 | Local rehearsal | `scripts/a3_local_rehearsal.sh`（#4→🟨；非 live） |

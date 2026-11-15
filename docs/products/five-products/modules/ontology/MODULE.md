@@ -98,7 +98,7 @@ A3 process split **forbidden** without ADR Accepted + `process_split_authorized`
 
 | Item | Path |
 |------|------|
-| ADR | `reports/five-products/ADR-ONTOLOGY-A3.md` **Accepted（有条件）** |
+| ADR | `docs/decisions/products/five-products/ADR-ONTOLOGY-A3.md` **Accepted（有条件）** |
 | Chart skeleton | `packages/aiplat-ontology/chart/` (`a3_process_split_authorized=false`) |
 | Checklist / prep | `docs/a3/SPLIT_CHECKLIST.md` · `scripts/a3_prep_check.sh` |
 | Local rehearsal | `scripts/a3_local_rehearsal.sh`（#3/#5→🟨；非 live） |
