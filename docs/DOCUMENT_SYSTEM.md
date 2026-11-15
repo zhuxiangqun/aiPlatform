@@ -647,8 +647,8 @@ docs/doc-paths.yaml
 | `reports/five-products/plans/**` | `docs/products/five-products/plans/` | done |
 | `docs/contracts/ONTOLOGY_*` | `docs/contracts/knowledge/` 或 `fde/` | done（2026-11-15：正文 → `knowledge/`；根路径留 Index stub） |
 | `docs/architecture/decisions/**` | `docs/decisions/architecture/` | done（正文已迁；旧位留 Index stub） |
-| `reports/five-products/contracts/**` | `docs/contracts/products/five-products/` | open |
-| `reports/five-products/ops/**` | `reports/products/five-products/ops/` | open |
+| `reports/five-products/contracts/**` | 暂留 `reports/five-products/contracts/`（landing plan：稳定后再迁；模板/切片仍链此路径） | keep（2026-11-15 澄清；远期可选 `docs/contracts/products/five-products/`） |
+| `reports/five-products/ops/**` | 暂留 `reports/five-products/ops/`（`ops_engineering_freeze_check.sh` 等硬编码 SoT） | keep（2026-11-15 澄清；禁止未改脚本前大搬迁） |
 | `docs/architecture/plans/**` | 保留 `architecture/plans/`（非 canonical） | keep |
 | `docs/products/five-products/modules/**` | `docs/products/five-products/modules/` | keep |
 | `packages/*/docs/**` | 保留包内；根 docs 只索引 | keep |
@@ -724,7 +724,7 @@ docs/doc-paths.yaml
 | # | 问题 | 状态 |
 |---|---|---|
 | 1 | `docs/index.md` 已合并到 `docs/README.md` | 关闭（2026-11-11） |
-| 2 | 文档尚未全部迁入目标目录（计数以 `verify_doc_metadata` 为准，现 ~1078；§11.1） | 部分关闭（2026-11-15）：ONTOLOGY_* 已迁；仍 open：`reports/five-products/{contracts,ops}` → 产品契约/ops 目标路径 |
+| 2 | 文档尚未全部迁入目标目录（计数以 `verify_doc_metadata` 为准，现 ~1078；§11.1） | 关闭（2026-11-15）：可迁项已 done；`five-products/{contracts,ops}` 按落地计划与脚本 SoT **keep** 现路径（见 §11.1） |
 | 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
 | 5 | `reports/` 生命周期仍在迁移 | 部分关闭（2026-11-15）：security evidence 已补日期 / 模板排除；`cleanup_reports` undated=0；`audit_changelog*` 仍留根目录；`reports/five-products/{contracts,ops}` 大搬迁另立 |
