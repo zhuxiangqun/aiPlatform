@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T18:25:00+08:00",
+  "reviewed_at": "2026-11-15T18:47:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "75ec781cfa3d726c640278b0dc0c42554cf8427f",
-  "diff_sha256": "7e58016efa265bf24e49e6eaa3bc9aae27f523d78db6d76693aa916c29aec3f0",
-  "head_sha": "0c4bde6eaf9dc3a822f581649321d489c20da5b7",
+  "merge_base": "3a2188d385196dc5e21214cf7c18775656b6692a",
+  "diff_sha256": "6af690e32baaa78a9768b2b1d877cb574160a4c805a885cec925a40be426254d",
+  "head_sha": "64383ee401a52b89eb346cb0e2af6c1ed658ab84",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Rebased onto main after #750; ADR/program migrate only. Stubs at old paths; prep/status/manifest retargeted."
+  "note": "Harden process_split name gate only; no authorize flip. Checks: PHASE3 rule text, runtime false table row, PREP_STATUS false."
 }

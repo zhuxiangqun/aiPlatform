@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Evaluation module doc consistency gate (P0-4).
 
-Checks module.yaml pointers, contract shim SSOT resolution, and that
-key living docs still reference the package contracts SSOT command.
+Checks module.yaml pointers, contract shim SSOT resolution, living-doc
+SSOT references, and process_split policy vs runtime field-name honesty.
 
 Does not Accept ADRs or flip authorize flags.
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -125,7 +126,9 @@ def main() -> int:
     if "v1.3" not in canon:
         errors.append("P1_CANONICAL.md should cite composite_version v1.3")
 
-    # Policy vs runtime process_split names must stay distinct.
+    # Policy vs runtime process_split names must stay distinct (machine gate).
+    # Policy: process_split_policy_authorized
+    # Runtime/Checklist/PREP/Chart: process_split_authorized / a3_process_split_authorized
     split = ROOT / "packages" / "aiplat-evaluation" / "docs" / "a3" / "SPLIT_CHECKLIST.md"
     phase3 = (
         ROOT
@@ -135,6 +138,7 @@ def main() -> int:
         / "a3"
         / "PHASE3_PROCESS_SPLIT_AUTHORIZE.md"
     )
+    prep = ROOT / "packages" / "aiplat-evaluation" / "docs" / "a3" / "PREP_STATUS.json"
     for path in (split, phase3):
         if not path.is_file():
             errors.append(f"missing process_split honesty doc: {path.relative_to(ROOT)}")
@@ -154,6 +158,41 @@ def main() -> int:
             errors.append(
                 f"{path.relative_to(ROOT)}: process_split_authorized true+false "
                 "in one file — use process_split_policy_authorized for policy"
+            )
+
+    if phase3.is_file():
+        p3 = phase3.read_text(encoding="utf-8")
+        # Markdown may bold 禁止 → 「**禁止**共用裸字段名」.
+        if "共用裸字段名" not in p3:
+            errors.append(
+                "PHASE3_PROCESS_SPLIT_AUTHORIZE.md: missing naming rule "
+                "「共用裸字段名」(policy vs runtime)"
+            )
+        # Status table must keep runtime false while policy may be true.
+        if not re.search(
+            r"运行时\s*`process_split_authorized`\s*\|\s*\*\*false\*\*",
+            p3,
+        ):
+            errors.append(
+                "PHASE3_PROCESS_SPLIT_AUTHORIZE.md: runtime "
+                "`process_split_authorized` must remain **false** in status table"
+            )
+
+    if not prep.is_file():
+        errors.append(f"missing {prep.relative_to(ROOT)}")
+    else:
+        try:
+            prep_data = json.loads(prep.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            errors.append(f"PREP_STATUS.json invalid JSON: {exc}")
+            prep_data = {}
+        if not isinstance(prep_data, dict):
+            errors.append("PREP_STATUS.json must be a JSON object")
+        elif prep_data.get("process_split_authorized") is not False:
+            errors.append(
+                "PREP_STATUS.json process_split_authorized must be false "
+                f"(got {prep_data.get('process_split_authorized')!r}); "
+                "policy uses process_split_policy_authorized"
             )
 
     if errors:
