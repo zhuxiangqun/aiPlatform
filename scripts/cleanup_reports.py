@@ -59,9 +59,14 @@ def date_of(p: Path, *, mtime_fallback: bool = False) -> tuple[dt.date | None, s
     text = p.read_text(encoding="utf-8", errors="ignore")[:1200]
     candidates: list[tuple[dt.date, str]] = []
 
-    m = re.search(r"^(?:generated_at|date)\s*:\s*[\"']?(20\d{2}-\d{2}-\d{2})", text, re.M)
-    if m:
-        candidates.append((dt.date.fromisoformat(m.group(1)), "fm"))
+    # snapshot_date / content_date encode historical age; generated_at is often a re-wrap stamp.
+    for m in re.finditer(
+        r"^(?:snapshot_date|content_date|generated_at|date)\s*:\s*[\"']?(20\d{2}-\d{2}-\d{2})",
+        text,
+        re.M,
+    ):
+        key = m.group(0).split(":", 1)[0].strip()
+        candidates.append((dt.date.fromisoformat(m.group(1)), f"fm:{key}"))
     m = DATE_RE.search(p.name)
     if m:
         candidates.append((dt.date.fromisoformat(m.group(1)), "name_iso"))
