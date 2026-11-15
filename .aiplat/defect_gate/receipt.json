@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T13:12:00+08:00",
+  "reviewed_at": "2026-11-15T13:18:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "fea32ad4f7f047d324be09945e1f613a8c09387f",
-  "diff_sha256": "15ba159a2175a737fe051391e69f96dc3cab8031b03df46fab86991628512776",
-  "head_sha": "d36abe175a651e9e6e1b9c005f897ae65e2185eb",
+  "diff_sha256": "1c5d5fe5262b620100593342249ded486322700e0e2b00af5905e03d3997baf9",
+  "head_sha": "bd0d58af6caa7d096277718a619fee5f1f61f038",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs residuals: remaining docs doc_id + cleanup_reports earliest-date + archive one snapshot. Residual: undated root reports need snapshot_date; dir migration #2. Local lock only."
+  "note": "PR742: doc_id gaps + reports snapshot_date archive. Residual: audit_changelog* root, 6 undated security evidence files, dir migration #2. Local lock only."
 }
