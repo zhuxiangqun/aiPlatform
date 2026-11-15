@@ -5,8 +5,8 @@ doc_type: Reference
 # Phase 2 预备（生产独立 · 政策已授 / 运行时未齐）
 
 > 计划 §7 · [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md) · staging 板：[`PHASE2_STAGING_PREP.md`](./PHASE2_STAGING_PREP.md)  
-> **政策**：`process_split_authorized=true`（owner AUTHORIZE · 覆盖）  
-> **运行时**：Chart `a3_process_split_authorized=false` · **禁止**宣称「生产已独立」
+> **政策**：`process_split_policy_authorized=true`（owner AUTHORIZE · 覆盖）  
+> **运行时**：`process_split_authorized=false` · Chart `a3_process_split_authorized=false` · **禁止**宣称「生产已独立」
 
 ---
 
@@ -14,7 +14,8 @@ doc_type: Reference
 
 | 条件 | 当前 |
 |---|---|
-| 政策 `process_split_authorized` | **true**（owner 覆盖；#1/#4 仍 🟨） |
+| 政策 `process_split_policy_authorized` | **true**（owner 覆盖；#1/#4 仍 🟨） |
+| 运行时 `process_split_authorized` | **false** |
 | Chart runtime split 注解 | **false** |
 | staging 验收（B4-S） | **blocked**（脚手架已开 · 无独立 staging host） |
 | B4-S staging scaffold | ✅ [`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md) · unfreeze `draft_blocked` |

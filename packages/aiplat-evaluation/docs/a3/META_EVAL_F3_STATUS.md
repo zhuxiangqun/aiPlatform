@@ -4,7 +4,7 @@ doc_type: Reference
 
 # META_EVAL F3 状态（G2b / process_split 边界）
 
-> 机器：[`evidence/meta_eval/f3_process_split_boundary_status.v0.json`](./evidence/meta_eval/f3_process_split_boundary_status.v0.json) · 时点 2026-11-14T23:18:36+08:00
+> 机器：[`evidence/meta_eval/f3_process_split_boundary_status.v0.json`](./evidence/meta_eval/f3_process_split_boundary_status.v0.json) · 时点 2026-11-15T16:43:46+08:00
 > **诚实锁**：`family_green` ≠ `process_split_authorized=true` ≠ Tier A · `accuracy_claim=false`
 
 ## 汇总
@@ -18,7 +18,7 @@ doc_type: Reference
 
 | 检查 | 状态 | green | 说明 |
 |---|---|:---:|---|
-| `judge_calibration` | boundary_hold | ✅ | a3_split_authorize status: process_split locks hold (doc/status false, chart annotation false, ready_to_authorize=false). |
+| `judge_calibration` | boundary_hold | ✅ | a3_split_authorize status: Chart false + ready_to_authorize=false + live_production_signed=false (policy flag may be true). |
 | `gold_audit` | advisory_present | ✅ | G2b adjudication + scoped attestation present; acknowledgements.not_process_split_authorize=true. |
 | `contamination` | advisory_only | ✅ | Inherited F1 advisory; R11 advisory_only. |
 | `holdout_isolation` | declared | ✅ | process_split_authorized holdout-from-claim declared until checklist+live. |

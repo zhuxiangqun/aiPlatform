@@ -4,7 +4,7 @@
   "global_tier_a_expansion_authorized": true,
   "accuracy_claim": false,
   "accuracy_claim_authorized": true,
-  "process_split_authorized": true,
+  "process_split_authorized": false,
   "security_certification": false,
   "l5_declare_authorized": true,
   "symbols": [
@@ -297,11 +297,12 @@
       "report_only_remains": true,
       "claim_eligible": true,
       "accuracy_claim": true,
-      "process_split_authorized": true,
+      "process_split_authorized": false,
       "note": "Scoped boundary assert only; does not flip process_split_authorized",
       "depends_on": [
         "evaluate_security_family_gates"
-      ]
+      ],
+      "process_split_policy_authorized": true
     },
     {
       "symbol": "build_g2b_s_dual_review_workflow",
@@ -314,10 +315,11 @@
       "report_only_remains": true,
       "claim_eligible": true,
       "accuracy_claim": true,
-      "process_split_authorized": true,
+      "process_split_authorized": false,
       "depends_on": [
         "assert_t13_process_split_boundary"
-      ]
+      ],
+      "process_split_policy_authorized": true
     },
     {
       "symbol": "eval_assert_t13_process_split_boundary",
@@ -332,14 +334,15 @@
       "report_only_remains": true,
       "claim_eligible": true,
       "accuracy_claim": true,
-      "process_split_authorized": true,
+      "process_split_authorized": false,
       "note": "Final A_candidate scoped accept; does not flip process_split or global Tier A expansion",
       "depends_on": [
         "assert_t13_process_split_boundary"
-      ]
+      ],
+      "process_split_policy_authorized": true
     }
   ],
-  "honesty": "Owner authorized accuracy_claim + l5_declare + process_split (2026-11-14). security_certification / production_independent_claim / Chart a3_process_split_authorized remain false. process_split policy true with residual 🟨 checklist + no staging host.",
+  "honesty": "Owner authorized accuracy_claim + l5_declare + process_split (2026-11-14). security_certification / production_independent_claim / Chart a3_process_split_authorized remain false. process_split_policy_authorized=true with residual 🟨 checklist + no staging host.",
   "a_candidate_scoped_complete": true,
   "n_authorized": 19,
   "global_tier_a_expansion_authorized_at": "2026-11-14T22:02:00+08:00",
@@ -352,5 +355,6 @@
   "l5_declare_authorize_ref": "docs/a3/evidence/meta_eval/phase3_l5_declare_authorize.v0.json",
   "process_split_authorize_ref": "docs/a3/evidence/meta_eval/phase3_process_split_authorize.v0.json",
   "chart_a3_process_split_authorized": false,
-  "production_independent_claim": false
+  "production_independent_claim": false,
+  "process_split_policy_authorized": true
 }

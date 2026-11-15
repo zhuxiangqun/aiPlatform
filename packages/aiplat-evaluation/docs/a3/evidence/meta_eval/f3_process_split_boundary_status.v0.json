@@ -2,7 +2,7 @@
   "schema": "eval.meta_eval.f3_status.v0",
   "family_id": "F3",
   "family": "G2b / process_split boundary",
-  "recorded_at": "2026-11-14T23:18:36+08:00",
+  "recorded_at": "2026-11-15T16:43:46+08:00",
   "threshold_version": "meta-eval-thresholds.v0",
   "checks": [
     {
@@ -11,7 +11,7 @@
       "green": true,
       "f1_prerequisite_met": true,
       "source": "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
-      "note": "a3_split_authorize status: process_split locks hold (doc/status false, chart annotation false, ready_to_authorize=false)."
+      "note": "a3_split_authorize status: Chart false + ready_to_authorize=false + live_production_signed=false (policy flag may be true)."
     },
     {
       "id": "gold_audit",

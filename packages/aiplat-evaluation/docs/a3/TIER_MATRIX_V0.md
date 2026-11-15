@@ -6,7 +6,7 @@ doc_type: Reference
 
 > 计划 §4.5 / §8 · 源：R12 `in_both` · 机器：[`evidence/tier_matrix_v0.json`](./evidence/tier_matrix_v0.json)
 > **诚实锁**：政策旗标见 [`PHASE3_HONESTY_LOCKS.md`](./PHASE3_HONESTY_LOCKS.md)；Chart runtime 另闸
-> **时点**：2026-11-15T16:22:29+08:00 · R12 H5 open=**0** · `meta_eval_families_green`=**true** · `tier_a_expansion_authorized`=**true**
+> **时点**：2026-11-15T16:43:51+08:00 · R12 H5 open=**0** · `meta_eval_families_green`=**true** · `tier_a_expansion_authorized`=**true**
 
 ## 汇总
 

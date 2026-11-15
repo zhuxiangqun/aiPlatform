@@ -19,6 +19,7 @@
   "honesty": "Sum of per-wave suite-hook attachments. Not a coverage%%. Not global Tier A expansion.",
   "tier_a_expansion_authorized": true,
   "l5_declare_authorized": true,
-  "process_split_authorized": true,
-  "security_certification": false
+  "process_split_authorized": false,
+  "security_certification": false,
+  "process_split_policy_authorized": true
 }
