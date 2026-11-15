@@ -1,5 +1,12 @@
 ---
 doc_type: Index
+doc_id: FDE_GUIDES_INDEX
+status: active
+authority: index
+purpose: FDE 操作手册总目录
+owner: 朱向群
+version: 1.0
+last_reviewed: 2026-11-15
 ---
 
 # FDE 现场交付体系 — 文档导航

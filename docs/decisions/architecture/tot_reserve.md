@@ -1,5 +1,12 @@
 ---
 doc_type: Decision
+doc_id: ADR_TOT_RESERVE
+status: historical
+authority: obsolete
+purpose: 归档 Tree of Thoughts 延期决策
+owner: aiPlatform architecture review
+version: 1.0
+last_reviewed: 2026-11-15
 ---
 
 # Decision: Tree of Thoughts (ToT) — Delayed Indefinitely

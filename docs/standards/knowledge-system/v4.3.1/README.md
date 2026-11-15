@@ -1,5 +1,12 @@
 ---
 doc_type: Index
+doc_id: KS_V431_INDEX
+status: active
+authority: index
+purpose: 知识体系 v4.3.1 标准包入口
+owner: 朱向群
+version: 4.3.1
+last_reviewed: 2026-11-15
 ---
 
 # 知识体系标准 v4.3.1

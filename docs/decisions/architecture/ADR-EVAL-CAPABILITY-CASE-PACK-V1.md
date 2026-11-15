@@ -1,5 +1,15 @@
 ---
 doc_type: Decision
+doc_id: ADR_EVAL_CASE_PACK_V1
+authority: canonical
+status: active
+purpose: 裁决 Eval 能力驱动 Case Pack / Suite Profile 的题库与证据组织
+scope_in: Evaluation 题库、选题、执行与证据组织
+scope_out: 生产准确率宣称、A3 进程拆分授权
+owner: 朱向群
+version: 1.0
+last_reviewed: 2026-11-15
+review_cycle: 90d
 ---
 
 # ADR: Eval 能力驱动 Case Pack 与 Suite Profile

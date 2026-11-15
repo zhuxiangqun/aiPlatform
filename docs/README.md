@@ -1,5 +1,12 @@
 ---
 doc_type: Index
+doc_id: DOCS_INDEX
+status: active
+authority: index
+purpose: 文档导航唯一入口
+owner: 朱向群
+version: 2.4
+last_reviewed: 2026-11-15
 ---
 
 # aiPlat 文档导航

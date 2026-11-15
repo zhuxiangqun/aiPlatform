@@ -1,5 +1,15 @@
 ---
 doc_type: Architecture
+doc_id: SYS_ARCH_CONTRACT
+status: active
+authority: canonical
+purpose: 定义跨层硬约束：分层职责、依赖方向、身份透传与执行标识契约
+scope_in: management/app/platform/core/infra 跨层边界与 MUST 契约
+scope_out: 层内实现细节、业务 SOP、生成白皮书
+owner: 朱向群
+version: 2.4
+last_reviewed: 2026-11-15
+review_cycle: 90d
 ---
 
 # 系统整体架构规范（System Architecture Contract）

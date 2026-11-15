@@ -1,5 +1,12 @@
 ---
 doc_type: Decision
+doc_id: ADR_EVALUATOR_CALIBRATION
+status: historical
+authority: obsolete
+purpose: 归档 Evaluator 自校准设计决策（V3.0 预留）
+owner: aiPlatform architecture review
+version: 3.0
+last_reviewed: 2026-11-15
 ---
 
 # Decision: Evaluator Self-Calibration (L7) — V3.0

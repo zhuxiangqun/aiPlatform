@@ -1,5 +1,15 @@
 ---
 doc_type: Contract
+doc_id: CORE_ARCH_CONTRACT
+status: active
+authority: canonical
+purpose: 定义 Core 运行时/Harness/Apps 硬约束以防边界失守
+scope_in: aiPlat-core 内核、Harness、syscall、gates
+scope_out: platform/management 鉴权签发与业务模块实现
+owner: 朱向群
+version: 1.0
+last_reviewed: 2026-11-15
+review_cycle: 90d
 ---
 
 # Architecture Contract（架构契约）

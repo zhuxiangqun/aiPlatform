@@ -526,17 +526,19 @@ review_cycle:
 
 ## 七、单一真相源
 
-| 真相类型 | 唯一出处 |
-|---|---|
-| 知识体系标准 | `docs/standards/knowledge-system/v4.3.1/` |
-| 文档治理 | `docs/DOCUMENT_SYSTEM.md` |
-| 文档入口 | `docs/README.md` |
-| 非规范解释材料 | `docs/reference/explanatory/` |
-| 生成白皮书/状态报告 | `reports/` |
-| 能力清单 | `AIPLAT_CAPABILITIES.md` |
-| 架构规范 | `docs/architecture/system-architecture-contract.md` |
-| 架构全景 | `docs/architecture/overview.md`（摘要，非规范） |
-| 架构边界 | `docs/architecture/boundary-standard.md` |
+> 2026-11-15：下列入口已补 `doc_id`（及 canonical 所需字段）；`verify_canonical.py` 计 `canonical≥9`、`duplicate_doc_id=0`。`AIPLAT_CAPABILITIES.md` 仍为能力 SoT，暂不强制 markdown frontmatter。
+
+| 真相类型 | 唯一出处 | doc_id |
+|---|---|---|
+| 知识体系标准 | `docs/standards/knowledge-system/v4.3.1/` | `KS_V431_INDEX`（包入口） |
+| 文档治理 | `docs/DOCUMENT_SYSTEM.md` | `DOCUMENT_SYSTEM` |
+| 文档入口 | `docs/README.md` | `DOCS_INDEX` |
+| 非规范解释材料 | `docs/reference/explanatory/` | （目录级，逐篇待铺） |
+| 生成白皮书/状态报告 | `reports/` | （生成物，非 canonical） |
+| 能力清单 | `AIPLAT_CAPABILITIES.md` | （非 md frontmatter） |
+| 架构规范 | `docs/architecture/system-architecture-contract.md` | `SYS_ARCH_CONTRACT` |
+| 架构全景 | `docs/architecture/overview.md`（摘要，非规范） | `ARCH_OVERVIEW` |
+| 架构边界 | `docs/architecture/boundary-standard.md` | `LAYER_BOUNDARY_STANDARD` |
 | Core 运行时契约 | `aiPlat-core/docs/contracts/01-architecture-contract.md` |
 | FDE/Org 契约 | `docs/contracts/README.md` + 各契约 |
 | FDE 工作台 | `docs/contracts/FDE_WORKBENCH_CONTRACT.md` |
@@ -726,7 +728,7 @@ docs/doc-paths.yaml
 | 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
 | 5 | `reports/` 生命周期仍在迁移 | open |
-| 6 | `authority: canonical` / `doc_id` 几乎未铺开（机器侧仅 DOCUMENT_SYSTEM + known standards） | open |
+| 6 | `authority: canonical` / `doc_id` 铺开 | 部分关闭（2026-11-15）：§七 SoT + 架构 ADR 已机读；其余 ~1060 篇仍待铺 |
 | 7 | ADR 正文已迁至 `docs/decisions/architecture/`；旧位仅 Index stub | 关闭（2026-11-15） |
 
 ## 十七、文档宪法自检
