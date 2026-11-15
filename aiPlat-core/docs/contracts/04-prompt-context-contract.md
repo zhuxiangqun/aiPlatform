@@ -4,6 +4,12 @@ doc_id: CORE_PROMPT_CONTEXT_CONTRACT
 last_reviewed: 2026-11-15
 status: active
 authority: canonical
+purpose: 定义 Prompt/Context 组装、压缩与注入边界
+scope_in: 上下文预算、压缩策略、system/user 角色隔离
+scope_out: 业务 prompt 正文与产品文案
+owner: 朱向群
+version: 1.0
+review_cycle: 90d
 ---
 # Prompt & Context Contract（提示词/上下文契约）
 

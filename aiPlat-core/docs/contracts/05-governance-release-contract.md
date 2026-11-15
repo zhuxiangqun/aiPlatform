@@ -4,6 +4,12 @@ doc_id: CORE_GOVERNANCE_RELEASE_CONTRACT
 last_reviewed: 2026-11-15
 status: active
 authority: canonical
+purpose: 定义治理发布、回滚与变更可验收门槛
+scope_in: 发布门禁、回滚、治理变更验收
+scope_out: 业务发布日历与运维工单流程
+owner: 朱向群
+version: 1.0
+review_cycle: 90d
 ---
 # Governance & Release Contract（治理/发布契约）
 

@@ -4,6 +4,12 @@ doc_id: CORE_SKILL_TYPES_CONTRACT
 last_reviewed: 2026-11-15
 status: active
 authority: canonical
+purpose: 定义 Skill 类型边界与 Internal Policy 不可 Skill 化规则
+scope_in: Skill 类型、execution_type、准入标准
+scope_out: 具体 SKILL.md 业务 SOP 正文
+owner: 朱向群
+version: 1.0
+review_cycle: 90d
 ---
 # Skill Types & Discovery Contract（Skill 类型与发现/加载契约）
 

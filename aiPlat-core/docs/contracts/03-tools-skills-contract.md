@@ -4,6 +4,12 @@ doc_id: CORE_TOOLS_SKILLS_CONTRACT
 last_reviewed: 2026-11-15
 status: active
 authority: canonical
+purpose: 定义 Tool/Skill 命名、权限双门禁与审计可追溯要求
+scope_in: Tool/Skill 注册、PolicyGate/BudgetGate、执行审计
+scope_out: 业务 Agent SOP 与具体 handler 实现细节
+owner: 朱向群
+version: 1.0
+review_cycle: 90d
 ---
 # Tools & Skills Contract（工具/技能契约）
 

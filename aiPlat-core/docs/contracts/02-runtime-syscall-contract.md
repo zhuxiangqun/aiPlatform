@@ -4,6 +4,12 @@ doc_id: CORE_RUNTIME_SYSCALL_CONTRACT
 last_reviewed: 2026-11-15
 status: active
 authority: canonical
+purpose: 定义 Runtime Syscall 边界、可观测事件与禁止绕过规则
+scope_in: sys_llm_generate / sys_tool_call / sys_skill_call 等 syscall 契约
+scope_out: 具体 Tool/Skill 业务实现与前端 UX
+owner: 朱向群
+version: 1.0
+review_cycle: 90d
 ---
 # Runtime & Syscall Contract（运行时与系统调用契约）
 
