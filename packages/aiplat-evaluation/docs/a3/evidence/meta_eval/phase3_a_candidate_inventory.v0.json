@@ -5,7 +5,7 @@
   "n": 19,
   "tier_a_expansion_authorized": true,
   "accuracy_claim": false,
-  "process_split_authorized": true,
+  "process_split_authorized": false,
   "security_certification": false,
   "l5_declare_authorized": true,
   "items": [
@@ -306,5 +306,6 @@
   "n_scoped_authorized": 19,
   "a_candidate_scoped_complete": true,
   "honesty_note": "19/19 scoped + global_tier_a_expansion_authorized=true; accuracy/L5/cert/process_split still false",
-  "global_tier_a_expansion_authorized": true
+  "global_tier_a_expansion_authorized": true,
+  "process_split_policy_authorized": true
 }

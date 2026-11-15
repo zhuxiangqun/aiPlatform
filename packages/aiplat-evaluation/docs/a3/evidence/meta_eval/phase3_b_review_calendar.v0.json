@@ -344,7 +344,7 @@
   },
   "tier_a_expansion_authorized": true,
   "accuracy_claim": false,
-  "process_split_authorized": true,
+  "process_split_authorized": false,
   "honesty": "First review cycle opened with concrete due dates. Suite hooks attached ≠ Tier B coverage complete. Chart still false.",
   "a_candidate_scoped_complete": true,
   "b_suite_attach_waves_complete": true,
@@ -364,5 +364,6 @@
     "opened_on": "2026-11-14",
     "status": "open",
     "ref": "docs/a3/evidence/meta_eval/phase3_b_review_cycle1.v0.json"
-  }
+  },
+  "process_split_policy_authorized": true
 }

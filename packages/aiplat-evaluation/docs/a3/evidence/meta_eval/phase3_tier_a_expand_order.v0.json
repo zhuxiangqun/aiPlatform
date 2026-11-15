@@ -3,7 +3,7 @@
   "recorded_at": "2026-11-14T22:14:00+08:00",
   "tier_a_expansion_authorized": true,
   "accuracy_claim": false,
-  "process_split_authorized": true,
+  "process_split_authorized": false,
   "security_certification": false,
   "l5_declare_authorized": true,
   "policy": {
@@ -153,5 +153,6 @@
   ],
   "honesty": "All 19 A_candidate scoped accepted; owner AUTHORIZE flipped global Tier A expansion. accuracy/L5/cert/process_split still false.",
   "a_candidate_scoped_complete": true,
-  "global_tier_a_expansion_authorized": true
+  "global_tier_a_expansion_authorized": true,
+  "process_split_policy_authorized": true
 }
