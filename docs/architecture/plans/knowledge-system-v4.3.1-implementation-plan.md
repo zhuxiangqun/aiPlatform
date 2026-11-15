@@ -1,12 +1,14 @@
 ---
 doc_type: Architecture
 title: 知识系统 v4.3.1 实施方案
-status: draft
+status: in-progress
 authority: design-target
 language: zh-CN
 created: 2026-11-14
 doc_id: KNOWLEDGE_SYSTEM_V4_3_1_IMPLEMENTATION_PLAN_C8F90C
 last_reviewed: 2026-11-15
+phase0_evidence: reports/products/knowledge-system/v4.3.1/
+pilot_domain: lock-service
 ---
 # 知识系统 v4.3.1 实施方案
 
@@ -16,6 +18,8 @@ last_reviewed: 2026-11-15
 >
 > 本文是把 v4.3.1 标准落到 aiPlat 的实施计划，不是标准正文，也不是当前实现状态声明。  
 > 标准生效日：2027-01-01。本文按“先试点域、再平台化、最后规模化”的方式实施。
+>
+> **Phase 0 证据（测量，非符合声明）**：[`reports/products/knowledge-system/v4.3.1/`](../../../reports/products/knowledge-system/v4.3.1/) · 试点域 `lock-service` · G0 见该目录 `phase0-pilot-lock-service.md`。
 
 ## 0. 结论先行
 

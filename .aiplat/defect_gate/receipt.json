@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T19:50:51+08:00",
+  "reviewed_at": "2026-11-15T20:24:50+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c1199a9dd7732c25ca69b460cff10ecb7e0b7a64",
-  "diff_sha256": "4abea98e6d65361f0e9ff54918086fdba1e6b2575c40de4b03e01952d155b43c",
-  "head_sha": "ef1d4c349e5a231a948f742e942e4b1b7dc6ef0a",
+  "merge_base": "188bd90f865999eff4bb4b1575b94c9c3adabffb",
+  "diff_sha256": "e1159e2cda6b6c75bf954fd1dd15d28447ee5d2141c79359c34ef7ad6c151b18",
+  "head_sha": "6f39081a6f923a8b341ba1e479c95c25d8bd03d3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Product scenario bodies + excerpt link rewrite; verify_doc_links --strict broken=0. Local lock only."
+  "note": "Phase 0 evidence + README link depth fix. Local lock only."
 }
