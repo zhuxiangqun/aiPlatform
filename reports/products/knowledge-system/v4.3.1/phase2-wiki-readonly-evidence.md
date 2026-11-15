@@ -39,6 +39,7 @@ PYTHONPATH=aiPlat-core:aiPlat-platform:. python3 -m pytest \
 ## 明确未做（后续）
 
 - 重建条件分类契约（exact_replay / semantic / non-rebuildable）
-- ObjectSet SDK / FunctionContract
+- ObjectSet SDK / Interface
+- FunctionContract → 见 `phase2-function-contract-evidence.md`（本批另切片）
 - 字段级 ACL；管理端 Wiki UX 规模化禁写提示
 - 全局所有 collection 默认读模型

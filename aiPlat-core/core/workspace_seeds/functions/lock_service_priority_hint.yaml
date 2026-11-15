@@ -1,0 +1,29 @@
+# FunctionContract 试点种子（W5 最小切片）
+# 装载：FunctionRegistry ← workspace_seeds/functions + AIPLAT_HOME/functions
+functions:
+  - function_id: "platform_function:knowledge:priority_hint"
+    version: "1.0.0"
+    label: "优先级提示"
+    description: "纯计算 priority hint（urgency/impact → score）；无副作用"
+    deterministic: true
+    side_effects: false
+    required_permissions:
+      - "kb:read"
+    timeout_ms: 2000
+    handler: "core.harness.infrastructure.builtin_functions:priority_hint"
+    input_schema:
+      type: object
+      properties:
+        urgency:
+          type: number
+          description: "紧急度 0–5"
+        impact:
+          type: number
+          description: "影响面 0–5"
+    output_schema:
+      type: object
+      properties:
+        score:
+          type: number
+        reason:
+          type: string

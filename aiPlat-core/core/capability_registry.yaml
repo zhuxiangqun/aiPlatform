@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2728
+total_capabilities: 2735
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2818,12 +2818,12 @@ domains:
         reason: "L6 记忆指标展示"
 
   # ══════════════════════════════════════════════════════════════
-  # 三、知识引擎（本体）(231 caps)
+  # 三、知识引擎（本体）(273 caps)
   # ══════════════════════════════════════════════════════════════
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 266
+    caps_count: 273
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3038,6 +3038,34 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "CoreFacade re-export: confirm orchestration for harness Action handlers"
+      - symbol: "FunctionContractModel"
+        module: core/harness/infrastructure/function_contract.py
+        type: class
+        signature: "Appendix C.3 FunctionContract; side_effects default false"
+      - symbol: "FunctionRegistry"
+        module: core/harness/infrastructure/function_registry.py
+        type: class
+        signature: "register/get/invoke; side_effects_forbidden + L1 permissions"
+      - symbol: "get_function_registry"
+        module: core/harness/infrastructure/function_registry.py
+        type: function
+        signature: "Process singleton; loads workspace_seeds/functions + AIPLAT_HOME/functions"
+      - symbol: "register_builtin_functions"
+        module: core/harness/infrastructure/function_registry.py
+        type: function
+        signature: "Load FunctionContract YAML into registry; returns count"
+      - symbol: "priority_hint"
+        module: core/harness/infrastructure/builtin_functions.py
+        type: function
+        signature: "Pure compute urgency/impact → score; zero wiki/fact writes"
+      - symbol: "invoke_function"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: FunctionRegistry.invoke(function_id, params, permissions, actor)"
+      - symbol: "invoke_function_route"
+        module: aiPlat-platform/apps/fde/api/function_routes.py
+        type: function
+        signature: "POST /fde/functions/{function_id}/invoke — scopes→permissions"
       - symbol: "k1_confirm_extraction"
         module: core/api/core_facade.py
         type: function
