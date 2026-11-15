@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T11:21:30+08:00",
+  "reviewed_at": "2026-11-15T11:40:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "af94ba51d6a12fc57f98ac63b77de6f56527ffe2",
-  "diff_sha256": "40f9b0bff0f8810d2b7dbd6fea219d668271456c01a7a05dd3782355fd491f30",
-  "head_sha": "90cb1b693e3b4eb37f584f2d7ec9a0295414a86f",
+  "diff_sha256": "b0a7642407e5dfaed3649e33ed3a46bdf91c5ed5eefe009a309e860f6cc29a99",
+  "head_sha": "7b786a4c20f758fd92aeb8fb4ed7edd8b73122b6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "verify_docs net-new endpoint detection; docs governance drift only. Residual: doc_id/canonical rollout, ADR split, reports/ mess, 218 menu WARN noise. Local lock only."
+  "note": "Docs governance + ADR migration. Residual: doc_id rollout, reports/ cleanup, 218 menu WARN noise. Local lock only."
 }
