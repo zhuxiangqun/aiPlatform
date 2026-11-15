@@ -5039,6 +5039,32 @@ async def invoke_function(
     )
 
 
+def check_interface_compatibility(
+    interface_id: str,
+    object_type_id: str,
+    *,
+    permissions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """W5：校验 ObjectType 是否兼容 Interface（经 InterfaceRegistry L1）。
+
+    Args:
+        interface_id: InterfaceContract.interface_id。
+        object_type_id: 候选 ObjectType id。
+        permissions: 调用方权限/scopes。
+
+    Returns:
+        InterfaceRegistry.check_compatibility 回执。
+    """
+    from core.harness.infrastructure.interface_registry import get_interface_registry
+
+    reg = get_interface_registry()
+    return reg.check_compatibility(
+        interface_id,
+        object_type_id,
+        permissions=permissions,
+    )
+
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 
@@ -14283,6 +14309,11 @@ from core.harness.infrastructure.function_contract import FunctionContractModel 
 from core.harness.infrastructure.function_registry import (  # noqa: boundary
     get_function_registry,
     register_builtin_functions,
+)
+from core.harness.infrastructure.interface_contract import InterfaceContractModel  # noqa: boundary
+from core.harness.infrastructure.interface_registry import (  # noqa: boundary
+    get_interface_registry,
+    register_builtin_interfaces,
 )
 from core.harness.infrastructure.workbench_runtime_guard import WorkbenchRuntimeGuard  # noqa: boundary
 from core.harness.infrastructure.action_audit_validate import (  # noqa: boundary
