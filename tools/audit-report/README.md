@@ -2,7 +2,7 @@
 
 本目录用于把结构化审查项 `reports/audit_findings.json` **自动生成**为可交付的 Word 报告：
 - 输出：`reports/aiPlat_设计文档与实现一致性审查报告.docx`
-- 变更日志：`reports/audit_changelog.md`
+- 变更日志：`reports/audit_changelog.md`（活日志）；历史 Round 见 `reports/_archive/audit_changelog_round*.md`
 
 ## 使用方式
 

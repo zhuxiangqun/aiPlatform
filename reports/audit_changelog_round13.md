@@ -1,15 +1,13 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_AUDIT_CHANGELOG_ROUND13
+last_reviewed: 2026-11-15
 ---
 
-# Round13 复审变更日志（持续交付｜历史记录）
+# Round13 复审变更日志（已归档）
 
-> **历史报告**：本日志服务于 `reports/audit_findings_round13.json` 与对应 docx 复审报告，用于回溯 Round13 的实现修复与验证命令；当前实现以最新代码与测试为准。
+> 正文已迁至 [`_archive/audit_changelog_round13.md`](./_archive/audit_changelog_round13.md)；配套 findings 见 [`_archive/audit_findings_round13.json`](./_archive/audit_findings_round13.json)（若存在）。
 
-## 变更记录
-
-### 2026-04-16
-- 实施修复：
-  - CORE-CLOSELOOP-001：将闭环推广到 ReActGraph（默认走内部 CompiledGraph 引擎）；补齐 execution↔trace 联查 API；强化 resume 幂等与权限校验，并更新 ARCHITECTURE_STATUS 证据链。
-
+根目录 `audit_changelog.md` + `audit_findings.json` 仍为持续交付活文档。

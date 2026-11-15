@@ -1,15 +1,13 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_AUDIT_CHANGELOG_ROUND4
+last_reviewed: 2026-11-15
 ---
 
-# Round4 复审变更日志（持续交付｜历史记录）
+# Round4 复审变更日志（已归档）
 
-> **历史报告**：本日志服务于 `reports/audit_findings_round4.json` 与对应 docx 复审报告，用于回溯当时修复项与验证命令；当前实现以最新代码与测试为准。
+> 正文已迁至 [`_archive/audit_changelog_round4.md`](./_archive/audit_changelog_round4.md)；配套 findings 见 [`_archive/audit_findings_round4.json`](./_archive/audit_findings_round4.json)（若存在）。
 
-## 变更记录
-
-### 2026-04-16
-- 实施修复：
-  - INFRA-DI-001：DI 容器启动时读取配置并执行 scan_packages 自动注册（@injectable），并按配置装配 interceptors（logging/timing/caching/metrics/error_handling）。
-  - INFRA-OBS-001：observability 工厂接入 opentelemetry-sdk（provider=otel），支持 OTLP 导出（默认）与 in_memory 导出（测试），并补齐单测覆盖。
+根目录 `audit_changelog.md` + `audit_findings.json` 仍为持续交付活文档。
