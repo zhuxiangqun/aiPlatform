@@ -1,5 +1,6 @@
 ---
 doc_type: Index
+date: 2026-11-10
 ---
 
 # Wave 1 Ops 证据目录

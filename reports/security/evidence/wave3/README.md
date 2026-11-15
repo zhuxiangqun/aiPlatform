@@ -1,5 +1,6 @@
 ---
 doc_type: Index
+date: 2026-11-10
 ---
 
 # Wave 3 — live 文本族 / 跨租户 / judge 标定

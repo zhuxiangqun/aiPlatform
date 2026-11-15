@@ -1,4 +1,5 @@
 {
+  "date": "2026-11-09",
   "timestamp": 1794243871.7650402,
   "checks": [
     {
@@ -18,5 +19,5 @@
     "isolation_covered",
     "penetration_certification"
   ],
-  "recommendation": "UNREACHABLE \u2014 cannot claim defenses hold"
+  "recommendation": "UNREACHABLE — cannot claim defenses hold"
 }
