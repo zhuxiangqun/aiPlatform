@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T14:43:01+08:00",
+  "reviewed_at": "2026-11-15T15:21:54+08:00",
   "base_ref": "origin/main",
   "merge_base": "41bce053dd60823ae9caf10e9d210bb5125c0b49",
-  "diff_sha256": "c3ce47cf4769c1d0f6e32fceece698c613a87db4d2f851f92c3350667b90ccfe",
-  "head_sha": "a38b934d91dddddde881762de91d30f755c562eb",
+  "diff_sha256": "57000d169be5b0ee0cdd8104afaedf306a2244aac745808eee9601f4cc75e644",
+  "head_sha": "fe30f45f0aa78cc02ae16de93e544f5e71bb3aa5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Ops path SoT via aiplat_five_products_paths.sh; old path Index stub only. Verified packaging_surface + OPS file gates; freeze_check live-status evaluation_a3 authorized=True is pre-existing local env, not introduced. pi validate_sample parents[6] fixed as gate dependency."
+  "note": "Follow-up: retarget reports/five-products ./ops links; sync whitepapers. verify_doc_links --all --strict broken=0. Prior ops SoT still holds."
 }
