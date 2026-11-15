@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3499
+total_capabilities: 3500
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -3316,6 +3316,7 @@ scan_hash: 8f9548ec24f4
 | EvaluationWorkbench | harness/evaluation/workbench.py | ✅ | 标准化评估报告 + 阈值门 + 制品持久化 | 已合入 |
 | Eval Protocol v0 | `harness/evaluation/eval_protocol.py` + runs evaluate/auto/latest + skill-evals run/GET + gold + kb + prompt + arena；契约 SSOT `packages/aiplat-evaluation/contracts/`（reports 仅 shim） | ✅ | 统一 `eval.protocol.v0` 交换形；HTTP `extra=allow` + gate 枚举规范化；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval Store v0（EVAL_V1 E2） | `core/apps/eval/service/store.py` + CoreFacade `eval_store_*` + `GET/POST /api/platform/apps/eval/store/*` + schema `eval_store.schema.json` · standalone 诚实面 [`STORE_SURFACE_V0.md`](packages/aiplat-evaluation/docs/a3/STORE_SURFACE_V0.md) | ✅ | charter §5.3 八表 DDL；Central 全量 CRUD；package API=sets/reports/jobs；生成物适用：已接线（apps/eval store API） | 已合入 |
+| Eval Store list envelopes | `apps/eval/api/store_api.py` `GET …/store/{sets,tasks,judges,gates,reports}` | ✅ | 列表端点 `ItemResponse`（`data` 信封，`extra=allow`）；禁止顶层假 `ListResponse`；生成物适用：已接线（Eval Center） | 2026-11-15 |
 | Eval engineering composite v1.2 | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | `text_quality`/`content_safety`/`refusal` report-only 弱代理；Central `legacy_7dim` 仍 deprecated；生成物适用：已接线（package runners） | 本批 |
 | Eval Gold Bootstrap E3（EVAL_V1） | `core/apps/eval/service/gold_bootstrap.py` + `POST …/store/bootstrap-e3` + sources [`EVAL_V1_E3_GOLD_SOURCES.md`](reports/five-products/ops/EVAL_V1_E3_GOLD_SOURCES.md) | ✅ | ≥15 可跑金标 + solo_reviewer 复核队列；不报 κ / 不锁 v0；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval Judge v1 + Calibration E4（EVAL_V1） | `core/apps/eval/service/judge_v1.py` + `POST …/store/calibrate-e4` + schema `eval_calibration.schema.json` | ✅ | deterministic match_only judge；k=3 / ECE / bias 报告；`accuracy_claim=false`；生成物适用：已接线（apps/eval） | 已合入 |
@@ -4412,7 +4413,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 177 | 1 | 178 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 582 | 0 | 582 |
+| 评估系统 | 583 | 0 | 583 |
 | MCP 协议 | 11 | 0 | 11 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4444,7 +4445,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3488** | **11** | **3499** |
+| **总计** | **3489** | **11** | **3500** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

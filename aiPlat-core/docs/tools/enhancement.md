@@ -4,6 +4,9 @@ doc_type: Reference
 
 # 工具系统增强（As-Is 对齐 + To-Be 规划）
 
+> **C2 消歧**：本文是 core 子仓 **As-Is 对齐 + 证据索引**（对照现网注册与抽样证据）。  
+> 根仓更长的 **设计草案** 见 [`docs/reference/tools/enhancement.md`](../../../docs/reference/tools/enhancement.md)——**同主题异职，勿合并正文**；冲突时以代码为准。
+>
 > 扩展工具类型与增强权限控制，构建更强大的 Agent 执行能力
 
 ---

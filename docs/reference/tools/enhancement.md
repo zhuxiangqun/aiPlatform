@@ -4,6 +4,9 @@ doc_type: Reference
 
 # 工具系统增强设计
 
+> **C2 消歧**：本文是根仓 **设计向 To-Be 草案**（目标形态 / 权限与 Hook 规划）。  
+> 子仓 **As-Is 对齐 + 证据索引** 见 [`aiPlat-core/docs/tools/enhancement.md`](../../../aiPlat-core/docs/tools/enhancement.md)——**同主题异职，勿合并正文**；实现以代码与 CAPABILITIES 为准。
+
 ## 概述
 
 本文档描述如何增强 aiPlat-core 的工具系统，新增多种工具类型并实现权限控制。

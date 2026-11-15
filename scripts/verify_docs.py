@@ -19,7 +19,7 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Set
 
 REPO_ROOT = Path(__file__).parent.parent.absolute()
 DOCS_ROOT = REPO_ROOT / "docs"
@@ -465,56 +465,88 @@ def check_new_public_api() -> None:
             continue
 
         import re
-        new_symbols = set()
-        for line in diff_lines:
-            if not line.startswith("+"):
-                continue
-            if line.startswith("+++"):
-                continue
-            m = re.match(r'^\+\s*(?:async\s+)?def\s+([a-zA-Z_][a-zA-Z0-9_]*)', line)
-            if m and not m.group(1).startswith("_"):
-                new_symbols.add(m.group(1))
-            m = re.match(r'^\+\s*class\s+([A-Z][a-zA-Z0-9_]*)', line)
-            if m:
-                new_symbols.add(m.group(1))
-            if '@router.' in line:
-                endpoint_match = re.search(r'@router\.(get|post|put|delete|patch)\("([^"]+)"', line)
-                if endpoint_match:
-                    new_symbols.add(f"endpoint:{endpoint_match.group(2)}")
 
+        def _parse_def(line: str) -> Optional[str]:
+            m = re.match(r'^[+-]\s*(?:async\s+)?def\s+([a-zA-Z_][a-zA-Z0-9_]*)', line)
+            if m and not m.group(1).startswith("_"):
+                return m.group(1)
+            return None
+
+        def _parse_class(line: str) -> Optional[str]:
+            m = re.match(r'^[+-]\s*class\s+([A-Z][a-zA-Z0-9_]*)', line)
+            return m.group(1) if m else None
+
+        def _parse_endpoint(line: str) -> Optional[str]:
+            if "@router." not in line:
+                return None
+            m = re.search(r'@router\.(get|post|put|delete|patch)\("([^"]+)"', line)
+            return f"endpoint:{m.group(2)}" if m else None
+
+        added: Set[str] = set()
+        removed: Set[str] = set()
+        for line in diff_lines:
+            if line.startswith("+++") or line.startswith("---"):
+                continue
+            if line.startswith("+"):
+                bucket = added
+            elif line.startswith("-"):
+                bucket = removed
+            else:
+                continue
+            for parser in (_parse_def, _parse_class, _parse_endpoint):
+                sym = parser(line)
+                if sym:
+                    bucket.add(sym)
+
+        # Why: decorator-only edits rewrite the whole @router line; count net-new only.
+        new_symbols = added - removed
         if not new_symbols:
             continue
 
         # Find matching section for this file
         section_hint = ("未知", "")
         for prefix, (sec, name) in section_hints.items():
-            if fpath.startswith(prefix):
+            if fpath.startswith(prefix) or f"/{prefix}" in f"/{fpath}":
                 section_hint = (sec, name)
                 break
+
+        def _endpoint_registered(ep: str) -> bool:
+            """Match bare /sets against CAP rows that use /store/sets or …/store/sets."""
+            if ep in caps_text:
+                return True
+            name = ep.lstrip("/")
+            for mid in ("/store/", "…/store/", ".../store/", "store/"):
+                if f"{mid}{name}" in caps_text:
+                    return True
+            return False
 
         for sym in sorted(new_symbols):
             if sym in ("__init__", "__post_init__", "main", "router", "to_dict", "from_dict",
                         "get_stats", "to_json", "from_json", "validate", "to_select_star"):
                 continue
-            if sym not in caps_text:
-                rel = full_path.relative_to(REPO_ROOT)
-                # Build registration template
-                if sym.startswith("endpoint:"):
-                    ep = sym.replace("endpoint:", "")
-                    template = f'| {ep} | `{rel}` | ✅ | <描述> | 2026-{datetime.now().strftime("%m-%d")} |'
-                else:
-                    template = f'| {sym} | `{rel}` | ✅ | <描述> | 2026-{datetime.now().strftime("%m-%d")} |'
-                msg = (
-                    f"{rel} 新增了 '{sym}' 但未在 CAPABILITIES 中登记 → "
-                    f"请在 §{section_hint[0]} {section_hint[1]} 追加: {template}"
-                )
-                if blocking:
-                    log_error(f"BLOCK: {msg}")
-                else:
-                    log_warning(msg)
-                unregistered += 1
-                if unregistered >= 10:
-                    break
+            registered = sym in caps_text
+            if not registered and sym.startswith("endpoint:"):
+                registered = _endpoint_registered(sym[len("endpoint:"):])
+            if registered:
+                continue
+            rel = full_path.relative_to(REPO_ROOT)
+            # Build registration template
+            if sym.startswith("endpoint:"):
+                ep = sym.replace("endpoint:", "")
+                template = f'| {ep} | `{rel}` | ✅ | <描述> | 2026-{datetime.now().strftime("%m-%d")} |'
+            else:
+                template = f'| {sym} | `{rel}` | ✅ | <描述> | 2026-{datetime.now().strftime("%m-%d")} |'
+            msg = (
+                f"{rel} 新增了 '{sym}' 但未在 CAPABILITIES 中登记 → "
+                f"请在 §{section_hint[0]} {section_hint[1]} 追加: {template}"
+            )
+            if blocking:
+                log_error(f"BLOCK: {msg}")
+            else:
+                log_warning(msg)
+            unregistered += 1
+            if unregistered >= 10:
+                break
 
         if unregistered >= 10:
             break

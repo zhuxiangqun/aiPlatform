@@ -14,7 +14,7 @@ owner: 朱向群
 owner_role: 文档治理组（Documentation Governance）
 approved: 2026-11-11
 effective: 2026-11-11
-last_reviewed: 2026-11-11
+last_reviewed: 2026-11-15
 review_cycle: 90d
 frozen: 2026-11-11
 ---
@@ -24,6 +24,7 @@ frozen: 2026-11-11
 > **状态：Approved，2026-11-11 生效。**
 > 本版定义目标文档结构；当前仓库仍处于迁移期，当前目录结构与目标结构的差异见 §一、§十一。
 > 未完成迁移前，不得声称仓库已符合 v2.4 目标目录。
+> 2026-11-15：§十一映射补「状态」列；§十二验收计数与 `verify_doc_metadata` 对齐（1069）。
 
 ## 零、文档宪法自检（Batch 0）
 
@@ -630,23 +631,26 @@ docs/doc-paths.yaml
 
 ### 11.1 映射
 
-| 当前 | 目标 |
-|---|---|
-| `docs/whitepaper/knowledge-system/...v4.3.1` | `docs/standards/knowledge-system/v4.3.1/` |
-| `docs/knowledge-system.md` | `docs/guides/knowledge/knowledge-system.md` |
-| `docs/contracts/ONTOLOGY_*` | `docs/contracts/knowledge/` 或 `fde/` |
-| `docs/manuals/fde/**` | `docs/guides/fde/**` |
-| `docs/manuals/*.md` | `docs/guides/development|deployment|operations/**` |
-| `docs/architecture/decisions/**` | `docs/decisions/architecture/` |
-| `docs/whitepaper/**` | 规范 → `docs/standards/`；非规范 → `docs/reference/explanatory/`；生成 → `reports/` |
-| `docs/architecture/plans/**` | 保留 `architecture/plans/`（非 canonical） |
-| `docs/reports/**` | 根 `reports/docs-governance/` 或归档 |
-| `docs/products/five-products/modules/**` | `docs/products/five-products/modules/` |
-| `reports/five-products/contracts/**` | `docs/contracts/products/five-products/` |
-| `reports/five-products/plans/**` | `docs/products/five-products/plans/` |
-| `reports/five-products/ops/**` | `reports/products/five-products/ops/` |
-| `packages/*/docs/**` | 保留包内；根 docs 只索引 |
-| `docs/archive/**` | `docs/archive/` 下按类型归档 |
+> **状态列**（2026-11-15 机读）：`done` = 旧「当前」路径已不存在或内容已在目标侧；`open` = 旧路径仍存在、迁移未完；`keep` = 目标即保留现状。
+
+| 原路径（迁移前） | 目标 | 状态 |
+|---|---|---|
+| `docs/whitepaper/knowledge-system/...v4.3.1` | `docs/standards/knowledge-system/v4.3.1/` | done |
+| `docs/knowledge-system.md` | `docs/guides/knowledge/knowledge-system.md` | done |
+| `docs/index.md` | `docs/README.md` | done |
+| `docs/manuals/fde/**` | `docs/guides/fde/**` | done |
+| `docs/manuals/*.md` | `docs/guides/development\|deployment\|operations/**` | done |
+| `docs/whitepaper/**` | 规范 → `docs/standards/`；非规范 → `docs/reference/explanatory/`；生成 → `reports/` | done |
+| `docs/reports/**` | 根 `reports/docs-governance/` 或归档 | done |
+| `reports/five-products/plans/**` | `docs/products/five-products/plans/` | done |
+| `docs/contracts/ONTOLOGY_*` | `docs/contracts/knowledge/` 或 `fde/` | open（部分仍在 `docs/contracts/` 根） |
+| `docs/architecture/decisions/**` | `docs/decisions/architecture/` | open（旧位仍有 3 份 ADR） |
+| `reports/five-products/contracts/**` | `docs/contracts/products/five-products/` | open |
+| `reports/five-products/ops/**` | `reports/products/five-products/ops/` | open |
+| `docs/architecture/plans/**` | 保留 `architecture/plans/`（非 canonical） | keep |
+| `docs/products/five-products/modules/**` | `docs/products/five-products/modules/` | keep |
+| `packages/*/docs/**` | 保留包内；根 docs 只索引 | keep |
+| `docs/archive/**` | `docs/archive/` 下按类型归档 | keep |
 
 ### 11.2 顺序
 
@@ -667,8 +671,8 @@ docs/doc-paths.yaml
 
 ## 十二、验收
 
-- 954 份文档全部有 `doc_type`；
-- canonical 文档有 owner/purpose/scope；
+- **1069** 份带 frontmatter 的文档全部有有效 `doc_type`（验证：`python3 scripts/verify_doc_metadata.py` → `scanned=1069`；计数随仓漂移，以脚本为准）；
+- canonical 文档有 owner/purpose/scope（`authority: canonical` 元数据仍待铺开，见 §十六）；
 - 根 `reports/`、`packages/*/docs` 纳入登记；
 - CI 能阻断维护区断链；
 - 不再出现“只加版本声明就称对齐”；
@@ -680,7 +684,7 @@ docs/doc-paths.yaml
 2. 架构 canonical 的最终 owner；
 3. `reports/` 保留期；
 4. `docs/products` 迁移时间；
-5. 旧 `docs/manuals` 与 `docs/guides` 的合并节奏。
+5. ~~旧 `docs/manuals` 与 `docs/guides` 的合并节奏~~（manuals 顶层已迁完；残留见 §11.1 open 行）。
 
 ## 十四、数字声明治理
 
@@ -718,10 +722,12 @@ docs/doc-paths.yaml
 | # | 问题 | 状态 |
 |---|---|---|
 | 1 | `docs/index.md` 已合并到 `docs/README.md` | 关闭（2026-11-11） |
-| 2 | 954 份文档尚未迁入目标目录 | open |
+| 2 | 文档尚未全部迁入目标目录（计数以 `verify_doc_metadata` 为准，现 ~1069；§11.1 open 行） | open |
 | 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
 | 5 | `reports/` 生命周期仍在迁移 | open |
+| 6 | `authority: canonical` / `doc_id` 几乎未铺开（机器侧仅 DOCUMENT_SYSTEM + known standards） | open |
+| 7 | ADR 仍分挂 `docs/architecture/decisions/` 与 `docs/decisions/architecture/` | open |
 
 ## 十七、文档宪法自检
 

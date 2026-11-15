@@ -6,7 +6,7 @@ doc_type: Architecture
 
 > **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。
 > **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.12** · 2026-10-17
-> **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../guides/knowledge/knowledge-system.md) · [Agent 总览](../agent-system.md)（后端规则以本文为准）
+> **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../guides/knowledge/knowledge-system.md) · [Agent 总览](../reference/agents/agent-system.md)（后端规则以本文为准）
 
 ---
 
