@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T12:22:00+08:00",
+  "reviewed_at": "2026-11-15T12:27:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "af94ba51d6a12fc57f98ac63b77de6f56527ffe2",
-  "diff_sha256": "bc129ab95e70169e8e170747c47bdf5117e9d47d1f1988239f64cd25d6eecf2c",
-  "head_sha": "41911a90ee22f3bee75b68b73206a3b99fd16066",
+  "diff_sha256": "7eb9711585b02803c5aa4ca5a0776b5027cd8d7483d4dd4d09aea53a0e6526a3",
+  "head_sha": "59101152d0d779f11a7b53f4b0f585c4a30e07af",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs governance + ADR + menu WARN + doc_id SoT/standards/contracts + acceptance binding for contracts-guard. Residual: bulk remaining corpus doc_id, reports/ cleanup. Local lock only."
+  "note": "Docs governance closeout: contracts-guard bind + canonical fields for core contracts 02-07. Residual: bulk corpus doc_id, reports/ cleanup. Local lock only."
 }
