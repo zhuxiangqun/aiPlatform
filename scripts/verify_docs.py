@@ -581,20 +581,38 @@ def check_route_validity() -> None:
 
 
 # ── R14: Menu path residual — detect old menu nav patterns (WARN) ──
+# Why: bare「A → B」/ multi-hop process prose floods WARN; only hits that name
+# UI chrome (菜单/侧边栏/管理端/…) before an arrow are actionable residuals.
+_MENU_UI_HINT = re.compile(
+    r"(?:菜单|侧边栏|导航|管理端|工作台|诊断中心|评测中心|知识中心|"
+    r"页面|面板|Tab)\s*[^\n→]{0,24}→"
+)
+
+
 def check_menu_paths() -> None:
-    """Detect old-style menu path patterns (→) in docs that should use stable URLs."""
-    # Know to skip design docs (describe intent, not state)
-    design_dirs = {str(DOCS_ROOT / "design"), str(DOCS_ROOT / "architecture")}
+    """Detect UI/menu navigation prose that should use stable routes (WARN)."""
+    skip_dirs = (
+        DOCS_ROOT / "design",
+        DOCS_ROOT / "architecture",
+        DOCS_ROOT / "archive",
+        DOCS_ROOT / "audit",
+        DOCS_ROOT / "contracts",
+        DOCS_ROOT / "reference" / "research",
+    )
+    skip_files = {DOCS_ROOT / "DOCUMENT_SYSTEM.md"}
     for md_file in DOCS_ROOT.glob("**/*.md"):
-        if "_archive" in str(md_file) or any(str(md_file).startswith(d) for d in design_dirs):
+        if "_archive" in str(md_file) or md_file in skip_files:
+            continue
+        if any(str(md_file).startswith(str(d)) for d in skip_dirs):
             continue
         try:
             text = md_file.read_text(encoding="utf-8")
-            # Detect patterns like "XX → YY → ZZ" or "XX组 → YY页面"
-            menu_patterns = re.findall(r'[A-Z\u4e00-\u9fff][A-Za-z\u4e00-\u9fff ]+ → [A-Za-z\u4e00-\u9fff /]+', text)
-            if menu_patterns:
+            hits = _MENU_UI_HINT.findall(text)
+            if hits:
                 rel = md_file.relative_to(REPO_ROOT)
-                log_warning(f"{rel} 包含菜单导航路径（建议用稳定路由替代）: {menu_patterns[0][:60]}")
+                log_warning(
+                    f"{rel} 包含菜单导航路径（建议用稳定路由替代）: {hits[0][:60]}"
+                )
         except Exception:
             continue
 
