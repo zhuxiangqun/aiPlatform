@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T07:40:00+08:00",
+  "reviewed_at": "2026-11-15T10:39:49+08:00",
   "base_ref": "origin/main",
-  "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "c6782792c7ea9e6a47d4ac6f8bd99c22dbea5fc592ac846a439fe42d32e70d1d",
-  "head_sha": "5459329f8975a20ae3af1cc4c109361b2389b900",
+  "merge_base": "2645d938cdbc136552298dc2329abb1e2c22adaa",
+  "diff_sha256": "cf54f21119e5fb5eba7248f9340ea010face2f8d82b42dc6d7f8215a4eb0c9d8",
+  "head_sha": "509217c8a3c7e0b7fa99481c7f5172d00fce086e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "contracts-guard rule #4: core boundary architecture contract clause-sync for asset SecureScan."
+  "note": "Eval P0/P1: gate enum clamp + ItemResponse envelope + composite v1.2 report-only. P2 staging still blocked on host; A3 ready_to_authorize=false. Local lock only; CI unlock is non-author Approve."
 }
