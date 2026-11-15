@@ -5,7 +5,7 @@ doc_type: Reference
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 2703 capabilities (caps_count) | 2703 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2709 capabilities (caps_count) | 2709 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -140,7 +140,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| mcp-protocol | §十四 MCP 协议 | 8 | MCP REST 端点 |
+| mcp-protocol | §十四 MCP 协议 | 14 | MCP REST 端点 |
 
 ### core/api/routers/memory.py
 
@@ -198,7 +198,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| mcp-protocol | §十四 MCP 协议 | 8 | MCP server lifecycle |
+| mcp-protocol | §十四 MCP 协议 | 14 | MCP server lifecycle |
 
 ### core/harness/coordination/swarm_broker.py
 
@@ -550,7 +550,7 @@ doc_type: Reference
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-management/frontend/src/pages/Diagnostics** — 诊断仪表盘
 
-### §十四 MCP 协议 (8 caps)
+### §十四 MCP 协议 (14 caps)
 
 - **core/apps/mcp/server.py** — MCP server lifecycle
 - **core/api/routers/mcp.py** — MCP REST 端点

@@ -12,6 +12,7 @@ import ExecuteFlowFullscreen from '../../../components/execution/ExecuteFlowFull
 import { RunVerdictBanner, deriveRunVerdict, outputAsText } from '../../../components/execution/runVerdict';
 import AddMcpModal from '../../../components/workspace/AddMcpModal';
 import McpChatCreateModal from '../../../components/workspace/McpChatCreateModal';
+import McpGatedToolsModal from '../../../components/workspace/McpGatedToolsModal';
 import WorkspacePageGuide from '../../../components/workspace/WorkspacePageGuide';
 import EditMcpModal from '../../../components/workspace/EditMcpModal';
 import { toastGateError } from '../../../components/ui';
@@ -39,6 +40,8 @@ const WorkspaceMCP: React.FC = () => {
   const [chatCreateOpen, setChatCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editServer, setEditServer] = useState<McpServer | null>(null);
+  const [gatedOpen, setGatedOpen] = useState(false);
+  const [gatedServer, setGatedServer] = useState<McpServer | null>(null);
   const [autoDiscover, setAutoDiscover] = useState(false);
   const [templateModal, setTemplateModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
@@ -390,10 +393,24 @@ const WorkspaceMCP: React.FC = () => {
       width: 100,
       render: (_: unknown, record: McpServer) => {
         const ui = record.compat?.ui_state;
+        const tier = String(record.compat?.tier || '');
         if (!ui) return <span className="text-xs text-gray-500">—</span>;
         const cls =
           ui === '现在就能用' ? 'text-green-400' : ui === '不能用' ? 'text-red-400' : 'text-amber-400';
-        return <span className={`text-xs ${cls}`} title={record.compat?.tier || ''}>{ui}</span>;
+        return (
+          <div className="flex flex-col gap-0.5 items-start">
+            <span className={`text-xs ${cls}`} title={tier}>{ui}</span>
+            {tier === 'gated' && (
+              <button
+                type="button"
+                className="text-[10px] text-amber-400 hover:underline"
+                onClick={() => { setGatedServer(record); setGatedOpen(true); }}
+              >
+                逐工具确认
+              </button>
+            )}
+          </div>
+        );
       },
     },
     {
@@ -620,6 +637,13 @@ const WorkspaceMCP: React.FC = () => {
         onClose={() => { setEditOpen(false); setAutoDiscover(false); }}
         onSuccess={fetchServers}
         autoDiscover={autoDiscover}
+      />
+
+      <McpGatedToolsModal
+        open={gatedOpen}
+        server={gatedServer}
+        onClose={() => { setGatedOpen(false); setGatedServer(null); }}
+        onDone={fetchServers}
       />
 
       {/* Template Creation Modal */}

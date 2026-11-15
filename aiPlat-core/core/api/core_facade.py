@@ -14024,6 +14024,42 @@ def mcp_asset_compat_finalize(mcp_dir: str, *, source=None, adapt_summary=None, 
     )
 
 
+def mcp_list_gated_tools(mcp_dir: str, *, tool_names=None):
+    """列出 MCP gated 工具确认状态。
+
+    Args:
+        mcp_dir: MCP 目录。
+        tool_names: 可选工具名列表。
+    """
+    from core.apps.mcp.asset_compat import list_mcp_gated_tools
+
+    return list_mcp_gated_tools(mcp_dir, tool_names=tool_names)
+
+
+def mcp_confirm_tool(mcp_dir: str, tool_name: str):
+    """确认单个高风险 MCP 工具（写入 policy.confirmed_tools）。
+
+    Args:
+        mcp_dir: MCP 目录。
+        tool_name: 工具短名。
+    """
+    from core.apps.mcp.asset_compat import confirm_mcp_tool
+
+    return confirm_mcp_tool(mcp_dir, tool_name)
+
+
+def mcp_revoke_tool_confirm(mcp_dir: str, tool_name: str):
+    """撤销单个 MCP 工具确认。
+
+    Args:
+        mcp_dir: MCP 目录。
+        tool_name: 工具短名。
+    """
+    from core.apps.mcp.asset_compat import revoke_mcp_tool_confirm
+
+    return revoke_mcp_tool_confirm(mcp_dir, tool_name)
+
+
 def tool_asset_compat_finalize(tool_py: str, *, source=None, adapt_summary=None, mapped_to=None, mcp_projection=False):
     """Write COMPAT sidecar for a tool .py path (Phase C).
 

@@ -174,9 +174,10 @@ updated: 2026-11-15
 
 | 缺口 | 说明 |
 |------|------|
-| MCP `gated` 个别确认 UI | tier/策略已有；管理端尚无与升格页同级的逐工具确认 |
 | 生产「启用」专用审批流 | 工作区 RBAC + 上架 marketplace；非独立 enable 审批产品 |
 | 运行时试跑 | 仅静态 compile；不执行草稿（安全） |
+
+**已关闭**：MCP `gated` 个别确认 — `policy.confirmed_tools` + `GET/POST …/gated-tools` + 管理端「逐工具确认」模态；确认后注册时清除该工具 `approval_required`（档位仍可为 gated）。
 
 ## 10. 验证入口
 

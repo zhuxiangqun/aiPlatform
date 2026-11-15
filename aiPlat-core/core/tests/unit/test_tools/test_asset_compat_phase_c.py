@@ -119,10 +119,41 @@ def test_mcp_gated_high_risk(tmp_path: Path):
     d = tmp_path / "risky"
     d.mkdir()
     (d / "server.yaml").write_text("name: risky\nenabled: true\ntransport: stdio\n", encoding="utf-8")
-    (d / "policy.yaml").write_text("risk_level: high\napproval_required: true\n", encoding="utf-8")
+    (d / "policy.yaml").write_text(
+        "risk_level: high\napproval_required: true\nallowed_tools:\n- shell_exec\n- read_only\n"
+        "tool_risk:\n  shell_exec: high\n  read_only: low\n",
+        encoding="utf-8",
+    )
     c = finalize_mcp_compat(d, connection_status="connected")
     assert c["tier"] == TIER_GATED
     assert c["schedulable"] is True
+
+    from core.harness.maintenance.asset_compat import (
+        confirm_mcp_tool,
+        list_mcp_gated_tools,
+        revoke_mcp_tool_confirm,
+    )
+
+    st = list_mcp_gated_tools(d)
+    assert st["ok"] is True
+    by_name = {t["name"]: t for t in st["tools"]}
+    assert by_name["shell_exec"]["needs_confirm"] is True
+    # approval_required=true → 低风险工具也需确认，直到个别确认
+    assert by_name["read_only"]["needs_confirm"] is True
+
+    conf = confirm_mcp_tool(d, "shell_exec")
+    assert conf["ok"] is True
+    st2 = list_mcp_gated_tools(d)
+    by2 = {t["name"]: t for t in st2["tools"]}
+    assert by2["shell_exec"]["confirmed"] is True
+    assert by2["shell_exec"]["needs_confirm"] is False
+    assert "shell_exec" in (st2.get("confirmed_tools") or [])
+
+    rev = revoke_mcp_tool_confirm(d, "shell_exec")
+    assert rev["ok"] is True
+    st3 = list_mcp_gated_tools(d)
+    by3 = {t["name"]: t for t in st3["tools"]}
+    assert by3["shell_exec"]["needs_confirm"] is True
 
 
 def test_mcp_fail_open_missing_compat(tmp_path: Path):

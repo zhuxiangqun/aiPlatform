@@ -1013,6 +1013,194 @@ def mark_mcp_connection(
     )
 
 
+def _read_mcp_policy(mcp_dir: Path | str) -> Dict[str, Any]:
+    """读取 ``policy.yaml``；失败返回空 dict。"""
+    root = Path(mcp_dir)
+    py = root / "policy.yaml"
+    if not py.is_file():
+        return {}
+    try:
+        import yaml
+
+        raw = yaml.safe_load(py.read_text(encoding="utf-8")) or {}
+        return raw if isinstance(raw, dict) else {}
+    except Exception:
+        logger.debug("mcp policy.yaml read failed", exc_info=True)
+        return {}
+
+
+def _write_mcp_policy(mcp_dir: Path | str, policy: Dict[str, Any]) -> Path:
+    """写回 ``policy.yaml``（保留既有键）。
+
+    Args:
+        mcp_dir: MCP 目录。
+        policy: 完整策略 dict。
+    """
+    import yaml
+
+    root = Path(mcp_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / "policy.yaml"
+    path.write_text(
+        yaml.safe_dump(policy, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _mcp_confirmed_tools(pol: Dict[str, Any]) -> List[str]:
+    raw = pol.get("confirmed_tools")
+    if not isinstance(raw, list):
+        return []
+    return [str(x).strip() for x in raw if str(x).strip()]
+
+
+def _mcp_tool_needs_confirm(pol: Dict[str, Any], tool_name: str) -> bool:
+    """高风险或全局 approval_required 且未在 confirmed_tools 中 → 需个别确认。"""
+    name = str(tool_name or "").strip()
+    if not name:
+        return False
+    if name in set(_mcp_confirmed_tools(pol)):
+        return False
+    tool_risk = pol.get("tool_risk") if isinstance(pol.get("tool_risk"), dict) else {}
+    r = str(tool_risk.get(name) or pol.get("risk_level") or "medium").strip().lower()
+    if bool(pol.get("approval_required")):
+        return True
+    return r in {"high", "critical"}
+
+
+def list_mcp_gated_tools(
+    mcp_dir: Path | str,
+    *,
+    tool_names: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """列出 MCP 工具的 gated 确认状态（供升格同级 UI）。
+
+    Args:
+        mcp_dir: MCP 目录。
+        tool_names: 可选工具名；缺省从 policy/metadata 缓存推断。
+    """
+    root = Path(mcp_dir)
+    pol = _read_mcp_policy(root)
+    confirmed = _mcp_confirmed_tools(pol)
+    confirmed_set = set(confirmed)
+    names: List[str] = []
+    if tool_names:
+        names = [str(x).strip() for x in tool_names if str(x).strip()]
+    else:
+        for x in pol.get("allowed_tools") or []:
+            s = str(x).strip()
+            if s and s not in names:
+                names.append(s)
+        tr = pol.get("tool_risk") if isinstance(pol.get("tool_risk"), dict) else {}
+        for k in tr.keys():
+            s = str(k).strip()
+            if s and s not in names:
+                names.append(s)
+        try:
+            import yaml
+
+            sy = root / "server.yaml"
+            if sy.is_file():
+                data = yaml.safe_load(sy.read_text(encoding="utf-8")) or {}
+                meta = data.get("metadata") if isinstance(data, dict) else {}
+                if isinstance(meta, dict):
+                    for x in meta.get("last_discovered_tools") or []:
+                        s = str(x).strip()
+                        if s and s not in names:
+                            names.append(s)
+        except Exception:
+            logger.debug("mcp discovered tools read skipped", exc_info=True)
+        for x in confirmed:
+            if x not in names:
+                names.append(x)
+
+    tool_risk = pol.get("tool_risk") if isinstance(pol.get("tool_risk"), dict) else {}
+    tools: List[Dict[str, Any]] = []
+    for name in names:
+        risk = str(tool_risk.get(name) or pol.get("risk_level") or "medium").strip().lower()
+        needs = _mcp_tool_needs_confirm(pol, name)
+        tools.append({
+            "name": name,
+            "risk_level": risk,
+            "confirmed": name in confirmed_set,
+            "needs_confirm": needs,
+            "approval_required_effective": needs,
+        })
+    pending = [t["name"] for t in tools if t["needs_confirm"]]
+    compat = read_mcp_compat(root) or compute_mcp_compat(root)
+    return {
+        "ok": True,
+        "mcp_id": root.name,
+        "tier": compat.get("tier"),
+        "ui_state": compat.get("ui_state"),
+        "schedulable": bool(compat.get("schedulable")),
+        "server_approval_required": bool(pol.get("approval_required")),
+        "server_risk_level": str(pol.get("risk_level") or "").strip().lower() or None,
+        "confirmed_tools": confirmed,
+        "pending_confirm": pending,
+        "tools": tools,
+        "note": "confirmed_tools clears per-tool approval_required at register time; does not change COMPAT tier",
+    }
+
+
+def confirm_mcp_tool(mcp_dir: Path | str, tool_name: str) -> Dict[str, Any]:
+    """将工具加入 ``policy.yaml`` 的 ``confirmed_tools``（个别确认）。
+
+    Args:
+        mcp_dir: MCP 目录。
+        tool_name: 工具短名（非 ``mcp.server.`` 前缀）。
+    """
+    name = str(tool_name or "").strip()
+    # 允许传入完整名 mcp.<server>.<tool> 时取末段
+    if name.startswith("mcp.") and name.count(".") >= 2:
+        name = name.split(".", 2)[-1]
+    if not name:
+        return {"ok": False, "error": "invalid_tool_name"}
+    root = Path(mcp_dir)
+    if not root.is_dir():
+        return {"ok": False, "error": "mcp_dir_missing"}
+    pol = _read_mcp_policy(root)
+    confirmed = _mcp_confirmed_tools(pol)
+    if name not in confirmed:
+        confirmed.append(name)
+    pol["confirmed_tools"] = confirmed
+    _write_mcp_policy(root, pol)
+    return {
+        "ok": True,
+        "tool": name,
+        "confirmed_tools": confirmed,
+        "status": list_mcp_gated_tools(root, tool_names=[name]),
+    }
+
+
+def revoke_mcp_tool_confirm(mcp_dir: Path | str, tool_name: str) -> Dict[str, Any]:
+    """撤销工具个别确认。
+
+    Args:
+        mcp_dir: MCP 目录。
+        tool_name: 工具短名。
+    """
+    name = str(tool_name or "").strip()
+    if name.startswith("mcp.") and name.count(".") >= 2:
+        name = name.split(".", 2)[-1]
+    if not name:
+        return {"ok": False, "error": "invalid_tool_name"}
+    root = Path(mcp_dir)
+    if not root.is_dir():
+        return {"ok": False, "error": "mcp_dir_missing"}
+    pol = _read_mcp_policy(root)
+    confirmed = [x for x in _mcp_confirmed_tools(pol) if x != name]
+    pol["confirmed_tools"] = confirmed
+    _write_mcp_policy(root, pol)
+    return {
+        "ok": True,
+        "tool": name,
+        "confirmed_tools": confirmed,
+        "status": list_mcp_gated_tools(root, tool_names=[name]),
+    }
+
+
 def is_mcp_schedulable(mcp_dir: Path | str) -> bool:
     """is_mcp_schedulable。
 

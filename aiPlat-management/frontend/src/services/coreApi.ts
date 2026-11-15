@@ -877,6 +877,38 @@ export const workspaceMcpApi = {
   deleteServer: async (serverName: string) => {
     return apiClient.delete<{ status: string; name: string }>(`/core/workspace/mcp/servers/${serverName}`);
   },
+
+  listGatedTools: async (serverName: string) => {
+    return apiClient.get<{
+      ok?: boolean;
+      tier?: string;
+      ui_state?: string;
+      pending_confirm?: string[];
+      confirmed_tools?: string[];
+      tools?: Array<{
+        name: string;
+        risk_level?: string;
+        confirmed?: boolean;
+        needs_confirm?: boolean;
+        approval_required_effective?: boolean;
+      }>;
+      note?: string;
+    }>(`/core/workspace/mcp/servers/${encodeURIComponent(serverName)}/gated-tools`);
+  },
+
+  confirmGatedTool: async (serverName: string, toolName: string) => {
+    return apiClient.post<{ ok?: boolean; tool?: string; confirmed_tools?: string[] }>(
+      `/core/workspace/mcp/servers/${encodeURIComponent(serverName)}/gated-tools/${encodeURIComponent(toolName)}/confirm`,
+      {}
+    );
+  },
+
+  revokeGatedTool: async (serverName: string, toolName: string) => {
+    return apiClient.post<{ ok?: boolean; tool?: string; confirmed_tools?: string[] }>(
+      `/core/workspace/mcp/servers/${encodeURIComponent(serverName)}/gated-tools/${encodeURIComponent(toolName)}/revoke`,
+      {}
+    );
+  },
 };
 
 // ==================== Package / Plugin API ====================

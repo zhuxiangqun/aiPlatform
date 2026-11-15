@@ -147,6 +147,10 @@ class MCPManager:
                                 policy_meta["approval_required"] = bool(pol.get("approval_required"))
                             if pol.get("prod_allowed") is not None:
                                 policy_meta["prod_allowed"] = bool(pol.get("prod_allowed"))
+                            if isinstance(pol.get("confirmed_tools"), list):
+                                policy_meta["confirmed_tools"] = [
+                                    str(x).strip() for x in (pol.get("confirmed_tools") or []) if str(x).strip()
+                                ]
                     except Exception:
                         allowed_tools = []
                         policy_meta = {}
@@ -358,11 +362,20 @@ class MCPManager:
             "metadata": {k: v for k, v in (info.metadata or {}).items() if k != "filesystem"},
         }
         server_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
-        pol = {"allowed_tools": info.allowed_tools or []}
+        # 合并既有 policy.yaml，避免 upsert 抹掉 confirmed_tools 等扩展字段
+        pol: Dict[str, Any] = {}
+        if policy_yaml.exists():
+            try:
+                prev = yaml.safe_load(policy_yaml.read_text(encoding="utf-8")) or {}
+                if isinstance(prev, dict):
+                    pol.update(prev)
+            except Exception:
+                pol = {}
+        pol["allowed_tools"] = info.allowed_tools or []
         # persist optional policy extensions if present
         policy_extra = info.metadata.get("policy") if isinstance(info.metadata, dict) else None
         if isinstance(policy_extra, dict):
-            for k in ("risk_level", "tool_risk", "approval_required", "prod_allowed"):
+            for k in ("risk_level", "tool_risk", "approval_required", "prod_allowed", "confirmed_tools"):
                 if k in policy_extra and policy_extra.get(k) is not None:
                     pol[k] = policy_extra.get(k)
         policy_yaml.write_text(yaml.safe_dump(pol, sort_keys=False, allow_unicode=True), encoding="utf-8")
