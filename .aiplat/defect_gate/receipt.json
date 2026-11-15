@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T15:23:34+08:00",
+  "reviewed_at": "2026-11-15T15:49:17+08:00",
   "base_ref": "origin/main",
-  "merge_base": "41bce053dd60823ae9caf10e9d210bb5125c0b49",
-  "diff_sha256": "b5123e07aa8ceb1f477a59a7c1eb4335b27a48718f72acb2b15b9aeb260498e6",
-  "head_sha": "71f6df77690e338217e91ae18915d35424cdeee0",
+  "merge_base": "e284b2146a31972174752cc3ac345a6e6f78c0f7",
+  "diff_sha256": "5d0f38585ae83208946c196f9db1d70ce408b4cb840902a3da050fb837f32aee",
+  "head_sha": "5cc0f27a94f7d86a000ea1ef7f3f4b8f33a0a069",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Archive ADR link depth fix; verify_doc_links --include-archive broken=0."
+  "note": "Contracts migrate to docs/contracts/products/five-products; old path Index stub. verify_doc_links --include-archive broken=0; no shell SoT (unlike ops)."
 }

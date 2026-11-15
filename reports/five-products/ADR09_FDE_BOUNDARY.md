@@ -7,7 +7,7 @@ doc_type: Report
 
 - **状态**：**清单已立** · 2026-10-26 — 授权真源 `ADR09_NEXT_FDE_DECISION.md`  
 - **产品**：FDE（交付验收面）  
-- **对照**：`ADR-01-boundaries-draft.md` · `contracts/delivery-fp-001.md` · Gate3 Phase D（签收绑 `report_id`）  
+- **对照**：`ADR-01-boundaries-draft.md` · `docs/contracts/products/five-products/delivery-fp-001.md` · Gate3 Phase D（签收绑 `report_id`）  
 - **不含**：compose 长驻；本体 / 控制面拆；超边界 E4；新建第二套验收系统；一次大搬仓
 
 ## As-Is（当前）

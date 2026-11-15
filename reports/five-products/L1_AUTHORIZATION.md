@@ -105,7 +105,7 @@ doc_type: Report
 
 1. ~~启动 WP0~~ → **初稿可关闭**（`wp0-inventory.md`）  
 2. ~~并行 WP1~~ → **边界草稿已签**（`wp1-boundary-signoff.md`）  
-3. WP2 草案已起（`contracts/*`）；补齐后提交 **Gate 1**（另批）  
+3. WP2 草案已起（`docs/contracts/products/five-products/*`）；补齐后提交 **Gate 1**（另批）  
 4. **未过 Gate 1 不得排 WP3–WP4**  
 
 产物目录：本目录 `reports/five-products/`（禁止堆回 `docs/research/`）。

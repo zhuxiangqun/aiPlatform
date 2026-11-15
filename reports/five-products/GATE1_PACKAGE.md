@@ -17,7 +17,7 @@ doc_type: Report
 | 4 | WP0 事实清单 | `wp0-inventory.md` |
 | 5 | WP1 边界 | `wp1-boundary-signoff.md` |
 | 6 | ADR-01～04 草稿 | `ADR-0*-*.md` |
-| 7 | 契约矩阵 + 离线 + 分册 | `contracts/` |
+| 7 | 契约矩阵 + 离线 + 分册 | `docs/contracts/products/five-products/` |
 | 8 | WP2 DoD | `wp2-dod-checklist.md` |
 | 9 | 角色 | `ROLES.md` |
 

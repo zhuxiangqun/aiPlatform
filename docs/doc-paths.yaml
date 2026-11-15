@@ -12,6 +12,7 @@ audit: docs/audit
 archive: docs/archive
 reports: reports
 five_products_ops: reports/products/five-products/ops
+five_products_contracts: docs/contracts/products/five-products
 whitepapers: reports/whitepapers
 whitepaper_volumes: reports/whitepapers/volumes
 platform_status_whitepaper: reports/whitepapers/aiplat-platform-status-whitepaper.md

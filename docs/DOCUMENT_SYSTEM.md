@@ -647,7 +647,7 @@ docs/doc-paths.yaml
 | `reports/five-products/plans/**` | `docs/products/five-products/plans/` | done |
 | `docs/contracts/ONTOLOGY_*` | `docs/contracts/knowledge/` 或 `fde/` | done（2026-11-15：正文 → `knowledge/`；根路径留 Index stub） |
 | `docs/architecture/decisions/**` | `docs/decisions/architecture/` | done（正文已迁；旧位留 Index stub） |
-| `reports/five-products/contracts/**` | 暂留 `reports/five-products/contracts/`（landing plan：稳定后再迁；模板/切片仍链此路径） | keep（2026-11-15 澄清；远期可选 `docs/contracts/products/five-products/`） |
+| `reports/five-products/contracts/**` | `docs/contracts/products/five-products/`（旧路径留 Index stub） | done（2026-11-15） |
 | `reports/five-products/ops/**` | `reports/products/five-products/ops/`（`scripts/lib/aiplat_five_products_paths.sh` SoT；旧路径留 Index stub） | done（2026-11-15） |
 | `docs/architecture/plans/**` | 保留 `architecture/plans/`（非 canonical） | keep |
 | `docs/products/five-products/modules/**` | `docs/products/five-products/modules/` | keep |
@@ -724,10 +724,10 @@ docs/doc-paths.yaml
 | # | 问题 | 状态 |
 |---|---|---|
 | 1 | `docs/index.md` 已合并到 `docs/README.md` | 关闭（2026-11-11） |
-| 2 | 文档尚未全部迁入目标目录（计数以 `verify_doc_metadata` 为准，现 ~1078；§11.1） | 关闭（2026-11-15）：可迁项已 done；`ops` → `reports/products/five-products/ops/`；`contracts` 仍 **keep**（见 §11.1） |
+| 2 | 文档尚未全部迁入目标目录（计数以 `verify_doc_metadata` 为准，现 ~1078；§11.1） | 关闭（2026-11-15）：可迁项已 done；`ops` → `reports/products/five-products/ops/`；`contracts` → `docs/contracts/products/five-products/`（见 §11.1） |
 | 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
-| 5 | `reports/` 生命周期仍在迁移 | 关闭（2026-11-15）：round 变更日志 + findings 已入 `_archive/`；`ops` 已迁 `reports/products/five-products/ops/`；`cleanup_reports` undated=0；`contracts` 仍 keep |
+| 5 | `reports/` 生命周期仍在迁移 | 关闭（2026-11-15）：round 变更日志 + findings 已入 `_archive/`；`ops` → `reports/products/five-products/ops/`；`contracts` → `docs/contracts/products/five-products/`；`cleanup_reports` undated=0 |
 | 6 | `authority: canonical` / `doc_id` 铺开 | 部分关闭（2026-11-15）：canonical=15；`docs/**`（非 archive）机读 `doc_id` 已铺满；`reports/` 按生命周期不参与 |
 | 7 | ADR 正文已迁至 `docs/decisions/architecture/`；旧位仅 Index stub | 关闭（2026-11-15） |
 
