@@ -36,3 +36,5 @@ Owner `AUTHORIZE process_split`：政策旗标 **true**。
 - Chart `aiplat.a3_process_split_authorized` **仍为 false**（待独立 staging + live 证据）
 - ≠ 对外宣称「生产已独立」
 - 机器：`evidence/meta_eval/phase3_process_split_authorize.v0.json`
+
+`process_split_authorized: false`

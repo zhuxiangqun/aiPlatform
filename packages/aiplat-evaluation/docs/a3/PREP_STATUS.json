@@ -1,10 +1,8 @@
 {
   "schema_version": "aiplat.evaluation.a3.prep.v0",
   "capability_id": "evaluation",
-  "checked_at": "2026-11-14T14:30:00Z",
-  "process_split_authorized": true,
-  "b4s_staging_scaffold": true,
-  "b4s_staging_unfreeze": "draft_blocked",
+  "checked_at": "2026-11-15T02:18:31Z",
+  "process_split_authorized": false,
   "adr_status": "accepted_conditional",
   "items": {
     "2_chart_skeleton": {
@@ -37,18 +35,12 @@
     },
     "4_local_backup_rollback_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-evaluation/docs/a3/drills/local-rehearsal-20261101T032259Z.json"
+      "detail": "packages/aiplat-evaluation/docs/a3/drills/local-rehearsal-20261101T154509Z.json"
     }
   },
   "auto_prep_green": true,
   "local_rehearsal_green": true,
   "manual_still_required": [
-    "4_backup_restore_rollback_live_drill",
-    "independent_staging_host",
-    "chart_runtime_annotation_flip"
-  ],
-  "process_split_authorize_mode": "owner_policy_override",
-  "process_split_authorized_at": "2026-11-14T22:14:00+08:00",
-  "chart_a3_process_split_authorized": false,
-  "production_independent_claim": false
+    "4_backup_restore_rollback_live_drill"
+  ]
 }

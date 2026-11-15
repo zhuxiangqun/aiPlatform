@@ -51,10 +51,12 @@ assert "accuracy" not in out["metrics"]
 comp = out["scoring"]["composite"]
 assert comp["accuracy_claim"] is False
 assert comp["score"] is not None
-# v1.1: text_quality is report-only smoke; content_safety stays scored
+# v1.2: text_quality + content_safety/refusal are report-only keyword/length smoke
 assert "text_quality" in (comp.get("report_only_metrics") or {})
-assert "content_safety" in comp["scored_metrics"]
+assert "content_safety" in (comp.get("report_only_metrics") or {})
 assert "text_quality" not in (comp.get("scored_metrics") or {})
+assert "content_safety" not in (comp.get("scored_metrics") or {})
+assert (comp.get("policy") or {}).get("composite_version") == "v1.2"
 
 
 stamp = "${STAMP}"

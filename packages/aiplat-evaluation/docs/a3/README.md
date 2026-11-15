@@ -21,8 +21,8 @@ doc_type: Index
 | [`SANDBOX_ISOLATION_V0.md`](./SANDBOX_ISOLATION_V0.md) | Docker `network=none` 诚实钉（≠ 隔离认证） |
 | [`OIDC_MINIMAL_V0.md`](./OIDC_MINIMAL_V0.md) | 本地 JWT + Keycloak profile 最小路径 |
 | [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) | 架构收口 v1：拓扑 + freeze（单挂=1、core eval router 白名单） |
-| [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md) | 进程拆分硬门 |
-| [`PREP_STATUS.json`](./PREP_STATUS.json) | 自动检查结果 |
+| [`P2_STAGING_ROADMAP.md`](./P2_STAGING_ROADMAP.md) | **P2 总览**：P0/P1 后 → staging host → live → authorize |
+| [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md) | 进程拆分硬门 || [`PREP_STATUS.json`](./PREP_STATUS.json) | 自动检查结果 |
 | [`LIVE_DRILL_EVIDENCE.md`](./LIVE_DRILL_EVIDENCE.md) | 生产 live 证据模板 |
 | [`B2L_LOCAL_CLOSEOUT.md`](./B2L_LOCAL_CLOSEOUT.md) | **索引** → [`_archive/B2L_LOCAL_CLOSEOUT.md`](./_archive/B2L_LOCAL_CLOSEOUT.md)（≠ staging authorize） |
 | [`B3L_LOCAL.md`](./B3L_LOCAL.md) | B3-L local_stub 沙箱雏形（无真实隔离） |
@@ -47,7 +47,9 @@ doc_type: Index
 | [`ARENA_BLIND_RUBRIC_V1.md`](./ARENA_BLIND_RUBRIC_V1.md) | Arena 盲评 rubric 冻结稿（A/B/Tie） |
 | [`ARENA_BLIND_PILOT.md`](./ARENA_BLIND_PILOT.md) | **索引** → [`_archive/ARENA_BLIND_PILOT.md`](./_archive/ARENA_BLIND_PILOT.md)（P1b 已收口） |
 | [`ADR_CANONICAL_RUNNERS_V1.md`](./ADR_CANONICAL_RUNNERS_V1.md) | Prompt/KB package runner canonical；legacy core 只读 |
-| [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md) | score/composite 版本与历史兼容（v1.1 text_quality smoke） |
+| [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md) | score/composite 版本与历史兼容（当前 v1.2 弱代理 smoke） |
+| [`STORE_SURFACE_V0.md`](./STORE_SURFACE_V0.md) | standalone store 诚实子集（sets/reports/jobs） |
+| [`G2B_RE_REVIEW_PROCEDURE.md`](./G2B_RE_REVIEW_PROCEDURE.md) | G2b 预注册改判/重审规程 |
 | [`REPORT_COMPARE_V0.md`](./REPORT_COMPARE_V0.md) | P1b 报告对比：同 composite_version 才 comparable |
 | [`EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./EVAL_EVIDENCE_LEVEL_MAP_V1.md) | **索引** → [`_archive/EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./_archive/EVAL_EVIDENCE_LEVEL_MAP_V1.md)（✅ Accepted） |
 | [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md) | **索引** → [`_archive/G2B_ACCURACY_CLOSEOUT.md`](./_archive/G2B_ACCURACY_CLOSEOUT.md)（κ≠accuracy；claim 默认 false） |

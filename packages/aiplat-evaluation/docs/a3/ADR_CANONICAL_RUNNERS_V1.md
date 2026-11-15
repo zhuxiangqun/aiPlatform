@@ -23,7 +23,8 @@ doc_type: Reference
 ## 后果
 
 - Scorecard / Evidence / Gate 文案引用 package runner。  
-- `text_quality` 自本 ADR 起在 package composite 中为 **report-only smoke**（见 composite policy `v1.1`），不得单独触发质量 gate。  
+- `text_quality` 自本 ADR 起在 package composite 中为 **report-only smoke**（见 composite policy `v1.1+`），不得单独触发质量 gate。  
+- `content_safety` / `refusal` 自 **v1.2** 起同为 report-only keyword smoke（弱代理一致化）。  
 - Groundedness：仅在有 gold（expected/context/sources）时进入 metrics；仍为 token-overlap 启发，不得外推为事实认证。  
 - 删除 legacy 需单独变更控制；本 ADR 不强制删代码。
 

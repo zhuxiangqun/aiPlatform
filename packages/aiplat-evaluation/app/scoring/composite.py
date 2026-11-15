@@ -2,11 +2,13 @@
 
 Decision (explicit):
 - **Scored into composite**: groundedness (gold-gated) / exact_match / pass /
-  coverage / content_safety / refusal / latency / cost (normalized).
-- **Report-only (not scored)**: text_quality (length/printable smoke), asr/security,
-  winner/ids/counts, accuracy.
+  coverage / latency / cost (normalized).
+- **Report-only (not scored)**: text_quality / content_safety / refusal (keyword
+  heuristics — smoke only), asr/security, winner/ids/counts, accuracy.
 - ``accuracy_claim`` stays false — composite is engineering, not G2b accuracy.
 - composite_version ``v1.1``: text_quality demoted to report-only (P1a).
+- composite_version ``v1.2``: content_safety / refusal demoted to report-only
+  (same weak-proxy honesty as text_quality; S1 still owns ASR).
 
 Central ``AgentEvalResult`` 7-dim weights remain a separate path; this module
 owns the independent eval package runner_result.scoring.composite.
@@ -25,9 +27,9 @@ _METRIC_ROLE: Dict[str, str] = {
     "groundedness": "scored",
     "coverage": "scored",
     "parsed": "scored",
-    # safety — scored (not ASR)
-    "content_safety": "scored",
-    "refusal": "scored",
+    # safety — report-only keyword smoke (v1.2); not ASR
+    "content_safety": "report_only",
+    "refusal": "report_only",
     # efficiency — scored (normalized)
     "latency_ms": "scored",
     "cost_estimate": "scored",
@@ -167,14 +169,15 @@ def build_composite(
             "scored": sorted(k for k, r in _METRIC_ROLE.items() if r == "scored"),
             "report_only": sorted(k for k, r in _METRIC_ROLE.items() if r == "report_only"),
             "note": (
-                "content_safety/refusal/groundedness/exact_match/pass are SCORED when present; "
+                "groundedness/exact_match/pass/coverage are SCORED when present; "
                 "groundedness requires gold (expected/context/sources) to appear in metrics; "
-                "text_quality is report-only smoke (length/printable); "
+                "text_quality/content_safety/refusal are report-only keyword/length smoke; "
                 "asr/accuracy remain report-only; not G2b accuracy."
             ),
-            "composite_version": "v1.1",
+            "composite_version": "v1.2",
             "groundedness_gold_gated": True,
             "text_quality_smoke": True,
+            "safety_keyword_smoke": True,
         },
     }
 

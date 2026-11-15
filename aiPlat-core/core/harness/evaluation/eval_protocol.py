@@ -23,16 +23,32 @@ _STATUS_MAP = {
     "running": "running",
 }
 
+# Schema enum for report.gate (eval_protocol.schema.json).
+_GATE_ALLOWED = frozenset({"pass", "fail", "warn", "skip"})
+_GATE_MAP = {
+    "ok": "pass",
+    "passed": "pass",
+    "success": "pass",
+    "true": "pass",
+    "1": "pass",
+    "failed": "fail",
+    "error": "fail",
+    "false": "fail",
+    "0": "fail",
+    "warning": "warn",
+    "skipped": "skip",
+}
+
 
 def _as_dict(obj: Any) -> Dict[str, Any]:
     return dict(obj) if isinstance(obj, Mapping) else {}
 
 
 def normalize_eval_status(raw: Any) -> str:
-    """normalize_eval_status。
+    """Normalize status to protocol enum.
 
     Args:
-        raw: raw 参数。
+        raw: 原始 status / pass 标记。
     """
     s = str(raw or "").strip().lower()
     if s in _STATUS_MAP:
@@ -40,6 +56,27 @@ def normalize_eval_status(raw: Any) -> str:
     if s in {"passed", "failed", "skipped", "error", "pending", "running"}:
         return s
     return "error" if s else "pending"
+
+
+def normalize_eval_gate(raw: Any, *, default: str = "skip") -> str:
+    """Normalize report.gate to schema enum pass|fail|warn|skip.
+
+    Why: adapters used to pass through arbitrary gate strings; schema enum
+    would otherwise be bypassed via additionalProperties on the parent object.
+
+    Args:
+        raw: 原始 gate / pass 标记。
+        default: 无法识别时的回退（须为允许枚举之一）。
+    """
+    if isinstance(raw, bool):
+        return "pass" if raw else "fail"
+    s = str(raw or "").strip().lower()
+    if s in _GATE_ALLOWED:
+        return s
+    if s in _GATE_MAP:
+        return _GATE_MAP[s]
+    fallback = default if default in _GATE_ALLOWED else "skip"
+    return fallback
 
 
 def to_eval_protocol_v0(
@@ -93,9 +130,11 @@ def to_eval_protocol_v0(
         out["metrics"] = dict(metrics)
     if report:
         rep = dict(report)
-        # Map common gate/pass fields
+        # Map common gate/pass fields, then clamp to schema enum.
         if "gate" not in rep and "pass" in rep:
             rep["gate"] = "pass" if bool(rep.get("pass")) else "fail"
+        if "gate" in rep:
+            rep["gate"] = normalize_eval_gate(rep.get("gate"))
         out["report"] = rep
     if evidence_refs:
         out["evidence_refs"] = [str(x) for x in evidence_refs if x is not None]
@@ -152,10 +191,12 @@ def from_run_evaluation(
         report={
             "summary": str(rep.get("summary") or rep.get("reason") or "")[:500],
             "score": rep.get("score"),
-            "gate": (
-                "pass"
-                if bool(rep.get("pass"))
-                else ("fail" if "pass" in rep else str(rep.get("gate") or "skip"))
+            "gate": normalize_eval_gate(
+                (
+                    "pass"
+                    if bool(rep.get("pass"))
+                    else ("fail" if "pass" in rep else rep.get("gate") or "skip")
+                )
             ),
         },
         evidence_refs=evidence_refs or None,

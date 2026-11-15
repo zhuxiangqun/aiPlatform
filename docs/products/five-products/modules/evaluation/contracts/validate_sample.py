@@ -6,8 +6,10 @@ import runpy
 import sys
 from pathlib import Path
 
+# __file__ = docs/products/five-products/modules/evaluation/contracts/validate_sample.py
+# parents[6] = repo root (parents[5] wrongly resolves under docs/).
 _PKG = (
-    Path(__file__).resolve().parents[5]
+    Path(__file__).resolve().parents[6]
     / "packages"
     / "aiplat-evaluation"
     / "contracts"

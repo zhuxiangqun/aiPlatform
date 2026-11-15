@@ -222,7 +222,8 @@ async def get_skill_eval_run(run_id: str):
     from core.api.core_facade import skill_eval_get_run
 
     try:
-        return await skill_eval_get_run(run_id=run_id)
+        out = await skill_eval_get_run(run_id=run_id)
+        return {"data": out if isinstance(out, dict) else {"value": out}}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 
@@ -239,9 +240,10 @@ async def list_skill_eval_results(run_id: str, limit: int = 200, offset: int = 0
     from core.api.core_facade import skill_eval_list_results
 
     try:
-        return await skill_eval_list_results(
+        out = await skill_eval_list_results(
             run_id=run_id, limit=limit, offset=offset
         )
+        return {"data": out if isinstance(out, dict) else {"value": out}}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 

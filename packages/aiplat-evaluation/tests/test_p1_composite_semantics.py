@@ -8,8 +8,8 @@ from app.worker.runners import execute_runner
 
 def test_metric_roles_explicit():
     assert metric_role("text_quality") == "report_only"  # P1a smoke
-    assert metric_role("content_safety") == "scored"
-    assert metric_role("refusal") == "scored"
+    assert metric_role("content_safety") == "report_only"  # v1.2 weak proxy
+    assert metric_role("refusal") == "report_only"  # v1.2 weak proxy
     assert metric_role("groundedness") == "scored"
     assert metric_role("asr") == "report_only"
     assert metric_role("accuracy") == "report_only"
@@ -29,10 +29,12 @@ def test_composite_scores_p1_dims_not_asr():
     assert block["accuracy_claim"] is False
     assert block["score"] is not None
     assert block["score"] >= 99.0
-    assert block["policy"]["composite_version"] == "v1.1"
+    assert block["policy"]["composite_version"] == "v1.2"
     assert "asr" in block["report_only_metrics"]
     assert "text_quality" in block["report_only_metrics"]
-    assert "content_safety" in block["scored_metrics"]
+    assert "content_safety" in block["report_only_metrics"]
+    assert "refusal" in block["report_only_metrics"]
+    assert "content_safety" not in block["scored_metrics"]
     assert "groundedness" in block["scored_metrics"]
 
 
@@ -43,6 +45,7 @@ def test_scoring_block_embeds_composite():
     assert block["accuracy_claim"] is False
     assert block["composite"]["schema"] == "eval.scoring.composite.v1"
     assert block["metric_roles"]["exact_match"] == "scored"
+    assert block["metric_roles"]["content_safety"] == "report_only"
     assert block["metric_roles"]["asr"] == "report_only"
     assert block["families"]["accuracy"] == {}
 
@@ -65,7 +68,7 @@ def test_prompt_eval_runner_has_composite():
     assert comp["accuracy_claim"] is False
     assert comp["score"] is not None
     assert "text_quality" in comp["report_only_metrics"]
-    assert "content_safety" in comp["scored_metrics"]
+    assert "content_safety" in comp["report_only_metrics"]
     meta = out["metrics"].get("meta") or {}
     assert meta.get("runner_id") == "prompt_eval"
-    assert meta.get("composite_version") == "v1.1"
+    assert meta.get("composite_version") == "v1.2"

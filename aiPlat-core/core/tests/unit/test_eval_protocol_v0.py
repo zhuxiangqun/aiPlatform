@@ -8,6 +8,7 @@ from core.harness.evaluation.eval_protocol import (
     SCHEMA_VERSION,
     from_run_evaluation,
     from_skill_eval_run,
+    normalize_eval_gate,
     to_eval_protocol_v0,
     to_evaluation_healthz,
 )
@@ -45,6 +46,26 @@ def test_from_run_evaluation_maps_pass():
     assert p["task"]["target_ref"] == "run-1"
     assert p["status"] == "passed"
     assert p["report"]["gate"] == "pass"
+
+
+def test_normalize_eval_gate_clamps_to_schema_enum():
+    assert normalize_eval_gate("PASS") == "pass"
+    assert normalize_eval_gate("failed") == "fail"
+    assert normalize_eval_gate("warning") == "warn"
+    assert normalize_eval_gate("weird-value") == "skip"
+    assert normalize_eval_gate(True) == "pass"
+    p = from_run_evaluation(
+        run_id="run-2",
+        report={"gate": "PASSED", "score": 0.5, "summary": "x"},
+    )
+    assert p["report"]["gate"] == "pass"
+    p2 = to_eval_protocol_v0(
+        task_id="t",
+        target_kind="agent",
+        target_ref="a",
+        report={"gate": "unknown-gate", "summary": "y"},
+    )
+    assert p2["report"]["gate"] == "skip"
 
 
 def test_from_skill_eval_run():

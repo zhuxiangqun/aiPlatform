@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T07:40:00+08:00",
+  "reviewed_at": "2026-11-15T10:43:41+08:00",
   "base_ref": "origin/main",
-  "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "c6782792c7ea9e6a47d4ac6f8bd99c22dbea5fc592ac846a439fe42d32e70d1d",
-  "head_sha": "5459329f8975a20ae3af1cc4c109361b2389b900",
+  "merge_base": "2645d938cdbc136552298dc2329abb1e2c22adaa",
+  "diff_sha256": "2191fb2304b0c6e52f35af99bd6a317763f357898a3704900a2a37a431faeb41",
+  "head_sha": "84c6691d26edfc4ce6995535dbd9f5ec9bf3c72b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "contracts-guard rule #4: core boundary architecture contract clause-sync for asset SecureScan."
+  "note": "contracts-guard clause-sync for eval_protocol harness touch; no product semantics change. Local lock only."
 }

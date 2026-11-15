@@ -31,14 +31,20 @@ from pathlib import Path
 from app.scoring.composite import build_composite, metric_role
 from core.harness.evaluation.eval_types import AgentEvalResult
 
-assert metric_role("text_quality") == "scored"
-assert metric_role("content_safety") == "scored"
-assert metric_role("refusal") == "scored"
+assert metric_role("text_quality") == "report_only"
+assert metric_role("content_safety") == "report_only"  # v1.2 weak-proxy honesty
+assert metric_role("refusal") == "report_only"
+assert metric_role("groundedness") == "scored"
 assert metric_role("asr") == "report_only"
-comp = build_composite({"text_quality": 1.0, "content_safety": 1.0, "asr": 0.0})
+comp = build_composite(
+    {"text_quality": 1.0, "content_safety": 1.0, "groundedness": 1.0, "asr": 0.0}
+)
 assert comp["accuracy_claim"] is False
 assert comp["score"] is not None
+assert (comp.get("policy") or {}).get("composite_version") == "v1.2"
 assert "asr" in (comp.get("report_only_metrics") or {})
+assert "content_safety" in (comp.get("report_only_metrics") or {})
+assert "text_quality" in (comp.get("report_only_metrics") or {})
 h = AgentEvalResult(agent_id="gate").scoring_honesty()
 assert h["composite_policy"] == "legacy_7dim"
 assert h["deprecated_for_engineering"] is True

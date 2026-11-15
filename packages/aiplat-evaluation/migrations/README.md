@@ -19,3 +19,5 @@ bash packages/aiplat-evaluation/scripts/migrate_local.sh
 | `0005_eval_jobs_result.sql` | `result_json` runner collect output |
 
 **Honesty**: local engineering only; `process_split_authorized=false`; no production data migration.
+
+**API surface**: DDL covers all charter entities; package Python CRUD is **sets + reports** (+ `eval_jobs.payload_json`, no `payload_uri` yet). See [`../docs/a3/STORE_SURFACE_V0.md`](../docs/a3/STORE_SURFACE_V0.md).
