@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3531
+total_capabilities: 3535
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1206,6 +1206,7 @@ scan_hash: 8f9548ec24f4
 | **抽取 confirm→ActionRegistry（G2 收口）** | `platform_action:knowledge:confirm_extraction` + `CoreFacade.run_confirm_extraction` + `POST …/extractions/{id}/confirm` | ✅ | confirm 经 L1（`kb:write`/`admin`/`*`）；HTTP scopes→permissions；证据 `phase2-g2-evidence.md`。**未宣称** ObjectSet/N24 | 已合入 |
 | **Wiki 读模型硬门（v4.3.1 试点）** | `harness/knowledge/wiki_read_model.py` + `POST/DELETE /wiki/pages` | ✅ | `AIPLAT_WIKI_READ_MODEL_COLLECTIONS` 配置名单内人工写 → 403 `wiki_is_read_model`（默认空=不拦）；`AIPLAT_WIKI_ALLOW_MANUAL_WRITE` 破窗记 WARNING；编译器 `write_page` 不经门。证据 `phase2-wiki-readonly-evidence.md`。**未宣称** N5 全量/全局禁写/ObjectSet | 本批 |
 | **FunctionContract（v4.3.1 W5 最小切片）** | `harness/infrastructure/function_contract.py` + `function_registry.py` + `builtin_functions.py` + `POST …/fde/functions/{id}/invoke` | ✅ | 附录 C.3 合同；`side_effects=true`→`side_effects_forbidden`；`required_permissions` L1（对齐 Action）；YAML seed `workspace_seeds/functions` + `AIPLAT_HOME/functions`；CoreFacade `invoke_function`。证据 `phase2-function-contract-evidence.md`。**未宣称** ObjectSet/Interface/副作用分级/N24 | 本批 |
+| **ObjectSet（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/object_set.py` + `POST …/fde/object-sets/query` | ✅ | 附录 E.1/E.2；`tenant_id` 必填且 SQL 前置；`kb:read` L1；ObjectType 经 `*-object-types.json`；查询不写 Fact。证据 `phase2-objectset-evidence.md`。**未宣称** SDK/Link/Interface/字段 ACL/N24 | 本批 |
 | **Interface（v4.3.1 W5 最小切片）** | `harness/infrastructure/interface_contract.py` + `interface_registry.py` + `POST …/fde/interfaces/{id}/check-compatibility` | ✅ | 附录 C.4；`check_compatibility`：implementers 声明 + properties/links/actions 覆盖；`kb:read` L1；YAML seed `workspace_seeds/interfaces`；CoreFacade `check_interface_compatibility`。证据 `phase2-interface-evidence.md`。**未宣称** ObjectSet/SDK/publish 流水线/N24 | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
@@ -1317,6 +1318,9 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| query_object_set_route | `aiPlat-platform/apps/fde/api/object_set_routes.py` | ✅ | 自动同步 | 已合入 |
+| query_object_set | `core/harness/knowledge_pipeline/object_set.py` | ✅ | 自动同步 | 已合入 |
+| ObjectSetRequest | `core/harness/knowledge_pipeline/object_set.py` | ✅ | 自动同步 | 已合入 |
 | read_model_collections | `core/harness/knowledge/wiki_read_model.py` | ✅ | 自动同步 | 已合入 |
 | wiki_manual_write_break_glass | `core/harness/knowledge/wiki_read_model.py` | ✅ | 自动同步 | 已合入 |
 | WikiManualWriteDenied | `core/harness/knowledge/wiki_read_model.py` | ✅ | 自动同步 | 已合入 |
@@ -4431,9 +4435,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 639 | 1 | 640 |
+| Harness 执行引擎 | 640 | 1 | 641 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 417 | 9 | 426 |
+| 知识引擎（本体） | 420 | 9 | 429 |
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4476,7 +4480,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3520** | **11** | **3531** |
+| **总计** | **3524** | **11** | **3535** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2740
+total_capabilities: 2744
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2818,12 +2818,12 @@ domains:
         reason: "L6 记忆指标展示"
 
   # ══════════════════════════════════════════════════════════════
-  # 三、知识引擎（本体）(278 caps)
+  # 三、知识引擎（本体）(282 caps)
   # ══════════════════════════════════════════════════════════════
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 278
+    caps_count: 282
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3086,6 +3086,22 @@ domains:
         module: aiPlat-platform/apps/fde/api/function_routes.py
         type: function
         signature: "POST /fde/functions/{function_id}/invoke — scopes→permissions"
+      - symbol: "ObjectSetRequest"
+        module: core/harness/knowledge_pipeline/object_set.py
+        type: class
+        signature: "Appendix E.1 ObjectSet request (object_type/filter/sort/limit)"
+      - symbol: "query_object_set"
+        module: core/harness/knowledge_pipeline/object_set.py
+        type: function
+        signature: "Read-only ObjectSet; tenant_id required; kb:read L1; no fact writes"
+      - symbol: "query_object_set"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: ObjectSet query (tenant_id, permissions)"
+      - symbol: "query_object_set_route"
+        module: aiPlat-platform/apps/fde/api/object_set_routes.py
+        type: function
+        signature: "POST /fde/object-sets/query — tenant_id + scopes→permissions"
       - symbol: "k1_confirm_extraction"
         module: core/api/core_facade.py
         type: function
