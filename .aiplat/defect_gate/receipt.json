@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T13:40:00+08:00",
+  "reviewed_at": "2026-11-15T13:42:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "f338b88645a71832e2d1c325082ac9f09f1cede1",
-  "diff_sha256": "5c728ec3367a214cbb0fc81ba144e377c903d4015eae4acdab24f8350aa1426e",
-  "head_sha": "74e5e6db79ef0659729a2af41c013c4179515090",
+  "diff_sha256": "5d12cbafea8c746c344fec9e4db669e7cd887511a1861f2857de8a810f5834ac",
+  "head_sha": "325398681ed5ea074015b997f2e3ff6e77d49290",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Residuals-2: security evidence dates + ONTOLOGY→knowledge. Residual: five-products contracts/ops path migration, audit_changelog* root. Local lock only."
+  "note": "PR743: evidence dates + ONTOLOGY move + five-products path keep clarification. Residual: audit_changelog* root optional. Local lock only."
 }
