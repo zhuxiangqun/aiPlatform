@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T11:45:30+08:00",
+  "reviewed_at": "2026-11-15T12:12:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "af94ba51d6a12fc57f98ac63b77de6f56527ffe2",
-  "diff_sha256": "71774f174155dfb6ef2feb595a78b13d2bd50f598667fc50b7436c17b4f93ca3",
-  "head_sha": "c68c0a7763b282f8b4a9b332f7e078463d9c7299",
+  "diff_sha256": "907b9572ad3e84b9613cf5b6f2cffabd714c94f7b09924e15664c0f4915a95fc",
+  "head_sha": "68252cfad45a2c0cd046a951f73d42191342a0b0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs governance + ADR + menu WARN tighten (218→~15 UI hits). Residual: doc_id rollout, reports/ cleanup. Local lock only."
+  "note": "Docs governance closeout + ADR + menu WARN + SoT doc_id seed (canonical=9). Residual: bulk doc_id, reports/ cleanup. Local lock only."
 }
