@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T23:05:00+08:00",
+  "reviewed_at": "2026-11-15T23:09:19+08:00",
   "base_ref": "origin/main",
   "merge_base": "2c5aebbd6b9968087058069168e12a65ac82f68c",
-  "diff_sha256": "75bf92034f12ad472409bd4e6db599b7ae3123eaeb66e75b96d95e88cb8c3090",
-  "head_sha": "68bd51d33ff2057ff79a380009656bd1afc77648",
+  "diff_sha256": "793d3846c1c53ad21015be276fb2bf1be56feec239168cbc6e90b3b30efce393",
+  "head_sha": "5656bcc2bf62182d43622a2d0925a40487d326a5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Confirm HTTP sole path→ActionRegistry; anon empty scopes still defaults kb:write (Identity align). Wiki-readonly out of scope."
+  "note": "Docs line-count sync only; confirm\u2192ActionRegistry path unchanged. Wiki-readonly out of scope."
 }
