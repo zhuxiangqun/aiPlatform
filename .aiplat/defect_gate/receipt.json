@@ -6,7 +6,7 @@
   "base_ref": "origin/main",
   "merge_base": "af94ba51d6a12fc57f98ac63b77de6f56527ffe2",
   "diff_sha256": "b0a7642407e5dfaed3649e33ed3a46bdf91c5ed5eefe009a309e860f6cc29a99",
-  "head_sha": "7b786a4c20f758fd92aeb8fb4ed7edd8b73122b6",
+  "head_sha": "6f27386b3efd97a88abfa47ab48bb6389588134d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
