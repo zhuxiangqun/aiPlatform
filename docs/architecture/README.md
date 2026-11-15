@@ -30,8 +30,9 @@ doc_type: Index
 
 | 文档 | 说明 |
 |------|------|
-| [decisions/evaluator_calibration.md](decisions/evaluator_calibration.md) | 评估器校准 |
-| [decisions/tot_reserve.md](decisions/tot_reserve.md) | ToT 保留决策 |
+| [evaluator_calibration.md](../decisions/architecture/evaluator_calibration.md) | 评估器校准（ADR） |
+| [tot_reserve.md](../decisions/architecture/tot_reserve.md) | ToT 保留决策（ADR） |
+| [ADR-EVAL-CAPABILITY-CASE-PACK-V1.md](../decisions/architecture/ADR-EVAL-CAPABILITY-CASE-PACK-V1.md) | Eval Case Pack ADR |
 
 ## 规划与路线图（非现状）
 

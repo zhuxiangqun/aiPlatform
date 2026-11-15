@@ -644,7 +644,7 @@ docs/doc-paths.yaml
 | `docs/reports/**` | 根 `reports/docs-governance/` 或归档 | done |
 | `reports/five-products/plans/**` | `docs/products/five-products/plans/` | done |
 | `docs/contracts/ONTOLOGY_*` | `docs/contracts/knowledge/` 或 `fde/` | open（部分仍在 `docs/contracts/` 根） |
-| `docs/architecture/decisions/**` | `docs/decisions/architecture/` | open（旧位仍有 3 份 ADR） |
+| `docs/architecture/decisions/**` | `docs/decisions/architecture/` | done（正文已迁；旧位留 Index stub） |
 | `reports/five-products/contracts/**` | `docs/contracts/products/five-products/` | open |
 | `reports/five-products/ops/**` | `reports/products/five-products/ops/` | open |
 | `docs/architecture/plans/**` | 保留 `architecture/plans/`（非 canonical） | keep |
@@ -727,7 +727,7 @@ docs/doc-paths.yaml
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
 | 5 | `reports/` 生命周期仍在迁移 | open |
 | 6 | `authority: canonical` / `doc_id` 几乎未铺开（机器侧仅 DOCUMENT_SYSTEM + known standards） | open |
-| 7 | ADR 仍分挂 `docs/architecture/decisions/` 与 `docs/decisions/architecture/` | open |
+| 7 | ADR 正文已迁至 `docs/decisions/architecture/`；旧位仅 Index stub | 关闭（2026-11-15） |
 
 ## 十七、文档宪法自检
 
