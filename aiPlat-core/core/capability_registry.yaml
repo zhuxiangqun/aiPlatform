@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2695
+total_capabilities: 2709
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -5257,7 +5257,7 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 205
+    caps_count: 213
     provides:
       - symbol: "finalize_skill_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -5275,6 +5275,10 @@ domains:
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "discard_handler_draft(skill_dir)→{ok,discarded}; keep prompt path"
+      - symbol: "dry_run_handler_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "dry_run_handler_draft(skill_dir)→{ok,compile_ok,has_execute}; static only"
       - symbol: "skill_preview_handler_draft"
         module: aiPlat-core/core/api/core_facade.py
         type: function
@@ -5283,6 +5287,34 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
         type: function
         signature: "skill_discard_handler_draft(skill_dir)→dict; CoreFacade §5.4"
+      - symbol: "skill_dry_run_handler_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "skill_dry_run_handler_draft(skill_dir)→dict; CoreFacade §5.4"
+      - symbol: "preview_tool_impl_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "preview_tool_impl_draft(tool_py)→{ok,draft_summary,risk_hints}; Tool §5.4"
+      - symbol: "discard_tool_impl_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "discard_tool_impl_draft(tool_py)→{ok,discarded}"
+      - symbol: "dry_run_tool_impl_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "dry_run_tool_impl_draft(tool_py)→{ok,compile_ok,has_tool_def}; static"
+      - symbol: "tool_preview_impl_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_preview_impl_draft(tool_py)→dict"
+      - symbol: "tool_discard_impl_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_discard_impl_draft(tool_py)→dict"
+      - symbol: "tool_dry_run_impl_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_dry_run_impl_draft(tool_py)→dict"
       - symbol: "is_skill_schedulable"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
@@ -9710,7 +9742,7 @@ domains:
   mcp-protocol:
     section: "十四"
     section_name: "MCP 协议"
-    caps_count: 8
+    caps_count: 14
     provides:
       - symbol: "finalize_mcp_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -9732,6 +9764,30 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
         type: function
         signature: "mcp_asset_compat_finalize(mcp_dir,*,source,adapt_summary,connection_status)→dict"
+      - symbol: "mcp_list_gated_tools"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "mcp_list_gated_tools(mcp_dir,*,tool_names)→dict"
+      - symbol: "mcp_confirm_tool"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "mcp_confirm_tool(mcp_dir,tool_name)→dict"
+      - symbol: "mcp_revoke_tool_confirm"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "mcp_revoke_tool_confirm(mcp_dir,tool_name)→dict"
+      - symbol: "list_mcp_gated_tools"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "list_mcp_gated_tools(mcp_dir,*,tool_names)→dict"
+      - symbol: "confirm_mcp_tool"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "confirm_mcp_tool(mcp_dir,tool_name)→dict"
+      - symbol: "revoke_mcp_tool_confirm"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "revoke_mcp_tool_confirm(mcp_dir,tool_name)→dict"
       - symbol: "MCPRuntime"
         type: "class"
         signature: "sync_from_servers, search_and_register"

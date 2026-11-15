@@ -13950,15 +13950,16 @@ def skill_asset_compat_finalize(skill_dir: str, *, source=None, adapt_summary=No
     return finalize_skill_compat(skill_dir, source=source, adapt_summary=adapt_summary)
 
 
-def skill_enable_handler_draft(skill_dir: str):
+def skill_enable_handler_draft(skill_dir: str, *, permissions=None):
     """Promote handler.py.draft → handler.py after human enable (Phase A).
 
     Args:
-        skill_dir: skill_dir 参数。
+        skill_dir: Skill 目录路径。
+        permissions: 可选权限列表（升格页改权限后写入 frontmatter）。
     """
     from core.apps.skills.asset_compat import enable_handler_draft
 
-    return enable_handler_draft(skill_dir)
+    return enable_handler_draft(skill_dir, permissions=permissions)
 
 
 def skill_preview_handler_draft(skill_dir: str):
@@ -13981,6 +13982,17 @@ def skill_discard_handler_draft(skill_dir: str):
     from core.apps.skills.asset_compat import discard_handler_draft
 
     return discard_handler_draft(skill_dir)
+
+
+def skill_dry_run_handler_draft(skill_dir: str):
+    """§5.4 可选试跑：静态 compile + execute 检查（不执行代码）。
+
+    Args:
+        skill_dir: Skill 目录路径。
+    """
+    from core.apps.skills.asset_compat import dry_run_handler_draft
+
+    return dry_run_handler_draft(skill_dir)
 
 
 def agent_asset_compat_finalize(agent_dir: str, *, source=None, adapt_summary=None):
@@ -14010,6 +14022,42 @@ def mcp_asset_compat_finalize(mcp_dir: str, *, source=None, adapt_summary=None, 
     return finalize_mcp_compat(
         mcp_dir, source=source, adapt_summary=adapt_summary, connection_status=connection_status
     )
+
+
+def mcp_list_gated_tools(mcp_dir: str, *, tool_names=None):
+    """列出 MCP gated 工具确认状态。
+
+    Args:
+        mcp_dir: MCP 目录。
+        tool_names: 可选工具名列表。
+    """
+    from core.apps.mcp.asset_compat import list_mcp_gated_tools
+
+    return list_mcp_gated_tools(mcp_dir, tool_names=tool_names)
+
+
+def mcp_confirm_tool(mcp_dir: str, tool_name: str):
+    """确认单个高风险 MCP 工具（写入 policy.confirmed_tools）。
+
+    Args:
+        mcp_dir: MCP 目录。
+        tool_name: 工具短名。
+    """
+    from core.apps.mcp.asset_compat import confirm_mcp_tool
+
+    return confirm_mcp_tool(mcp_dir, tool_name)
+
+
+def mcp_revoke_tool_confirm(mcp_dir: str, tool_name: str):
+    """撤销单个 MCP 工具确认。
+
+    Args:
+        mcp_dir: MCP 目录。
+        tool_name: 工具短名。
+    """
+    from core.apps.mcp.asset_compat import revoke_mcp_tool_confirm
+
+    return revoke_mcp_tool_confirm(mcp_dir, tool_name)
 
 
 def tool_asset_compat_finalize(tool_py: str, *, source=None, adapt_summary=None, mapped_to=None, mcp_projection=False):
@@ -14042,6 +14090,39 @@ def tool_enable_impl_draft(tool_py: str):
     from core.apps.tools.asset_compat import enable_tool_impl_draft
 
     return enable_tool_impl_draft(tool_py)
+
+
+def tool_preview_impl_draft(tool_py: str):
+    """Tool 实现草稿升格预览（§5.4 对齐）。
+
+    Args:
+        tool_py: 目标 ``{name}.py`` 路径。
+    """
+    from core.apps.tools.asset_compat import preview_tool_impl_draft
+
+    return preview_tool_impl_draft(tool_py)
+
+
+def tool_discard_impl_draft(tool_py: str):
+    """丢弃 Tool 实现草稿。
+
+    Args:
+        tool_py: 目标 ``{name}.py`` 路径。
+    """
+    from core.apps.tools.asset_compat import discard_tool_impl_draft
+
+    return discard_tool_impl_draft(tool_py)
+
+
+def tool_dry_run_impl_draft(tool_py: str):
+    """Tool 草稿静态试跑（compile + TOOL_DEF）。
+
+    Args:
+        tool_py: 目标 ``{name}.py`` 路径。
+    """
+    from core.apps.tools.asset_compat import dry_run_tool_impl_draft
+
+    return dry_run_tool_impl_draft(tool_py)
 
 
 def wrap_asset_install_report(

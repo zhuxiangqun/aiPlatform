@@ -237,6 +237,7 @@ class MCPRuntime:
         risk_level = str(pol.get("risk_level") or ("high" if transport == "stdio" else "medium"))
         tool_risk = pol.get("tool_risk") if isinstance(pol.get("tool_risk"), dict) else {}
         approval_required = pol.get("approval_required")
+        confirmed_tools = pol.get("confirmed_tools") if isinstance(pol.get("confirmed_tools"), list) else []
         allowed_tools = getattr(s, "allowed_tools", None) or []
         meta = getattr(s, "metadata", {}) or {}
         server_description = meta.get("description", "") if isinstance(meta, dict) else ""
@@ -250,6 +251,7 @@ class MCPRuntime:
             risk_level=risk_level,
             tool_risk=tool_risk,
             approval_required=approval_required if approval_required is not None else None,
+            confirmed_tools=confirmed_tools,
             server_description=server_description,
         )
         after = set(tool_registry.list_tools())

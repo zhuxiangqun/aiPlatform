@@ -1662,15 +1662,47 @@ async def workspace_skills_discard_handler_draft(
     return {"status": "ok", "skill_id": str(skill_id), **res}
 
 
+@router.post("/workspace/skills/{skill_id}/handler-draft-dry-run", response_model=Dict[str, Any])
+async def workspace_skills_handler_draft_dry_run(
+    skill_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)
+):
+    """§5.4 可选试跑：静态 compile + execute 签名（不执行任意代码）。
+
+    Args:
+        skill_id: Skill ID。
+        http_request: FastAPI Request。
+        rt: 内核运行时。
+    """
+    from core.api.core_facade import skill_dry_run_handler_draft
+
+    ws_mgr = _ws_skill_manager(rt)
+    if not ws_mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload={},
+        action="read",
+        resource_type="skill",
+        resource_id=str(skill_id),
+    )
+    if deny:
+        return deny
+    skill_dir = await _async_workspace_skill_dir(ws_mgr, skill_id)
+    res = skill_dry_run_handler_draft(skill_dir)
+    return {"status": "ok" if res.get("ok") else "dry_run_failed", "skill_id": str(skill_id), **res}
+
+
 @router.post("/workspace/skills/{skill_id}/enable-handler-draft", response_model=Dict[str, Any])
 async def workspace_skills_enable_handler_draft(
-    skill_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)
+    skill_id: str,
+    http_request: Request,
+    rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
     """Phase A §5.4: promote handler.py.draft → handler.py after human confirm.
 
     Args:
         skill_id: Skill ID。
-        http_request: http_request 参数。
+        http_request: http_request 参数（body 可选 ``{permissions: [...]}``）。
         rt: rt 参数。
     """
     from core.api.core_facade import skill_enable_handler_draft
@@ -1679,9 +1711,17 @@ async def workspace_skills_enable_handler_draft(
     if not ws_mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
 
+    body: Dict[str, Any] = {}
+    try:
+        raw = await http_request.json()
+        if isinstance(raw, dict):
+            body = raw
+    except Exception:
+        body = {}
+
     deny = await rbac_guard(
         http_request=http_request,
-        payload={},
+        payload=body,
         action="update",
         resource_type="skill",
         resource_id=str(skill_id),
@@ -1690,8 +1730,15 @@ async def workspace_skills_enable_handler_draft(
         return deny
 
     skill_dir = await _async_workspace_skill_dir(ws_mgr, skill_id)
+    perms = None
+    if "permissions" in body:
+        raw_p = body.get("permissions")
+        if isinstance(raw_p, list):
+            perms = [str(x) for x in raw_p]
+        elif raw_p is None:
+            perms = []
 
-    res = skill_enable_handler_draft(str(skill_dir))
+    res = skill_enable_handler_draft(str(skill_dir), permissions=perms)
     if not res.get("ok"):
         raise HTTPException(status_code=409, detail=res)
     try:
@@ -1711,6 +1758,7 @@ async def workspace_skills_enable_handler_draft(
                     "schedulable": res.get("schedulable"),
                     "draft_sha256": res.get("draft_sha256"),
                     "permissions_at_enable": res.get("permissions_at_enable") or [],
+                    "permissions_updated": bool(res.get("permissions_updated")),
                 },
             )
     except Exception as e:

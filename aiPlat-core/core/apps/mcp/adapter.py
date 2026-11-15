@@ -179,6 +179,7 @@ class MCPClientWrapper:
         risk_level: str = "medium",
         tool_risk: Optional[Dict[str, str]] = None,
         approval_required: Optional[bool] = None,
+        confirmed_tools: Optional[list] = None,
         disabled_reason: Optional[str] = None,
         server_description: str = "",
     ) -> int:
@@ -191,6 +192,7 @@ class MCPClientWrapper:
             risk_level: risk_level 参数。
             tool_risk: tool_risk 参数。
             approval_required: approval_required 参数。
+            confirmed_tools: 管理端个别确认过的工具；确认后不再要求调用审批。
             disabled_reason: disabled_reason 参数。
             server_description: server_description 参数。
         """
@@ -199,6 +201,7 @@ class MCPClientWrapper:
             raise ValueError(f"MCP server '{server_name}' not found")
             
         allow = set([str(x) for x in (allowed_tools or []) if str(x).strip()])
+        confirmed = set([str(x) for x in (confirmed_tools or []) if str(x).strip()])
         tool_risk = tool_risk or {}
         count = 0
         for tool_name, mcp_tool in client.tools.items():
@@ -206,6 +209,9 @@ class MCPClientWrapper:
                 continue
             r = str(tool_risk.get(tool_name) or risk_level or "medium")
             need_approval = bool(approval_required) if approval_required is not None else (r in {"high", "critical"})
+            # 为什么：gated 个别确认写在 policy.confirmed_tools，确认后放行该工具调用审批
+            if tool_name in confirmed:
+                need_approval = False
             adapter = MCPToolAdapter(
                 mcp_tool,
                 client,

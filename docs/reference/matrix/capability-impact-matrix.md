@@ -5,7 +5,7 @@ doc_type: Reference
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 2695 capabilities (caps_count) | 2695 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2709 capabilities (caps_count) | 2709 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -140,7 +140,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| mcp-protocol | §十四 MCP 协议 | 8 | MCP REST 端点 |
+| mcp-protocol | §十四 MCP 协议 | 14 | MCP REST 端点 |
 
 ### core/api/routers/memory.py
 
@@ -198,7 +198,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| mcp-protocol | §十四 MCP 协议 | 8 | MCP server lifecycle |
+| mcp-protocol | §十四 MCP 协议 | 14 | MCP server lifecycle |
 
 ### core/harness/coordination/swarm_broker.py
 
@@ -241,7 +241,7 @@ doc_type: Reference
 | orchestration-system | §二十四 编排系统 | 4 | Pipeline 编排 |
 | agent-system | §五 Agent 系统 | 333 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
-| skill-system | §六 Skill 系统 | 205 | HITL → PolicyGate + ApprovalGate |
+| skill-system | §六 Skill 系统 | 213 | HITL → PolicyGate + ApprovalGate |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
 | evaluation-system | §十三 评估系统 | 644 | Pipeline 质量评分 |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
@@ -361,7 +361,7 @@ doc_type: Reference
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | model-infrastructure | §九 模型基础设施 | 7 | sys_llm_generate → best_model_for_purpose |
-| skill-system | §六 Skill 系统 | 205 | _guard_messages → PII masking |
+| skill-system | §六 Skill 系统 | 213 | _guard_messages → PII masking |
 | runtime-intervention | §十九 运行时干预 | 66 | 最佳模型选择 |
 
 ### core/harness/syscalls/moa_executor.py
@@ -382,14 +382,14 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 205 | sys_skill_call → PolicyGate |
+| skill-system | §六 Skill 系统 | 213 | sys_skill_call → PolicyGate |
 
 ### core/harness/syscalls/tool.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | observability | §八 可观测性 | 23 | 工具调用审计 |
-| skill-system | §六 Skill 系统 | 205 | sys_tool_call → PolicyGate.check_tool |
+| skill-system | §六 Skill 系统 | 213 | sys_tool_call → PolicyGate.check_tool |
 | tool-ecosystem | §十六 工具生态 | 72 | sys_tool_call → ToolRegistry |
 
 ### core/harness/utils/model_injection.py
@@ -550,7 +550,7 @@ doc_type: Reference
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-management/frontend/src/pages/Diagnostics** — 诊断仪表盘
 
-### §十四 MCP 协议 (8 caps)
+### §十四 MCP 协议 (14 caps)
 
 - **core/apps/mcp/server.py** — MCP server lifecycle
 - **core/api/routers/mcp.py** — MCP REST 端点
@@ -630,7 +630,7 @@ doc_type: Reference
 - **core/harness/syscalls/llm.py** — 最佳模型选择
 - **core/api/routers/diagnostics.py** — adoption-metrics 附带 Howl 干预次数
 
-### §六 Skill 系统 (205 caps)
+### §六 Skill 系统 (213 caps)
 
 - **core/harness/syscalls/tool.py** — sys_tool_call → PolicyGate.check_tool
 - **core/harness/syscalls/skill.py** — sys_skill_call → PolicyGate

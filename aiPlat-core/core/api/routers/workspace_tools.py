@@ -11,7 +11,7 @@ import logging
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -557,9 +557,75 @@ async def update_workspace_tool_source(tool_name: str, request: dict):
     return {"status": "updated", "name": tool_name}
 
 
+def _workspace_tool_paths(tool_name: str) -> Tuple[Path, Path, Path]:
+    """Resolve tools dir + ``{name}.py`` / ``{name}.py.draft`` paths.
+
+    Args:
+        tool_name: Tool 名。
+    """
+    tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))
+    tool_file = tools_dir / f"{tool_name}.py"
+    draft_file = tools_dir / f"{tool_name}.py.draft"
+    return tools_dir, tool_file, draft_file
+
+
+@router.get("/workspace/tools/{tool_name}/impl-draft-preview", response_model=Dict[str, Any])
+async def workspace_tools_impl_draft_preview(tool_name: str, http_request: Request):
+    """§5.4 对齐：Tool 实现草稿预览。
+
+    Args:
+        tool_name: Tool 名。
+        http_request: FastAPI Request。
+    """
+    from core.api.core_facade import tool_preview_impl_draft
+
+    _tools_dir, tool_file, draft_file = _workspace_tool_paths(tool_name)
+    if not draft_file.is_file():
+        raise HTTPException(status_code=404, detail="no_impl_draft")
+    res = tool_preview_impl_draft(str(tool_file))
+    return {"status": "ok" if res.get("ok") else "no_draft", "name": tool_name, **res}
+
+
+@router.post("/workspace/tools/{tool_name}/impl-draft-dry-run", response_model=Dict[str, Any])
+async def workspace_tools_impl_draft_dry_run(tool_name: str, http_request: Request):
+    """Tool 草稿静态试跑（compile + TOOL_DEF）。
+
+    Args:
+        tool_name: Tool 名。
+        http_request: FastAPI Request。
+    """
+    from core.api.core_facade import tool_dry_run_impl_draft
+
+    _tools_dir, tool_file, draft_file = _workspace_tool_paths(tool_name)
+    if not draft_file.is_file():
+        raise HTTPException(status_code=404, detail="no_impl_draft")
+    res = tool_dry_run_impl_draft(str(tool_file))
+    return {"status": "ok" if res.get("ok") else "dry_run_failed", "name": tool_name, **res}
+
+
+@router.post("/workspace/tools/{tool_name}/discard-impl-draft", response_model=Dict[str, Any])
+async def workspace_tools_discard_impl_draft(tool_name: str, http_request: Request):
+    """丢弃 Tool 实现草稿。
+
+    Args:
+        tool_name: Tool 名。
+        http_request: FastAPI Request。
+    """
+    from core.api.core_facade import tool_discard_impl_draft
+
+    _tools_dir, tool_file, draft_file = _workspace_tool_paths(tool_name)
+    if not draft_file.is_file():
+        raise HTTPException(status_code=404, detail="no_impl_draft")
+    res = tool_discard_impl_draft(str(tool_file))
+    if not res.get("ok"):
+        raise HTTPException(status_code=409, detail=res)
+    logging.getLogger(__name__).info("workspace_tool_discard_impl_draft name=%s", tool_name)
+    return {"status": "ok", "name": tool_name, **res}
+
+
 @router.post("/workspace/tools/{tool_name}/enable-impl-draft", response_model=Dict[str, Any])
 async def workspace_tools_enable_impl_draft(tool_name: str, http_request: Request):
-    """Phase C: promote {name}.py.draft → {name}.py and register.
+    """Phase C: promote {name}.py.draft → {name}.py and register（须先预览确认）。
 
     Args:
         tool_name: tool_name 参数。
@@ -567,9 +633,7 @@ async def workspace_tools_enable_impl_draft(tool_name: str, http_request: Reques
     """
     from core.api.core_facade import tool_enable_impl_draft
 
-    tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))
-    tool_file = tools_dir / f"{tool_name}.py"
-    draft_file = tools_dir / f"{tool_name}.py.draft"
+    _tools_dir, tool_file, draft_file = _workspace_tool_paths(tool_name)
     if not draft_file.is_file():
         raise HTTPException(status_code=404, detail="no_impl_draft")
 
@@ -613,7 +677,12 @@ async def workspace_tools_enable_impl_draft(tool_name: str, http_request: Reques
     logging.getLogger(__name__).info(
         "workspace_tool_enable_impl_draft name=%s tier=%s", tool_name, res.get("tier")
     )
-    return {"status": "enabled", "name": tool_name, "compat": res.get("compat") or res, **{k: res.get(k) for k in ("ok", "tier", "schedulable") if k in res}}
+    return {
+        "status": "enabled",
+        "name": tool_name,
+        "compat": res.get("compat") or res,
+        **{k: res.get(k) for k in ("ok", "tier", "schedulable", "draft_sha256") if k in res},
+    }
 
 
 @router.post("/workspace/tools/{tool_name}/reload", response_model=Dict[str, Any])

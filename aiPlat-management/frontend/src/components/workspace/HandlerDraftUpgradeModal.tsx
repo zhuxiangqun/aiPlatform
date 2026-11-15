@@ -1,6 +1,6 @@
-/** §5.4 升格页：草稿做什么 / 权限清单 / 与 SOP 差异 → 确认启用或丢弃。 */
+/** §5.4 升格页：草稿做什么 / 权限（可改）/ SOP 差异 / 可选试跑 → 确认启用或丢弃。 */
 import React, { useEffect, useState } from 'react';
-import { Button, Modal, toast } from '../ui';
+import { Button, Input, Modal, toast } from '../ui';
 import { toastGateError, workspaceSkillApi, type Skill } from '../../services';
 
 type Preview = {
@@ -26,10 +26,14 @@ const HandlerDraftUpgradeModal: React.FC<Props> = ({ open, skill, onClose, onDon
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [permText, setPermText] = useState('');
+  const [dryNote, setDryNote] = useState('');
 
   useEffect(() => {
     if (!open || !skill?.id) {
       setPreview(null);
+      setPermText('');
+      setDryNote('');
       return;
     }
     let cancelled = false;
@@ -37,7 +41,10 @@ const HandlerDraftUpgradeModal: React.FC<Props> = ({ open, skill, onClose, onDon
     (async () => {
       try {
         const r = await workspaceSkillApi.handlerDraftPreview(skill.id);
-        if (!cancelled) setPreview(r as Preview);
+        if (!cancelled) {
+          setPreview(r as Preview);
+          setPermText(((r as Preview).permissions || []).join(', '));
+        }
       } catch (e: any) {
         if (!cancelled) {
           toastGateError(e, '加载升格预览失败');
@@ -52,11 +59,36 @@ const HandlerDraftUpgradeModal: React.FC<Props> = ({ open, skill, onClose, onDon
     };
   }, [open, skill?.id]);
 
+  const parsePerms = (): string[] =>
+    permText
+      .split(/[,，\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  const dryRun = async () => {
+    if (!skill?.id) return;
+    setActing(true);
+    try {
+      const r = await workspaceSkillApi.handlerDraftDryRun(skill.id);
+      if (r.ok) {
+        setDryNote(`试跑通过：compile_ok=${r.compile_ok} · execute=${r.has_execute}`);
+        toast.success('静态试跑通过（未执行代码）');
+      } else {
+        setDryNote(`试跑未通过：${r.error || (r.errors || []).join('; ') || 'failed'}`);
+        toast.error('静态试跑未通过');
+      }
+    } catch (e: any) {
+      toastGateError(e, '试跑失败');
+    } finally {
+      setActing(false);
+    }
+  };
+
   const enable = async () => {
     if (!skill?.id) return;
     setActing(true);
     try {
-      await workspaceSkillApi.enableHandlerDraft(skill.id);
+      await workspaceSkillApi.enableHandlerDraft(skill.id, { permissions: parsePerms() });
       toast.success(`已启用 handler：${skill.name || skill.id}`);
       onDone();
       onClose();
@@ -83,7 +115,6 @@ const HandlerDraftUpgradeModal: React.FC<Props> = ({ open, skill, onClose, onDon
   };
 
   const title = skill ? `启用 handler 草稿 · ${skill.name || skill.id}` : '启用 handler 草稿';
-  const perms = preview?.permissions || [];
   const diffs = preview?.sop_vs_draft || [];
 
   return (
@@ -96,6 +127,9 @@ const HandlerDraftUpgradeModal: React.FC<Props> = ({ open, skill, onClose, onDon
         <div className="flex items-center justify-end gap-2">
           <Button variant="secondary" onClick={onClose} disabled={acting}>
             取消
+          </Button>
+          <Button variant="secondary" onClick={dryRun} loading={acting} disabled={loading || !preview?.ok}>
+            静态试跑
           </Button>
           <Button variant="secondary" onClick={discard} loading={acting} disabled={loading || !preview?.ok}>
             丢弃草稿（继续 prompt）
@@ -128,21 +162,13 @@ const HandlerDraftUpgradeModal: React.FC<Props> = ({ open, skill, onClose, onDon
           </section>
 
           <section>
-            <h3 className="text-gray-200 font-medium mb-1">权限清单</h3>
-            {perms.length === 0 ? (
-              <p className="text-gray-500">SKILL.md 未声明 permissions</p>
-            ) : (
-              <ul className="flex flex-wrap gap-1.5">
-                {perms.map((p) => (
-                  <li
-                    key={p}
-                    className="px-2 py-0.5 rounded border border-dark-border text-xs text-amber-300/90"
-                  >
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <h3 className="text-gray-200 font-medium mb-1">权限清单（可改）</h3>
+            <Input
+              value={permText}
+              onChange={(e) => setPermText(e.target.value)}
+              placeholder="逗号分隔，如 filesystem:read, network"
+            />
+            <p className="text-xs text-gray-600 mt-1">启用时写入 SKILL.md frontmatter permissions</p>
             {preview.execution_type ? (
               <p className="text-xs text-gray-600 mt-1">当前 execution_type · {preview.execution_type}</p>
             ) : null}
@@ -160,10 +186,11 @@ const HandlerDraftUpgradeModal: React.FC<Props> = ({ open, skill, onClose, onDon
                 {preview.sop_excerpt}
               </pre>
             ) : null}
+            {dryNote ? <p className="text-xs text-teal-400/90 mt-2">{dryNote}</p> : null}
           </section>
 
           <p className="text-xs text-gray-600">
-            启用会写入 handler.py 并记审计（操作者 / 草稿指纹 / 权限快照）。生产上架仍走市场审核，不挡工作区试用。
+            静态试跑仅 compile + execute 签名，不执行任意代码。启用会写入 handler.py 并记审计。生产上架仍走市场审核。
           </p>
         </div>
       )}

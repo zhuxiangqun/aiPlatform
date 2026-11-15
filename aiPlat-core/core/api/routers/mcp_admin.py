@@ -381,6 +381,113 @@ async def get_workspace_mcp_server(server_name: str):
     }
 
 
+def _mcp_server_dir(mgr, server) -> Optional[Path]:
+    """Resolve on-disk MCP dir from manager + server info."""
+    try:
+        from core.apps.mcp.asset_compat import resolve_mcp_dir, resolve_mcp_dir_from_info
+
+        d = resolve_mcp_dir_from_info(server)
+        if d is not None:
+            return Path(d)
+        d2 = resolve_mcp_dir(str(getattr(server, "name", "") or ""))
+        return Path(d2) if d2 is not None else None
+    except Exception:
+        fs = (getattr(server, "metadata", None) or {}).get("filesystem") if isinstance(getattr(server, "metadata", None), dict) else None
+        if isinstance(fs, dict) and fs.get("server_dir"):
+            return Path(str(fs["server_dir"]))
+        return None
+
+
+@router.get("/workspace/mcp/servers/{server_name}/gated-tools", response_model=Dict[str, Any])
+async def list_workspace_mcp_gated_tools(server_name: str):
+    """列出 MCP 高风险工具的个别确认状态（gated UI）。
+
+    Args:
+        server_name: MCP server 名。
+    """
+    from core.api.core_facade import mcp_list_gated_tools
+
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    s = mgr.get_server(server_name)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    mdir = _mcp_server_dir(mgr, s)
+    if mdir is None:
+        raise HTTPException(status_code=404, detail="MCP server directory not found")
+    extra_names: List[str] = []
+    md = getattr(s, "metadata", None) or {}
+    if isinstance(md, dict):
+        for x in md.get("last_discovered_tools") or []:
+            n = str(x).strip()
+            if n:
+                extra_names.append(n)
+    for x in getattr(s, "allowed_tools", None) or []:
+        n = str(x).strip()
+        if n:
+            extra_names.append(n)
+    return mcp_list_gated_tools(str(mdir), tool_names=extra_names or None)
+
+
+@router.post("/workspace/mcp/servers/{server_name}/gated-tools/{tool_name}/confirm", response_model=Dict[str, Any])
+async def confirm_workspace_mcp_gated_tool(server_name: str, tool_name: str):
+    """确认单个高风险 MCP 工具（写入 policy.confirmed_tools）。
+
+    Args:
+        server_name: MCP server 名。
+        tool_name: 工具短名。
+    """
+    from core.api.core_facade import mcp_confirm_tool
+
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    s = mgr.get_server(server_name)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    mdir = _mcp_server_dir(mgr, s)
+    if mdir is None:
+        raise HTTPException(status_code=404, detail="MCP server directory not found")
+    res = mcp_confirm_tool(str(mdir), tool_name)
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error") or "confirm_failed")
+    try:
+        mgr.reload()
+    except Exception:
+        logger.debug("mcp reload after confirm skipped", exc_info=True)
+    return res
+
+
+@router.post("/workspace/mcp/servers/{server_name}/gated-tools/{tool_name}/revoke", response_model=Dict[str, Any])
+async def revoke_workspace_mcp_gated_tool(server_name: str, tool_name: str):
+    """撤销单个 MCP 工具确认。
+
+    Args:
+        server_name: MCP server 名。
+        tool_name: 工具短名。
+    """
+    from core.api.core_facade import mcp_revoke_tool_confirm
+
+    mgr = _workspace_mcp_manager()
+    if not mgr:
+        raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
+    s = mgr.get_server(server_name)
+    if not s:
+        raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")
+    mdir = _mcp_server_dir(mgr, s)
+    if mdir is None:
+        raise HTTPException(status_code=404, detail="MCP server directory not found")
+    res = mcp_revoke_tool_confirm(str(mdir), tool_name)
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error") or "revoke_failed")
+    try:
+        mgr.reload()
+    except Exception:
+        logger.debug("mcp reload after revoke skipped", exc_info=True)
+    return res
+
+
 @router.get("/workspace/mcp/servers/{server_name}/policy-check", response_model=Dict[str, Any])
 async def check_workspace_mcp_server_policy(server_name: str):
     """Check whether a workspace MCP server can be enabled/discovered under current policy.
