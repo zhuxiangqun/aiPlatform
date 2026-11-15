@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: SLO_29A0CC
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat Service Level Objectives
 
 > **Status**: Draft | **Version**: 1.0 | **Owner**: aiPlat Architecture Team

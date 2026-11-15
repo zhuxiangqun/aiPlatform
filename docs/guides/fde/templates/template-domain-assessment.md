@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: TEMPLATE_DOMAIN_ASSESSMENT_F68CE6
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 域评估报告 — {{客户名称}}
 
 > v2.7: maturity levels auto-computed by domain_maturity.py (6-dimension scoring)

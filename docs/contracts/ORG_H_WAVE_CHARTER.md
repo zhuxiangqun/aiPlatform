@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_H_WAVE_CHARTER_FC6B44
+last_reviewed: 2026-11-15
 ---
-
 # H 波 Charter — 闸门效率与签收加速（不是放权，不是 M4）
 
 | 字段 | 值 |

@@ -1,5 +1,15 @@
 ---
 doc_type: Architecture
+doc_id: LAYER_BOUNDARY_STANDARD
+status: active
+authority: canonical
+purpose: 裁决模块归属争议时的层边界判断标准
+scope_in: Core↔Platform、Platform↔App、App↔外部归属判定
+scope_out: 层内详细实现契约（见 core contracts）
+owner: 朱向群
+version: 1.0
+last_reviewed: 2026-11-15
+review_cycle: 90d
 ---
 
 # aiPlatform 层边界判断标准

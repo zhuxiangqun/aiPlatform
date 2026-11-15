@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_DECISION_RECORD_F7F598
+last_reviewed: 2026-11-15
 ---
-
 # FDE 工作台演进 — 决策记录
 
 | 字段 | 值 |

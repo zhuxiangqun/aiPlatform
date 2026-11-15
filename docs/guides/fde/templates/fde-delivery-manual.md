@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: FDE_DELIVERY_MANUAL_A161DA
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 标准交付手册 — {{PROJECT_NAME}}
 
 > ← [文档导航](../README.md)

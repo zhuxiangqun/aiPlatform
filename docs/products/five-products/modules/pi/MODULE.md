@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: MODULE_EB10BB
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # MODULE.md — Pi Runtime
 
 > Status: **D1 Thin + D2 admin** · D3 **Accepted（有条件）** · Owner: platform · Deploy unit: **Edge**

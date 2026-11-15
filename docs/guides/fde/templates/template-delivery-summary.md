@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: TEMPLATE_DELIVERY_SUMMARY_8AECA0
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 交付总结报告 — {{项目名称}}
 
 > ← [返回实施流程](../05-fde-implementation-process.md)

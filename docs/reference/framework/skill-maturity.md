@@ -6,13 +6,12 @@ domain: aiplat-core
 version: 1.0.0
 date: 2026-07-06
 status: published
-refs:
-  - docs/reference/framework/aiplat-autonomy-framework.md
-  - docs/reference/framework/aiplat-complete-assessment.md
-  - docs/reference/framework/hermes-comparison.md
+refs: 
 tags: [framework, skill-maturity, L1-L5, 5-level]
+doc_id: SKILL_MATURITY_65D3B1
+last_reviewed: 2026-11-15
+authority: supporting
 ---
-
 # aiPlat Skill 构建成熟度框架 v1.0
 
 > **框架四**：评估 Skill 体系的工程化成熟度。与 8 轴自主性正交——一个 L5 自主性的系统，Skill 构建成熟度可能只有 L3。

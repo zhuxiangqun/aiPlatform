@@ -1,10 +1,22 @@
 ---
+doc_id: CORE_ACCEPTANCE_CONTRACT
 doc_type: Contract
+status: active
+authority: canonical
+purpose: 将 Core 契约转为可自动化验收点并作为 contracts-guard binding 锚点
+scope_in: aiPlat-core 契约变更的 CI 验收绑定与核心回归清单
+scope_out: platform/management 专属验收与业务产品 UAT
+owner: 朱向群
+version: 1.0
+last_reviewed: 2026-11-15
+review_cycle: 90d
 ---
 
 # Acceptance Contract（验收/回归契约）
 
 本文件将 Contracts 转成“可自动化验收点”，用于像 Claude Code 一样把系统行为锁死在 CI 里。
+
+> 2026-11-15：`01-architecture-contract.md` 及本目录其余契约仅补文档治理 frontmatter（`doc_id`/`authority` 等），**不改变**任何 MUST 行为验收点；本条满足 `contracts-guard` binding / `clause-sync`。
 
 ## 0. Definition of Done（MUST）
 

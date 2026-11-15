@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: GETTING_STARTED_8E7BF8
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 快速入门指南
 
 > 15 分钟从零启动到运行第一个 Agent。

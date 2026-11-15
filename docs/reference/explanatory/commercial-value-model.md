@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: COMMERCIAL_VALUE_MODEL_4BE450
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 商业价值模型（权威专稿）
 
 > 供商业价值白皮书节选。不编造客户授权 ROI%、人天单价或伙伴分成。  

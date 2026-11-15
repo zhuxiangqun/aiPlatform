@@ -1,5 +1,12 @@
 ---
 doc_type: Index
+doc_id: EVAL_PRODUCT_INDEX
+status: active
+authority: index
+purpose: Evaluation 产品模块入口
+owner: 朱向群
+version: 1.0
+last_reviewed: 2026-11-15
 ---
 
 # Evaluation 产品 — 现行文档入口

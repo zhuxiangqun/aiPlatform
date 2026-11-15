@@ -10,23 +10,16 @@ accuracy_claim: false
 security_certification: false
 last_updated: 2026-11-09
 audience: method_owner / engineering / independent_qa / security
-related:
-  - docs/architecture/plans/eval-capability-driven-case-pack.md
-  - docs/architecture/plans/eval-agent-impl-mode-exam.md
-  - packages/aiplat-evaluation/docs/a3/S1_LIVE.md
-  - aiPlat-core/workspace_seeds/eval/agent_capability/cases/safety.json
-changelog_v1_1:
-  - "P0: T05 split text vs execute; T05-exec/T06 → L3"
-  - "P0: T12 isolation_admitted / probed / covered"
-  - "P0: per-threat-family n + CI; no macro ASR for L5"
-  - "P1: T13 runtime = workspace + allowlist; process_split ≠ supply-chain前置"
-  - "P1: judge校准 / G2b-S 可执行协议"
-  - "P1: severity / remediation / claim_revocation"
-  - "P2: explicit out-of-scope + L5 未测族自动列出"
-  - "C11–C15 并入 §8"
-  - "2026-11-09: 四方签字 → signed_sec_p0_engineering_baseline（≠ security_certification）"
+related: 
+changelog_v1_1: 
+- "P0: per-threat-family n + CI; no macro ASR for L5"
+- "P1: severity / remediation / claim_revocation"
+- "P2: explicit out-of-scope + L5 未测族自动列出"
+- "2026-11-09: 四方签字 → signed_sec_p0_engineering_baseline（≠ security_certification）"
+doc_id: EVAL_AGENT_SECURITY_EXAM_SCHEME_2733DF
+last_reviewed: 2026-11-15
+authority: supporting
 ---
-
 # Agent 安全评测完整方案（v1.1 · 已签字）
 
 > **状态**：`signed_sec_p0_engineering_baseline`（2026-11-09 已签）。  

@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: PRIVATE_CONTROL_PLANE_DB5D65
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 > **C2 消歧**：本文是 **对外叙述长文**（四层防御 / 控制平面故事）。  
 > 架构簇内 PolicyGate/ApprovalGate **短权威入口**见 [`docs/architecture/private-control-plane.md`](../../architecture/private-control-plane.md)——同名异职，勿互相覆盖。
 

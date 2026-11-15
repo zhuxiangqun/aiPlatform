@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: AI_PLATFORM_FIVE_PRODUCTS_REVIEW_TALKING_POINTS_375503
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 五产品域改造 — 评审会发言稿
 
 > 时长建议：**讲解 20–25 分钟 + 拍板 15–20 分钟**  

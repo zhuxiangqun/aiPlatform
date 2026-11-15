@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: PR_ARCHITECTURE_CHECKLIST_43198D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # PR 架构规范检查清单（Architecture Boundary Checklist）
 
 > **C2 消歧**：本文是 **手册侧 PR 评审清单**（开发者自检入口，见本目录 README）。  

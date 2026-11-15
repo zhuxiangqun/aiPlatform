@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_AGENT_IMPL_MODE_EXAM_4B8EC7
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Eval Agent：按实现模式实评 + 有限跨模式相对比较
 
 > **类型**：立项 Plan（工程 + 评测方法；非 Certification）  

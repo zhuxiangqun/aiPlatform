@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: FIELD_SCOPE_897000
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 现场范围（A1 · 不拆进程）
 
 > 对齐 V2 §4.2 · `ADR09_FDE_BOUNDARY.md`  

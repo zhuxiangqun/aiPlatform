@@ -1,5 +1,12 @@
 ---
 doc_type: Index
+doc_id: CONTRACTS_INDEX
+status: active
+authority: index
+purpose: 跨仓契约阅读入口
+owner: 朱向群
+version: 1.0
+last_reviewed: 2026-11-15
 ---
 
 # FDE / FDA / Org L5 契约索引（阅读顺序与维护责任）

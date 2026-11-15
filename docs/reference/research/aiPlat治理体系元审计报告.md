@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: AIPLAT_5F7206
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 工程化架构治理体系元审计报告
 
 > **审计对象**：aiPlat 自称"四者中唯一的工程化架构治理体系"——①架构守卫 190 规则；②宪法测试；③能力登记；④证据验证，以及强制链路（pre-commit/CI/phase_check）。

@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_WORKBENCH_GUARD_AND_AUDIT_MAPPING_FE2C57
+last_reviewed: 2026-11-15
 ---
-
 # 工作台否定清单检查 × audit 映射 — 设计骨架（方案层）
 
 | 字段 | 值 |

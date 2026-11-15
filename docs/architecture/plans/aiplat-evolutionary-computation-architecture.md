@@ -5,8 +5,9 @@ status: draft
 authority: design-target
 language: zh-CN
 created: 2026-11-14
+doc_id: AIPLAT_EVOLUTIONARY_COMPUTATION_ARCHITECTURE_2D5403
+last_reviewed: 2026-11-15
 ---
-
 # aiPlat 演化计算架构
 
 > 本文是目标架构与实施框架，不是当前实现状态。  

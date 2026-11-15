@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: CAPABILITY_PROFILE_474F9D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 能力剖面（Capability Profile）— Agent 等级体系
 
 > 版本: v4.0 | 更新: 2026-08 | 实施: `pipeline_stage.py::_apply_capability_profile()`

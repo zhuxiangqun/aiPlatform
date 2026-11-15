@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_ONTOLOGY_AGENT_OPS_MANUAL_C26119
+last_reviewed: 2026-11-15
 ---
-
 # 操作手册：管理端创建本体 + Agent（含 FDE 工作台）
 
 | 字段 | 值 |

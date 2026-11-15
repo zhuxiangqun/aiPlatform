@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DELIVERY_MANUAL_B8F04E
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 标准交付手册：标书合规审查应用
 
 > **版本**: v1.0 | **适用角色**: FDE | **预计交付周期**: 3-5 天 POC + 1 周灰度 + 1 天验收

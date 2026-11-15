@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_L5_DECISION_RECORD_987B66
+last_reviewed: 2026-11-15
 ---
-
 # Org L5 — 决策记录
 
 | 字段 | 值 |

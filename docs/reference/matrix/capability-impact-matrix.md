@@ -1,5 +1,8 @@
 ---
 doc_type: Reference
+status: active
+authority: supporting
+doc_id: CAPABILITY_IMPACT_MATRIX
 ---
 
 # Capability Impact Matrix

@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: PLAN_APP_FACTORY_L5_CICD_57B544
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # L5 设计：模块级 CI/CD 与灰度发布（构建 → 测试 → 打包 → 发布 → 金丝雀 → 回滚）
 
 > **状态**：✅ **已实施**（2026-08-23，PR #94 设计 + PR #95 实施；实施落地记录见 §10，与设计的差异已标注）

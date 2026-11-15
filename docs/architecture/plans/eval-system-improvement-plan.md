@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_SYSTEM_IMPROVEMENT_PLAN_8D815D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 评测系统改善方案（完整可执行版）
 
 > **文档类型**：Design / Execution Plan（**已定稿冻结** · v1.1.7）  

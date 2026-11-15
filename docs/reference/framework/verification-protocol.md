@@ -6,19 +6,13 @@ domain: aiplat-core
 version: 1.0.0
 date: 2026-07-05
 status: published
-applies_to:
-  - docs/reference/framework/aiplat-autonomy-framework.md
-  - docs/reference/framework/aiplat-complete-assessment.md
-  - docs/reference/framework/scoring-detail.md
-refs:
-  - scripts/verify-l4-pyramid.sh
-  - scripts/verify-l4-depth.sh
-  - scripts/verify-l4-claims.sh
-  - scripts/verify-l4-behavior.sh
-  - scripts/verify_whitepaper_refs.sh
+applies_to: 
+refs: 
 tags: [verification, protocol, reproducibility, three-framework]
+doc_id: VERIFICATION_PROTOCOL_F2FD80
+last_reviewed: 2026-11-15
+authority: supporting
 ---
-
 # aiPlat 框架评估验证协议
 
 > **C2 消歧**：本文验证 **framework 三框架评估**（autonomy / complete-assessment / scoring-detail）。

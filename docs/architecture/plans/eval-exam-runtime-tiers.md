@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_EXAM_RUNTIME_TIERS_F65674
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Eval Exam Runtime Tiers — 评测档位 ↔ 运行时契约
 
 > **类型**：短契约（字段语义 + 映射；非长白皮书）  

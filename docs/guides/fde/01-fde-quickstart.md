@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DOC_01_FDE_QUICKSTART_7B1B6F
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 快速入门（5 分钟）
 
 > ← [文档导航](README.md)

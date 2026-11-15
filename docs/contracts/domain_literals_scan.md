@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: DOMAIN_LITERALS_SCAN_0E8850
+last_reviewed: 2026-11-15
 ---
-
 # Domain 字面量存量扫描报告
 
 | 字段 | 值 |

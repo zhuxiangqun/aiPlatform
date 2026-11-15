@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_CASE_PACK_FACTORY_B7C7BA
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Eval Case Pack 工厂 — 设计基线 + 实施进度
 
 > **类型**：架构方案 / 实施契约  

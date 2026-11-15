@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+status: active
+authority: supporting
+doc_id: README_3622D9
+last_reviewed: 2026-11-15
 ---
-
 # Conformance Harness
 
 This directory contains **reference** conformance assets, not proof of a deployed implementation.

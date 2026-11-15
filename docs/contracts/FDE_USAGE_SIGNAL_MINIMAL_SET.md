@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_USAGE_SIGNAL_MINIMAL_SET_43CFB5
+last_reviewed: 2026-11-15
 ---
-
 # 使用信号采集最小集
 
 | 字段 | 值 |

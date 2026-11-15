@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_V_WAVE_CHARTER_758FBA
+last_reviewed: 2026-11-15
 ---
-
 # V 波 Charter — 竖切验收（不是新功能，不是 M4）
 
 | 字段 | 值 |

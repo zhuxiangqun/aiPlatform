@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: FIVE_CAPABILITY_INDEPENDENT_ENGINEERING_PLAN_570D92
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 五能力独立化工程方案（V2.2 · 模块自治 + 三类部署）
 
 > **文档类型**：工程规划 / Design Plan  

@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DOC_06_SOP_DOMAIN_DELIVERY_ACEC11
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 06 — 从 0 到 1 交付一个新域 (SOP)
 
 **定位**：FDE 标准操作手册——任何一个合格工程师按此 SOP，在 5 个工作日内完成新域端到端交付。

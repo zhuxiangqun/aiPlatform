@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_OBJECT_CONTRACT_AND_PLAN_329648
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Eval Object Contract & Evaluation Plan — 通用评测对象契约
 
 > **类型**：短契约（字段语义 + 匹配/状态机 + 报告强制披露；非长白皮书）  

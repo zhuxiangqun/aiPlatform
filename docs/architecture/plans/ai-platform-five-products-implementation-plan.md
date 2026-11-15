@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: AI_PLATFORM_FIVE_PRODUCTS_IMPLEMENTATION_PLAN_AC639C
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 五产品域完整实施方案（已收敛）
 
 > **已由落地方案取代为日常执行真源。**

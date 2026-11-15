@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: EU_AI_ACT_ASSESSMENT_5F72EB
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # EU AI Act Compliance Self-Assessment
 
 > **Status**: Draft | **Date**: 2026-07-05 | **Regulation**: EU AI Act (Regulation 2024/1689)

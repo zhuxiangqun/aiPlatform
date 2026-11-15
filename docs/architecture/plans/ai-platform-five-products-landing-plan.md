@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: AI_PLATFORM_FIVE_PRODUCTS_LANDING_PLAN_9374F8
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 五产品域落地方案（唯一执行真源）
 
 > **文档类型**：落地方案 / Design Plan

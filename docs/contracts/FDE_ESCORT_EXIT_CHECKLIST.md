@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_ESCORT_EXIT_CHECKLIST_EA85B0
+last_reviewed: 2026-11-15
 ---
-
 # 护航退出检查清单
 
 | 字段 | 值 |

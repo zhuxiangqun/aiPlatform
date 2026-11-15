@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: USER_JOURNEY_MAP_7FC8F2
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlatform 用户旅程地图 (User Journey Map)
 
 **版本**: 1.1

@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DOC_03_FDE_OPERATIONS_038514
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 运维与自演进
 
 > ← [文档导航](README.md)

@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_K_WAVE_CHARTER_7C1917
+last_reviewed: 2026-11-15
 ---
-
 # K 波 Charter — 带闸门的本体进化环
 
 | 字段 | 值 |

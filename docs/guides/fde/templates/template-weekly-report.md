@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: TEMPLATE_WEEKLY_REPORT_DE6039
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 周报 — {{客户名称}} — {{日期}}
 
 > ← [返回实施流程](../05-fde-implementation-process.md)

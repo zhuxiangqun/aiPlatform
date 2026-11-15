@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_MODEL_GATEWAY_B271C4
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # EVAL Model Access — Worker → infra（B 轨）
 
 > **类型**：契约（B2 实施前置）  

@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_L5_CHARTER_8D6EBF
+last_reviewed: 2026-11-15
 ---
-
 # Org L5 Charter — 组织级（单线）企业大脑补齐
 
 | 字段 | 值 |

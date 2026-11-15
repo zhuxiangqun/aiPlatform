@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: ECOSYSTEM_PARTNER_TIERS_AA2498
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 生态伙伴技术分层（权威专稿）
 
 > 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。  

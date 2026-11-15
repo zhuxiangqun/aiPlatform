@@ -6,8 +6,10 @@ scope: aiPlat-platform → aiPlat-app/aiPlat-core/aiPlat-management
 status: approved
 draft_date: 2026-07-04
 approved_date: 2026-08-16
+authority: supporting
+doc_id: PLATFORM_12AAAB
+last_reviewed: 2026-11-15
 ---
-
 ## 1. 总原则（最佳实践默认值）
 
 1) **用户鉴权**：以 **JWT（SSO）为主**（短期 access token + refresh token）。  

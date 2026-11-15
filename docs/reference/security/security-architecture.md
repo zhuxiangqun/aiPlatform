@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: SECURITY_ARCHITECTURE_53719C
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 安全架构 — 纵深防御模型
 
 > 基于零信任原则 (never trust, always verify) 的六层防御体系。

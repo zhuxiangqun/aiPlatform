@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: SUITE_PROFILE_SCHEMA_V1_E7A7DA
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Suite Profile Schema v1（冻结稿）
 
 > **类型**：契约冻结 / P0 阻塞前置  

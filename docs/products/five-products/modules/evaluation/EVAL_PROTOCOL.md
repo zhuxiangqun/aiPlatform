@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: EVAL_PROTOCOL_29943D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Eval Protocol v0（草案）
 
 > Capability: **evaluation** · Central deploy · A1 契约冻结起步  

@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: OLLAYA_DECISION_LAYER_IMPLEMENTATION_PLAN_D154F2
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat × Ollaya 决策层试点 — 完整实施方案
 
 > **类型**：实施方案（设计 + 工作拆解 + 准入门槛；**本版不改程序**）  

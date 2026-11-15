@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: AI_APP_FACTORY_C02D0E
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # AI 应用工厂 — 设计文档
 
 > 最后更新: 2026-08-09

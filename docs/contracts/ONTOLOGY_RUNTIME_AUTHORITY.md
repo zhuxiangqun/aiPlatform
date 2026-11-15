@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ONTOLOGY_RUNTIME_AUTHORITY_FBA4E0
+last_reviewed: 2026-11-15
 ---
-
 # 本体运行时权威契约（Ontology Runtime Authority）
 
 | 字段 | 值 |

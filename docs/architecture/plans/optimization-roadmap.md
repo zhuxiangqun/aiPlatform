@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: OPTIMIZATION_ROADMAP_BCF3F2
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 优化路线图（基于真实评估 2026-07-07）
 
 > 当前分：框架一 L4(3.95) / 框架二 89.8% / 框架三 ≈3.4。目标：聚焦最高 ROI 项，不盲目追求满分。所有"当前→目标"基于真实代码证据，非 wish list。

@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: EVOLUTION_F59890
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Skill 动态进化设计
 
 ## 概述

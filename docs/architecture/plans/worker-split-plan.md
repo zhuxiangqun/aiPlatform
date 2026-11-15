@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: WORKER_SPLIT_PLAN_89C66A
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Worker 拆分方案（渐进式）
 
 > 状态：proposed · last_synced: 2026-08-14

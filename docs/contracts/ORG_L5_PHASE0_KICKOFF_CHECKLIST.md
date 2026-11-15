@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_L5_PHASE0_KICKOFF_CHECKLIST_5A547B
+last_reviewed: 2026-11-15
 ---
-
 # Org L5 — Phase 0 开工清单
 
 | 字段 | 值 |

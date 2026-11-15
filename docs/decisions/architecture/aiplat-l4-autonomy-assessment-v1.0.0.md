@@ -10,41 +10,17 @@ authors: [aiPlat Architecture Team]
 reviewers: [External Review]
 tags: [autonomy, L5, L6, loop-engineering, self-healing, evaluation, ucb1, bootstrapping, orchestration]
 related_phases: [Phase 10-42]
-related_modules:
-  - core/harness/execution/pipeline_engine.py
-  - core/harness/infrastructure/gates/error_translator.py
-  - core/harness/infrastructure/gates/policy_gate.py
-  - core/harness/infrastructure/gates/approval_gate.py
-  - core/harness/infrastructure/gates/sandbox_gate.py
-  - core/harness/optimization/prompt_optimizer.py
-  - core/harness/memory/manager.py
-  - core/harness/memory/semantic.py
-  - core/harness/memory/episodic.py
-  - core/harness/knowledge/domain_router.py
-  - core/harness/ontology_engine/engine.py
-  - core/harness/routing/model_tier_router.py
-  - core/harness/integration.py
-  - core/harness/kernel/types.py
-  - core/harness/knowledge/seci_engine.py
-  - core/harness/knowledge/convergence_engine.py
-  - core/harness/knowledge/governance_pipeline.py
-  - core/harness/knowledge/scenario_selector.py
-  - core/harness/knowledge/domain_maturity.py
-  - core/harness/knowledge/scoring_engine.py
-  - core/harness/knowledge/path_planner.py
-  - core/harness/syscalls/ontology_reason.py
-  - core/harness/knowledge/process_orchestrator.py
-  - core/harness/infrastructure/gates/ontology_approval.py
-  - core/harness/execution/loop/command_parser.py
-  - core/harness/infrastructure/gateway/fde_notifier.py
-  - core/harness/knowledge/context_bus.py
-  - core/security/rbac.py
-refs:
-  - "MIT 2025 AI Agent Index"
-  - "Cambridge/Harvard/Stanford Joint Report (30 systems)"
-  - "DeepSeek L1-L5 Autonomy Classification (陈德里)"
-  - "Redis Context Engineering 5-Stage Maturity Model"
-  - "arXiv: Ten Capability Axes for AI Agents"
+related_modules: 
+refs: 
+- "arXiv: Ten Capability Axes for AI Agents"
+doc_id: ADR_AUTONOMY_L4_L5
+authority: canonical
+purpose: 记录 aiPlat 自主性分级（L5）评估结论与可验证证据入口
+scope_in: 自主性定级、评估维度与验证命令
+scope_out: 非自主性能力清单与日常运行手册
+owner: aiPlat Architecture Team
+last_reviewed: 2026-11-15
+review_cycle: 180d
 ---
 
 # aiPlat 自主性分级评估：L5 组织者级

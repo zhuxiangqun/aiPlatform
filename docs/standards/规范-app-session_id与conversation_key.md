@@ -6,8 +6,10 @@ scope: aiPlat-app（channels/sessions 权威）
 status: approved
 draft_date: 2026-07-04
 approved_date: 2026-08-16
+authority: supporting
+doc_id: APP_SESSION_ID_CONVERSATION_KEY_DDDE8A
+last_reviewed: 2026-11-15
 ---
-
 ## 1. 目标（为什么要规定）
 
 企业多渠道场景最怕两件事：

@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_M4_SIGNOFF_PACK_1EA2C4
+last_reviewed: 2026-11-15
 ---
-
 # M4 现场签收包（Phase C5）· it-ops 签收准备
 
 | 字段 | 值 |

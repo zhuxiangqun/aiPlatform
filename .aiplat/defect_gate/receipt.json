@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T10:43:41+08:00",
+  "reviewed_at": "2026-11-15T12:46:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2645d938cdbc136552298dc2329abb1e2c22adaa",
-  "diff_sha256": "2191fb2304b0c6e52f35af99bd6a317763f357898a3704900a2a37a431faeb41",
-  "head_sha": "84c6691d26edfc4ce6995535dbd9f5ec9bf3c72b",
+  "merge_base": "af94ba51d6a12fc57f98ac63b77de6f56527ffe2",
+  "diff_sha256": "7caebeced9f940cfb2b02bc52a54941fdb524a8c63190204a4574bd4d04c0a74",
+  "head_sha": "7553b9d763fd16e40e9dd9f72a4cfb7b29f29175",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "contracts-guard clause-sync for eval_protocol harness touch; no product semantics change. Local lock only."
+  "note": "Docs governance closeout + impact matrix frontmatter/CI sync. Residual: reports retention dates. Local lock only."
 }

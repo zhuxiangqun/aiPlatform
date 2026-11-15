@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: CORE_LAYER1_LATEST_F283AF
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 核心能力层（Layer 1 / aiPlat-core）最新架构图与执行流程
 
 > 本文档以当前实现为准（As‑Is），并反映已落地的 **engine（核心能力层内置）** vs **workspace（对外应用库）** 分离。

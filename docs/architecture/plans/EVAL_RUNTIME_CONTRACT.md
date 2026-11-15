@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_RUNTIME_CONTRACT_E4808B
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # EVAL Runtime Contract — Worker / Runner（B 轨）
 
 > **类型**：契约（B2 实施前置）

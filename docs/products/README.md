@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: README_FB5C2B
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Products（产品定义）索引
 
 > v2.4 顶层产品目录。当前迁移期。

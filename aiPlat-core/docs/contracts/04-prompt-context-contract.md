@@ -1,7 +1,16 @@
 ---
 doc_type: Contract
+doc_id: CORE_PROMPT_CONTEXT_CONTRACT
+last_reviewed: 2026-11-15
+status: active
+authority: canonical
+purpose: 定义 Prompt/Context 组装、压缩与注入边界
+scope_in: 上下文预算、压缩策略、system/user 角色隔离
+scope_out: 业务 prompt 正文与产品文案
+owner: 朱向群
+version: 1.0
+review_cycle: 90d
 ---
-
 # Prompt & Context Contract（提示词/上下文契约）
 
 本文件约束“提示词工程与上下文管理”的行为边界，避免 token 失控与不可预测的上下文污染。

@@ -1,7 +1,10 @@
 ---
 doc_type: Standard
+status: active
+authority: supporting
+doc_id: NORMATIVE_APPENDIX_100261
+last_reviewed: 2026-11-15
 ---
-
 # aiPlat 知识体系规范性附录 v4.3.1
 
 > **版本**：v4.3.1 · 2026-11-11

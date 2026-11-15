@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DEPLOYMENT_AB7B16
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # AI Platform 部署指南
 
 > 系统级部署指南 - 各层必须遵循

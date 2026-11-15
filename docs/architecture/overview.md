@@ -1,5 +1,14 @@
 ---
 doc_type: Architecture
+doc_id: ARCH_OVERVIEW
+status: active
+authority: supporting
+purpose: 架构全景摘要入口（非规范）
+scope_in: 四层架构快速导览
+scope_out: 跨层硬约束正文（见 system-architecture-contract）
+owner: 朱向群
+version: 1.0
+last_reviewed: 2026-11-15
 ---
 
 # aiPlatform 系统架构全景

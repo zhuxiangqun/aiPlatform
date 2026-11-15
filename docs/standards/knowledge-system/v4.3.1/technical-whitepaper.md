@@ -1,7 +1,10 @@
 ---
 doc_type: Standard
+status: active
+authority: supporting
+doc_id: TECHNICAL_WHITEPAPER_0A5857
+last_reviewed: 2026-11-15
 ---
-
 # aiPlat 知识体系技术白皮书 v4.3.1（已批准）
 
 > **版本**：v4.3.1 · 2026-11-11

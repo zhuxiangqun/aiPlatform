@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_WORKBENCH_CAPABILITY_LEDGER_51BF12
+last_reviewed: 2026-11-15
 ---
-
 # FDE 工作台能力台账（已填实例）
 
 | 字段 | 值 |

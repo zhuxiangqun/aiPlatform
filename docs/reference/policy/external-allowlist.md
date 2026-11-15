@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: EXTERNAL_ALLOWLIST_E6E565
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 对外能力白名单（Engine vs Workspace）
 
 > 目标：在 **workspace（对外/应用库）默认拒绝** 的前提下，明确哪些 **engine（核心能力层）** 的能力允许“对外可用”（按 dev / staging / prod 区分）。

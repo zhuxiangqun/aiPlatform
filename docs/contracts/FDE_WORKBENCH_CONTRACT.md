@@ -1,5 +1,15 @@
 ---
 doc_type: Contract
+doc_id: FDE_WORKBENCH_CONTRACT
+status: active
+authority: canonical
+purpose: 约定 FDE 工作台前后端与治理门禁的交付契约
+scope_in: FDE 工作台前端、CoreFacade、Action/Pipeline/DomainRouter/PolicyGate/Eval
+scope_out: 非 FDE 产品模块、生成白皮书
+owner: 朱向群
+version: 1.12
+last_reviewed: 2026-11-15
+review_cycle: 90d
 ---
 
 # FDE 工作台契约（FDE Workbench Contract）

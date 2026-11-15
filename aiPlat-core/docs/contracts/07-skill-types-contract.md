@@ -1,7 +1,16 @@
 ---
 doc_type: Contract
+doc_id: CORE_SKILL_TYPES_CONTRACT
+last_reviewed: 2026-11-15
+status: active
+authority: canonical
+purpose: 定义 Skill 类型边界与 Internal Policy 不可 Skill 化规则
+scope_in: Skill 类型、execution_type、准入标准
+scope_out: 具体 SKILL.md 业务 SOP 正文
+owner: 朱向群
+version: 1.0
+review_cycle: 90d
 ---
-
 # Skill Types & Discovery Contract（Skill 类型与发现/加载契约）
 
 本文件定义 aiPlat 对 “目录化 skills（SKILL.md）” 的生产级落地规范，目标是复刻 OpenCode 的体验：**可发现（find）+ 按需加载（load）**，同时满足企业生产要求：**版本冻结、权限治理、可观测、可回滚、避免 prompt bloat**。

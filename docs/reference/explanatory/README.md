@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: README_506C4B
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 非规范解释材料（explanatory）
 
 > 本目录放非规范解释材料：平台介绍、行业方案、商业价值、案例、验证说明。

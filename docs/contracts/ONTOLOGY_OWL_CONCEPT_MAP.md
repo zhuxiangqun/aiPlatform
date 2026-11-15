@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ONTOLOGY_OWL_CONCEPT_MAP_6D00C3
+last_reviewed: 2026-11-15
 ---
-
 # OWL 概念 ↔ aiPlat 映射
 
 | 字段 | 值 |

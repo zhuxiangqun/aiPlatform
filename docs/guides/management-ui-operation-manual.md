@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: MANAGEMENT_UI_OPERATION_MANUAL_DEE3F8
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 管理端操作手册 (L1 概要级)
 
 本文档覆盖 aiPlat 管理端所有侧边栏页面，每个页面包含功能概述与入口位置，供数字人助手"小朱"检索并向用户解释页面功能。

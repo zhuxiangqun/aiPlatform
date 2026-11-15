@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: WHITEPAPER_SYSTEM_D88DF2
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 白皮书体系（五维）
 
 > Living · 2026-10-13

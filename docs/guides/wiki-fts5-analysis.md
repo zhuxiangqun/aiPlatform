@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: WIKI_FTS5_ANALYSIS_659E6D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Wiki FTS5 CJK 中文分词分析
 
 > 调查日期: 2026-06 | 版本: v2.6

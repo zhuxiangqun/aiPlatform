@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: PLAN_G6_HOOKS_BRIDGE_E6A342
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # G6 CC/Codex hooks 协议桥 — 专项规划（独立批次）
 
 > **背景**：对标报告 §20 能力缺口矩阵中**唯一仍完全缺失**的项（G6）——aiPlat `HookManager` 有 HookPhase 枚举与触发机制，但无 CC/Codex hooks.json 协议兼容层。DSH 已实现 CC 7/30 + Codex 5/10 事件子集（见对标报告 §17.3），证明可行。

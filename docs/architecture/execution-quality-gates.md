@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EXECUTION_QUALITY_GATES_54297D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 执行产物质量门禁矩阵（产物类型 → 规则）
 
 > **真相源（代码）**：`aiPlat-core/core/management/execution_quality_review.py`  

@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: GOVERNANCE_070104
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 治理体系
 
 > **PolicyGate 实现参考**：[private-control-plane.md](./private-control-plane.md)

@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: CONTROL_PLANE_AC75EE
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat Control Plane v0（草案）
 
 > Capability: **aiplat** · Central host · A1  

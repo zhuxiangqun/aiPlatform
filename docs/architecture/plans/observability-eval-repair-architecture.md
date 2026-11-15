@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: OBSERVABILITY_EVAL_REPAIR_ARCHITECTURE_7E7BCD
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 评估 / 诊断 / 修复体系架构（As-Is 存档）
 
 > 本文档存档 aiPlat "评估—诊断—告警—修复" 全链路的当前真实架构，含代码交叉验证证据（file:line）。

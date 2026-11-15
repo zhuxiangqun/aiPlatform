@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: README_0D40B2
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 操作手册目录
 
 > 所有操作手册的统一入口。按**责任分型**查找；角色导航仍保留。
