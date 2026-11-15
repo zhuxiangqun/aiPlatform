@@ -55,7 +55,7 @@ async def test_confirm_action_executes_with_kb_write(aiplat_home):
         "wrote_live_yaml": False,
     }
     with patch(
-        "core.apps.fde.service.extraction_confirm.run_confirm_extraction",
+        "core.api.core_facade.run_confirm_extraction",
         new=AsyncMock(return_value=fake),
     ):
         ok = await reg.execute(

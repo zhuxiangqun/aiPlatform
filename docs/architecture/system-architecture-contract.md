@@ -29,7 +29,7 @@ review_cycle: 90d
 > 2026-11-15：评测 `eval_protocol` 将 `report.gate` 钳制为 schema 枚举（pass|fail|warn|skip）；platform Eval 信封（`StatusResponse`/`ItemResponse` `extra="allow"` + ItemResponse 包裹）透传 `eval_protocol` 等域字段。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-15：知识系统 v4.3.1 Phase 1 Fact Ledger（G1）合入 harness `knowledge_pipeline`；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-15：知识系统 v4.3.1 Phase 2 G2 最小切片（Action L1 required_permissions + Fact→Graph 投影）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
-> 2026-11-15：知识系统 v4.3.1 G2 收口 — extraction confirm 经 ActionRegistry L1（`kb:write`）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-15：知识系统 v4.3.1 G2 收口 — extraction confirm 经 ActionRegistry L1（`kb:write`）；handler 经 CoreFacade，禁止 harness→apps 直导。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 
 ---
 

@@ -4987,6 +4987,29 @@ async def k1_confirm_extraction(extraction_id: str, *, actor: str = "") -> Dict[
     return await confirm_extraction_k1(extraction_id, actor=actor)
 
 
+async def run_confirm_extraction(
+    extraction_id: str,
+    *,
+    actor: str = "",
+    store: Any = None,
+) -> Dict[str, Any]:
+    """G2 收口：抽取 confirm 编排入口（K1+Graph+Fact）；供 Action handler 经门面调用。
+
+    Args:
+        extraction_id: pending extraction 标识。
+        actor: 操作者身份。
+        store: PendingExtractionStore；缺省时由编排层新建。
+
+    Returns:
+        confirm 编排回执。
+    """
+    from core.apps.fde.service.extraction_confirm import (
+        run_confirm_extraction as _run,
+    )
+
+    return await _run(extraction_id, actor=actor, store=store)
+
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 

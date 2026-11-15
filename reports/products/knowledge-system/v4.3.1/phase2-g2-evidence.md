@@ -37,7 +37,7 @@ PYTHONPATH=aiPlat-core:aiPlat-platform:. .venv/bin/python -m pytest \
 |------|------|
 | L1 PolicyGate | `action_registry.py` Step 3.25 + audit `policy_gate`；`admin`/`*` 通配放行 |
 | 投影器 | `fact_projector.py` → CoreFacade `fact_ledger_project_to_graph` |
-| confirm 编排 | `extraction_confirm.run_confirm_extraction` ← `builtin_handlers.confirm_extraction` |
+| confirm 编排 | `CoreFacade.run_confirm_extraction` ← `builtin_handlers.confirm_extraction`（禁 harness→apps 直导） |
 | HTTP confirm | `extraction_routes.confirm_extraction` → `get_action_registry().execute(...)` |
 | 生产 caller | Action execute 路由 scopes→permissions；`POST /extractions/facts/rebuild` |
 | 试点合同 | `workspace_seeds/actions/lock_service_accept_order.yaml` + builtin confirm 合同 |

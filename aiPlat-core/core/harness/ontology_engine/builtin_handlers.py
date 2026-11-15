@@ -231,7 +231,8 @@ async def confirm_extraction(
         params: 须含 ``extraction_id``（可回落到 entity.id）。
         actor: 操作者身份。
     """
-    from core.apps.fde.service.extraction_confirm import run_confirm_extraction
+    # 经 CoreFacade，禁止 harness→apps 直导（constitution boundaries）
+    from core.api.core_facade import run_confirm_extraction
 
     eid = str(
         params.get("extraction_id")
