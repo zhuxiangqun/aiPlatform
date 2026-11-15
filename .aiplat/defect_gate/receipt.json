@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T19:17:58+08:00",
+  "reviewed_at": "2026-11-15T19:45:50+08:00",
   "base_ref": "origin/main",
-  "merge_base": "96fca6f9099baf1525702ab24f6b8c724903a192",
-  "diff_sha256": "e497923d8e597e8b1c6ead552ddbfdc47979103e09715e248d0907a857819ed2",
-  "head_sha": "3a33e4fe3f3912e512dec71a626ac4ab29235614",
+  "merge_base": "c1199a9dd7732c25ca69b460cff10ecb7e0b7a64",
+  "diff_sha256": "1a4605c595becf9e87e1a4910243cfc6601927a2fb6f349862f9026519b841b8",
+  "head_sha": "cfb08137fa0f708040045f12efbb9ea4b1f601b3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "\u00a73.3 eng body port on current generator; suite paths remapped; verify-whitepaper-ready OK. Local lock only."
+  "note": "Product volume \u00a73.0 scenario bodies; suite supporting expanded; verify-whitepaper-ready OK. Local lock only."
 }
