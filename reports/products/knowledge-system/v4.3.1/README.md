@@ -7,8 +7,8 @@ authority: supporting
 
 # 知识系统 v4.3.1 · Phase 0 证据
 
-> 实施权威：[`docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md`](../../../docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md)  
-> 标准包：[`docs/standards/knowledge-system/v4.3.1/`](../../../docs/standards/knowledge-system/v4.3.1/)  
+> 实施权威：[`docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md`](../../../../docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md)  
+> 标准包：[`docs/standards/knowledge-system/v4.3.1/`](../../../../docs/standards/knowledge-system/v4.3.1/)  
 > **本目录是测量证据，不是第二份标准或实施方案。**
 
 | 文件 | 内容 |
