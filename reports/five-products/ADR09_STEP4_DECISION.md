@@ -1,32 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR09_STEP4_DECISION_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 第 4 步决定 — 全拆（单产品：诊断 MVP）
+# ADR09_STEP4_DECISION.md（已迁移）
 
-- **状态**：**Accepted（窄）** · 2026-10-26  
-- **批准句**（用户）：批准 ADR-09 第 4 步：全拆（单产品）：产品为 ___（推荐：诊断 MVP）。接受兼任并承担全拆后果；知情接受扩缩容仍 ⬜。范围：仅 (a) 该产品；不含其余四产品一次拆；不含 compose 长驻（除非另写含）。不含超边界 E4 承诺。  
-- **产品填空（本决定）**：**诊断 MVP**（ADR-10 / ADR-08 Pi Thin 同轨）  
-- **ADR-09 效力**：Accepted **仅覆盖该单产品立项**；**不是**五产品一次全拆
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR09_STEP4_DECISION.md`](../../docs/decisions/products/five-products/ADR09_STEP4_DECISION.md)。
 
-## 授权 / 禁止
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-| 项 | |
-|----|--|
-| ✅ | 诊断 MVP：独立部署立项；分 PR 做进程边界/搬迁设计（inflation 约束） |
-| ✅ | 回滚默认：切回与控制面共部署 |
-| ❌ | 其余四产品一次拆 / 未点名产品 |
-| ❌ | compose 长驻（本批未另写含） |
-| ❌ | 控制面拆库；超 `ADR09_E4_COPY_DRAFT` 对外承诺 |
-| ⚠ | §10 扩缩容仍 ⬜ — 已知情接受；不阻塞本窄 Accepted |
-
-## 后续（须另开 PR，非本决定自动执行）
-
-1. 诊断 MVP 部署边界清单（进程 / 端口 / 数据目录 / 回滚） → ✅ `ADR09_STEP4_DIAGNOSIS_MVP_BOUNDARY.md`  
-2. 按 inflation 分 PR 落地（BOUNDARY 序 B/C）；禁止一次大搬仓；**不含** compose 长驻  
-
-
-## 签署
-
-架构 × 业务（兼任）· 2026-10-26 · **仅诊断 MVP；其余产品 / 长驻仍须另批**

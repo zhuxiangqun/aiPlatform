@@ -5,7 +5,7 @@ doc_type: Reference
 # Ontology A3 进程拆分硬门清单
 
 > `process_split_authorized` 仅当下列全部为 ✅（🟨 = 本地演练，≠ 授权）。  
-> ADR：[`ADR-ONTOLOGY-A3.md`](../../../../reports/five-products/ADR-ONTOLOGY-A3.md) **Accepted（有条件）**  
+> ADR：[`ADR-ONTOLOGY-A3.md`](../../../../docs/decisions/products/five-products/ADR-ONTOLOGY-A3.md) **Accepted（有条件）**  
 > 刷新：`bash packages/aiplat-ontology/scripts/a3_local_rehearsal.sh` → `a3_prep_check.sh`
 
 | # | 项 | Owner | Done |

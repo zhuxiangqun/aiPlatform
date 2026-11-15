@@ -4,7 +4,7 @@ doc_type: Index
 
 # Ontology A3 prep（Accepted 有条件 · 未授权拆分）
 
-> ADR: [`ADR-ONTOLOGY-A3.md`](../../../../reports/five-products/ADR-ONTOLOGY-A3.md) — **Accepted（有条件）**  
+> ADR: [`ADR-ONTOLOGY-A3.md`](../../../../docs/decisions/products/five-products/ADR-ONTOLOGY-A3.md) — **Accepted（有条件）**  
 > 默认仍为 Central **共宿 D1**。
 
 | Doc | Purpose |

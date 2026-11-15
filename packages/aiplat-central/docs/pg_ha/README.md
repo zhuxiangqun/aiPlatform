@@ -4,7 +4,7 @@ doc_type: Index
 
 # Central PG / HA runbooks（ADR Accepted 有条件）
 
-> ADR: [`ADR-CONTROL-PLANE-PG-HA.md`](../../../../reports/five-products/ADR-CONTROL-PLANE-PG-HA.md)  
+> ADR: [`ADR-CONTROL-PLANE-PG-HA.md`](../../../../docs/decisions/products/five-products/ADR-CONTROL-PLANE-PG-HA.md)  
 > **切流前必须**完成迁移演练 + HA 演练；未绿禁止改生产默认库。
 
 | Doc | Purpose |

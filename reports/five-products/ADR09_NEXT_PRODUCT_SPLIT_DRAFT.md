@@ -1,13 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR09_NEXT_PRODUCT_SPLIT_DRAFT_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 下一单产品拆分 / compose 长驻
+# ADR09_NEXT_PRODUCT_SPLIT_DRAFT.md（已迁移）
 
-- **状态**：**已升格 Accepted（窄）** · 2026-10-26 — 见 `ADR09_NEXT_PI_THIN_DECISION.md`  
-- **产品填空**：**Pi（Thin 独立部署立项）**  
-- **compose 长驻**：**不含**  
-- **仍禁止**：FDE / 本体 / 控制面未另批；一次五产品
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR09_NEXT_PRODUCT_SPLIT_DRAFT.md`](../../docs/decisions/products/five-products/ADR09_NEXT_PRODUCT_SPLIT_DRAFT.md)。
 
-获批前模板已归档于 git 历史；本文件仅保留升格指针。
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
+

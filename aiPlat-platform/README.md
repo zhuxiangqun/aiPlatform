@@ -1,7 +1,7 @@
 # aiPlat-platform — 控制面部署说明
 
-- **授权**：`reports/five-products/ADR09_NEXT_CONTROL_PLANE_DECISION.md`（#458）  
-- **边界**：`reports/five-products/ADR09_CONTROL_PLANE_BOUNDARY.md`  
+- **授权**：`docs/decisions/products/five-products/ADR09_NEXT_CONTROL_PLANE_DECISION.md`（#458）  
+- **边界**：`docs/decisions/products/five-products/ADR09_CONTROL_PLANE_BOUNDARY.md`  
 - **默认**：**共部署控制面**（本仓库挂载 apps + Identity / Policy 入口）  
 - **ADR-09**：控制面已立项为单产品**正式可选**独立部署 — **非**强制把生产默认从共置改为独立  
 - **不含**：compose 长驻；第二 Identity / PolicyGate；超边界 E4

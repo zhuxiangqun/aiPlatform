@@ -1,11 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR_DRAFT_CONTROL_PLANE_D1_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-DRAFT — 控制面 → D1（PG/HA/多租户产品化）
+# ADR-DRAFT-control-plane-d1.md（已迁移）
 
-> **状态**：已被 [`ADR-CONTROL-PLANE-PG-HA.md`](./ADR-CONTROL-PLANE-PG-HA.md) **Accepted（有条件）** 取代（2026-10-30）  
-> 本文保留为草案对照。生产切流仍受 `packages/aiplat-central/docs/pg_ha/CUTOVER_CHECKLIST.md` 硬门约束。
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR-DRAFT-control-plane-d1.md`](../../docs/decisions/products/five-products/ADR-DRAFT-control-plane-d1.md)。
 
-原草案正文见 git 历史；生效决策以 **ADR-CONTROL-PLANE-PG-HA** 为准。
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
+

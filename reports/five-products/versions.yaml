@@ -1,7 +1,7 @@
 # Five-capability A2 versioning SSOT — package.json ↔ module.yaml must match.
 schema_version: aiplat.versions.v0
 updated: "2026-10-30"
-policy: reports/five-products/VERSIONING.md
+policy: reports/products/five-products/program/VERSIONING.md
 capabilities:
   - id: aiplat
     package: packages/aiplat-central

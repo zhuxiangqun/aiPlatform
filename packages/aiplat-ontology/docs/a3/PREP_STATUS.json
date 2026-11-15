@@ -1,7 +1,7 @@
 {
   "schema_version": "aiplat.ontology.a3.prep.v0",
   "capability_id": "ontology",
-  "checked_at": "2026-11-01T03:22:59Z",
+  "checked_at": "2026-11-15T09:38:14Z",
   "process_split_authorized": false,
   "adr_status": "accepted_conditional",
   "items": {
@@ -23,11 +23,11 @@
     },
     "6_adr_accept_cosign": {
       "ok": true,
-      "detail": "reports/five-products/ADR-ONTOLOGY-A3.md"
+      "detail": "docs/decisions/products/five-products/ADR-ONTOLOGY-A3.md"
     },
     "adr_draft_对照": {
       "ok": true,
-      "detail": "reports/five-products/ADR-DRAFT-ontology-a3.md"
+      "detail": "docs/decisions/products/five-products/ADR-DRAFT-ontology-a3.md"
     },
     "1_ontology_api_unit": {
       "ok": true,
@@ -35,11 +35,11 @@
     },
     "3_local_dual_write_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261101T032259Z.json"
+      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261101T032315Z.json"
     },
     "5_local_rollback_rehearsal": {
       "ok": true,
-      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261101T032259Z.json"
+      "detail": "packages/aiplat-ontology/docs/a3/drills/local-rehearsal-20261101T032315Z.json"
     }
   },
   "auto_prep_green": true,

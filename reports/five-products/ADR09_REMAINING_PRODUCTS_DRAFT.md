@@ -1,12 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR09_REMAINING_PRODUCTS_DRAFT_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 剩余项
+# ADR09_REMAINING_PRODUCTS_DRAFT.md（已迁移）
 
-- **状态**：**已清空** · 2026-10-27 — compose 长驻已批（见 `ADR09_COMPOSE_LONG_RUNNING_DECISION.md`）  
-- **已完成**：诊断 MVP；Pi Thin；FDE；本体；控制面；**compose 长驻（含）**  
-- **仍停泊**：超边界 E4 / SLA；强制全环境生产默认长驻（须另决）
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR09_REMAINING_PRODUCTS_DRAFT.md`](../../docs/decisions/products/five-products/ADR09_REMAINING_PRODUCTS_DRAFT.md)。
 
-本文件不再列未批 ADR-09 单产品 / 长驻项。新范围须另写批准句。
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
+

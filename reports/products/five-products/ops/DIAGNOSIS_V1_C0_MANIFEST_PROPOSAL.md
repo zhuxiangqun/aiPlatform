@@ -31,7 +31,7 @@ doc_type: Report
     package: packages/aiplat-diagnosis
     platform_app: aiPlat-platform/apps/diagnosis
     charter: docs/products/five-products/modules/diagnosis/MODULE.md
-    a3_adr: reports/five-products/ADR-DRAFT-diagnosis-d1.md
+    a3_adr: docs/decisions/products/five-products/ADR-DRAFT-diagnosis-d1.md
     a3_adr_status: draft
     process_split_authorized: false
     healthz: GET /api/platform/apps/diagnosis/healthz

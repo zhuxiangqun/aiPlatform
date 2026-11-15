@@ -1,34 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR09_E4_COPY_DRAFT_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 前置 #4 · 对外 E4 文案（边界已确认 · **第 3 步已批可发布**）
+# ADR09_E4_COPY_DRAFT.md（已迁移）
 
-- **状态**：**对外发布已批（窄）** · 2026-10-26 — 见 `ADR09_E4_STEP3_DECISION.md`；**≠** ADR-09 Accepted / 全拆  
-- **真源**：`ADR09_E4_STEP3_DECISION.md`（翻签）；边界表仍约束措辞  
-- **用途**：对外宣传**仅可**使用下表「允许对外说」；禁止说仍全部有效
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR09_E4_COPY_DRAFT.md`](../../docs/decisions/products/five-products/ADR09_E4_COPY_DRAFT.md)。
 
-## 允许对外说
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-| 可说 | 边界 |
-|------|------|
-| 江苏锁安场景已跑通 Bundle→Pi Thin→诊断 MVP→FDE 绑 `report_id`（路径 E3） | 仅该场景 id；非五产品全量 |
-| Pi Thin / 诊断 MVP **试点**可与控制面进程分离（ADR-08 / ADR-10） | 试点 ≠ 生产默认已切独立；D1/D2 为 opt-in 签收/home，不作「已全量切默认」 |
-| 证据可追溯至 Bundle / ingest / report_id；CLEAN_ENV PASS 可作验收证据引用 | 禁止暗示「已产品化 SLA / 7×24」 |
-
-## 禁止说（非承诺）
-
-| 禁止 |
-|------|
-| 「五产品已全面产品化 / 已全拆独立部署」 |
-| 「对外 E4 已承诺交付日 / 已通过客户验收宣传口径」以外的超边界承诺 |
-| 「生产默认路径已切到独立诊断 / Pi」 |
-| 用 `AIPLAT_CAPABILITIES.md` 条目代替干净环境验收 |
-
-## 联签栏
-
-| 角色 | 签字 | 日期 |
-|------|------|------|
-| 产品宣传 owner | ✅ **批准边界内对外发布**（翻此前拒签；第 3 步） | 2026-10-26 |
-| 架构 × 业务 | ✅ 确认上表边界；同意翻签对外发布（窄） | 2026-10-26 |

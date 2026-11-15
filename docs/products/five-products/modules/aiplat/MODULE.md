@@ -8,7 +8,7 @@ authority: supporting
 # MODULE.md — aiPlat Platform
 
 > Status: **A2-versioning + D1 Thin + D2 compat/security** · Owner: platform · Target: **A2 / D2** · Deploy unit: **Central** (host)  
-> Version: **0.1.0** · SSOT [`VERSIONING.md`](../../../../../reports/five-products/VERSIONING.md)
+> Version: **0.1.0** · SSOT [`VERSIONING.md`](../../../../../reports/products/five-products/program/VERSIONING.md)
 
 ## Scope
 
@@ -113,7 +113,7 @@ Thin admin/security checklist (token middleware, admin MFA gate, Pi enterprise-o
 | Item | Path |
 |------|------|
 | SSOT | `reports/five-products/versions.yaml` |
-| Policy | `reports/five-products/VERSIONING.md` |
+| Policy | `reports/products/five-products/program/VERSIONING.md` |
 | Gate | `packages/aiplat-central/scripts/a2_version_check.sh` |
 
 Package / module / SSOT locked at **0.1.0**. PG/HA still Draft ADR.
@@ -122,7 +122,7 @@ Package / module / SSOT locked at **0.1.0**. PG/HA still Draft ADR.
 
 | Item | Path |
 |------|------|
-| ADR | `reports/five-products/ADR-CONTROL-PLANE-PG-HA.md` |
+| ADR | `docs/decisions/products/five-products/ADR-CONTROL-PLANE-PG-HA.md` |
 | Runbooks | `packages/aiplat-central/docs/pg_ha/` |
 | Cutover | `CUTOVER_CHECKLIST.md` → `cutover_authorized=false` until green |
 

@@ -1,7 +1,7 @@
 {
   "schema_version": "aiplat.evaluation.a3.prep.v0",
   "capability_id": "evaluation",
-  "checked_at": "2026-11-15T02:18:31Z",
+  "checked_at": "2026-11-15T09:38:13Z",
   "process_split_authorized": false,
   "adr_status": "accepted_conditional",
   "items": {
@@ -23,11 +23,11 @@
     },
     "5_adr_accept_cosign": {
       "ok": true,
-      "detail": "reports/five-products/ADR-EVALUATION-A3.md"
+      "detail": "docs/decisions/products/five-products/ADR-EVALUATION-A3.md"
     },
     "adr_draft_对照": {
       "ok": true,
-      "detail": "reports/five-products/ADR-DRAFT-evaluation-a3.md"
+      "detail": "docs/decisions/products/five-products/ADR-DRAFT-evaluation-a3.md"
     },
     "1_eval_protocol_unit": {
       "ok": true,

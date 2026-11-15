@@ -120,5 +120,5 @@ unfreeze_action: set ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING status=active
 | [`B4S_PREP.md`](./B4S_PREP.md) / [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) | 主机前置 / 操作 |
 | [`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md) | 脚手架 |
 | [`PHASE3_PROCESS_SPLIT_AUTHORIZE.md`](./PHASE3_PROCESS_SPLIT_AUTHORIZE.md) | 政策旗标说明（≠ Chart） |
-| [`ADR-EVALUATION-A3.md`](../../../../reports/five-products/ADR-EVALUATION-A3.md) | 有条件 Accepted |
+| [`ADR-EVALUATION-A3.md`](../../../../docs/decisions/products/five-products/ADR-EVALUATION-A3.md) | 有条件 Accepted |
 | [`EVAL_RUNTIME_CONTRACT.md`](../../../../docs/architecture/plans/EVAL_RUNTIME_CONTRACT.md) | 运行时契约 / 停机矩阵 |

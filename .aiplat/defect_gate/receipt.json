@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T17:55:00+08:00",
+  "reviewed_at": "2026-11-15T18:25:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c1b6f0f187265f433ef53a4abfc3a1b8084710cd",
-  "diff_sha256": "3e7af0161473fce10c1b2998b1c1d75334e48fcd44338e4ce6a195be81d9cac7",
-  "head_sha": "f6aeaae7901207ad47306f92ada52bac664520c3",
+  "merge_base": "75ec781cfa3d726c640278b0dc0c42554cf8427f",
+  "diff_sha256": "7e58016efa265bf24e49e6eaa3bc9aae27f523d78db6d76693aa916c29aec3f0",
+  "head_sha": "0c4bde6eaf9dc3a822f581649321d489c20da5b7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Contract binding for guard SSOT split; no behavior change. #751 ADR migrate already green."
+  "note": "Rebased onto main after #750; ADR/program migrate only. Stubs at old paths; prep/status/manifest retargeted."
 }

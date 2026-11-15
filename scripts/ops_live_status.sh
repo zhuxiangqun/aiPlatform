@@ -115,7 +115,7 @@ summary = {
     "does_not_authorize": True,
     "tracks": rows,
     "any_gate_authorized": any_authorized,
-    "runbook": "reports/five-products/OPS_LIVE_RUNBOOK.md",
+    "runbook": "reports/products/five-products/program/OPS_LIVE_RUNBOOK.md",
 }
 print(json.dumps(summary, indent=2, ensure_ascii=False))
 
@@ -152,4 +152,4 @@ do
 done
 
 echo "PASS: ops_live_status (read-only)" >&2
-echo "See reports/five-products/OPS_LIVE_RUNBOOK.md" >&2
+echo "See reports/products/five-products/program/OPS_LIVE_RUNBOOK.md" >&2

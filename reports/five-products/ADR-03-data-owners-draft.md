@@ -1,20 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR_03_DATA_OWNERS_DRAFT_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-03 数据 owner（草稿）
+# ADR-03-data-owners-draft.md（已迁移）
 
-- **状态**：**Accepted（本切片）** · WP5 2026-10-23  
-- **决策**：切片权威表如下（与 wp1 / 落地方案 §8 对齐）。
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR-03-data-owners-draft.md`](../../docs/decisions/products/five-products/ADR-03-data-owners-draft.md)。
 
-| 数据 | owner |
-|------|--------|
-| 租户/策略/Agent·Bundle 版本 | aiPlat |
-| Runtime 实例与执行状态 | Pi |
-| 项目/需求/验收结论 | FDE |
-| 诊断报告与证据索引 | 诊断（MVP 建成后；建成前缺口=KG-DIAG） |
-| Ontology | 本体（本切片不写） |
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-- **禁止**：共享 DB 当跨产品契约；缓存充当权威且无 freshness。  
-- **重评**：诊断 MVP 落库选型；客户数据驻留要求（Gate3）。

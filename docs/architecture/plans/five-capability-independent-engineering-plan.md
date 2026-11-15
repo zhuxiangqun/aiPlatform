@@ -9,7 +9,7 @@ authority: supporting
 
 > **文档类型**：工程规划 / Design Plan  
 > **状态**：工程基线 · **V2.2 @ 2026-11-01**（G0 通过；D1/D2 冻结；**显式解冻** D3 本地验收 + 跨能力 E2E；预发仍 defer）  
-> **基线**：`main` @ `b46e286`（week-34）→ G0 锚点 **19** 提交（见 [`G0_CLOSEOUT.md`](../../../reports/five-products/G0_CLOSEOUT.md)）；其后继续工程推进；CI 242 行、nightly unit 硬门  
+> **基线**：`main` @ `b46e286`（week-34）→ G0 锚点 **19** 提交（见 [`G0_CLOSEOUT.md`](../../../reports/products/five-products/program/G0_CLOSEOUT.md)）；其后继续工程推进；CI 242 行、nightly unit 硬门  
 > **V2.1 打包共用面**：`templates/module/PACKAGING_BASE.md` · `scripts/check_five_products_packaging_surface.sh` · `scripts/lib/aiplat_security_baseline.py`  
 > **V2.2**：`ops_d3_local_acceptance_all.sh` · `ops_five_products_e2e_local.sh`（local only；硬门仍 false；不 authorize） · [`ENGINEERING_UNFREEZE_D3_E2E.md`](../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_D3_E2E.md)  
 
@@ -18,8 +18,8 @@ authority: supporting
 > **关联**：  
 > - [五产品落地方案](./ai-platform-five-products-landing-plan.md)（E0–E5 证据级定义）  
 > - [Pi Thin Runtime](./pi-thin-runtime.md)  
-> - [`reports/five-products/LANDING_CLOSEOUT.md`](../../../reports/five-products/LANDING_CLOSEOUT.md)  
-> - [`reports/five-products/ADR09_DEFER_FULL_SPLIT_E4_PROD.md`](../../../reports/five-products/ADR09_DEFER_FULL_SPLIT_E4_PROD.md)  
+> - [`reports/products/five-products/program/LANDING_CLOSEOUT.md`](../../../reports/products/five-products/program/LANDING_CLOSEOUT.md)  
+> - [`docs/decisions/products/five-products/ADR09_DEFER_FULL_SPLIT_E4_PROD.md`](../../../docs/decisions/products/five-products/ADR09_DEFER_FULL_SPLIT_E4_PROD.md)  
 > **本文不是**：新 ADR；不是“五产品已全拆”的批准；不是对外产品化承诺。
 
 ---
@@ -101,7 +101,7 @@ authority: supporting
 
 ### 2.2 P0 必须复核（不得当既成事实）
 
-- **P0-3′（正式例外，2026-11-01）**：不以「字面 chmod-555 / 只读 HOME」为硬条件；判据改为 **假 HOME 可写 + hermetic `AIPLAT_HOME`** 下 `pytest core/tests` collect 0 error，`core/tests/unit` 绿（与 conftest 同路径）。字面只读 HOME 下 git 红 = 已知例外，**非**逃逸。证据见 [`G0_REPORT.md`](../../../reports/five-products/G0_REPORT.md)。
+- **P0-3′（正式例外，2026-11-01）**：不以「字面 chmod-555 / 只读 HOME」为硬条件；判据改为 **假 HOME 可写 + hermetic `AIPLAT_HOME`** 下 `pytest core/tests` collect 0 error，`core/tests/unit` 绿（与 conftest 同路径）。字面只读 HOME 下 git 红 = 已知例外，**非**逃逸。证据见 [`G0_REPORT.md`](../../../reports/products/five-products/program/G0_REPORT.md)。
 - Tier A 逃逸是否为 0（`paths.py` SSOT fallback 除外）。
 - CI 242 行 job / nightly unit 硬门是否真绿（**defect-gate receipt ≠ CI**；须有完整 CI run 证据）。
 

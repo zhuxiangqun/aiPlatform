@@ -4,7 +4,7 @@ doc_type: Index
 
 # Evaluation A3 prep（Accepted 有条件 · 未授权拆分）
 
-> ADR: [`ADR-EVALUATION-A3.md`](../../../../reports/five-products/ADR-EVALUATION-A3.md) — **Accepted（有条件）**
+> ADR: [`ADR-EVALUATION-A3.md`](../../../../docs/decisions/products/five-products/ADR-EVALUATION-A3.md) — **Accepted（有条件）**
 > 默认仍为 Central **共宿 D1**。
 >
 > **文档定位（2026-11-06 收口）**：本目录是 **prep / 门禁 / 证据包**，**不是**评测产品白皮书。

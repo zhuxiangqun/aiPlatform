@@ -1,12 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR09_STEP4_FULL_SPLIT_DRAFT_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-09 建议顺序第 4 步 — 全拆（单产品立项）
+# ADR09_STEP4_FULL_SPLIT_DRAFT.md（已迁移）
 
-- **状态**：**已升格 Accepted（窄）** · 2026-10-26 — 见 `ADR09_STEP4_DECISION.md`  
-- **产品填空**：**诊断 MVP**  
-- **仍禁止**：其余四产品一次拆；compose 长驻（本批未含）；超边界 E4 承诺
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR09_STEP4_FULL_SPLIT_DRAFT.md`](../../docs/decisions/products/five-products/ADR09_STEP4_FULL_SPLIT_DRAFT.md)。
 
-获批前检查表与批准句模板已归档于 git 历史；本文件仅保留升格指针。
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
+

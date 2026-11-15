@@ -8,7 +8,7 @@ authority: supporting
 # 五产品域落地方案（唯一执行真源）
 
 > **文档类型**：落地方案 / Design Plan
-> **状态**：v1.3 · 2026-10-23 基线 · **2026-10-24 首切片 + Gate2 落地 + Gate3 有条件批准**（见 [`reports/five-products/LANDING_CLOSEOUT.md`](../../../reports/five-products/LANDING_CLOSEOUT.md)）
+> **状态**：v1.3 · 2026-10-23 基线 · **2026-10-24 首切片 + Gate2 落地 + Gate3 有条件批准**（见 [`reports/products/five-products/program/LANDING_CLOSEOUT.md`](../../../reports/products/five-products/program/LANDING_CLOSEOUT.md)）
 > **性质**：指导盘点、契约、首切片、模块化与按需拆部署的**完整执行真源**。
 > **冲突裁决**：本文 > 执行计划摘要 > Decision Brief / PPT / 发言稿。目标边界细节仍引用 [目标架构母稿](./ai-platform-five-products-target-architecture.md)；若与本文路径/门禁冲突，**以本文为准并回写母稿**。
 > **本文不是**：评审会脚本；也**不**表示全面改造已获批或五产品已对外产品化。
@@ -144,12 +144,12 @@ authority: supporting
 
 | 产物 | 路径 |
 |------|------|
-| L1 批准条 | `reports/five-products/L1_AUTHORIZATION.md` |
-| 决策/授权登记 | `reports/five-products/DECISIONS_AND_AUTHORIZATIONS.md` |
-| §2.3 核对 | `reports/five-products/SECTION_2_3_CHECKLIST.md` |
-| 场景 | `reports/five-products/SCENE.md` |
-| 角色 | `reports/five-products/ROLES.md` |
-| 日程 | `reports/five-products/SCHEDULE.md` |
+| L1 批准条 | `docs/decisions/products/five-products/L1_AUTHORIZATION.md` |
+| 决策/授权登记 | `docs/decisions/products/five-products/DECISIONS_AND_AUTHORIZATIONS.md` |
+| §2.3 核对 | `reports/products/five-products/program/SECTION_2_3_CHECKLIST.md` |
+| 场景 | `reports/products/five-products/program/SCENE.md` |
+| 角色 | `reports/products/five-products/program/ROLES.md` |
+| 日程 | `reports/products/five-products/program/SCHEDULE.md` |
 
 确认方式见批准条（签署 / `L1-authorize` commit / 可归档确认）。**生效后**且上表勾齐 → 可启动 WP0。
 
@@ -319,7 +319,7 @@ WP0 盘点（≤10 工作日）
 
 **当前获准执行**：仅 WP0–WP2（在 L1 授权后）。WP3+ 日程表仅为预留，**不写入对外承诺日期**。
 
-日历起止由架构 owner 在获准 L1 后写入 `reports/five-products/SCHEDULE.md`（只排到 WP2 / Gate 1）。
+日历起止由架构 owner 在获准 L1 后写入 `reports/products/five-products/program/SCHEDULE.md`（只排到 WP2 / Gate 1）。
 
 ---
 
@@ -357,7 +357,7 @@ rg -n 'export_pi_bundle|aiplat-pi-runtime' scripts packages --glob '*.{py,ts,md,
 rg -n 'require_auth|PolicyGate|_resolve_identity' aiPlat-platform --glob '*.py' | head -40
 ```
 
-#### 必填表（文件：`reports/five-products/wp0-inventory.md`）
+#### 必填表（文件：`reports/products/five-products/program/wp0-inventory.md`）
 
 **A 能力入口**｜**B 依赖边**｜**C 数据 owner**｜**D 身份与副作用**｜**E 关闭实验**｜**F 差距分级**（安全/正确性/边界/运维）
 
@@ -389,7 +389,7 @@ rg -n 'require_auth|PolicyGate|_resolve_identity' aiPlat-platform --glob '*.py' 
 
 #### 产物
 
-`reports/five-products/wp1-boundary-signoff.md` + ADR-01 一页草稿。
+`reports/products/five-products/program/wp1-boundary-signoff.md` + ADR-01 一页草稿。
 
 #### DoD
 
@@ -793,7 +793,7 @@ Gate 2+ 建议守卫：禁止 `apps/fde` 直 import `harness.knowledge` 内部�
 > 下列步骤**仅在**书面「获准进入 L1」之后执行；本文落盘 ≠ 自动开工。
 
 1. 确认架构 owner、业务 owner、验收人、§2.4 临时 R（如需要）已书面点名
-2. 场景写入 `reports/five-products/SCENE.md`
+2. 场景写入 `reports/products/five-products/program/SCENE.md`
 3. 开目录 `reports/five-products/`
 4. 启动 **WP0**（表 A–F + §3.0 纪律），时间盒 ≤10 工作日
 5. WP0 尾并行 **WP1**；紧接 **WP2**（启用集契约 + `pi-thin-offline.md`，非六套生产 API）

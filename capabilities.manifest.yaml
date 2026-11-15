@@ -30,7 +30,7 @@ capabilities:
     charter: docs/products/five-products/modules/pi/MODULE.md
     install: packages/aiplat-pi-runtime/scripts/d1_install.sh
     healthz: GET /healthz
-    a3_adr: reports/five-products/ADR-08-deploy-split.md
+    a3_adr: docs/decisions/products/five-products/ADR-08-deploy-split.md
     d3_production_authorized: false
 
   - id: fde
@@ -44,7 +44,7 @@ capabilities:
     platform_app: aiPlat-platform/apps/fde
     charter: docs/products/five-products/modules/fde/MODULE.md
     field_scope: docs/products/five-products/modules/fde/FIELD_SCOPE.md
-    field_deploy_adr: reports/five-products/ADR-FDE-FIELD-DEPLOY.md
+    field_deploy_adr: docs/decisions/products/five-products/ADR-FDE-FIELD-DEPLOY.md
     field_deploy_adr_status: accepted
     field_deploy_adr_required: true
     install: packages/aiplat-fde/scripts/d1_install.sh
@@ -64,7 +64,7 @@ capabilities:
     package: packages/aiplat-evaluation
     charter: docs/products/five-products/modules/evaluation/MODULE.md
     protocol: docs/products/five-products/modules/evaluation/EVAL_PROTOCOL.md
-    a3_adr: reports/five-products/ADR-EVALUATION-A3.md
+    a3_adr: docs/decisions/products/five-products/ADR-EVALUATION-A3.md
     a3_adr_status: accepted_conditional
     process_split_authorized: false
     healthz: GET /api/core/eval/healthz
@@ -83,7 +83,7 @@ capabilities:
     package: packages/aiplat-diagnosis
     platform_app: aiPlat-platform/apps/diagnosis
     charter: docs/products/five-products/modules/diagnosis/MODULE.md
-    a3_adr: reports/five-products/ADR-DRAFT-diagnosis-d1.md
+    a3_adr: docs/decisions/products/five-products/ADR-DRAFT-diagnosis-d1.md
     a3_adr_status: draft
     process_split_authorized: false
     healthz: GET /api/platform/apps/diagnosis/healthz
@@ -103,7 +103,7 @@ capabilities:
     package: packages/aiplat-ontology
     charter: docs/products/five-products/modules/ontology/MODULE.md
     protocol: docs/products/five-products/modules/ontology/ONTOLOGY_API.md
-    a3_adr: reports/five-products/ADR-ONTOLOGY-A3.md
+    a3_adr: docs/decisions/products/five-products/ADR-ONTOLOGY-A3.md
     a3_adr_status: accepted_conditional
     process_split_authorized: false
     healthz: GET /api/core/ontology/healthz
@@ -124,7 +124,7 @@ capabilities:
     charter: docs/products/five-products/modules/aiplat/MODULE.md
     healthz: GET /api/core/healthz
     pg_ha_adr_required: true
-    pg_ha_adr: reports/five-products/ADR-CONTROL-PLANE-PG-HA.md
+    pg_ha_adr: docs/decisions/products/five-products/ADR-CONTROL-PLANE-PG-HA.md
     pg_ha_adr_status: accepted_conditional
     cutover_authorized: false
     notes:

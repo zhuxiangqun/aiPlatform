@@ -16,5 +16,5 @@ contracts:
   - ../../../packages/aiplat-pi-runtime/contracts/schemas/healthz.schema.json
 migrations:
   path: null
-adr_for_a3: reports/five-products/ADR-08-deploy-split.md
+adr_for_a3: docs/decisions/products/five-products/ADR-08-deploy-split.md
 

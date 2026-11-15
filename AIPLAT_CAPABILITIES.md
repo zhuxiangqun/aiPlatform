@@ -2713,8 +2713,8 @@ scan_hash: 8f9548ec24f4
 | pg_ha_record_live_drill | `packages/aiplat-central/scripts/pg_ha_record_live_drill.sh` + `LIVE_DRILL_EVIDENCE.md` | ✅ | 生产 live 证据落盘；不改 checklist、不授权 cutover；生成物适用：不适用 | 已合入 |
 | ontology_a3_record_live_drill | `packages/aiplat-ontology/scripts/a3_record_live_drill.sh` | ✅ | Ontology live 证据落盘；不授权拆分；生成物适用：不适用 | 已合入 |
 | evaluation_a3_record_live_drill | `packages/aiplat-evaluation/scripts/a3_record_live_drill.sh` | ✅ | Evaluation live 证据落盘；不授权拆分；生成物适用：不适用 | 已合入 |
-| five_products_engineering_closeout | `reports/five-products/ENGINEERING_CLOSEOUT.md` | ✅ | 工程收口声明 + 运维 backlog；生成物适用：不适用 | 已合入 |
-| five_products_ops_live_runbook | `reports/five-products/OPS_LIVE_RUNBOOK.md` + `scripts/ops_live_status.sh` | ✅ | 四轨 live 总册 + 只读 authorize 聚合；不授权切流/拆分/D3；生成物适用：不适用 | 已合入 |
+| five_products_engineering_closeout | `reports/products/five-products/program/ENGINEERING_CLOSEOUT.md` | ✅ | 工程收口声明 + 运维 backlog；生成物适用：不适用 | 已合入 |
+| five_products_ops_live_runbook | `reports/products/five-products/program/OPS_LIVE_RUNBOOK.md` + `scripts/ops_live_status.sh` | ✅ | 四轨 live 总册 + 只读 authorize 聚合；不授权切流/拆分/D3；生成物适用：不适用 | 已合入 |
 | five_products_live_evidence_gate | `scripts/lib/aiplat_live_evidence.py` + 四轨 `*_authorize.sh` | ✅ | authorize 双硬门：checklist 全 ✅ + 最新 live-*.json `production_signed=true`；缺则 REFUSE；生成物适用：不适用 | 已合入 |
 | five_products_live_evidence_gate_test | `scripts/test_live_evidence_authorize_gate.sh` | ✅ | 临时目录回归：未签 live REFUSE / 已签可 AUTHORIZE；不改动包内硬门；生成物适用：不适用 | 已合入 |
 | five_products_ops_live_scaffold | `scripts/ops_live_scaffold.sh` + `OPS_HANDOFF.md` | ✅ | 四轨未签 live 脚手架 + 运维交接卡；永不 production_signed/authorize；生成物适用：不适用 | 已合入 |

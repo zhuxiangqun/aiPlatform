@@ -23,7 +23,7 @@ Usage: $0 [--runtime|--bundle DIR|--both]
   --runtime     flip current → previous version (default)
   --bundle DIR  point bundles/current at DIR (Bundle-first, Gate3 preferred)
   --both        runtime rollback; leave bundles/current
-See: reports/five-products/GATE3_PI_THIN_ROLLBACK_DRILL.md
+See: reports/products/five-products/program/GATE3_PI_THIN_ROLLBACK_DRILL.md
 EOF
       exit 0
       ;;

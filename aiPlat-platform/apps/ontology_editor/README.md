@@ -1,7 +1,7 @@
 # Ontology editor（platform apps）— 部署说明
 
-- **授权**：`reports/five-products/ADR09_NEXT_ONTOLOGY_DECISION.md`（#453）  
-- **边界**：`reports/five-products/ADR09_ONTOLOGY_BOUNDARY.md`  
+- **授权**：`docs/decisions/products/five-products/ADR09_NEXT_ONTOLOGY_DECISION.md`（#453）  
+- **边界**：`docs/decisions/products/five-products/ADR09_ONTOLOGY_BOUNDARY.md`  
 - **默认**：**与控制面共部署**（本目录 API 挂在 platform 进程；DomainRouter 在 core）  
 - **ADR-09**：本体已立项为单产品**正式可选**独立部署 — **非**强制把生产默认从共置改为独立  
 - **不含**：compose 长驻；控制面拆；第二套域 `registry.json`

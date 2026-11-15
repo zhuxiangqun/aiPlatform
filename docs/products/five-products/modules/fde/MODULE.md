@@ -8,7 +8,7 @@ authority: supporting
 # MODULE.md — FDE Workbench
 
 > Status: **A1 + Field D1 Accepted + Field D2 ops pack** · Owner: platform · Target: **A2 / D2** · Deploy unit: **Field**  
-> Version: **0.1.0** · ADR: [`ADR-FDE-FIELD-DEPLOY.md`](../../../../../reports/five-products/ADR-FDE-FIELD-DEPLOY.md)
+> Version: **0.1.0** · ADR: [`ADR-FDE-FIELD-DEPLOY.md`](../../../../../docs/decisions/products/five-products/ADR-FDE-FIELD-DEPLOY.md)
 
 ## Scope
 

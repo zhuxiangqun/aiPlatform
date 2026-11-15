@@ -1,13 +1,14 @@
 ---
-generated_at: 2026-11-11
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_ADR10_DIAGNOSIS_MVP_D2_DRAFT_MD
+last_reviewed: 2026-11-15
 ---
 
-# ADR-10 D2 草案 — 平台默认绑定（第 2 步剩余）
+# ADR10_DIAGNOSIS_MVP_D2_DRAFT.md（已迁移）
 
-- **状态**：**已升格 Accepted** · 2026-10-26 — 见 `ADR10_DIAGNOSIS_MVP_D2_DECISION.md`；落地 PR [#434](https://github.com/zhuxiangqun/aiPlatform/pull/434) → `968f3a7`  
-- **入口**：`POST /api/platform/apps/fde/acceptance/signoff` → `validate_slice_signoff_reports`  
-- **回滚**：`AIPLAT_DIAGNOSIS_PROD_DEFAULT=0`  
-- **仍禁止**：对外 E4；ADR-09 Accepted / 全拆；compose 长驻 profile（本批未含）
+> 正文已迁至 [`../../docs/decisions/products/five-products/ADR10_DIAGNOSIS_MVP_D2_DRAFT.md`](../../docs/decisions/products/five-products/ADR10_DIAGNOSIS_MVP_D2_DRAFT.md)。
 
-获批前检查表与批准句模板已归档于 git 历史；本文件仅保留升格指针，避免与 DECISION 双源。
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
+

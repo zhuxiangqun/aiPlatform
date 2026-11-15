@@ -1,7 +1,7 @@
 # FDE（platform apps）— 部署说明
 
-- **授权**：`reports/five-products/ADR09_NEXT_FDE_DECISION.md`（#448）  
-- **边界**：`reports/five-products/ADR09_FDE_BOUNDARY.md`  
+- **授权**：`docs/decisions/products/five-products/ADR09_NEXT_FDE_DECISION.md`（#448）  
+- **边界**：`docs/decisions/products/five-products/ADR09_FDE_BOUNDARY.md`  
 - **默认**：**与控制面共部署**（本目录 API 挂在 platform 进程）  
 - **ADR-09**：FDE 已立项为单产品**正式可选**独立部署 — **非**强制把生产默认从共置改为独立  
 - **不含**：compose 长驻；本体 / 控制面拆；第二套 `acceptance/signoff`
@@ -36,6 +36,6 @@ bash scripts/adr09_fde_optional_phase_health.sh
 
 - 现场范围：`docs/products/five-products/modules/fde/FIELD_SCOPE.md`
 - 契约：`docs/products/five-products/modules/fde/contracts/`（`validate_sample.py`）
-- Field D1 ADR（**未 Accepted**）：`reports/five-products/ADR-DRAFT-fde-field-deploy.md`
+- Field D1 ADR（**未 Accepted**）：`docs/decisions/products/five-products/ADR-DRAFT-fde-field-deploy.md`
 
 业务手册（现场交付 SOP）见仓库 `docs/manuals/fde/`，与本部署说明分工不同。

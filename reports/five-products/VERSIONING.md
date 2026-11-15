@@ -1,27 +1,14 @@
 ---
-generated_at: 2026-11-12
-doc_type: Report
+doc_type: Index
+status: active
+authority: supporting
+doc_id: STUB_FP_VERSIONING_MD
+last_reviewed: 2026-11-15
 ---
 
-# A2 Versioning（五能力）
+# VERSIONING.md（已迁移）
 
-> Slice: **A2 versioning only** — independent semver per deploy package.  
-> Does **not** Accept Field / PG-HA ADRs. Does **not** claim E4 / full process split.
+> 正文已迁至 [`../products/five-products/program/VERSIONING.md`](../products/five-products/program/VERSIONING.md)。
 
-## Rules
+本页保留为旧路径 Index stub，避免历史链接与脚本硬编码断链。
 
-1. **SSOT**: [`versions.yaml`](./versions.yaml) lists each capability’s expected `version`.
-2. `packages/*/package.json` `version` **must equal** SSOT.
-3. `docs/products/five-products/modules/*/module.yaml` `version` **must equal** SSOT.
-4. Compat matrix `min_version` must be **≤** package version (semver-ish).
-5. Bump: patch for contract/smoke fixes; minor for D1/D2 packaging features; major only with ADR / breaking contract.
-
-## Check
-
-```bash
-bash packages/aiplat-central/scripts/a2_version_check.sh
-```
-
-## Current line
-
-All five Thin/PREP packages at **0.1.0** (2026-10-30).
