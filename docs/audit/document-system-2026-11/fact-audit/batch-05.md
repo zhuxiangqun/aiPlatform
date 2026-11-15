@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: BATCH_05_B9E358
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Batch 05 事实审核台账（子仓 docs）
 
 ## 范围与结果

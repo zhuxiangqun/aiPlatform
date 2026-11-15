@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: BATCH_06_A3766D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Batch 06 事实审核台账（packages）
 
 ## 范围与结果

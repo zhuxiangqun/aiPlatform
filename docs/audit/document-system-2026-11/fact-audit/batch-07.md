@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: BATCH_07_9C67EA
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Batch 07 reports 抽样事实审核
 
 ## 范围

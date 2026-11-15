@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E1_CONTENT_CONSOLIDATION_8F4B02
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E1 内容去重与合并（Top 集群）
 
 > 日期：2026-11-12  

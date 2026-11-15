@@ -727,8 +727,8 @@ docs/doc-paths.yaml
 | 2 | 文档尚未全部迁入目标目录（计数以 `verify_doc_metadata` 为准，现 ~1069；§11.1 open 行） | open |
 | 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
-| 5 | `reports/` 生命周期仍在迁移 | open |
-| 6 | `authority: canonical` / `doc_id` 铺开 | 部分关闭（2026-11-15）：canonical=15；机读 `doc_id`≈237（`docs/**` 主树含 reference 已铺）；`reports/` 按生命周期**不参与** doc_id/canonical（见 `reports/README.md`） |
+| 5 | `reports/` 生命周期仍在迁移 | 部分关闭（2026-11-15）：`cleanup_reports.py` 支持 earliest-date（文件名 YYYY-MM / compact 戳优先于新鲜 `generated_at`）；已归档带月戳的根快照；其余无日期根快照 / evidence README 仍需补 `date`/`snapshot_date` |
+| 6 | `authority: canonical` / `doc_id` 铺开 | 部分关闭（2026-11-15）：canonical=15；`docs/**`（非 archive）机读 `doc_id` 已铺满；`reports/` 按生命周期不参与 |
 | 7 | ADR 正文已迁至 `docs/decisions/architecture/`；旧位仅 Index stub | 关闭（2026-11-15） |
 
 ## 十七、文档宪法自检

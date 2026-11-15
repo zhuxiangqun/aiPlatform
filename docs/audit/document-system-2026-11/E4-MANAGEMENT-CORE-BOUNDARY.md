@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E4_MANAGEMENT_CORE_BOUNDARY_04A697
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E4 管理端 Core 文档边界
 
 ## 1. 结论

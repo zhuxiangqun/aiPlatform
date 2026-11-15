@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E10_FULL_SEMANTIC_AUDIT_C28046
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E10 全文语义事实审计（自动扫描）
 
 > 日期：2026-11-12  

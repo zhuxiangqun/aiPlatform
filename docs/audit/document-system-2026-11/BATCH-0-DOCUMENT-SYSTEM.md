@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: BATCH_0_DOCUMENT_SYSTEM_FF343A
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # DOCUMENT_SYSTEM v2.4 — Batch 0：文档宪法自检
 
 > 状态：Completed（2026-11-11），先于 954 份文档迁移。

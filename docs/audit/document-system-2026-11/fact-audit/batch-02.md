@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: BATCH_02_0C74F1
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Batch 02 事实审核台账
 
 ## 范围

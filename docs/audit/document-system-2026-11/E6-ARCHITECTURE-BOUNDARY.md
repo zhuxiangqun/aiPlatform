@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E6_ARCHITECTURE_BOUNDARY_D0664F
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E6 架构三文档边界
 
 ## 1. 结论

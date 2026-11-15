@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E9_SEMANTIC_SPOT_CHECK_26ACCA
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E9 语义内容抽检
 
 > 日期：2026-11-12  
