@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Sequence
 
-# Defaults aligned with reports/five-products/contracts/pi-thin-offline.md
+# Defaults aligned with docs/contracts/products/five-products/pi-thin-offline.md
 DEFAULT_OFFLINE_MAX_TTL_HOURS = 24.0
 DEFAULT_SHORTENED_TTL_HOURS = 12.0  # no revocation channel
 DEFAULT_DENIED_OPS = frozenset(

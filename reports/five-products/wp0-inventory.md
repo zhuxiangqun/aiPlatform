@@ -103,7 +103,7 @@ doc_type: Report
 |--|----------------|------------|
 | 现状 | 包与 live_smoke 存在 | 多 hybrid/enterprise 烟测 |
 | 切片 | **采用** | 不作为必经；验证子集若改选须书面 |
-| 离线 | 签名 Bundle 落盘后执行可断连；草案见 `contracts/pi-thin-offline.md` | 回连 aiPlat 厚能力 |
+| 离线 | 签名 Bundle 落盘后执行可断连；草案见 `docs/contracts/products/five-products/pi-thin-offline.md` | 回连 aiPlat 厚能力 |
 
 ### F.4 诊断现状 vs MVP
 

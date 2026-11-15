@@ -34,20 +34,21 @@ docs/products/five-products/modules/
 - ontology
 - pi
 
-## 3. 保留在 reports/
+## 3. 现状路径（2026-11-15）
 
 ```text
-reports/products/five-products/ops/       运行证据/收口
-reports/five-products/contracts/ 产品契约证据
-reports/five-products/ADR-*      决策/方案
-reports/five-products/*.md       方案/报告/快照
+reports/products/five-products/ops/          运行证据/收口
+docs/contracts/products/five-products/       产品叙事契约
+reports/five-products/ADR-*                  决策/方案
+reports/five-products/*.md                   方案/报告/快照
 ```
 
 ## 4. 边界
 
 ```text
 产品定义/模块边界 → docs/products/
-运行证据/收口     → reports/
+产品叙事契约       → docs/contracts/products/
+运行证据/收口     → reports/products/**/ops
 决策              → reports/ 或 docs/decisions/
 ```
 

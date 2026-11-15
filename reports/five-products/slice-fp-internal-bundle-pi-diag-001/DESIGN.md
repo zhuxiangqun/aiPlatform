@@ -34,7 +34,7 @@ doc_type: Report
 | 隔离 | 本机/专用沙箱；禁止写生产租户默认配置 |
 | App 夹具 | `packages/aiplat-pi-runtime/fixtures/sample-app` |
 | 导出 | `python3 scripts/export_pi_bundle.py --app-home <夹具> --out <slice>/bundle --runtime-mode thin` |
-| 离线策略 | `reports/five-products/contracts/pi-thin-offline.md`（执行必须遵守） |
+| 离线策略 | `docs/contracts/products/five-products/pi-thin-offline.md`（执行必须遵守） |
 | 身份 | aiPlat `require_auth` / `_resolve_identity`；副作用经 PolicyGate；Pi 客户端 gate **不得**单独放行 |
 | 回滚 | **优先**换回上一 `bundle_id`/导出目录；备选 Runtime 版本回退；目标 ≤30 分钟可演练 |
 

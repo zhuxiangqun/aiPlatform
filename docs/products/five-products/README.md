@@ -8,5 +8,6 @@ authority: supporting
 # Five Products — 产品定义
 
 - [模块定义](./modules/) — 产品边界、模块协议、模块清单
+- 叙事契约 → [`docs/contracts/products/five-products/`](../../contracts/products/five-products/)
 - 运行证据/收口 → `reports/products/five-products/ops/`
 - 产品 ADR/方案 → `reports/five-products/`

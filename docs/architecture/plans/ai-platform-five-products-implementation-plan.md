@@ -388,7 +388,7 @@ acceptance_status, evidence_ids[], decided_by, decided_at
 #### 产物落点
 
 - `shared/contracts/` 逻辑归属（**先文档 + schema 草案**，不强制新建包）
-- 建议路径：`docs/architecture/contracts/five-products/`（若创建，须登记 DOCUMENT_SYSTEM；本阶段也可先放 `reports/five-products/contracts/`）
+- 建议路径：`docs/architecture/contracts/five-products/`（若创建，须登记 DOCUMENT_SYSTEM；本阶段也可先放 `docs/contracts/products/five-products/`）
 
 #### DoD
 

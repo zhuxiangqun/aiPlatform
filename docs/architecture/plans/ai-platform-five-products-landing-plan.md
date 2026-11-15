@@ -251,7 +251,7 @@ FDE：建场景 + 验收标准
 | 诊断关联 **aiPlat** 证据 | **是**（采集/查询时） | 断连则报告记缺口/`stale`，不编造 |
 | 诊断关联 **Pi** 本地/已上报事件 | 视缓冲 | 未送达须标记证据缺口 |
 
-**WP2 必须写明的离线策略字段**（写入 `reports/five-products/contracts/pi-thin-offline.md`）：
+**WP2 必须写明的离线策略字段**（写入 `docs/contracts/products/five-products/pi-thin-offline.md`）：
 
 1. `offline_max_ttl`：自上次成功策略/Bundle 校验起的最长离线执行窗口。
 2. `allowed_ops_offline`：允许的工具/技能集合（首切片默认 ⊆ 只读/低风险）。
@@ -458,11 +458,11 @@ Semantic：默认 `本切片未启用`。
 | FDE 读已有项目 | 可展示并标 stale |
 | 诊断拉 aiPlat 证据中断 | 记缺口，不编造健康 |
 
-须同时交付 `reports/five-products/contracts/pi-thin-offline.md`（§3.5 六字段）。
+须同时交付 `docs/contracts/products/five-products/pi-thin-offline.md`（§3.5 六字段）。
 
 #### 产物落点
 
-`reports/five-products/contracts/`（启用集 schema 草案 + 矩阵 + 离线策略）。稳定后再迁文档树。
+`docs/contracts/products/five-products/`（启用集 schema 草案 + 矩阵 + 离线策略；2026-11-15 自 `reports/five-products/contracts/` 迁入）。
 
 #### DoD
 

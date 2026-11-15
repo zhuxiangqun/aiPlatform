@@ -102,7 +102,7 @@ doc_type: Report
 
 | ID | 授权 |
 |----|------|
-| A7.1 | L1 产物只进 `reports/five-products/`（及子目录 `contracts/`） |
+| A7.1 | L1 产物：叙事契约进 `docs/contracts/products/five-products/`；其余进 `reports/five-products/` |
 | A7.2 | 变更 A 节任一条 → 修订本文件并改日期；重大路径/门禁变更走 ADR，不靠聊天默示 |
 
 ---

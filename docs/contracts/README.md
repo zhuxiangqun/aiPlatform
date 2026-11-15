@@ -11,7 +11,7 @@ last_reviewed: 2026-11-15
 
 # FDE / FDA / Org L5 契约索引（阅读顺序与维护责任）
 
-本目录存放 FDE 工作台演进与 **Org L5（组织级单线闭环）** 的跨仓契约与评审产物。Core 运行时契约仍在 `aiPlat-core/docs/contracts/`。Ontology 契约正文在 [`knowledge/`](./knowledge/)（根路径 `ONTOLOGY_*` 仅留 stub）。
+本目录存放 FDE 工作台演进与 **Org L5（组织级单线闭环）** 的跨仓契约与评审产物。Core 运行时契约仍在 `aiPlat-core/docs/contracts/`。Ontology 契约正文在 [`knowledge/`](./knowledge/)（根路径 `ONTOLOGY_*` 仅留 stub）。五产品叙事契约在 [`products/five-products/`](./products/five-products/)（旧 `reports/five-products/contracts/` 仅留 stub）。
 
 > **本页职责拆分**
 > - **阅读顺序**（下表）：接手/评审时读哪些契约文件。

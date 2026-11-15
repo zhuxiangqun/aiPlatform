@@ -7,7 +7,7 @@ doc_type: Report
 
 - **状态**：**清单已立** · 2026-10-27 — 授权真源 `ADR09_NEXT_CONTROL_PLANE_DECISION.md`（#458）  
 - **产品**：控制面（aiPlat）  
-- **对照**：`ADR-02-control-plane-draft.md` · `contracts/identity-policy-fp-001.md` · `contracts/enablement-matrix.md`  
+- **对照**：`ADR-02-control-plane-draft.md` · `docs/contracts/products/five-products/identity-policy-fp-001.md` · `docs/contracts/products/five-products/enablement-matrix.md`  
 - **不含**：compose 长驻；超边界 E4；第二 Identity/Policy 权威；一次大搬仓
 
 ## As-Is（当前）
