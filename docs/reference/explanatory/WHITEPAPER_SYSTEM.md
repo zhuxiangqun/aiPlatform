@@ -113,11 +113,11 @@ authority: supporting
 | §3.0 | 关键设计决策**索引**（不复制 ADR） |
 | §3.1 | 架构全景**白话叙事**（分层/请求路径/铁律）；图示与代码入口见 overview |
 | §3.2 | 多系统对标**摘要**（一句话定位 + 加权总分一行）；18 维全文见 `comparison.md` |
-| §3.3 | 工程落地**索引表**（部署/性能/可观测/数据/测试…）；不粘贴手册/源码节选 |
+| §3.3 | 工程落地**索引表 + 正文节选**（§3.3.0 索引；§3.3.1–§3.3.10 权威源节选，可再生） |
 
-- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `tech-architecture`（`_tech_architecture_narrative` / `_tech_comparison_digest` / §3.3 表）
-- **同步触发**：overview / comparison / 工程权威源变更时，同一 PR 内 `bash scripts/sync_whitepapers.sh`
-- **验收**：01 卷以 §3.1 叙事为主；§3.2 无完整 18 维星级表；无大段 `*.py` 路径清单
+- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `tech-architecture`（`_tech_architecture_narrative` / `_tech_comparison_digest` / `_append_eng_section`）
+- **同步触发**：overview / comparison / 任一 §3.3 工程权威源变更时，同一 PR 内更新索引行/节选参数 + `bash scripts/sync_whitepapers.sh`
+- **验收**：01 卷以 §3.1 叙事为主；§3.2 无完整 18 维星级表；§3.3.1–§3.3.10 存在且链接目标在 suite supporting；无手写第二份工程全文或编造 QPS
 
 ## 对标与评级（横切，必须进总白皮书目录）
 

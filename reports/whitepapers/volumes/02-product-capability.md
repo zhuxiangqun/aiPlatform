@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-15T09:43:34Z"
+generated_at: "2026-11-15T11:17:04Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
-suite_sha256: "917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c"
+suite_sha256: "02d566147e58e73b51b674900af8bb680be5f2aed6253aa87117ce711673fff3"
 caps_sha256: "6fa22627617d08710cebe629f48c425ff56a8248cd4c5080caec7855cf86549f"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=6fa22627617d08710cebe629f48c425ff56a8248cd4c5080caec7855cf86549f scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=02d566147e58e73b51b674900af8bb680be5f2aed6253aa87117ce711673fff3 caps_sha256=6fa22627617d08710cebe629f48c425ff56a8248cd4c5080caec7855cf86549f scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-15T09:43:34Z` |
+| 生成时间 (UTC) | `2026-11-15T11:17:04Z` |
 | CAPABILITIES sha256 | `6fa22627617d…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -56,8 +56,8 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/manuals/getting-started.md`](../../../docs/guides/getting-started.md) | 上手路径 | ❌ |
-| [`docs/manuals/fde/README.md`](../../../docs/guides/fde/README.md) | FDE 交付场景入口 | ❌ |
+| [`docs/guides/getting-started.md`](../../../docs/guides/getting-started.md) | 上手路径 | ✅ |
+| [`docs/guides/fde/README.md`](../../../docs/guides/fde/README.md) | FDE 交付场景入口 | ✅ |
 | [`docs/architecture/execution-decision-matrix.md`](../../../docs/architecture/execution-decision-matrix.md) | 执行选型（产品/技术评估共用） | ✅ |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) | 厂外薄交付边界（Pi） | ✅ |
 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | Pi Package 用户侧说明 | ✅ |

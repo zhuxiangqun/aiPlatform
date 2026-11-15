@@ -4,19 +4,19 @@ volume_id: security-governance
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-15T09:43:34Z"
+generated_at: "2026-11-15T11:17:04Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
-suite_sha256: "917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c"
+suite_sha256: "02d566147e58e73b51b674900af8bb680be5f2aed6253aa87117ce711673fff3"
 caps_sha256: "6fa22627617d08710cebe629f48c425ff56a8248cd4c5080caec7855cf86549f"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=6fa22627617d08710cebe629f48c425ff56a8248cd4c5080caec7855cf86549f scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=02d566147e58e73b51b674900af8bb680be5f2aed6253aa87117ce711673fff3 caps_sha256=6fa22627617d08710cebe629f48c425ff56a8248cd4c5080caec7855cf86549f scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-15T09:43:34Z` |
+| 生成时间 (UTC) | `2026-11-15T11:17:04Z` |
 | CAPABILITIES sha256 | `6fa22627617d…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -47,8 +47,8 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/security/security-architecture.md`](../../../docs/reference/security/security-architecture.md) | 安全架构 | ❌ |
-| [`docs/compliance/eu-ai-act-assessment.md`](../../../docs/reference/compliance/eu-ai-act-assessment.md) | 合规评估 | ❌ |
+| [`docs/reference/security/security-architecture.md`](../../../docs/reference/security/security-architecture.md) | 安全架构 | ✅ |
+| [`docs/reference/compliance/eu-ai-act-assessment.md`](../../../docs/reference/compliance/eu-ai-act-assessment.md) | 合规评估 | ✅ |
 | [`docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md`](../../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级（L 级，可验证） | ✅ |
 
 
@@ -56,10 +56,10 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/reference/framework/aiplat-autonomy-framework.md`](../../framework/aiplat-autonomy-framework.md) | 自主性框架 | ❌ |
-| [`docs/reference/framework/aiplat-complete-assessment.md`](../../framework/aiplat-complete-assessment.md) | 完整评估叙述 | ❌ |
+| [`reports/framework/aiplat-autonomy-framework.md`](../../../reports/framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
+| [`reports/framework/aiplat-complete-assessment.md`](../../../reports/framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
 | [`docs/reference/framework/assessment-scores.json`](../../../docs/reference/framework/assessment-scores.json) | 评分机器源 | ✅ |
-| [`docs/reference/framework/scoring-detail.md`](../../framework/scoring-detail.md) | 评分细则 | ❌ |
+| [`reports/framework/scoring-detail.md`](../../../reports/framework/scoring-detail.md) | 评分细则 | ✅ |
 | [`docs/reference/framework/verification-protocol.md`](../../../docs/reference/framework/verification-protocol.md) | 外部验证协议 | ✅ |
 
 
