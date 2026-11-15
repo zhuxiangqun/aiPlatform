@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T21:20:22+08:00",
+  "reviewed_at": "2026-11-15T23:05:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "0b0ee06471877171c7edb3a930e67d7c04a87c88",
-  "diff_sha256": "b248e7d0935f837faa9c8e640902757a90523115c40c70a22915b13df167ba2d",
-  "head_sha": "7ffdbaf7607d168c4292c5c3cbc375781a1387bc",
+  "merge_base": "2c5aebbd6b9968087058069168e12a65ac82f68c",
+  "diff_sha256": "75bf92034f12ad472409bd4e6db599b7ae3123eaeb66e75b96d95e88cb8c3090",
+  "head_sha": "68bd51d33ff2057ff79a380009656bd1afc77648",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CI fix: clause-sync system-architecture-contract §86 for Fact Ledger Phase1; docs-only, no runtime change."
+  "note": "Confirm HTTP sole path→ActionRegistry; anon empty scopes still defaults kb:write (Identity align). Wiki-readonly out of scope."
 }
