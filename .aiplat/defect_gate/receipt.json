@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T10:39:49+08:00",
+  "reviewed_at": "2026-11-15T10:43:41+08:00",
   "base_ref": "origin/main",
   "merge_base": "2645d938cdbc136552298dc2329abb1e2c22adaa",
-  "diff_sha256": "cf54f21119e5fb5eba7248f9340ea010face2f8d82b42dc6d7f8215a4eb0c9d8",
-  "head_sha": "509217c8a3c7e0b7fa99481c7f5172d00fce086e",
+  "diff_sha256": "2191fb2304b0c6e52f35af99bd6a317763f357898a3704900a2a37a431faeb41",
+  "head_sha": "84c6691d26edfc4ce6995535dbd9f5ec9bf3c72b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Eval P0/P1: gate enum clamp + ItemResponse envelope + composite v1.2 report-only. P2 staging still blocked on host; A3 ready_to_authorize=false. Local lock only; CI unlock is non-author Approve."
+  "note": "contracts-guard clause-sync for eval_protocol harness touch; no product semantics change. Local lock only."
 }
