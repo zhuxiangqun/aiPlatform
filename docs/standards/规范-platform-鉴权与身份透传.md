@@ -3,12 +3,17 @@ doc_type: Standard
 title: 规范：aiPlat-platform 鉴权与身份透传（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-platform → aiPlat-app/aiPlat-core/aiPlat-management
+scope_in: aiPlat-platform → aiPlat-app/aiPlat-core/aiPlat-management
+scope_out: infra 模型目录配置；前端菜单可见性细则
 status: approved
 draft_date: 2026-07-04
 approved_date: 2026-08-16
 authority: supporting
 doc_id: PLATFORM_12AAAB
 last_reviewed: 2026-11-15
+owner: 朱向群
+purpose: 规定 platform 鉴权与下游身份透传默认值，防止各层重复鉴权或静默丢租户
+version: "1.0"
 ---
 ## 1. 总原则（最佳实践默认值）
 

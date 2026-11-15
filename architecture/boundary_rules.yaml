@@ -1,15 +1,15 @@
 # architecture/boundary_rules.yaml
 #
-# Single source of truth for layer-boundary architecture constraints.
-# 
-# Field reference:
-#   symbols:     Exact symbol names → generates `grep -w` (word boundary match)
-#   patterns:    Regex patterns    → generates `grep -E` (extended regex match)
-#   severity:    "error" (blocks commit) | "warning" (advisory only)
+# LLM boundary-injection corpus only (NOT the CI architecture-guard SSOT).
+# Consumer: aiPlat-core/core/harness/syscalls/llm.py::_try_inject_boundary_rules
 #
-# After modifying this file, run:
-#   python3 scripts/generate_guard_rules.py
-# to sync architecture_guard.sh and CLAUDE.md §8 self-check table.
+# CI / pre-commit / architecture_guard.sh SSOT:
+#   aiPlat-core/core/management/arch_guard_rules.yaml
+#
+# Field reference (for injection prompts):
+#   symbols:     Exact symbol names shown to the model as forbidden-in-layer
+#   patterns:    Regex patterns described to the model
+#   severity:    "error" | "warning" (advisory in prompt text)
 
 version: "1.0.0"
 

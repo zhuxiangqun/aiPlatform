@@ -2745,3 +2745,30 @@ rules:
       exclude: ["__pycache__", ".test.", "node_modules", "AgentNetworkPanel.tsx"]
       grep_exclude: ["# noqa: workbench-topology", "workbench_no_agent_topology", "已按契约否定清单下线"]
     message: "agent topology / dynamic spawn UI forbidden on FDE workbench console (FDE_WORKBENCH_CONTRACT.md §4)"
+
+  # ═══ Section 99: Platform auth symbols (migrated from retired boundary_rules generator) ═══
+  # CI SSOT is this file only. architecture/boundary_rules.yaml is LLM-injection corpus.
+
+  - id: platform_auth_symbols_forbidden_in_infra
+    section: "§99"
+    section_name: "Platform Auth Symbols — Layer Placement"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: '\b(ROUTE_PERMISSIONS|SIDEBAR_MENUS|METHOD_RESTRICTIONS|SystemRole)\b'
+      paths: ["aiPlat-infra"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# noqa: boundary"]
+    message: "platform auth symbols in infra — ROUTE_PERMISSIONS/SIDEBAR_MENUS/METHOD_RESTRICTIONS/SystemRole belong to platform"
+
+  - id: platform_auth_symbols_warn_in_core
+    section: "§99"
+    section_name: "Platform Auth Symbols — Layer Placement"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: '\b(ROUTE_PERMISSIONS|SIDEBAR_MENUS|METHOD_RESTRICTIONS|SystemRole)\b'
+      paths: ["aiPlat-core"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# noqa: boundary", "get_route_permissions", "get_method_restrictions"]
+    message: "platform auth symbols in core — prefer platform definition; core may only re-export with # noqa: boundary"

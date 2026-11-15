@@ -741,9 +741,9 @@ def _try_inject_boundary_rules(messages: List[Message], trace_context: Optional[
 
     Only triggers for file-write coding operations (write_file, edit_file,
 
-    create_skill, etc.). Reads boundary_rules.yaml and injects constraints
+    create_skill, etc.). Reads architecture/boundary_rules.yaml (LLM injection
 
-    specific to the file's architecture layer.
+    corpus; CI SSOT is arch_guard_rules.yaml) and injects layer constraints.
 
     """
 

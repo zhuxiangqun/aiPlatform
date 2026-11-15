@@ -13,6 +13,9 @@ last_reviewed: 2026-11-15
 
 ## 跨层强制规范（已批准）
 
+> 版本以各文件 frontmatter `version` 为准（当前多为 `1.0`）。  
+> 目录版式对齐 `knowledge-system/<semver>/` 列为后续；本批不物理迁目录以免断链。
+
 | 规范 | 范围 |
 |---|---|
 | [app session_id / conversation_key](./规范-app-session_id与conversation_key.md) | aiPlat-app channels/sessions |

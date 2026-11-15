@@ -3,12 +3,17 @@ doc_type: Standard
 title: 规范：aiPlat-app Session ID 与 Conversation Key（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-app（channels/sessions 权威）
+scope_in: aiPlat-app（channels/sessions 权威）
+scope_out: core 内部 run/trace ID；platform JWT 声明字段本身
 status: approved
 draft_date: 2026-07-04
 approved_date: 2026-08-16
 authority: supporting
 doc_id: APP_SESSION_ID_CONVERSATION_KEY_DDDE8A
 last_reviewed: 2026-11-15
+owner: 朱向群
+purpose: 统一多渠道会话标识，避免 app/session 与 conversation_key 混用导致串话与审计断链
+version: "1.0"
 ---
 ## 1. 目标（为什么要规定）
 

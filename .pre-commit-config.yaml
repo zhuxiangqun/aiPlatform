@@ -1,9 +1,13 @@
 # aiPlat pre-commit 框架配置
-# 安装: pre-commit install   (框架接管 .git/hooks/pre-commit)
-# 手动: git commit --no-verify 绕过（§89 审计记录）
-# 说明: 综合 hook(aiplat-comprehensive) 调用 scripts/pre-commit-hook.sh ——
-#       该脚本包含 10+ 步检查(compile/cap/doc-sync/wiring/route/arch-guard/engine-guard)，
-#       比早期 4 个零散 hook 更完整。此处保留轻量钩子用于快速失败。
+# 安装（二选一）:
+#   1) bash scripts/install_git_hooks.sh
+#      → 写入薄包装 .git/hooks/pre-commit，始终 exec scripts/pre-commit-hook.sh
+#   2) pre-commit install
+#      → 框架接管 .git/hooks/pre-commit，本文件 hooks 生效（同样走 comprehensive）
+# 跳过: git commit --no-verify（§89 审计记录）
+#
+# 禁止手改 .git/hooks/pre-commit 正文。唯一真相源是 scripts/pre-commit-hook.sh
+# （compile / cap / doc-sync / wiring / route / arch-guard / engine-guard / docstring）。
 repos:
   - repo: local
     hooks:
@@ -26,10 +30,3 @@ repos:
         language: python
         files: '\.(yaml|yml|md)$'
         pass_filenames: false
-
-# ── 2026-08-25 治理收尾：pre-commit 框架未安装（环境无 pre-commit 二进制），
-#    实际生效的是手工 git hook（.git/hooks/pre-commit，324 行：compile/cap/doc-sync/
-#    wiring/route/arch-guard/engine-guard 全覆盖，内容与本文件 comprehensive 钩子等效）。
-#    本文件保留为声明式参考 + CI 可移植配置；两套 hook 通过 scripts/pre-commit-hook.sh
-#    单一入口对齐（手工 hook 与 comprehensive 钩子均调用同一脚本族），避免静默分叉。
-#    若未来环境安装 pre-commit 框架，直接 `pre-commit install` 即可接管（无需改钩子内容）。

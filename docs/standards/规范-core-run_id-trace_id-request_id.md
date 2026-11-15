@@ -3,12 +3,17 @@ doc_type: Standard
 title: 规范：aiPlat-core Run/Trace/Request 三 ID（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-platform + aiPlat-core + aiPlat-management（全链路）
+scope_in: aiPlat-platform + aiPlat-core + aiPlat-management（全链路）
+scope_out: 业务会话 session_id / conversation_key；租户身份字段
 status: approved
 draft_date: 2026-07-04
 approved_date: 2026-08-16
 authority: supporting
 doc_id: CORE_RUN_ID_TRACE_ID_REQUEST_ID_F65122
 last_reviewed: 2026-11-15
+owner: 朱向群
+purpose: 规定全链路三类 ID 的权威生成方与透传规则，支撑排障与审计对齐
+version: "1.0"
 ---
 ## 1. 三个 ID 的分工（必须分离）
 

@@ -428,16 +428,17 @@ if command -v git >/dev/null 2>&1; then
 else echo "⚠️ git not available"; fi
 
 # §90: Engine guard pre-commit hook is installed (skip in CI — hooks are local-dev)
+# Prefer thin wrapper → scripts/pre-commit-hook.sh (calls pre-commit-engine-guard).
 echo -n "§90: engine pre-commit hook installed: "
 if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
     echo "✅ (CI — local hook not required)"
-elif [ -f ".git/hooks/pre-commit" ] && grep -q "pre-commit-engine-guard" .git/hooks/pre-commit 2>/dev/null; then
+elif [ -f ".git/hooks/pre-commit" ] && grep -qE "pre-commit-hook\.sh|pre-commit-engine-guard" .git/hooks/pre-commit 2>/dev/null; then
     echo "✅"
-elif [ -f ".husky/pre-commit" ] && grep -q "pre-commit-engine-guard" .husky/pre-commit 2>/dev/null; then
+elif [ -f ".husky/pre-commit" ] && grep -qE "pre-commit-hook\.sh|pre-commit-engine-guard" .husky/pre-commit 2>/dev/null; then
     echo "✅"
 else
     echo "❌ not installed"
-    echo "   Install: cp scripts/pre-commit-engine-guard.sh .git/hooks/pre-commit"
+    echo "   Install: bash scripts/install_git_hooks.sh"
     FAIL=1
 fi
 
