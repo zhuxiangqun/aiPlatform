@@ -1,0 +1,39 @@
+{
+  "domain_id": "lock-service",
+  "object_types": [
+    {
+      "object_type_id": "InstallOrder",
+      "label": "安装工单",
+      "primary_key": "order_id",
+      "domain_id": "lock-service",
+      "source_binding": {
+        "kind": "fact_ledger",
+        "dataset_id": "lock-service-facts",
+        "watermark": "recorded_at"
+      },
+      "properties": [
+        {"id": "status", "type": "enum", "indexed": true},
+        {"id": "device_model", "type": "string", "indexed": true}
+      ],
+      "links": [],
+      "sync": {"mode": "incremental", "schedule": "manual", "health": "required"}
+    },
+    {
+      "object_type_id": "DeviceModel",
+      "label": "设备型号",
+      "primary_key": "name",
+      "domain_id": "lock-service",
+      "source_binding": {
+        "kind": "fact_ledger",
+        "dataset_id": "lock-service-facts",
+        "watermark": "recorded_at"
+      },
+      "properties": [
+        {"id": "brand", "type": "string", "indexed": true},
+        {"id": "lock_type", "type": "string", "indexed": true}
+      ],
+      "links": [],
+      "sync": {"mode": "incremental", "schedule": "manual", "health": "required"}
+    }
+  ]
+}

@@ -14381,7 +14381,48 @@ from core.harness.learning.playbook import PlaybookManifest, pack_playbook, unpa
 from core.harness.finance.value_calculator import BusinessGoal, get_value_calculator  # noqa: boundary
 from core.harness.execution.simulation import ScenarioDefinition, ScenarioType  # noqa: boundary
 from core.harness.knowledge_pipeline.extractor import ExtractionPipeline, ExtractionResult, PendingExtractionStore, write_extraction_to_graph_index, file_bytes_to_text  # noqa: boundary
+from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
+    FactLedger,
+    FactLedgerError,
+    get_fact_ledger,
+    load_object_type_bindings,
+    record_extraction_as_claim,
+)
 from core.harness.infrastructure.gates.marking_propagation import get_entity_max_marking_level, MARKING_LABELS  # noqa: boundary
+
+
+async def fact_ledger_query_gateway(
+    *,
+    tenant_id: str,
+    query: str = "",
+    collection_id: str | None = None,
+    domain_id: str | None = None,
+    top_k: int = 8,
+    require_citations: bool = True,
+) -> dict:
+    """CoreFacade：Fact Ledger 查询网关（租户前置）。
+
+    Args:
+        tenant_id: 租户 ID。
+        query: 查询串。
+        collection_id: 可选集合。
+        domain_id: 可选域。
+        top_k: 返回条数。
+        require_citations: 无引用则 abstain。
+
+    Returns:
+        附录 M 形状的查询响应。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.query_facts_gateway(
+        tenant_id=tenant_id,
+        query=query,
+        collection_id=collection_id,
+        domain_id=domain_id,
+        top_k=top_k,
+        require_citations=require_citations,
+    )
 
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
