@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T12:31:00+08:00",
+  "reviewed_at": "2026-11-15T12:35:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "af94ba51d6a12fc57f98ac63b77de6f56527ffe2",
-  "diff_sha256": "94a73487ebd0af1e2e0f1de2674624ffb1adb078b0c915e0e069603dbf92a741",
-  "head_sha": "8562f34f3e5e5d4c06b5d86875bb426b9f3e5077",
+  "diff_sha256": "fef1e726fc84d3ba2232b5939cc3239eb5faf3b7836bd85a00b89b58effcd3c1",
+  "head_sha": "14d9ce86cea8a4a1c9e6e366aa2e42b20a71e29f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs governance: doc_id batch2 (~190 machine ids). Residual: remaining reference/reports. Local lock only."
+  "note": "Docs governance: reference doc_id complete (~237 ids); reports out of doc_id scope. Residual: optional root reports archive hygiene. Local lock only."
 }
