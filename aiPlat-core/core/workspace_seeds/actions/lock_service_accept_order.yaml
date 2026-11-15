@@ -18,10 +18,6 @@ actions:
     # G2 L1：无此权限则 execute → policy_denied（失败关闭）
     required_permissions:
       - "action:lock-service:accept_order"
-    allowed_roles:
-      - operator
-      - admin
-      - customer_ops
     throttle_limit: 0
     action_namespace: customer_action
     eval_gate: customer_action_safety
