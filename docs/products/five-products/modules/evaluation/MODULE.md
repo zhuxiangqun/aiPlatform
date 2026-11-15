@@ -106,9 +106,9 @@ See [`EVAL_PROTOCOL.md`](./EVAL_PROTOCOL.md).
 | Upgrade / rollback | `d1_upgrade.sh` · `d1_rollback.sh --runtime` |
 | Closeout | `scripts/d2_local_closeout.sh` · [`ops/EVALUATION_D2_LOCAL_CLOSEOUT.md`](../../../../../reports/products/five-products/ops/EVALUATION_D2_LOCAL_CLOSEOUT.md) |
 
-`current_delivery` 仍为 **D1**（D1c；与 [`module.yaml`](./module.yaml) / `capabilities.manifest.yaml` 一致）；D2 ops pack **本地完成 ≠ 独立交付升级**。`process_split_authorized=false`。
+`current_delivery` 仍为 **D1**（D1c；与 [`module.yaml`](./module.yaml) / `capabilities.manifest.yaml` 一致）；D2 ops pack **本地完成 ≠ 独立交付升级**。运行时 `process_split_authorized=false`（政策旗标另用 `process_split_policy_authorized`；`check_eval_module_docs.py` 门禁拆名）。
 
-A3 process/DB split **forbidden** without ADR Accepted + `process_split_authorized`。
+A3 process/DB split **forbidden** without ADR Accepted + 运行时 `process_split_authorized`（≠ 政策旗标）。
 
 ## A3 prep (Accepted 有条件 · not authorized)
 
