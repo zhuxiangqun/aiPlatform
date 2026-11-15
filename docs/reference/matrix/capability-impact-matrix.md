@@ -1,10 +1,10 @@
 ---
 doc_type: Reference
-doc_id: CAPABILITY_IMPACT_MATRIX_EEEE7B
-last_reviewed: 2026-11-15
 status: active
 authority: supporting
+doc_id: CAPABILITY_IMPACT_MATRIX
 ---
+
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`

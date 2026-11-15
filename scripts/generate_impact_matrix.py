@@ -109,7 +109,15 @@ def render_matrix_markdown(data: Dict[str, Any]) -> str:
             lines.append("- (no expected consumers)")
         lines.append("")
 
-    return "---\ndoc_type: Reference\n---\n\n" + "\n".join(lines) + "\n"
+    # Why: stable frontmatter so doc_id seed / metadata gates don't fight --ci freshness.
+    return (
+        "---\n"
+        "doc_type: Reference\n"
+        "status: active\n"
+        "authority: supporting\n"
+        "doc_id: CAPABILITY_IMPACT_MATRIX\n"
+        "---\n\n" + "\n".join(lines) + "\n"
+    )
 
 
 def write_matrix(out_path: Path, data: Optional[Dict[str, Any]] = None, root: Optional[Path] = None) -> Path:
