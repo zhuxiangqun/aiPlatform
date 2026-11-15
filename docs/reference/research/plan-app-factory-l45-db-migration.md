@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: PLAN_APP_FACTORY_L45_DB_MIGRATION_6618BD
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # L4.5 设计：数据库 schema 变更与迁移编排（AI 改模型 → 数据库自动跟上）
 
 > **状态**：✅ **已实施**（2026-08-23，PR #91 设计 + PR #92 实施；实施落地记录见 §10，与设计的差异已标注）

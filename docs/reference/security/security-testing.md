@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: SECURITY_TESTING_0541F5
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 安全测试指南
 
 ## 自检清单

@@ -728,7 +728,7 @@ docs/doc-paths.yaml
 | 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
 | 5 | `reports/` 生命周期仍在迁移 | open |
-| 6 | `authority: canonical` / `doc_id` 铺开 | 部分关闭（2026-11-15）：canonical=15；机读 `doc_id`≈190（SoT/standards/contracts/guides/products/architecture/decisions + reference 子集）；其余 reference/reports 等仍待铺 |
+| 6 | `authority: canonical` / `doc_id` 铺开 | 部分关闭（2026-11-15）：canonical=15；机读 `doc_id`≈237（`docs/**` 主树含 reference 已铺）；`reports/` 按生命周期**不参与** doc_id/canonical（见 `reports/README.md`） |
 | 7 | ADR 正文已迁至 `docs/decisions/architecture/`；旧位仅 Index stub | 关闭（2026-11-15） |
 
 ## 十七、文档宪法自检

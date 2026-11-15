@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: ATTRIBUTIONSCHEMA_E38801
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # AttributionSchema — Agent 效果归因协议
 
 > 版本: 1.0 · 2026-07-17  

@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: API_REFERENCE_DD981A
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat API Reference
 
 > 完整 API 文档通过 Swagger UI 提供。所有端点支持交互式调用。

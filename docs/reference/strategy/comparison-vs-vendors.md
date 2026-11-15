@@ -3,8 +3,11 @@ doc_type: Reference
 scope: external
 last_updated: 2026-07-04
 based_on: 2026 年 7 月公开信息，如有错误欢迎指正
+doc_id: COMPARISON_VS_VENDORS_0839B7
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 与商业图数据库 / 知识图谱厂商 对比分析
 
 > 本文对比 aiPlat 与四家国内图数据库 / 知识图谱厂商（海致科技、创邻科技、杭州悦数、星环科技）以及 Hermes Agent 的定位差异。

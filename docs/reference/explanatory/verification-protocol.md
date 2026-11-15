@@ -4,32 +4,23 @@ title: "aiPlat L5 评估验证协议"
 type: audit-protocol
 domain: aiplat-core
 version: 7.0.0
-date: 2026-07-24
+date: 2026-07-22
 status: published
 depends_on: docs/reference/framework/aiplat-autonomy-framework.md
-changelog:
-  - version: 7.0.0
-    date: 2026-07-24
-    changes:
-      - "将 verify_l5_runtime.py v3 确立为唯一权威验证方法"
-      - "§5.2 命令 #19（AdaptiveContextRouter）和 #20（GossipProtocol）增加接线验证"
-      - "新增 §7：verify_l5_runtime.py 8维运行时验证"
-      - "更新验证结论：6轴 L5 全部闭合（B/D轴已接入生产路径）"
-  - version: 6.5.0
-    date: 2026-07-22
-    changes:
-      - "修正 B 轴 AdaptiveContext 文件路径: routing/adaptive_context_router.py → knowledge/adaptive_context.py"
-      - "修正 D 轴 GossipProtocol 文件路径: knowledge/shared_knowledge_pool.py → memory/gossip_protocol.py"
-      - "修正 E 轴 SwarmBroker 文件路径: execution/swarm_broker.py → coordination/swarm_broker.py"
-      - "修正 3.3 BaseAgent 路径: kernel/base.py → apps/agents/base.py"
-      - "§5.2 新增 #19-#21 三条验证命令（修正路径后的 L5 模块存在性检查）"
-refs:
-  - "MIT 2025 AI Agent Index"
-  - "DeepSeek L1-L5 Classification"
-  - "arXiv: Ten Capability Axes"
+changelog: 
+- version: 6.5.0
+changes: 
+- "修正 B 轴 AdaptiveContext 文件路径: routing/adaptive_context_router.py → knowledge/adaptive_context.py"
+- "修正 D 轴 GossipProtocol 文件路径: knowledge/shared_knowledge_pool.py → memory/gossip_protocol.py"
+- "修正 E 轴 SwarmBroker 文件路径: execution/swarm_broker.py → coordination/swarm_broker.py"
+- "修正 3.3 BaseAgent 路径: kernel/base.py → apps/agents/base.py"
+refs: 
+- "arXiv: Ten Capability Axes"
 tags: [audit, verification, L4+, reproducibility, negative-check, L5-proximate, ucb1]
+doc_id: VERIFICATION_PROTOCOL_E2DBD7
+last_reviewed: 2026-11-15
+authority: supporting
 ---
-
 # aiPlat L5 评估验证协议
 
 > **C2 消歧**：本文验证 **白皮书 L5 定级 / verify_l5_runtime**。

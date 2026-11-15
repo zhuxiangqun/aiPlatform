@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: INDEX_7D8E23
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 用户角色 · 文档导航
 
 > 入口：`docs/guides/README.md`（手册总目录）

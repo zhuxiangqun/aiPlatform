@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: PLAN_APP_FACTORY_L2_IMPORT_REPO_F1C21C
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # L2 设计：应用工厂"导入既有代码"输入通道（从 0→1 生成器 → 1→100 演进器第一步）
 
 > **状态**：✅ **已实施**（2026-08-22，PR #80 合并；实施落地记录见 §9，与设计的差异已标注）

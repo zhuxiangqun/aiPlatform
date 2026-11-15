@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: AIPLAT_8DBB53
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 核心能力对标报告（2026-10 五家重做）
 
 > 最后验证 2026-10-18（OpenWorker 收口 + 认知分层旁路 §0.3）

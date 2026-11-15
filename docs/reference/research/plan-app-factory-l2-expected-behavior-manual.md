@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: PLAN_APP_FACTORY_L2_EXPECTED_BEHAVIOR_MANUAL_A09224
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 📘 应用工厂 L2 代码导入模式 —— 用户预期管理手册（必读）
 
 > **状态**：✅ **已落地**（2026-08-22，作为前端"首次导入既有代码"弹窗交付 —— `Factory/index.tsx` `showManualModal`，同意/退出按钮，§3.9 条件 1）

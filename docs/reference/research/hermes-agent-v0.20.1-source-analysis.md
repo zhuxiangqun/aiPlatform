@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: HERMES_AGENT_V0_20_1_SOURCE_ANALYSIS_8F0133
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # hermes-agent v0.20.1 源码级对标分析
 
 > 源码：/Users/apple/workdata/person/openSource/hermes-agent-main/（NousResearch，MIT，v0.20.1）

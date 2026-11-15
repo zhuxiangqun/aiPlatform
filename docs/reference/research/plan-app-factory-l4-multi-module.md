@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: PLAN_APP_FACTORY_L4_MULTI_MODULE_E83F92
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # L4 设计：多模块编排（从"改单个文件"→"演进模块化系统"——1→100 的架构路径）
 
 > **状态**：✅ **已实施**（2026-08-23，PR #87 设计 + PR #88 后端 + PR #89 前端；实施落地记录见 §10，与设计的差异已标注）

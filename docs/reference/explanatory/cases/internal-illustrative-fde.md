@@ -7,8 +7,11 @@ industry: （不适用）
 engagement: Illustrative
 source: 基于 value_calculator.py 五维口径构造
 period: 示意月度
+doc_id: INTERNAL_ILLUSTRATIVE_FDE_CB849E
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 > **非客户授权案例**  
 > 本案例为内部示意，不涉及任何真实客户名称、授权数据或收益承诺。仅用于说明 `value_calculator.py` 五维算法与 CEO/CFO/PM 翻译口径。
 

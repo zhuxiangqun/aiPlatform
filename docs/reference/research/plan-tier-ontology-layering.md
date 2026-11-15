@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: PLAN_TIER_ONTOLOGY_LAYERING_D34CE1
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 本体三层分离设计（P2-L1：稳定核心 / 可变逻辑 / 实验边缘）
 
 > **目的**：为 aiPlat 本体引入"分层治变"能力——让本体变更的治理规则按影响半径分级，解决"业务变化快，架构跟不上"的行业死穴。

@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: PLAN_APP_FACTORY_L3_INCREMENTAL_ENGINE_29544B
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # L3 设计：增量 diff 合并引擎（从 L2"整文件重写"→"只改受影响文件 + 可审批合并"）
 
 > **状态**：✅ **已实施**（2026-08-23，PR #83 合并；实施落地记录见 §10，与设计的差异已标注）

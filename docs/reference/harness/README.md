@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: README_F487F4
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Harness 执行引擎文档
 
 > 详细文档在 `aiPlat-core/docs/harness/`（12 个文件）。

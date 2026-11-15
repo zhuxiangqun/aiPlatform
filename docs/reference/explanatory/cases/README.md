@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: README_69E31B
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 客户案例授权流程
 
 > 供 **商业价值白皮书** 收集客户授权后的 ROI / TCO 材料。  

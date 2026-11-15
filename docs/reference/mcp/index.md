@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: INDEX_94FA72
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # MCP 协议集成设计
 
 ## 概述

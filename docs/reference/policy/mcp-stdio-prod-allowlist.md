@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: MCP_STDIO_PROD_ALLOWLIST_983A73
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 #!/bin/false
 # prod 放行 stdio MCP（路线A）策略
 

@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: ECOSYSTEM_PARTNER_COMMERCIAL_TEMPLATE_3ED20A
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 生态伙伴商务条款模板
 
 > **模板声明**  

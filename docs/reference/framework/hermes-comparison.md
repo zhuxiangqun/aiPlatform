@@ -6,13 +6,12 @@ domain: aiplat-core
 version: 2.0.0
 date: 2026-07-06
 status: published
-refs:
-  - docs/reference/framework/aiplat-autonomy-framework.md
-  - docs/reference/framework/aiplat-complete-assessment.md
-  - docs/reference/framework/scoring-detail.md
+refs: 
 tags: [hermes, comparison, L1-L15, 8-axis, radar, resilience]
+doc_id: HERMES_COMPARISON_829A82
+last_reviewed: 2026-11-15
+authority: supporting
 ---
-
 # Hermes Agent vs aiPlat 能力成熟度对照
 
 > ⚠️ V3.0.0 是评估范式的结构性升级，而非系统能力的重新打分。

@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: CLASSIFICATION_9AC644
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 白皮书分类清单（2026-11-11）
 
 > 仅分类，不移动文件。  

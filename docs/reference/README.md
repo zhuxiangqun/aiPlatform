@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: README_C6AFE8
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Reference（参考）索引
 
 > v2.4 参考目录。当前迁移期。

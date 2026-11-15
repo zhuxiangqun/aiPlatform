@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: SECURITY_PEN_TEST_REPORT_9D93CF
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat Automated Penetration Test Report
 
 > 由 `scripts/security-attack-sim.py` 自动生成。覆盖 OWASP Top 10 + AI 特有攻击面。

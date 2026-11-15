@@ -1,5 +1,9 @@
 ---
 doc_type: Index
+status: active
+authority: supporting
+doc_id: REPORTS_LIFECYCLE_INDEX
+last_reviewed: 2026-11-15
 ---
 
 # Reports 生命周期
