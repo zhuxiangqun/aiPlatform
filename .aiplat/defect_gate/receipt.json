@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T16:45:00+08:00",
+  "reviewed_at": "2026-11-15T17:27:26+08:00",
   "base_ref": "origin/main",
-  "merge_base": "68657f8de5d3fe1c5f624d4841f357d820ab241d",
-  "diff_sha256": "10a531a2db5fb67a1b911f063799e42b769bfeffcfc72c7c6f5c9009a0d2f466",
-  "head_sha": "9e834e5d536db144b443a6608f01720dd1006791",
+  "merge_base": "c1b6f0f187265f433ef53a4abfc3a1b8084710cd",
+  "diff_sha256": "a0ae9577c9a457d2e8112eb5ba83cff6d9540d29080e88ce31286a00e36cb602",
+  "head_sha": "714040d804ffdd9590b106976483cbb54f733952",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock."
+  "note": "Local lock only. Review: arch_guard SSOT unified; pre-commit thin wrapper; standards meta; generator retired."
 }
