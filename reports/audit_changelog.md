@@ -7,6 +7,8 @@ doc_type: Report
 
 > **历史报告**：本文件用于记录审计产物的变更历史，不作为“当前实现能力”的唯一依据；设计真值以代码事实与最新测试结果为准。
 
+> **归档**：`audit_changelog_round*.md` 与对应 `audit_findings_round*.json` 已迁至 `_archive/`；本文件仍为持续追加的活日志。
+
 > 规则：
 > 1. `reports/audit_findings.json` 是唯一结构化事实源；`reports/aiPlat_设计文档与实现一致性审查报告.docx` 必须由生成器从 JSON 自动生成。
 > 2. 每次修复/调整判定后，必须同时更新：① JSON 对应条目字段（status/fix/verification/updated_at）② 本日志追加一条记录 ③ 重新生成 docx。

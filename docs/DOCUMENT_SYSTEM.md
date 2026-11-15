@@ -727,7 +727,7 @@ docs/doc-paths.yaml
 | 2 | 文档尚未全部迁入目标目录（计数以 `verify_doc_metadata` 为准，现 ~1078；§11.1） | 关闭（2026-11-15）：可迁项已 done；`five-products/{contracts,ops}` 按落地计划与脚本 SoT **keep** 现路径（见 §11.1） |
 | 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
-| 5 | `reports/` 生命周期仍在迁移 | 部分关闭（2026-11-15）：security evidence 已补日期 / 模板排除；`cleanup_reports` undated=0；`audit_changelog*` 仍留根目录；`reports/five-products/{contracts,ops}` 大搬迁另立 |
+| 5 | `reports/` 生命周期仍在迁移 | 关闭（2026-11-15）：round 变更日志 + findings 已入 `_archive/`（根留 Index stub）；活文档保留 `audit_changelog.md` / `audit_findings.json`；`cleanup_reports` undated=0；five-products contracts/ops 为 keep |
 | 6 | `authority: canonical` / `doc_id` 铺开 | 部分关闭（2026-11-15）：canonical=15；`docs/**`（非 archive）机读 `doc_id` 已铺满；`reports/` 按生命周期不参与 |
 | 7 | ADR 正文已迁至 `docs/decisions/architecture/`；旧位仅 Index stub | 关闭（2026-11-15） |
 

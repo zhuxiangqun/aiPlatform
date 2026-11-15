@@ -42,6 +42,13 @@ def rule(rel: str) -> int | None:
     if rel.startswith("docs-governance/"):
         return 365
     if "/" not in rel and rel.endswith(".md"):
+        # Root Index stubs (redirects to _archive) are not retention candidates.
+        try:
+            head = (REPORTS / rel).read_text(encoding="utf-8", errors="ignore")[:400]
+        except OSError:
+            head = ""
+        if re.search(r"^doc_type:\s*Index\b", head, re.M):
+            return None
         return 90
     return None
 
