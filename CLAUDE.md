@@ -605,7 +605,7 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | FDE模块 | 业务逻辑混在 router 文件中 | ✅ core/apps/fde/agent.py + prompts.py 独立 |
 | CoreFacade | 平台层无法安全访问核心能力 | ✅ 30+新增导出 |
 | 前端API缺口 | 3条缺失后端路由 | ✅ 添加 501 占位路由 (parse/parse-and-process/feedback) |
-| 架构守卫规则 | 无自动化边界检测 | ✅ boundary_rules.yaml + generate_guard_rules.py |
+| 架构守卫规则 | 无自动化边界检测 | ✅ arch_guard_rules.yaml（CI SSOT）+ architecture_guard.sh；boundary_rules.yaml 仅 LLM 注入语料 |
 | Pre-commit | 无新路由/硬编码检测 | ✅ Step 1.75 + Step 1.8 |
 | Human HITL feedback | bug: feedback 丢失 | ✅ 透传修复 |
 | 域健康 widget | 空数据/无折叠 | ✅ 彩色药丸 + ▲/▼ 切换 |
@@ -643,8 +643,8 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 
 ```
 pre-commit hook → 检测新路由/core硬编码
-architecture_guard_rules.sh → 边界规则检测 (0/0)
-architecture/boundary_rules.yaml → 数据化规则,可版本控制
+architecture_guard.sh + arch_guard_rules.yaml → CI 边界规则检测（唯一 SSOT）
+architecture/boundary_rules.yaml → LLM 编码注入语料（非 CI 守卫）
 platform/registry/apps.yaml → 模块声明,无硬编码
 ```
 

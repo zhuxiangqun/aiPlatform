@@ -38,27 +38,6 @@ if [ -f "$WORKSPACE/scripts/capability_guard.sh" ]; then
     fi
 fi
 
-# ── Step 1.5: Ensure architecture guard rules are synced with boundary_rules.yaml ──
-BOUNDARY_YAML="$WORKSPACE/architecture/boundary_rules.yaml"
-GUARD_SCRIPT="$WORKSPACE/scripts/architecture_guard_rules.sh"
-if [ -f "$BOUNDARY_YAML" ] && [ -f "$GUARD_SCRIPT" ]; then
-    # Generator stores sha256[:16]. A full digest never matches, so every commit
-    # rewrote GENERATED_AT and invalidated defect-gate receipts.
-    YAML_HASH=$(python3 -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest()[:16])" "$BOUNDARY_YAML")
-    GUARD_HASH=$(grep "SOURCE_HASH:" "$GUARD_SCRIPT" 2>/dev/null | awk '{print $NF}' || echo "")
-    if [ "$YAML_HASH" != "$GUARD_HASH" ]; then
-        echo ""
-        echo "  ⚠ boundary_rules.yaml changed but architecture_guard_rules.sh not synced"
-        echo "  Running generate_guard_rules.py..."
-        if python3 "$WORKSPACE/scripts/generate_guard_rules.py" 2>/dev/null; then
-            git add "$GUARD_SCRIPT" "$WORKSPACE/scripts/guard_patterns/" 2>/dev/null || true
-            echo "  ✅ Guard rules auto-synced and staged"
-        else
-            echo "  ❌ Guard rules sync failed — run manually: python3 scripts/generate_guard_rules.py"
-        fi
-    fi
-fi
-
 # ── Step 1.75: Detect new router files in core/api/routers/ ──
 # Per app-module-layout.md, new application modules must NOT add routes in core/api/routers/
 NEW_CORE_ROUTERS=$(git diff --cached --name-only --diff-filter=A | grep 'aiPlat-core/core/api/routers/.*\.py$' | grep -v __pycache__ || true)
