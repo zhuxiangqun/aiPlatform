@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2725
+total_capabilities: 2728
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 263
+    caps_count: 266
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3864,6 +3864,18 @@ domains:
         type: function
         signature: 'from_graph_health(health)'
         module: aiPlat-core/core/harness/knowledge/ontology_api.py
+      - symbol: WikiManualWriteDenied
+        type: class
+        signature: '读模型 collection 上禁止人工直接写 Wiki。'
+        module: aiPlat-core/core/harness/knowledge/wiki_read_model.py
+      - symbol: wiki_manual_write_break_glass
+        type: function
+        signature: 'True 时允许绕过读模型硬门（运维破窗；须显式 env）。'
+        module: aiPlat-core/core/harness/knowledge/wiki_read_model.py
+      - symbol: read_model_collections
+        type: function
+        signature: '返回处于读模型模式的 collection 集合。'
+        module: aiPlat-core/core/harness/knowledge/wiki_read_model.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/wiki.py"
