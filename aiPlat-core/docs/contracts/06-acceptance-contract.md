@@ -17,6 +17,8 @@ review_cycle: 90d
 本文件将 Contracts 转成“可自动化验收点”，用于像 Claude Code 一样把系统行为锁死在 CI 里。
 
 > 2026-11-15：`01-architecture-contract.md` 及本目录其余契约仅补文档治理 frontmatter（`doc_id`/`authority` 等），**不改变**任何 MUST 行为验收点；本条满足 `contracts-guard` binding / `clause-sync`。
+>
+> 2026-11-15（守卫 SSOT）：`01-architecture-contract.md` Harness Contract 增补「CI SSOT=`arch_guard_rules.yaml` / LLM 语料=`boundary_rules.yaml`」；附录 clause-sync 对应 `llm.py` 注释对齐。行为验收点不变；本条满足 `contracts-guard` binding。
 
 ## 0. Definition of Done（MUST）
 

@@ -51,6 +51,7 @@ aiPlat 逻辑上分为：
 - Harness **MUST NOT** 承载资料问答、视频问答、多资料比较、适用性分析等业务语义决策。  
 - Harness **MUST** 解决“任务如何被执行”的问题，**MUST NOT** 解决“业务上本轮该如何回答”的问题。
 - Harness **MAY** 提供**声明式 PRD 质量门禁解释器**（`prd_quality_gate` / `prd_gate_loader`）：垂直域规则 MUST 落在 YAML pack（`prd_gate_packs/_common` + `workspace_seeds/prd_gates` / `~/.aiplat/prd_gates`），**MUST NOT** 在 harness Python 中硬编码业务域名、角色名或产品验收文案。生成前 hints 注入与 `factory_finalize` 改写由 pack 驱动；语义矛盾的 `block_finalize_wash` 不可仅靠 scrub 放行。
+- 层边界规则 **MUST** 分源：CI / `architecture_guard.sh` SSOT 为 `aiPlat-core/core/management/arch_guard_rules.yaml`；`architecture/boundary_rules.yaml` **MUST** 仅作 LLM 边界注入语料（`syscalls/llm.py::_try_inject_boundary_rules`），**MUST NOT** 再生成或冒充 CI 守卫脚本。
 
 #### Policy Contract
 
@@ -266,3 +267,4 @@ aiPlat 逻辑上分为：
 
 - **外源资产互通缺口（2026-11-15，clause-sync）**：`core/harness/maintenance/asset_secure_scan.py` + `asset_compat` majority/`import_failed`；`AssetInstaller`/`SkillInstaller` 安装前 fail-closed SecureScan；Claude Plugin `mcp/*.json` 自动落盘 + `sync_mcp_runtime`；marketplace `publish_submissions` 经 CoreFacade；InstallReport `status` 不得在 `import_failed` 时伪装 ok。契约：平台经 CoreFacade 访问；harness 不硬编码业务角色；syscall 三通道与单向依赖不变。验证：`test_asset_secure_scan.py`、`test_claude_plugin_mcp_auto_register.py`、`test_marketplace_publish_queue.py`。
 - **§5.4 handler 升格预览 + Hermetic MCP E2E（2026-11-15，clause-sync）**：`preview_handler_draft` / `discard_handler_draft` / enable 审计字段经 CoreFacade + `GET …/handler-draft-preview` + `POST …/discard|enable-handler-draft`；管理端 `HandlerDraftUpgradeModal`（预览→确认启用/丢弃，禁止一键直启用）。Hermetic MCP：本地 `local_tools_server` stdio install→`MCPManager`→`MCPRuntime.sync_from_servers`→COMPAT `connected`（失败诚实 `connectable`，断连回落）。**非**公网/GitHub MCP E2E。验证：`test_asset_compat_phase_a.py::test_preview_discard_enable_handler_draft_audit`、`test_mcp_install_sync_hermetic_e2e.py`。
+- **守卫 SSOT 唯一化（2026-11-15，clause-sync）**：`arch_guard_rules.yaml` 为 CI 唯一规则源；`boundary_rules.yaml` 降级为 LLM 注入语料；退役 `generate_guard_rules.py` / `architecture_guard_rules.sh`；`llm.py::_try_inject_boundary_rules` docstring 对齐。分层边界与 syscall 语义不变。验证：`grep -c '^  - id:' aiPlat-core/core/management/arch_guard_rules.yaml` ≥197；`bash scripts/architecture_guard.sh --quick`。
