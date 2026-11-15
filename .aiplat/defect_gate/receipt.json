@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T07:35:00+08:00",
+  "reviewed_at": "2026-11-16T07:55:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "eac8a8649c502a4b5be3dff819f0e2144ccd0840",
-  "diff_sha256": "e928c1cad330e68ae56c90de84f177f09d0d1aca6645771f742a2e0139d710ff",
-  "head_sha": "7072918d6202161780c0bc36c6accc97af04748d",
+  "merge_base": "9e45055aca7ed3c6adaa42300754aa2f43ad6a5e",
+  "diff_sha256": "e49fe9f3511a00d794ff3366aeb0b85c88774123790bdf9afb92fd00c7fddd2b",
+  "head_sha": "4bdfeb1b251de668cda47e5d11be3ddbaff2b947",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Interface W5 min: compatibility + L1. Local lock only."
+  "note": "Interface W5 after merge main(ObjectSet). Local lock only."
 }
