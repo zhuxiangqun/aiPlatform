@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T00:28:00+08:00",
+  "reviewed_at": "2026-11-16T07:35:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f8e1141f43e49b30bf418572acc1413f9c51f297",
-  "diff_sha256": "4859f5581c04ff31864e741dc4e078edf0c61fa598a7690e3a924c727e96ffc5",
-  "head_sha": "d5af86e47c093df7a3f068ed83b10728f347ad1d",
+  "merge_base": "eac8a8649c502a4b5be3dff819f0e2144ccd0840",
+  "diff_sha256": "e928c1cad330e68ae56c90de84f177f09d0d1aca6645771f742a2e0139d710ff",
+  "head_sha": "7072918d6202161780c0bc36c6accc97af04748d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Wiki read-model: config-driven collection gate on manual HTTP only; compilers use write_page. Local lock only."
+  "note": "Interface W5 min: compatibility + L1. Local lock only."
 }
