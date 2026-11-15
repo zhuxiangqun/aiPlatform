@@ -17,5 +17,6 @@ authority: supporting
 | [phase0-asset-inventory.md](./phase0-asset-inventory.md) | 资产 / owner 盘点 |
 | [phase0-conformance-gap-n24.md](./phase0-conformance-gap-n24.md) | 附录 N 24 项差距表 |
 | [phase0-pilot-lock-service.md](./phase0-pilot-lock-service.md) | 试点域边界与 G0 |
+| [phase1-g1-evidence.md](./phase1-g1-evidence.md) | Phase 1 G1（Fact Ledger） |
 
-试点域：`lock-service` · 目标等级：Core（未达成）。
+试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1 测量通过 ≠ 附录 N 全量符合。

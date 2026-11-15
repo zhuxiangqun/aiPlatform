@@ -10,7 +10,16 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File, Form
 
 from auth.request_identity import resolve_request_role
-from core.api.core_facade import ExtractionPipeline, PendingExtractionStore, ExtractionResult
+from pathlib import Path
+
+from core.api.core_facade import (
+    ExtractionPipeline,
+    PendingExtractionStore,
+    ExtractionResult,
+    record_extraction_as_claim,
+    fact_ledger_query_gateway,
+    load_object_type_bindings,
+)
 
 router = APIRouter(tags=["fde-extraction"])
 
@@ -134,6 +143,44 @@ async def list_pending_extractions(
     return {"pending": items, "count": len(items)}
 
 
+@router.get("/extractions/facts")
+async def query_extraction_facts(
+    tenant_id: str = Query(..., description="Tenant id (required; pre-filter)"),
+    q: str = Query("", description="Fact query text"),
+    domain_id: str = Query("", description="Domain filter"),
+    top_k: int = Query(8, ge=1, le=50),
+):
+    """查询 Fact Ledger（Phase 1；租户前置过滤）。
+
+    Args:
+        tenant_id: 租户 ID。
+        q: 查询文本。
+        domain_id: 域过滤。
+        top_k: 返回条数。
+    """
+    result = await fact_ledger_query_gateway(
+        tenant_id=tenant_id,
+        query=q,
+        domain_id=domain_id or None,
+        top_k=top_k,
+        require_citations=True,
+    )
+    # 若存在域级 ObjectType 种子，附带绑定（读模型元数据，非第二事实源）
+    if domain_id:
+        seed = (
+            Path(__file__).resolve().parents[4]
+            / "aiPlat-core"
+            / "workspace_seeds"
+            / "ontologies"
+            / f"{domain_id}-object-types.json"
+        )
+        if not seed.is_file():
+            seed = Path(f"aiPlat-core/workspace_seeds/ontologies/{domain_id}-object-types.json")
+        if seed.is_file():
+            result = {**result, "object_types": load_object_type_bindings(seed)}
+    return result
+
+
 @router.post("/extractions/{extraction_id}/confirm")
 async def confirm_extraction(
     extraction_id: str,
@@ -154,6 +201,7 @@ async def confirm_extraction(
 
     proposal_id = None
     graph_write = None
+    fact_ledger = None
     # Path A: draft proposal for ③ — does not write live YAML
     try:
         await _store.initialize()
@@ -190,8 +238,36 @@ async def confirm_extraction(
                         exc_info=True,
                     )
                     graph_write = {"error": "graph_write_failed"}
+            # Phase 1：有域级 ObjectType 种子时写入 Fact Ledger（失败不阻断确认）
+            _ot_seed = Path(
+                f"aiPlat-core/workspace_seeds/ontologies/{domain_id}-object-types.json"
+            )
+            if _ot_seed.is_file():
+                try:
+                    tenant_id = str(
+                        row.get("tenant_id")
+                        or receipt.get("tenant_id")
+                        or "default"
+                    )
+                    summary = f"confirmed extraction {extraction_id} ({len(ents)} entities)"
+                    fact_ledger = await record_extraction_as_claim(
+                        tenant_id=tenant_id,
+                        domain_id=domain_id,
+                        extraction_id=extraction_id,
+                        source_doc=str(row.get("source_doc") or ""),
+                        text=summary,
+                        evidence_quote=summary,
+                    )
+                except Exception:
+                    logger.warning(
+                        "factory confirm: fact_ledger write failed for %s",
+                        extraction_id,
+                        exc_info=True,
+                    )
+                    fact_ledger = {"error": "fact_ledger_failed"}
     except Exception:
         logger.warning("factory confirm: proposal/graph failed for %s", extraction_id, exc_info=True)
+        fact_ledger = None
 
     return {
         "status": "confirmed",
@@ -207,6 +283,7 @@ async def confirm_extraction(
         "wrote_live_yaml": False,
         "wrote_cross_domain_edge": False,
         "idempotent": bool(receipt.get("idempotent")),
+        "fact_ledger": fact_ledger,
         "proposal_id": proposal_id,
         "graph_write": graph_write,
     }
