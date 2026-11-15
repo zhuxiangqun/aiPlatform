@@ -3,6 +3,10 @@
 # Does NOT authorize cutover / process_split / d3_production.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 cd "$ROOT"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -105,7 +109,7 @@ require_files aiplat-diagnosis \
 [[ -f scripts/check_five_products_perf_baseline.sh ]] || fail "missing perf baseline gate"
 [[ -f scripts/ops_d3_local_acceptance_all.sh ]] || fail "missing D3 acceptance aggregator"
 [[ -f scripts/ops_five_products_e2e_local.sh ]] || fail "missing cross-capability E2E"
-[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_D3_E2E.md ]] || fail "missing D3/E2E unfreeze record"
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_UNFREEZE_D3_E2E.md" ]] || fail "missing D3/E2E unfreeze record"
 [[ -f templates/module/scripts/d3_local_acceptance.sh ]] || fail "missing template d3_local_acceptance"
 [[ -f templates/module/uat/UAT.md ]] || fail "missing template UAT.md"
 [[ -f templates/module/PACKAGING_BASE.md ]] || fail "missing templates/module/PACKAGING_BASE.md"

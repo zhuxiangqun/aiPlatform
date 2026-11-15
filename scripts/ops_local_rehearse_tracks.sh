@@ -3,12 +3,16 @@
 # Writes local-*.json with local_signed; never production_signed / authorize.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 cd "$ROOT"
 PY=python3
 [[ -x "$ROOT/.venv/bin/python" ]] && PY="$ROOT/.venv/bin/python"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-EVID_DIR="$ROOT/reports/five-products/ops/evidence"
-RUNLOG="$ROOT/reports/five-products/ops/LOCAL_TRACKS_RUNLOG.md"
+EVID_DIR="$OPS/evidence"
+RUNLOG="$OPS/LOCAL_TRACKS_RUNLOG.md"
 mkdir -p "$EVID_DIR"
 
 INCLUDE_PGHA="${AIPLAT_LOCAL_INCLUDE_PGHA:-0}"

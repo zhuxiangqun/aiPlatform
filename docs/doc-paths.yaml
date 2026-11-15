@@ -11,6 +11,7 @@ project: docs/project
 audit: docs/audit
 archive: docs/archive
 reports: reports
+five_products_ops: reports/products/five-products/ops
 whitepapers: reports/whitepapers
 whitepaper_volumes: reports/whitepapers/volumes
 platform_status_whitepaper: reports/whitepapers/aiplat-platform-status-whitepaper.md

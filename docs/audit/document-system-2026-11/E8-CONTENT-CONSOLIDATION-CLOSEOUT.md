@@ -38,7 +38,7 @@ authority: supporting
 ```text
 产品定义 → docs/products/
 框架/评估报告 → reports/framework/
-运行证据 → reports/five-products/ops/
+运行证据 → reports/products/five-products/ops/
 标准/契约 → docs/standards/、docs/contracts/
 决策 → docs/decisions/
 ```

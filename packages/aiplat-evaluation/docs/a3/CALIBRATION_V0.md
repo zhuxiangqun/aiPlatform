@@ -4,7 +4,7 @@ doc_type: Reference
 
 # Human Evaluator Calibration v0（P2-0）
 
-> **Unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md)  
+> **Unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md`](../../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md)  
 > **Honesty**: `accuracy_claim=false` · 校准 ≠ 准确率认证 · ≠ 改 composite 默认
 
 ## 1. 目的

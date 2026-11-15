@@ -7,9 +7,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/d1_lib.sh"
 
 ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-EVID="$ROOT/reports/five-products/ops/evidence"
-CLOSEOUT="$ROOT/reports/five-products/ops/PI_D3_LOCAL_CLOSEOUT.md"
+EVID="$OPS/evidence"
+CLOSEOUT="$OPS/PI_D3_LOCAL_CLOSEOUT.md"
 DRILL="$ROOT/packages/aiplat-pi-runtime/docs/d3/drills"
 mkdir -p "$EVID" "$DRILL"
 

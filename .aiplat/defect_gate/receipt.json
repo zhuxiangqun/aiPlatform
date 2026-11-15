@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T14:00:00+08:00",
+  "reviewed_at": "2026-11-15T15:23:34+08:00",
   "base_ref": "origin/main",
-  "merge_base": "cc0d9264611bf870a9c885f3a7a98a119bcc8a21",
-  "diff_sha256": "a8f5910d5d7582513d70627a1b012e4605466fe176e0bc6bac3c4c743bd89263",
-  "head_sha": "d7355c553c2c5ba1c8f330820138f0af320e93bb",
+  "merge_base": "41bce053dd60823ae9caf10e9d210bb5125c0b49",
+  "diff_sha256": "b5123e07aa8ceb1f477a59a7c1eb4335b27a48718f72acb2b15b9aeb260498e6",
+  "head_sha": "71f6df77690e338217e91ae18915d35424cdeee0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Archive audit round changelogs/findings; keep living audit_changelog.md. Local lock only."
+  "note": "Archive ADR link depth fix; verify_doc_links --include-archive broken=0."
 }

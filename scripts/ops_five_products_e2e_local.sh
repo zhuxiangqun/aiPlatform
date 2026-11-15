@@ -3,10 +3,14 @@
 # Explicitly unfrozen 2026-11-01. environment=local only. Never authorize.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 cd "$ROOT"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-CLOSEOUT="$ROOT/reports/five-products/ops/FIVE_PRODUCTS_E2E_LOCAL.md"
-EVID="$ROOT/reports/five-products/ops/evidence"
+CLOSEOUT="$OPS/FIVE_PRODUCTS_E2E_LOCAL.md"
+EVID="$OPS/evidence"
 mkdir -p "$EVID"
 PY=python3
 [[ -x "$ROOT/.venv/bin/python" ]] && PY="$ROOT/.venv/bin/python"

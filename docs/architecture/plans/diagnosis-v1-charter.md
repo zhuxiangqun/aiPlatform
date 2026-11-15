@@ -10,7 +10,7 @@ authority: supporting
 > **文档类型**：Product / Design Charter  
 > **状态**：**Accepted for C0** · 2026-11-01  
 > **范围**：诊断产品 v1（本地工程 + 产品设计）；不含 A3、生产 staging/authorize/SLA  
-> **解冻**：[`ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md)  
+> **解冻**：[`ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md`](../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md)  
 > **上游计划**：[`five-capability-independent-engineering-plan.md`](./five-capability-independent-engineering-plan.md) V2.2  
 > **目标架构**：[`ai-platform-five-products-target-architecture.md`](./ai-platform-five-products-target-architecture.md) §5.5  
 > **现状**：[`STATUS.md`](../../../reports/five-products/STATUS.md)  

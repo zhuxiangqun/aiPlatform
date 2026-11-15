@@ -41,7 +41,7 @@ doc_type: Report
 | **Ops handoff + scaffold** | ✅ `OPS_HANDOFF.md` + `ops_live_scaffold.sh`（未签 live；不授权） |
 | **ops_live_sign** | ✅ items 齐才可签 `production_signed`；拒 scaffold env；不 authorize |
 | **PG/HA live kickoff** | ✅ `ops_pgha_live_kickoff.sh`；缺前置写 `ops/PGHA_LIVE_RUNLOG.md`；不授权 |
-| **暂用本机** | ✅ [`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md) — 四轨 local 🟨；硬门全 false |
+| **暂用本机** | ✅ [`ops/LOCAL_DEFER.md`](../products/five-products/ops/LOCAL_DEFER.md) — 四轨 local 🟨；硬门全 false |
 
 ## 明确不在本收口
 

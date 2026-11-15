@@ -69,7 +69,7 @@ bash scripts/ops_engineering_freeze_check.sh
 |------|------|
 | freeze_check | **PASS** |
 | five_products_gate / option_b | **PASS**（既有证据） |
-| 预发复审 | **事件驱动**（[`STAGING_REVIEW_EVENT_DRIVEN.md`](./ops/STAGING_REVIEW_EVENT_DRIVEN.md)） |
+| 预发复审 | **事件驱动**（[`STAGING_REVIEW_EVENT_DRIVEN.md`](../products/five-products/ops/STAGING_REVIEW_EVENT_DRIVEN.md)） |
 | Field ADR | **继续 Draft** |
 | 本地代码任务 | **无必须项** |
 

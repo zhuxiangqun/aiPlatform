@@ -28,8 +28,8 @@ last_reviewed: 2026-11-15
 | Store 诚实面 | [`packages/aiplat-evaluation/docs/a3/STORE_SURFACE_V0.md`](../../../../../packages/aiplat-evaluation/docs/a3/STORE_SURFACE_V0.md) |
 | Engineering composite | package `build_composite` **v1.2**（弱代理 report-only）；Central `legacy_7dim` 仅遗留 |
 | **P2 staging 总览** | [`packages/aiplat-evaluation/docs/a3/P2_STAGING_ROADMAP.md`](../../../../../packages/aiplat-evaluation/docs/a3/P2_STAGING_ROADMAP.md) — host 未确认前 `ready_to_authorize=false` |
-| 评审基线（2026-11-04 · **历史基线**） | [`ops/EVALUATION_PRODUCT_REVIEW_2026-11-04.md`](../../../../../reports/five-products/ops/EVALUATION_PRODUCT_REVIEW_2026-11-04.md) — 保留效力作对照，**不是**当前 G2b/tab 数现状源 |
-| 改进执行计划（2026-11-04 · **历史计划**） | [`ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](../../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) — 轨道规划；进度以 scorecard/closeout 为准 |
+| 评审基线（2026-11-04 · **历史基线**） | [`ops/EVALUATION_PRODUCT_REVIEW_2026-11-04.md`](../../../../../reports/products/five-products/ops/EVALUATION_PRODUCT_REVIEW_2026-11-04.md) — 保留效力作对照，**不是**当前 G2b/tab 数现状源 |
+| 改进执行计划（2026-11-04 · **历史计划**） | [`ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](../../../../../reports/products/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) — 轨道规划；进度以 scorecard/closeout 为准 |
 | 能力事实（跟代码同步） | [`AIPLAT_CAPABILITIES.md`](../../../../../AIPLAT_CAPABILITIES.md)（搜 Evaluation / Eval Center） |
 
 ## 契约校验
@@ -60,12 +60,12 @@ python3 packages/aiplat-evaluation/scripts/check_eval_module_docs.py
 
 | 类别 | 位置 | 说明 |
 |------|------|------|
-| 收口凭证（已迁） | [`ops/_archive/eval-receipts/`](../../../../../reports/five-products/ops/_archive/eval-receipts/) | CLOSEOUT / SIGNOFF / PARTIAL / BLOCKED 等 |
-| 解冻门（已迁） | [`ops/_archive/eval-gates/`](../../../../../reports/five-products/ops/_archive/eval-gates/) | `ENGINEERING_UNFREEZE_EVAL_*`；原路径留 stub |
-| 盘点/交接（已迁） | [`ops/_archive/eval-inventories/`](../../../../../reports/five-products/ops/_archive/eval-inventories/) | E1 / E3 / P1b handoff；原路径留 stub |
+| 收口凭证（已迁） | [`ops/_archive/eval-receipts/`](../../../../../reports/products/five-products/ops/_archive/eval-receipts/) | CLOSEOUT / SIGNOFF / PARTIAL / BLOCKED 等 |
+| 解冻门（已迁） | [`ops/_archive/eval-gates/`](../../../../../reports/products/five-products/ops/_archive/eval-gates/) | `ENGINEERING_UNFREEZE_EVAL_*`；原路径留 stub |
+| 盘点/交接（已迁） | [`ops/_archive/eval-inventories/`](../../../../../reports/products/five-products/ops/_archive/eval-inventories/) | E1 / E3 / P1b handoff；原路径留 stub |
 | A3 预备与基准稿 | `packages/aiplat-evaluation/docs/a3/` | 门禁/证据包；已收官 closeout 见 `a3/_archive/` |
 
-完整分类：[`ops/EVAL_DOCS_LIFECYCLE.md`](../../../../../reports/five-products/ops/EVAL_DOCS_LIFECYCLE.md)。
+完整分类：[`ops/EVAL_DOCS_LIFECYCLE.md`](../../../../../reports/products/five-products/ops/EVAL_DOCS_LIFECYCLE.md)。
 
 ## 强制边界（现行）
 

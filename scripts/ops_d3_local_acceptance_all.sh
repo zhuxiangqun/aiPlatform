@@ -3,9 +3,13 @@
 # Explicitly unfrozen 2026-11-01. Never authorize / production_signed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 cd "$ROOT"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-CLOSEOUT="$ROOT/reports/five-products/ops/D3_LOCAL_ACCEPTANCE.md"
+CLOSEOUT="$OPS/D3_LOCAL_ACCEPTANCE.md"
 
 pass() { echo "PASS: $*"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }

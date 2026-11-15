@@ -3,12 +3,16 @@
 # environment=local only. Never flips staging_ready / checklist / authorize.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 cd "$ROOT"
 PY=python3
 [[ -x "$ROOT/.venv/bin/python" ]] && PY="$ROOT/.venv/bin/python"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-DECISION="$ROOT/reports/five-products/ops/OPTION_B_LOCAL_VM.md"
-CLOSEOUT="$ROOT/reports/five-products/ops/ENGINEERING_LOCAL_CLOSEOUT.md"
+DECISION="$OPS/OPTION_B_LOCAL_VM.md"
+CLOSEOUT="$OPS/ENGINEERING_LOCAL_CLOSEOUT.md"
 
 pass() { echo "PASS: $*"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -55,7 +59,7 @@ print("PASS: all tracks ready_to_authorize=false authorized=false")
 '
 
 # 6) Last-run note
-NOTE="$ROOT/reports/five-products/ops/OPTION_B_LAST_RUN.md"
+NOTE="$OPS/OPTION_B_LAST_RUN.md"
 cat >"$NOTE" <<EOF
 # Option B last full run
 

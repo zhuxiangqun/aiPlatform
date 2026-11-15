@@ -4,6 +4,10 @@
 # Never sets production_signed / checklist ✅ / cutover_authorized.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 cd "$ROOT"
 
 PY=python3
@@ -13,8 +17,8 @@ STAMP="$(date -u +%Y%m%d)"
 export AIPLAT_LIVE_DRILL_ID="${AIPLAT_LIVE_DRILL_ID:-pgha-live-${STAMP}}"
 export AIPLAT_LIVE_DRILL_ENV="${AIPLAT_LIVE_DRILL_ENV:-staging}"
 export AIPLAT_LIVE_DRILL_OPERATOR="${AIPLAT_LIVE_DRILL_OPERATOR:-${USER:-ops}}"
-mkdir -p "$ROOT/reports/five-products/ops"
-export AIPLAT_PGHA_RUNLOG="${AIPLAT_PGHA_RUNLOG:-$ROOT/reports/five-products/ops/PGHA_LIVE_RUNLOG.md}"
+mkdir -p "$OPS"
+export AIPLAT_PGHA_RUNLOG="${AIPLAT_PGHA_RUNLOG:-$OPS/PGHA_LIVE_RUNLOG.md}"
 
 echo "== PG/HA live kickoff (does not authorize) =="
 

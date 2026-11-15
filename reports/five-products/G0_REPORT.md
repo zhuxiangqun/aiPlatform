@@ -123,7 +123,7 @@ doc_type: Report
 38. ✅ **ops_live_sign**（items 齐才签；拒 scaffold；不 authorize）  
 39. ✅ **PG/HA live kickoff**（缺 DSN/OIDC → blockers runlog；不授权）  
 40. ✅ 决策：**暂用本机**（四轨 live/authorize 暂缓；local 🟨）  
-41. ✅ 四轨 local reh 已刷新；硬门全 false（[`ops/LOCAL_DEFER.md`](./ops/LOCAL_DEFER.md)）  
+41. ✅ 四轨 local reh 已刷新；硬门全 false（[`ops/LOCAL_DEFER.md`](../products/five-products/ops/LOCAL_DEFER.md)）  
 42. 有预发后再：从 PG/HA kickoff → sign → authorize  
 
 ---

@@ -9,7 +9,7 @@ authority: supporting
 
 > **文档类型**：Design / Implementation Plan（生产级独立评测服务）  
 > **版本**：v1.2 · 2026-11-02  
-> **状态**：P0 契约已齐 · **B1-L/B2-L 本地开发已解冻**（[`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)）  
+> **状态**：P0 契约已齐 · **B1-L/B2-L 本地开发已解冻**（[`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)）  
 > **前置已完成**：A-local A0–A6（#529）· B0 JWKS（#531）· P0 docs（#533）  
 > **P0 契约**：[`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · [`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md) · [`EVAL_DATA_MIGRATION.md`](./EVAL_DATA_MIGRATION.md)  
 > **关联**：[`eval-a3-independent-service.md`](./eval-a3-independent-service.md) · [`eval-v1-charter.md`](./eval-v1-charter.md) · [`ADR-EVALUATION-A3.md`](../../../reports/five-products/ADR-EVALUATION-A3.md) · [`SPLIT_CHECKLIST.md`](../../../packages/aiplat-evaluation/docs/a3/SPLIT_CHECKLIST.md)  
@@ -172,7 +172,7 @@ authority: supporting
 ## 6. 分阶段路线图（本地开发 vs staging 验收）
 
 > **staging = 授权证，不是开工证。**  
-> 本地解冻：[`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)。
+> 本地解冻：[`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)。
 
 | 阶段 | 环境 | 核心 | 要 staging？ | 工期 |
 |---|---|---|---|---|

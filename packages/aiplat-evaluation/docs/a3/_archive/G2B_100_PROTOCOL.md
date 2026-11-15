@@ -5,9 +5,9 @@ doc_type: Archive
 # G2B-100 Protocol（已签署）
 
 > **状态**：✅ **SIGNED**（2026-11-05）· Holdout **方案 A**
-> **签认留存**：[EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md](../../../../../reports/five-products/ops/EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md)
+> **签认留存**：[EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md](../../../../../reports/products/five-products/ops/EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md)
 > **日期**：2026-11-04（起草）/ 2026-11-05（签署）
-> **依据**：[改善执行计划](../../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §2.3 · [G2B_N100](./G2B_N100.md) · [G2B_ACCURACY_CLOSEOUT](./G2B_ACCURACY_CLOSEOUT.md)
+> **依据**：[改善执行计划](../../../../../reports/products/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §2.3 · [G2B_N100](./G2B_N100.md) · [G2B_ACCURACY_CLOSEOUT](./G2B_ACCURACY_CLOSEOUT.md)
 > **诚实锁**：签署与达标后仍只允许 **scoped benchmark pass rate**；默认 `accuracy_claim=false`，通用准确率/安全认证/process_split **禁止**由本 protocol 单独打开。
 
 ---

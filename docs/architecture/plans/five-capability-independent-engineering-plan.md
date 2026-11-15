@@ -11,7 +11,7 @@ authority: supporting
 > **状态**：工程基线 · **V2.2 @ 2026-11-01**（G0 通过；D1/D2 冻结；**显式解冻** D3 本地验收 + 跨能力 E2E；预发仍 defer）  
 > **基线**：`main` @ `b46e286`（week-34）→ G0 锚点 **19** 提交（见 [`G0_CLOSEOUT.md`](../../../reports/five-products/G0_CLOSEOUT.md)）；其后继续工程推进；CI 242 行、nightly unit 硬门  
 > **V2.1 打包共用面**：`templates/module/PACKAGING_BASE.md` · `scripts/check_five_products_packaging_surface.sh` · `scripts/lib/aiplat_security_baseline.py`  
-> **V2.2**：`ops_d3_local_acceptance_all.sh` · `ops_five_products_e2e_local.sh`（local only；硬门仍 false；不 authorize） · [`ENGINEERING_UNFREEZE_D3_E2E.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_D3_E2E.md)  
+> **V2.2**：`ops_d3_local_acceptance_all.sh` · `ops_five_products_e2e_local.sh`（local only；硬门仍 false；不 authorize） · [`ENGINEERING_UNFREEZE_D3_E2E.md`](../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_D3_E2E.md)  
 
 > **范围**：仅工程侧（架构、代码、测试、打包、文档、验证、模板化）；不含销售、定价、合同、SLA 运营、24×7  
 > **批准边界**：本文**不改变** ADR-09 / ADR-08 / Gate3 的已批范围。Pi 之外的进程/DB 拆分，逐产品另走 ADR。  
