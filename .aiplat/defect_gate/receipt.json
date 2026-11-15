@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T17:27:26+08:00",
+  "reviewed_at": "2026-11-15T17:55:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "c1b6f0f187265f433ef53a4abfc3a1b8084710cd",
-  "diff_sha256": "a0ae9577c9a457d2e8112eb5ba83cff6d9540d29080e88ce31286a00e36cb602",
-  "head_sha": "714040d804ffdd9590b106976483cbb54f733952",
+  "diff_sha256": "3e7af0161473fce10c1b2998b1c1d75334e48fcd44338e4ce6a195be81d9cac7",
+  "head_sha": "f6aeaae7901207ad47306f92ada52bac664520c3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. Review: arch_guard SSOT unified; pre-commit thin wrapper; standards meta; generator retired."
+  "note": "Contract binding for guard SSOT split; no behavior change. #751 ADR migrate already green."
 }
