@@ -31,6 +31,10 @@ def rule(rel: str) -> int | None:
     Args:
         rel: Path relative to ``reports/``.
     """
+    name = Path(rel).name
+    # Templates / placeholders are not retention evidence.
+    if name.endswith("-template.json") or name.endswith(".template.json"):
+        return None
     if (rel.startswith("products/") or rel.startswith("five-products/")) and "/ops/" in rel:
         return 180
     if rel.startswith("security/evidence/"):
@@ -67,6 +71,19 @@ def date_of(p: Path, *, mtime_fallback: bool = False) -> tuple[dt.date | None, s
     ):
         key = m.group(0).split(":", 1)[0].strip()
         candidates.append((dt.date.fromisoformat(m.group(1)), f"fm:{key}"))
+    # JSON evidence: "date": "YYYY-MM-DD" or unix "timestamp"
+    if p.suffix.lower() == ".json":
+        m = re.search(r'"date"\s*:\s*"(20\d{2}-\d{2}-\d{2})"', text)
+        if m:
+            candidates.append((dt.date.fromisoformat(m.group(1)), "json:date"))
+        m = re.search(r'"timestamp"\s*:\s*([0-9]+(?:\.[0-9]+)?)', text)
+        if m:
+            try:
+                candidates.append(
+                    (dt.datetime.fromtimestamp(float(m.group(1)), tz=dt.timezone.utc).date(), "json:timestamp")
+                )
+            except (OverflowError, OSError, ValueError):
+                pass
     m = DATE_RE.search(p.name)
     if m:
         candidates.append((dt.date.fromisoformat(m.group(1)), "name_iso"))

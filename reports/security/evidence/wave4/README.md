@@ -1,5 +1,6 @@
 ---
 doc_type: Index
+date: 2026-11-10
 ---
 
 # Wave 4 — 外部验证入口
