@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: MODULE_341325
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Diagnosis module（第六能力 · C1–C3）
 
 > **状态**：C1 **PASS** · C2 **PASS** · C3 D2 pack（本地）· `capabilities.manifest`（A0 / D1 cohost）

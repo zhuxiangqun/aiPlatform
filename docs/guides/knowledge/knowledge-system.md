@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: KNOWLEDGE_SYSTEM_667890
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 知识系统 — 完整指南
 
 > 最后更新: 2026-08-11 · 原理优先，细节后置 · API/SQL/操作见附录

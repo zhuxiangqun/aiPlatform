@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DOC_05_FDE_IMPLEMENTATION_PROCESS_BBB2B8
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 现场交付实施流程 v1.0
 
 > ← [文档导航](README.md)

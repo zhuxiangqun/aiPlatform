@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DOC_02_FDE_DELIVERY_8E3DA2
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 交付操作手册
 
 > ← [文档导航](README.md)

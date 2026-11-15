@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EU_AI_ACT_COMPLIANCE_343210
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # EU AI Act 合规自评（初稿）
 
 > **PolicyGate 实现参考**：[private-control-plane.md](./private-control-plane.md)

@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: README_26EE0B
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 架构文档导航
 
 ## 核心参考（当前状态）

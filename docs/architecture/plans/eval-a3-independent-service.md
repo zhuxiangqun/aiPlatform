@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_A3_INDEPENDENT_SERVICE_AAECF1
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # EVAL_A3 Independent Service — 本地独立运行验证（A0 方案）
 
 > **文档类型**：Design / Implementation Plan  

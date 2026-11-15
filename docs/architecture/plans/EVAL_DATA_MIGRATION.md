@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_DATA_MIGRATION_85F1C6
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # EVAL Data Migration & Rollback（B3 前置定义）
 
 > **类型**：契约（B1 前写清；B3 执行）  

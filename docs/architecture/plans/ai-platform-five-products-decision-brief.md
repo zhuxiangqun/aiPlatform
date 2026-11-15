@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: AI_PLATFORM_FIVE_PRODUCTS_DECISION_BRIEF_AD5F59
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat / Pi / 本体 / FDE / 诊断：Decision Brief
 
 > 评审用途：请求批准有限的盘点、契约准备与一条纵向切片；不是全面重构授权。  

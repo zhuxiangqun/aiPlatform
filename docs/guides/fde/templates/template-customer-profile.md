@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: TEMPLATE_CUSTOMER_PROFILE_BD3A9F
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE客户档案 — {{客户名称}}
 
 > ← [返回实施流程](../05-fde-implementation-process.md)

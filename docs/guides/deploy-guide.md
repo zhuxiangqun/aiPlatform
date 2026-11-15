@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DEPLOY_GUIDE_2E84A7
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 部署指南
 
 ## 部署方式

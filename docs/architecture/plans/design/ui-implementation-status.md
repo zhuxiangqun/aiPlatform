@@ -1,6 +1,10 @@
 ---
 doc_type: Architecture
 last_synced: 2026-07-18
+doc_id: UI_IMPLEMENTATION_STATUS_825720
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
 > **最后更新**: 2026-07-18
 

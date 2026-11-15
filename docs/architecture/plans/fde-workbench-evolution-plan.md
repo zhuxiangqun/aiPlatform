@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: FDE_WORKBENCH_EVOLUTION_PLAN_4EB2D3
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 工作台演进完整方案（控制台 + 执行核）
 
 | 字段 | 值 |

@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: MODULE_C47114
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # MODULE.md — aiPlat Platform
 
 > Status: **A2-versioning + D1 Thin + D2 compat/security** · Owner: platform · Target: **A2 / D2** · Deploy unit: **Central** (host)  

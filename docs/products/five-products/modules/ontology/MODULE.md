@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: MODULE_EC02CE
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # MODULE.md — Ontology Service
 
 > Status: **A2 + D1 Thin (D1c/cohost) + D2 ops pack** · A3 **Accepted（有条件）** · Owner: platform · Deploy unit: **Central**

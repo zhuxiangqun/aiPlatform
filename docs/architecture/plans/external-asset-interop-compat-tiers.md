@@ -6,8 +6,9 @@ authority: design-target
 language: zh-CN
 created: 2026-11-12
 updated: 2026-11-15
+doc_id: EXTERNAL_ASSET_INTEROP_COMPAT_TIERS_BD9D3F
+last_reviewed: 2026-11-15
 ---
-
 # 外源资产互通完整改善方案（Agent / Skill / Tool / MCP）
 
 > **设计目标态 + 落地进度。** 先读 §0；实施读 §1 起。  

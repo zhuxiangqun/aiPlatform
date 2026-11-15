@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: MODULE_BA8B95
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # MODULE.md — FDE Workbench
 
 > Status: **A1 + Field D1 Accepted + Field D2 ops pack** · Owner: platform · Target: **A2 / D2** · Deploy unit: **Field**  

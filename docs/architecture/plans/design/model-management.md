@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: MODEL_MANAGEMENT_1C5A41
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 模型管理系统
 
 > **版本**：v2.2.2 ｜ **最后更新**：2026-07-25 ｜ **状态**：生产就绪

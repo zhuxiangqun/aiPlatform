@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DOC_04_FDE_ADMIN_474928
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 管理与扩展
 
 > ← [文档导航](README.md)

@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_TRUST_BOUNDARY_LAB_VS_CERT_8EA104
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 评测信任边界：实验室仪器 ≠ 认证机构
 
 > **状态**：工程立场锁定（2026-11-08）· **≠** 外部审计 · **≠** staging/prod 认证 · **≠** accuracy_claim  

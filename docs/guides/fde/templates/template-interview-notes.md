@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: TEMPLATE_INTERVIEW_NOTES_99180D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # FDE 客户访谈纪要 — {{客户名称}}
 
 > ← [返回实施流程](../05-fde-implementation-process.md)

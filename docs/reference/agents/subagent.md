@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: SUBAGENT_711342
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Subagent 架构设计
 
 ## 概述

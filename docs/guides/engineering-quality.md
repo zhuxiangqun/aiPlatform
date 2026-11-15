@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: ENGINEERING_QUALITY_35A31A
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 工程质量标准
 
 ## PR 审查要求

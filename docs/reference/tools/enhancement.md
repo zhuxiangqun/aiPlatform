@@ -1,7 +1,10 @@
 ---
 doc_type: Reference
+doc_id: ENHANCEMENT_9A9767
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 工具系统增强设计
 
 > **C2 消歧**：本文是根仓 **设计向 To-Be 草案**（目标形态 / 权限与 Hook 规划）。  

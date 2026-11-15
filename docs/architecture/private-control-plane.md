@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: PRIVATE_CONTROL_PLANE_2740CB
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Private Control Plane — 内部治理平面
 
 > **C2 消歧 / SoT**：本文是架构簇内 **PolicyGate / ApprovalGate 权威入口（短索引）**。

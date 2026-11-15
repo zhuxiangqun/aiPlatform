@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: PI_THIN_RUNTIME_71A5E0
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Plan: aiPlat × Pi 薄 Runtime（1C + 2C）
 
 > Living 摘要 · 2026-10-12 · 包：`packages/aiplat-pi-runtime/`  

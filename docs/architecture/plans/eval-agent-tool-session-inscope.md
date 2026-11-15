@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_AGENT_TOOL_SESSION_INSCOPE_83E615
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Eval Agent 能力升域：A3–A5 / A8 / A9 → in-scope
 
 > **类型**：立项 Plan（工程 + 评测方法；非 Certification）  

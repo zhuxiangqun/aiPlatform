@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: DIAGNOSIS_V1_CHARTER_4DF292
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # DIAGNOSIS_V1 Charter — 诊断产品（第六能力）
 
 > **文档类型**：Product / Design Charter  

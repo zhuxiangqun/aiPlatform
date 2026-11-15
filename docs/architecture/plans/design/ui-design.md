@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: UI_DESIGN_4CAE3C
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 > 📄 设计阶段文档 · 描述的是设计目标/意图，非当前代码实现状态。
 > 当前实现见 [manuals/](../../../guides/) 中的对应手册。存在冲突时以代码为准。
 

@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: B1_ROUTE_MATRIX_C9E666
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # B1 / B2 Route Matrix — Eval API · UI · Errors
 
 > **类型**：契约（B1 实施前置）

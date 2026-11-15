@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: PRODUCTION_READINESS_10B866
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat Production Readiness Checklist
 
 > 从实验级升级到准生产级的逐项检查。每项必须是生产中可验证的，不是"设计中有"。

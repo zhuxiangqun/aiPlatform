@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: COMPARISON_3B82CA
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat — 六平台深度对标摘要（2026-10）
 
 > **C2 消歧 / SoT**：本文是 **现行架构对比权威入口**（六平台 · 18 维 · 2026-10）。

@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: AI_PLATFORM_FIVE_PRODUCTS_REVIEW_DECK_OUTLINE_F32E1E
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 五产品域改造 — 评审会一页 PPT 大纲
 
 > 配套：[落地方案 v1.3](./ai-platform-five-products-landing-plan.md) · [Decision Brief](./ai-platform-five-products-decision-brief.md) · [发言稿](./ai-platform-five-products-review-talking-points.md)  

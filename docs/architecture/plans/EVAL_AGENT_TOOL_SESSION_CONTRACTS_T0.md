@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0_3E6119
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Eval Agent 升域契约 T0（Mock Tool / Session / Long-context / Runtime map）
 
 > **类型**：契约冻结 / 升域立项 T0  

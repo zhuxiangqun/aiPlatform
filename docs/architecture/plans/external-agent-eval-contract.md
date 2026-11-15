@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EXTERNAL_AGENT_EVAL_CONTRACT_E13C95
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # External Agent Eval Contract — Pull Mode (Chat HTTP v1)
 
 > **Status**: Implementable contract (v1 adds ordered tool-name trajectory).  

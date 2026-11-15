@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_PRODUCTION_INDEPENDENT_SERVICE_65C709
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # EVAL Production Independent Service — 完整方案（B 轨）
 
 > **文档类型**：Design / Implementation Plan（生产级独立评测服务）  

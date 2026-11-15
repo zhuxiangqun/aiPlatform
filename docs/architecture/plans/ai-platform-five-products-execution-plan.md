@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: AI_PLATFORM_FIVE_PRODUCTS_EXECUTION_PLAN_6D28EC
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat / Pi / 本体 / FDE / 诊断平台：评审与首个纵向切片执行计划
 
 > 目的：首阶段摘要。**完整落地方案（执行真源）**见 [landing-plan](./ai-platform-five-products-landing-plan.md)；冲突以落地方案为准。  

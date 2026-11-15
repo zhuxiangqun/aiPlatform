@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: TESTING_B550D0
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # AI Platform 测试指南
 
 > 系统级测试策略、分层测试方法、跨层测试规范

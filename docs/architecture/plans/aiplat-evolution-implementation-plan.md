@@ -5,8 +5,9 @@ status: draft
 authority: design-target
 language: zh-CN
 created: 2026-11-14
+doc_id: AIPLAT_EVOLUTION_IMPLEMENTATION_PLAN_6856B3
+last_reviewed: 2026-11-15
 ---
-
 # aiPlat 闭环与演化计算实施方案
 
 > 依据：

@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: WORKSPACE_ISOLATION_CONTRACT_EB604E
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Workspace Isolation Contract — Local Workspaces and Remote Profiles
 
 > **Status**: Phase 1 local + Phase 2 remote Core proxy are implementable under this contract.  

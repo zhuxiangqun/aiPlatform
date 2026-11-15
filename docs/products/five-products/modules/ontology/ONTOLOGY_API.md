@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: ONTOLOGY_API_216885
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Ontology API v0（草案）
 
 > Capability: **ontology** · Central · **A1 wired**  

@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: AI_PLATFORM_FIVE_PRODUCTS_TARGET_ARCHITECTURE_056F97
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat / Pi / 本体 / FDE / 诊断平台：目标架构与 ADR 母稿
 
 > 状态：目标架构提案，供评审与后续 ADR 拆分；不代表现有代码已达到该状态。  

@@ -5,8 +5,9 @@ status: draft
 authority: design-target
 language: zh-CN
 created: 2026-11-14
+doc_id: AIPLAT_CLOSED_LOOP_MATURITY_AAF5FB
+last_reviewed: 2026-11-15
 ---
-
 # aiPlat 闭环成熟度模型
 
 > 本文是**评估模型与目标框架**，不是认证结论，也不是当前实现状态的承诺。  

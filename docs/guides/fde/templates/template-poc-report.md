@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: TEMPLATE_POC_REPORT_A6CC47
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # POC 验证报告 — {{客户名称}}
 
 > ← [返回实施流程](../05-fde-implementation-process.md)

@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_CAPABILITY_DRIVEN_CASE_PACK_37B3BC
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Eval 能力驱动 Case Pack 设计
 
 > **类型**：架构设计 / 题库与评测方案  

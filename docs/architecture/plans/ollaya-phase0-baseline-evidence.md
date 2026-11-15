@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: OLLAYA_PHASE0_BASELINE_EVIDENCE_9292BF
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Ollaya 决策层 · 阶段 0 证据包（进行中）
 
 > **状态**：工程可采数已接线 · 默关 `decision_shadow` 骨架已合入并本机探测 · C6 关闭演练草稿已备 · **≠ 开采样影子 · ≠ 挂 classify · ≠ 1b 替换 · ≠ 省 token**  

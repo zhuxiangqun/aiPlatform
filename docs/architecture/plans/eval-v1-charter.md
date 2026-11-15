@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EVAL_V1_CHARTER_9C7216
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # EVAL_V1 Charter — 评测准确性、唯一入口与评测中心
 
 > **文档类型**：Product / Design Charter

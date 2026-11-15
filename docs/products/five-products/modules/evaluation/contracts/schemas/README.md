@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: README_673174
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Evaluation contract schemas — shim location
 
 **SSOT**: [`packages/aiplat-evaluation/contracts/schemas/`](../../../../../../../packages/aiplat-evaluation/contracts/schemas/)

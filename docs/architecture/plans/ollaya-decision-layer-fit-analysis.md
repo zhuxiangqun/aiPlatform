@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: OLLAYA_DECISION_LAYER_FIT_ANALYSIS_7B110A
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat × Ollaya 决策层适配分析报告
 
 > **类型**：试点评估假设（非实施承诺 / 非性能认证 / **非试点批准书**）  

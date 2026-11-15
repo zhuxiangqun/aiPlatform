@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: ROLE_SYSTEM_E5AF39
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlatform 角色体系完整定义
 
 **版本**: 1.0

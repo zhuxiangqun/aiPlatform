@@ -5,8 +5,9 @@ status: draft
 authority: design-target
 language: zh-CN
 created: 2026-11-14
+doc_id: KNOWLEDGE_SYSTEM_V4_3_1_IMPLEMENTATION_PLAN_C8F90C
+last_reviewed: 2026-11-15
 ---
-
 # 知识系统 v4.3.1 实施方案
 
 > 依据：

@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: EXECUTION_DECISION_MATRIX_3915EF
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 执行决策矩阵
 
 > **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。

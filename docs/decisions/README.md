@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+doc_id: README_F42DA7
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Decisions（ADR）索引
 
 > v2.4 顶层决策目录。架构 ADR 正文在 `architecture/`；旧 `docs/architecture/decisions/` 仅保留跳转 stub。

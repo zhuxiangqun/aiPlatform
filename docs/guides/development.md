@@ -1,7 +1,10 @@
 ---
 doc_type: Guide
+doc_id: DEVELOPMENT_E4A2C0
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # AI Platform 开发规范
 
 > 系统级开发规范 - 各层必须遵循

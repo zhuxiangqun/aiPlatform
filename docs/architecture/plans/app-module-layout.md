@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: APP_MODULE_LAYOUT_2801FE
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 业务应用模块目录规范 v1.0
 
 ## 适用范围

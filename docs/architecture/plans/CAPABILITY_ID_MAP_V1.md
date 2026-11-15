@@ -1,7 +1,10 @@
 ---
 doc_type: Architecture
+doc_id: CAPABILITY_ID_MAP_V1_5D300A
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # Capability ID Map v1（冻结稿）
 
 > **类型**：契约冻结 / P0 阻塞前置  
