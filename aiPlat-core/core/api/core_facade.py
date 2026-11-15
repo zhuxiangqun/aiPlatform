@@ -13961,6 +13961,28 @@ def skill_enable_handler_draft(skill_dir: str):
     return enable_handler_draft(skill_dir)
 
 
+def skill_preview_handler_draft(skill_dir: str):
+    """§5.4 升格预览：草稿摘要、权限、SOP 差异（只读）。
+
+    Args:
+        skill_dir: Skill 目录路径。
+    """
+    from core.apps.skills.asset_compat import preview_handler_draft
+
+    return preview_handler_draft(skill_dir)
+
+
+def skill_discard_handler_draft(skill_dir: str):
+    """§5.4 丢弃 handler 草稿，继续 prompt 路径。
+
+    Args:
+        skill_dir: Skill 目录路径。
+    """
+    from core.apps.skills.asset_compat import discard_handler_draft
+
+    return discard_handler_draft(skill_dir)
+
+
 def agent_asset_compat_finalize(agent_dir: str, *, source=None, adapt_summary=None):
     """Write COMPAT.yaml for an agent dir (Phase B); chat vs full surface honesty.
 

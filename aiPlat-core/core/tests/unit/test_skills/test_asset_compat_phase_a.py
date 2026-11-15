@@ -7,9 +7,11 @@ from core.harness.maintenance.asset_compat import (
     TIER_BLOCKED,
     TIER_NEEDS_HANDLER,
     TIER_PROMPT_READY,
+    discard_handler_draft,
     enable_handler_draft,
     finalize_skill_compat,
     is_skill_schedulable,
+    preview_handler_draft,
     skill_schedulable_error,
 )
 from core.management.skill_adapter import adapt_skill
@@ -114,3 +116,47 @@ def test_sys_skill_call_gate_reads_filesystem_metadata(tmp_path: Path):
     assert isinstance(result, SkillResult)
     assert result.success is False
     assert result.error == "skill_not_schedulable"
+
+
+def test_preview_discard_enable_handler_draft_audit(tmp_path: Path):
+    """§5.4：预览→丢弃 / 预览→启用（含 draft_sha256 + permissions 审计字段）。"""
+    s = tmp_path / "scripty2"
+    s.mkdir()
+    (s / "scripts").mkdir()
+    (s / "scripts" / "main.py").write_text("print(1)\n", encoding="utf-8")
+    (s / "SKILL.md").write_text(
+        "---\nname: scripty2\ndescription: t\nexecution_type: prompt\n"
+        "permissions:\n  - filesystem:read\n---\nRun script via draft.\n",
+        encoding="utf-8",
+    )
+    adapt_skill(s)
+    assert (s / "handler.py.draft").is_file()
+
+    prev = preview_handler_draft(s)
+    assert prev["ok"] is True and prev["has_draft"] is True
+    assert prev["draft_sha256_16"]
+    assert "filesystem:read" in (prev.get("permissions") or [])
+    assert isinstance(prev.get("sop_vs_draft"), list) and prev["sop_vs_draft"]
+
+    # discard path
+    discarded_dir = tmp_path / "draft_discard_skill"
+    discarded_dir.mkdir()
+    (discarded_dir / "scripts").mkdir()
+    (discarded_dir / "scripts" / "main.py").write_text("print(2)\n", encoding="utf-8")
+    (discarded_dir / "SKILL.md").write_text(
+        "---\nname: draft_discard_skill\ndescription: t\nexecution_type: prompt\n---\nX.\n",
+        encoding="utf-8",
+    )
+    adapt_skill(discarded_dir)
+    assert discard_handler_draft(discarded_dir)["ok"] is True
+    assert not (discarded_dir / "handler.py.draft").exists()
+    assert discard_handler_draft(discarded_dir)["ok"] is False
+
+    # enable + audit fields
+    en = enable_handler_draft(s)
+    assert en["ok"] is True and (s / "handler.py").is_file()
+    assert isinstance(en.get("draft_sha256"), str) and len(en["draft_sha256"]) == 64
+    assert "filesystem:read" in (en.get("permissions_at_enable") or [])
+    post = preview_handler_draft(s)
+    assert post["has_handler"] is True
+    assert enable_handler_draft(s)["ok"] is False  # already enabled

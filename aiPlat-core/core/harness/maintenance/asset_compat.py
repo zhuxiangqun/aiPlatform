@@ -244,19 +244,137 @@ def write_handler_draft_from_script(skill_dir: Path | str, script_rel: str) -> P
     return path
 
 
+def preview_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
+    """§5.4 升格预览：草稿做什么、权限清单、与 SOP 差异（只读）。
+
+    Args:
+        skill_dir: Skill 目录路径。
+
+    Returns:
+        预览字典；无草稿时 ``ok=False``。
+    """
+    import hashlib
+    import re
+
+    root = Path(skill_dir)
+    draft = root / HANDLER_DRAFT
+    fm = _read_frontmatter(root)
+    sop_body = ""
+    md = root / "SKILL.md"
+    if md.is_file():
+        raw = md.read_text(encoding="utf-8", errors="replace")
+        if raw.startswith("---"):
+            parts = raw.split("---", 2)
+            sop_body = parts[2] if len(parts) >= 3 else raw
+        else:
+            sop_body = raw
+    perms = fm.get("permissions") or fm.get("required_permissions") or []
+    if isinstance(perms, str):
+        perms = [perms]
+    if not isinstance(perms, list):
+        perms = []
+    draft_text = draft.read_text(encoding="utf-8", errors="replace") if draft.is_file() else ""
+    digest = (
+        hashlib.sha256(draft_text.encode("utf-8")).hexdigest()[:16] if draft_text else ""
+    )
+    # 草稿首句 docstring / 首个非空注释行 → 人读摘要
+    summary = ""
+    m = re.search(r'"""(.*?)"""', draft_text, re.DOTALL)
+    if m:
+        summary = " ".join(m.group(1).strip().split())[:400]
+    if not summary:
+        for line in draft_text.splitlines():
+            s = line.strip()
+            if s.startswith("#") and len(s) > 1:
+                summary = s.lstrip("# ").strip()[:400]
+                break
+    if not summary and draft_text:
+        summary = " ".join(draft_text.split())[:240]
+    # SOP vs 草稿：粗粒度提示（非全文 diff UI 依赖）
+    sop_mentions_handler = "handler" in sop_body.lower() or "execute(" in sop_body
+    draft_calls_subprocess = "subprocess" in draft_text
+    diffs: List[str] = []
+    if draft.is_file() and not (root / "handler.py").exists():
+        diffs.append("SOP 仍可按 prompt 执行；启用后 execution_type 将切到 handler")
+    if draft_calls_subprocess:
+        diffs.append("草稿通过 subprocess 包装脚本，启用后将获得本地进程执行能力")
+    if sop_mentions_handler and not draft.is_file():
+        diffs.append("SOP 提到 handler，但磁盘无 handler.py.draft")
+    if not diffs and draft.is_file():
+        diffs.append("启用后以 handler 为准调度；未启用前保持 prompt_ready / needs_handler")
+    compat = read_skill_compat(root) or compute_skill_compat(root)
+    return {
+        "ok": bool(draft.is_file()),
+        "error": None if draft.is_file() else "no_handler_draft",
+        "skill_id": root.name,
+        "has_draft": draft.is_file(),
+        "has_handler": (root / "handler.py").is_file(),
+        "draft_summary": summary,
+        "draft_sha256_16": digest,
+        "draft_preview": "\n".join(draft_text.splitlines()[:80]),
+        "permissions": [str(p) for p in perms],
+        "execution_type": str(fm.get("execution_type") or ""),
+        "sop_excerpt": "\n".join(sop_body.strip().splitlines()[:40]),
+        "sop_vs_draft": diffs,
+        "compat": {
+            "tier": compat.get("tier"),
+            "schedulable": compat.get("schedulable"),
+            "ui_state": compat.get("ui_state"),
+            "upgrade": compat.get("upgrade") or {},
+            "issues": compat.get("issues") or [],
+        },
+    }
+
+
+def discard_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
+    """丢弃 handler.py.draft，继续以 prompt 路径使用（§5.4 可选）。
+
+    Args:
+        skill_dir: Skill 目录路径。
+    """
+    root = Path(skill_dir)
+    draft = root / HANDLER_DRAFT
+    if not draft.is_file():
+        return {"ok": False, "error": "no_handler_draft"}
+    if (root / "handler.py").exists():
+        return {"ok": False, "error": "handler_already_enabled"}
+    try:
+        draft.unlink()
+    except OSError as exc:
+        return {"ok": False, "error": f"unlink_failed:{exc}"}
+    compat = finalize_skill_compat(root, adapt_summary={"adapted": True, "pattern": "handler_draft_discarded"})
+    return {
+        "ok": True,
+        "discarded": True,
+        "tier": compat.get("tier"),
+        "schedulable": compat.get("schedulable"),
+        "compat": compat,
+    }
+
+
 def enable_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
     """Promote handler.py.draft → handler.py after human enable.
 
     Args:
         skill_dir: skill_dir 参数。
     """
+    import hashlib
+
     root = Path(skill_dir)
     draft, target = root / HANDLER_DRAFT, root / "handler.py"
     if not draft.is_file():
         return {"ok": False, "error": "no_handler_draft"}
     if target.exists():
         return {"ok": False, "error": "handler_already_exists"}
-    target.write_text(draft.read_text(encoding="utf-8"), encoding="utf-8")
+    draft_text = draft.read_text(encoding="utf-8")
+    draft_sha = hashlib.sha256(draft_text.encode("utf-8")).hexdigest()
+    fm_before = _read_frontmatter(root)
+    perms = fm_before.get("permissions") or fm_before.get("required_permissions") or []
+    if isinstance(perms, str):
+        perms = [perms]
+    if not isinstance(perms, list):
+        perms = []
+    target.write_text(draft_text, encoding="utf-8")
     md = root / "SKILL.md"
     if md.is_file():
         raw = md.read_text(encoding="utf-8", errors="replace")
@@ -275,7 +393,15 @@ def enable_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
                 except Exception as exc:
                     logger.debug("enable_handler frontmatter update failed: %s", exc)
     compat = finalize_skill_compat(root, adapt_summary={"adapted": True, "pattern": "handler_enabled"})
-    return {"ok": True, "tier": compat.get("tier"), "schedulable": compat.get("schedulable"), "compat": compat}
+    return {
+        "ok": True,
+        "tier": compat.get("tier"),
+        "schedulable": compat.get("schedulable"),
+        "compat": compat,
+        # §5.4 审计字段：谁启用见 HTTP 层；此处落草稿指纹与权限快照
+        "draft_sha256": draft_sha,
+        "permissions_at_enable": [str(p) for p in perms],
+    }
 
 
 # ── Agent Phase B ─────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2691
+total_capabilities: 2695
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -5257,7 +5257,7 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 201
+    caps_count: 205
     provides:
       - symbol: "finalize_skill_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -5266,7 +5266,23 @@ domains:
       - symbol: "enable_handler_draft"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
-        signature: "enable_handler_draft(skill_dir)→{ok,tier,schedulable}; draft→handler.py"
+        signature: "enable_handler_draft(skill_dir)→{ok,tier,schedulable,draft_sha256,permissions_at_enable}; draft→handler.py"
+      - symbol: "preview_handler_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "preview_handler_draft(skill_dir)→{ok,draft_summary,permissions,sop_vs_draft}; §5.4 preview"
+      - symbol: "discard_handler_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "discard_handler_draft(skill_dir)→{ok,discarded}; keep prompt path"
+      - symbol: "skill_preview_handler_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "skill_preview_handler_draft(skill_dir)→dict; CoreFacade §5.4"
+      - symbol: "skill_discard_handler_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "skill_discard_handler_draft(skill_dir)→dict; CoreFacade §5.4"
       - symbol: "is_skill_schedulable"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function

@@ -158,7 +158,7 @@ export const SkillRowActions: React.FC<Props> = ({
               <span className="text-amber-300 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5" /> 启用 handler 草稿
               </span>
-              <span className="text-gray-500 pl-5">handler.py.draft → 正式启用</span>
+              <span className="text-gray-500 pl-5">打开升格页确认权限与 SOP 差异</span>
             </button>
           )}
           {canSubmit && (
