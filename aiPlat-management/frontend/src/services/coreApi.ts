@@ -1187,10 +1187,40 @@ export const workspaceSkillApi = {
     return apiClient.post<{ status: string; lint?: any; lint_summary?: any }>(`/core/workspace/skills/${skillId}/enable`);
   },
 
+  /** §5.4 升格预览：草稿摘要 / 权限 / SOP 差异 */
+  handlerDraftPreview: async (skillId: string) => {
+    return apiClient.get<{
+      status: string;
+      skill_id: string;
+      ok?: boolean;
+      draft_summary?: string;
+      draft_preview?: string;
+      draft_sha256_16?: string;
+      permissions?: string[];
+      sop_excerpt?: string;
+      sop_vs_draft?: string[];
+      execution_type?: string;
+      compat?: { tier?: string; ui_state?: string; schedulable?: boolean };
+    }>(`/core/workspace/skills/${skillId}/handler-draft-preview`);
+  },
+
   /** Phase A §5.4: promote handler.py.draft → handler.py */
   enableHandlerDraft: async (skillId: string) => {
-    return apiClient.post<{ status: string; skill_id: string; tier?: string; schedulable?: boolean; ok?: boolean }>(
-      `/core/workspace/skills/${skillId}/enable-handler-draft`,
+    return apiClient.post<{
+      status: string;
+      skill_id: string;
+      tier?: string;
+      schedulable?: boolean;
+      ok?: boolean;
+      draft_sha256?: string;
+      permissions_at_enable?: string[];
+    }>(`/core/workspace/skills/${skillId}/enable-handler-draft`, {});
+  },
+
+  /** §5.4 丢弃草稿，继续 prompt */
+  discardHandlerDraft: async (skillId: string) => {
+    return apiClient.post<{ status: string; skill_id: string; ok?: boolean; discarded?: boolean }>(
+      `/core/workspace/skills/${skillId}/discard-handler-draft`,
       {},
     );
   },

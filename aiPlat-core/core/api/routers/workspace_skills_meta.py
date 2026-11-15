@@ -1555,6 +1555,113 @@ async def workspace_skills_installer_uninstall(skill_id: str, http_request: Requ
         raise HTTPException(status_code=500, detail=f"installer_uninstall_failed:{e}")
 
 
+async def _async_workspace_skill_dir(ws_mgr, skill_id: str) -> str:
+    """从 workspace skill metadata 解析 skill_dir。
+
+    Args:
+        ws_mgr: Workspace SkillManager。
+        skill_id: Skill ID。
+
+    Returns:
+        绝对 skill_dir 路径字符串。
+    """
+    from pathlib import Path
+
+    skill = await ws_mgr.get_skill(str(skill_id))
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"skill_not_found:{skill_id}")
+    fs = (getattr(skill, "metadata", None) or {}).get("filesystem") if isinstance(getattr(skill, "metadata", None), dict) else None
+    skill_dir = (fs or {}).get("skill_dir") if isinstance(fs, dict) else None
+    if not skill_dir or not Path(str(skill_dir)).is_dir():
+        raise HTTPException(status_code=404, detail="skill_dir_not_found")
+    return str(skill_dir)
+
+
+@router.get("/workspace/skills/{skill_id}/handler-draft-preview", response_model=Dict[str, Any])
+async def workspace_skills_handler_draft_preview(
+    skill_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)
+):
+    """§5.4 升格预览：草稿做什么、权限清单、与 SOP 差异。
+
+    Args:
+        skill_id: Skill ID。
+        http_request: FastAPI Request。
+        rt: 内核运行时。
+    """
+    from core.api.core_facade import skill_preview_handler_draft
+
+    ws_mgr = _ws_skill_manager(rt)
+    if not ws_mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload={},
+        action="read",
+        resource_type="skill",
+        resource_id=str(skill_id),
+    )
+    if deny:
+        return deny
+    skill_dir = await _async_workspace_skill_dir(ws_mgr, skill_id)
+    res = skill_preview_handler_draft(skill_dir)
+    return {"status": "ok" if res.get("ok") else "no_draft", "skill_id": str(skill_id), **res}
+
+
+@router.post("/workspace/skills/{skill_id}/discard-handler-draft", response_model=Dict[str, Any])
+async def workspace_skills_discard_handler_draft(
+    skill_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)
+):
+    """§5.4 丢弃 handler 草稿，继续 prompt 路径。
+
+    Args:
+        skill_id: Skill ID。
+        http_request: FastAPI Request。
+        rt: 内核运行时。
+    """
+    from core.api.core_facade import skill_discard_handler_draft
+
+    ws_mgr = _ws_skill_manager(rt)
+    if not ws_mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload={},
+        action="update",
+        resource_type="skill",
+        resource_id=str(skill_id),
+    )
+    if deny:
+        return deny
+    skill_dir = await _async_workspace_skill_dir(ws_mgr, skill_id)
+    res = skill_discard_handler_draft(skill_dir)
+    if not res.get("ok"):
+        raise HTTPException(status_code=409, detail=res)
+    try:
+        es = _store(rt)
+        if es is not None:
+            actor = actor_from_http(http_request, {})
+            await es.add_audit_log(
+                action="workspace_skill_discard_handler_draft",
+                status="ok",
+                tenant_id=str(actor.get("tenant_id") or "") or None,
+                actor_id=str(actor.get("actor_id") or "") or None,
+                actor_role=str(actor.get("actor_role") or "") or None,
+                resource_type="skill",
+                resource_id=str(skill_id),
+                detail={"tier": res.get("tier"), "schedulable": res.get("schedulable")},
+            )
+    except Exception as e:
+        logging.warning(str(e), exc_info=True)
+    try:
+        if hasattr(ws_mgr, "reload_skill"):
+            await ws_mgr.reload_skill(str(skill_id))
+        elif hasattr(ws_mgr, "_load_directory_skills"):
+            ws_mgr._load_directory_skills()
+    except Exception as e:
+        logging.warning("reload after discard_handler_draft failed: %s", e, exc_info=True)
+    return {"status": "ok", "skill_id": str(skill_id), **res}
+
+
 @router.post("/workspace/skills/{skill_id}/enable-handler-draft", response_model=Dict[str, Any])
 async def workspace_skills_enable_handler_draft(
     skill_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)
@@ -1566,8 +1673,6 @@ async def workspace_skills_enable_handler_draft(
         http_request: http_request 参数。
         rt: rt 参数。
     """
-    from pathlib import Path
-
     from core.api.core_facade import skill_enable_handler_draft
 
     ws_mgr = _ws_skill_manager(rt)
@@ -1584,13 +1689,7 @@ async def workspace_skills_enable_handler_draft(
     if deny:
         return deny
 
-    skill = await ws_mgr.get_skill(str(skill_id))
-    if not skill:
-        raise HTTPException(status_code=404, detail=f"skill_not_found:{skill_id}")
-    fs = (getattr(skill, "metadata", None) or {}).get("filesystem") if isinstance(getattr(skill, "metadata", None), dict) else None
-    skill_dir = (fs or {}).get("skill_dir") if isinstance(fs, dict) else None
-    if not skill_dir or not Path(str(skill_dir)).is_dir():
-        raise HTTPException(status_code=404, detail="skill_dir_not_found")
+    skill_dir = await _async_workspace_skill_dir(ws_mgr, skill_id)
 
     res = skill_enable_handler_draft(str(skill_dir))
     if not res.get("ok"):
@@ -1607,7 +1706,12 @@ async def workspace_skills_enable_handler_draft(
                 actor_role=str(actor.get("actor_role") or "") or None,
                 resource_type="skill",
                 resource_id=str(skill_id),
-                detail={"tier": res.get("tier"), "schedulable": res.get("schedulable")},
+                detail={
+                    "tier": res.get("tier"),
+                    "schedulable": res.get("schedulable"),
+                    "draft_sha256": res.get("draft_sha256"),
+                    "permissions_at_enable": res.get("permissions_at_enable") or [],
+                },
             )
     except Exception as e:
         logging.warning(str(e), exc_info=True)

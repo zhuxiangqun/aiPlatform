@@ -16,6 +16,7 @@ import SkillVersionsModal from '../../../components/workspace/SkillVersionsModal
 import SkillExecutionsModal from '../../../components/workspace/SkillExecutionsModal';
 import WorkspaceSkillDetailModal from '../../../components/workspace/WorkspaceSkillDetailModal';
 import SkillRowActions from '../../../components/workspace/SkillRowActions';
+import HandlerDraftUpgradeModal from '../../../components/workspace/HandlerDraftUpgradeModal';
 import AssetStatusLegend from '../../../components/workspace/AssetStatusLegend';
 import ImportBar from '../../../components/workspace/ImportBar';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
@@ -64,6 +65,10 @@ const WorkspaceSkills: React.FC = () => {
   const [batchSignKey, setBatchSignKey] = useState('');
   const [batchSigning, setBatchSigning] = useState(false);
   const [batchResult, setBatchResult] = useState<{ total: number; signed: number; failed: number } | null>(null);
+  const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; skill: Skill | null }>({
+    open: false,
+    skill: null,
+  });
 
   useEffect(() => {
     fetchSkills();
@@ -290,15 +295,7 @@ const WorkspaceSkills: React.FC = () => {
           onExport={handleExportPlugin}
           onDeprecate={(s) => setDeleteConfirm({ open: true, skill: s, hard: false })}
           onRestore={handleRestore}
-          onEnableHandlerDraft={async (s) => {
-            try {
-              await workspaceSkillApi.enableHandlerDraft(s.id);
-              toast.success(`已启用 handler：${s.name || s.id}`);
-              fetchSkills();
-            } catch (e: any) {
-              toastGateError(e, '启用 handler 失败');
-            }
-          }}
+          onEnableHandlerDraft={(s) => setUpgradeModal({ open: true, skill: s })}
         />
       ),
     },
@@ -454,6 +451,13 @@ const WorkspaceSkills: React.FC = () => {
         onEdit={(s) => { setEditSkill(s); setEditInitialSection('basic'); setEditModalOpen(true); }}
         onExecute={(s) => { setExecuteSkill(s); setExecuteModalOpen(true); }}
         onVersions={(s) => { setEditSkill(s); setVersionsModalOpen(true); }}
+      />
+
+      <HandlerDraftUpgradeModal
+        open={upgradeModal.open}
+        skill={upgradeModal.skill}
+        onClose={() => setUpgradeModal({ open: false, skill: null })}
+        onDone={() => fetchSkills()}
       />
 
       <Modal
