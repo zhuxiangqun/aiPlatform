@@ -8,7 +8,7 @@ doc_type: Archive
 - **status**: **Closed PASS — A-local only**（A0–A6；#6 local JWT ✅；Keycloak/JWKS → B）
 - **closeout**: `A_LOCAL_CLOSEOUT.md`（历史链接失效）
 - **plan**: [`eval-a3-independent-service.md`](../../../../../../docs/architecture/plans/eval-a3-independent-service.md)
-- **A3 ADR**: [`ADR-EVALUATION-A3.md`](../../../ADR-EVALUATION-A3.md)（Accepted 有条件）
+- **A3 ADR**: [`ADR-EVALUATION-A3.md`](../../../../../five-products/ADR-EVALUATION-A3.md)（Accepted 有条件）
 - **checklist**: `SPLIT_CHECKLIST.md`（历史链接失效）
 - **freeze**: [`ENGINEERING_FREEZE.md`](../../ENGINEERING_FREEZE.md)
 - **production**: 仍冻结（`process_split_authorized=false` / `staging_ready=false` / 任何 authorize=false）
