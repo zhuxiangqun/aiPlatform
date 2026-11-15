@@ -5010,6 +5010,35 @@ async def run_confirm_extraction(
     return await _run(extraction_id, actor=actor, store=store)
 
 
+async def invoke_function(
+    function_id: str,
+    params: Optional[Dict[str, Any]] = None,
+    *,
+    permissions: Optional[List[str]] = None,
+    actor: str = "",
+) -> Dict[str, Any]:
+    """W5：调用无副作用 Function（经 FunctionRegistry L1）。
+
+    Args:
+        function_id: FunctionContract.function_id。
+        params: 输入参数。
+        permissions: 调用方权限/scopes。
+        actor: 操作者身份。
+
+    Returns:
+        FunctionRegistry.invoke 回执。
+    """
+    from core.harness.infrastructure.function_registry import get_function_registry
+
+    reg = get_function_registry()
+    return await reg.invoke(
+        function_id,
+        params or {},
+        permissions=permissions,
+        actor=actor,
+    )
+
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 
@@ -14250,6 +14279,11 @@ from core.harness.integration import KernelRuntime  # noqa: boundary
 # v2.7 — complete platform→CoreFacade canonical re-exports (all remaining harness symbols)
 from core.harness.infrastructure.action_contract import ActionContractModel  # noqa: boundary
 from core.harness.infrastructure.action_store import ActionStore  # noqa: boundary
+from core.harness.infrastructure.function_contract import FunctionContractModel  # noqa: boundary
+from core.harness.infrastructure.function_registry import (  # noqa: boundary
+    get_function_registry,
+    register_builtin_functions,
+)
 from core.harness.infrastructure.workbench_runtime_guard import WorkbenchRuntimeGuard  # noqa: boundary
 from core.harness.infrastructure.action_audit_validate import (  # noqa: boundary
     check_change_surface,
