@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T20:22:42+08:00",
+  "reviewed_at": "2026-11-15T20:24:50+08:00",
   "base_ref": "origin/main",
   "merge_base": "188bd90f865999eff4bb4b1575b94c9c3adabffb",
-  "diff_sha256": "21918b6e0e2aa097d7b7a2e9fffb3ed4cccb37c61ba396c17ea8c956faf1490f",
-  "head_sha": "661d7fe8b85821b5821d3368d19b7e91bdac7542",
+  "diff_sha256": "e1159e2cda6b6c75bf954fd1dd15d28447ee5d2141c79359c34ef7ad6c151b18",
+  "head_sha": "6f39081a6f923a8b341ba1e479c95c25d8bd03d3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase 0 measurement only; no Core claim. Local lock only."
+  "note": "Phase 0 evidence + README link depth fix. Local lock only."
 }
