@@ -14,7 +14,8 @@ doc_type: Reference
 | `global_tier_a_expansion_authorized` | true |
 | `accuracy_claim` | true |
 | `l5_declare_authorized` | true |
-| `process_split_authorized` | true（政策） |
+| `process_split_policy_authorized` | true |
+| `process_split_authorized`（运行时） | **false** |
 | `security_certification` | **false** |
 | Chart runtime split | **false** |
 

@@ -11,7 +11,7 @@ doc_type: Reference
 
 | Surface | Composite | text/safety/refusal |
 |---|---|---|
-| **Standalone Eval** (`packages/aiplat-evaluation`) | `build_composite` — **P1 engineering canonical**（`policy.composite_version=v1.2`） | `text_quality` / `content_safety` / `refusal` **report-only keyword/length smoke**；ASR report-only；scored = gold-gated quality + efficiency |
+| **Standalone Eval** (`packages/aiplat-evaluation`) | `build_composite` — **P1 engineering canonical**（`policy.composite_version=v1.3`） | `text_quality` / `content_safety` / `refusal` **report-only keyword/length smoke**；ASR report-only；scored = gold-gated quality + efficiency；safety 族无权重；未知指标默认 report-only |
 | **Central** `AgentEvalResult.composite_score` | **legacy_7dim** (task/tool/traj/eff/recovery/safety/cost) | **report-only** (computed, not weighted); **`deprecated_for_engineering=true`** |
 
 Machine marker on Central serialize:

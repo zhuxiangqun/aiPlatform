@@ -4,7 +4,8 @@ doc_type: Reference
 
 # Evaluation A3 进程拆分硬门清单
 
-> 政策 `process_split_authorized: true`（owner AUTHORIZE · 覆盖）；🟨 = 本地演练；Chart runtime 仍 false 直至 staging live。  
+> 政策 `process_split_policy_authorized: true`（owner AUTHORIZE · 覆盖）；🟨 = 本地演练；  
+> 运行时 `process_split_authorized` / Chart `a3_process_split_authorized` 仍 **false** 直至 staging live。  
 > ADR：[`ADR-EVALUATION-A3.md`](../../../../reports/five-products/ADR-EVALUATION-A3.md) **Accepted（有条件）**  
 > 刷新：`bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh` → `a3_prep_check.sh`
 
@@ -16,7 +17,7 @@ doc_type: Reference
 | 4 | 备份恢复 + 回滚演练（切回共宿） | 运维 | 🟨 |
 | 5 | ADR Accepted 联签 | 架构 | ✅ |
 
-`process_split_authorized: true`
+`process_split_policy_authorized: true`
 
 ## 自动 vs 人工
 
@@ -31,7 +32,7 @@ doc_type: Reference
 
 ## Owner authorize 备注（2026-11-14）
 
-Owner `AUTHORIZE process_split`：政策旗标 **true**。
+Owner `AUTHORIZE process_split`：政策旗标 **`process_split_policy_authorized=true`**。
 - Checklist #1 / #4 仍为 🟨（本地 ≠ live）
 - Chart `aiplat.a3_process_split_authorized` **仍为 false**（待独立 staging + live 证据）
 - ≠ 对外宣称「生产已独立」

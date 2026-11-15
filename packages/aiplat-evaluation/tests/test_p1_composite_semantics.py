@@ -29,13 +29,16 @@ def test_composite_scores_p1_dims_not_asr():
     assert block["accuracy_claim"] is False
     assert block["score"] is not None
     assert block["score"] >= 99.0
-    assert block["policy"]["composite_version"] == "v1.2"
+    assert block["policy"]["composite_version"] == "v1.3"
+    assert block["policy"]["safety_family_weight"] is False
+    assert block["policy"]["unknown_metric_default"] == "report_only"
     assert "asr" in block["report_only_metrics"]
     assert "text_quality" in block["report_only_metrics"]
     assert "content_safety" in block["report_only_metrics"]
     assert "refusal" in block["report_only_metrics"]
     assert "content_safety" not in block["scored_metrics"]
     assert "groundedness" in block["scored_metrics"]
+    assert metric_role("brand_new_unregistered_metric") == "report_only"
 
 
 def test_scoring_block_embeds_composite():
@@ -71,4 +74,4 @@ def test_prompt_eval_runner_has_composite():
     assert "content_safety" in comp["report_only_metrics"]
     meta = out["metrics"].get("meta") or {}
     assert meta.get("runner_id") == "prompt_eval"
-    assert meta.get("composite_version") == "v1.2"
+    assert meta.get("composite_version") == "v1.3"

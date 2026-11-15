@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T16:04:19+08:00",
+  "reviewed_at": "2026-11-15T16:30:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "861399405735a17f9fbb553cee7e2a2d6a2db36f",
-  "diff_sha256": "739f07e308022a088746006ed67cbcdb2444c247f0a721157cf92d470aeb0f81",
-  "head_sha": "1400eab5c08ba846b94a20222cde418ba5976ec5",
+  "merge_base": "4b065da315b4f6bf00e9cd68b721f41f8287f989",
+  "diff_sha256": "8878c82c442ed7404856c4e461c4251658afeb4d5903959075abe98fff219f45",
+  "head_sha": "9f92785b1064ab5723fca68b9f8903782c34b99e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "DOCUMENT_SYSTEM text-only closeout: banner/§1/§12/§13/§16#6 aligned to machine checks; no path moves. verify_document_system + verify_canonical --strict pass."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock."
 }

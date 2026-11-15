@@ -85,7 +85,8 @@ def main() -> int:
     cal["tier_a_expansion_authorized"] = True
     cal["accuracy_claim"] = False  # scheme A product claim
     cal["accuracy_claim_authorized"] = True
-    cal["process_split_authorized"] = True
+    cal["process_split_policy_authorized"] = True
+    cal["process_split_authorized"] = False
     cal["cycle1"] = {
         "opened_on": ANCHOR.isoformat(),
         "status": "open",

@@ -160,7 +160,7 @@ def ensure_boundary_pin(split: Dict[str, Any]) -> Path:
         Boundary pin path.
     """
     # Runtime boundary (Chart + ready_to_authorize + live sign) — not policy flag.
-    # Owner may set process_split_authorized policy true while Chart stays false.
+    # Owner may set process_split_policy_authorized true while Chart stays false.
     locks_ok = (
         split.get("ok") is True
         and split.get("chart_split_false_annotation") is True
@@ -195,8 +195,8 @@ def ensure_boundary_pin(split: Dict[str, Any]) -> Path:
         "tier_a_claim_authorized": False,
         "honesty": (
             "Boundary pin locks Chart runtime + ready_to_authorize + live_signed. "
-            "Policy process_split_authorized may be true (owner AUTHORIZE) without "
-            "flipping Chart. family META_EVAL green ≠ Chart flip. ≠ Tier A."
+            "process_split_policy_authorized may be true (owner AUTHORIZE) without "
+            "flipping Chart/runtime process_split_authorized. ≠ Tier A."
         ),
     }
     if split.get("error"):

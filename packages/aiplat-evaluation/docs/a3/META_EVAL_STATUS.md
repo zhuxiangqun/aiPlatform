@@ -4,7 +4,7 @@ doc_type: Reference
 
 # META_EVAL 汇总状态
 
-> 机器：[`evidence/meta_eval/meta_eval_aggregate_status.v0.json`](./evidence/meta_eval/meta_eval_aggregate_status.v0.json) · 时点 2026-11-14T23:18:36+08:00
+> 机器：[`evidence/meta_eval/meta_eval_aggregate_status.v0.json`](./evidence/meta_eval/meta_eval_aggregate_status.v0.json) · 时点 2026-11-15T16:22:29+08:00
 > **诚实锁**：`meta_eval_families_green` ≠ Chart flip · ≠ security cert · 政策旗标见 [`PHASE3_HONESTY_LOCKS.md`](./PHASE3_HONESTY_LOCKS.md)
 
 ## 汇总
@@ -12,7 +12,7 @@ doc_type: Reference
 - families_green **4/4**
 - `meta_eval_families_green`: **true**
 - `tier_a_expansion_authorized`: **true**（locks）
-- `accuracy_claim`: **true**（locks）
+- `accuracy_claim`: **false**（locks）
 - Chart runtime split: **false**
 
 ## 家族

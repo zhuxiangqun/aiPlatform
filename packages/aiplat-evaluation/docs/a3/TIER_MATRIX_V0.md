@@ -6,7 +6,7 @@ doc_type: Reference
 
 > 计划 §4.5 / §8 · 源：R12 `in_both` · 机器：[`evidence/tier_matrix_v0.json`](./evidence/tier_matrix_v0.json)
 > **诚实锁**：政策旗标见 [`PHASE3_HONESTY_LOCKS.md`](./PHASE3_HONESTY_LOCKS.md)；Chart runtime 另闸
-> **时点**：2026-11-14T23:18:36+08:00 · R12 H5 open=**0** · `meta_eval_families_green`=**true** · `tier_a_expansion_authorized`=**true**
+> **时点**：2026-11-15T16:22:29+08:00 · R12 H5 open=**0** · `meta_eval_families_green`=**true** · `tier_a_expansion_authorized`=**true**
 
 ## 汇总
 
@@ -24,7 +24,7 @@ doc_type: Reference
 ## 下一步
 
 1. Phase 3：[`PHASE3_PREP.md`](./PHASE3_PREP.md) · Phase 4：[`PHASE4_PREP.md`](./PHASE4_PREP.md)
-2. B Cycle1 owner_signoff ✅（[`PHASE3_B_CYCLE1_OWNER_SIGNOFF_AUTHORIZE.md`](./PHASE3_B_CYCLE1_OWNER_SIGNOFF_AUTHORIZE.md)）· coverage complete 仍 false
+2. B Cycle1 owner_signoff AUTHORIZE'd（≠ coverage complete）
 3. C 仅登记；禁止挤占 A 名额
 
 ## 关联

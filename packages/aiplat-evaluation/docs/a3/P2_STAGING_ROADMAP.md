@@ -7,7 +7,7 @@ generated_at: 2026-11-15
 
 > **入口**：本页是「从今天到 Chart 可翻 / 生产独立宣称仍禁止」的总览。  
 > **Honesty**：脚手架 ≠ staging live ≠ 生产独立。`ready_to_authorize` 必须保持 false，直到 live 证据齐。  
-> **前置收口**：P0 HTTP/`eval_protocol` 正确性 · P1 composite v1.2 · [`STORE_SURFACE_V0.md`](./STORE_SURFACE_V0.md) · [`G2B_RE_REVIEW_PROCEDURE.md`](./G2B_RE_REVIEW_PROCEDURE.md)
+> **前置收口**：P0 HTTP/`eval_protocol` 正确性 · P1 composite v1.3 · [`STORE_SURFACE_V0.md`](./STORE_SURFACE_V0.md) · [`G2B_RE_REVIEW_PROCEDURE.md`](./G2B_RE_REVIEW_PROCEDURE.md)
 
 ## 一句话现状（2026-11-15 机读核对）
 
@@ -18,7 +18,7 @@ generated_at: 2026-11-15
 | `a3_split_authorize.sh status` | `ready_to_authorize=false` · `all_green=false` | **禁止** `authorize` / 翻 Chart |
 | SPLIT_CHECKLIST #1/#4 | 🟨 | 本地演练 ≠ live |
 | SPLIT_CHECKLIST #2/#3/#5 | ✅ | Chart 骨架 / API 边界 / ADR |
-| 政策文档 `process_split_authorized` | 部分文档写 true（owner 覆盖） | **≠** Chart runtime；Chart 仍 `false` |
+| 政策 `process_split_policy_authorized` | **true**（owner 覆盖） | **≠** 运行时 `process_split_authorized` / Chart（均 `false`） |
 | B4-S unfreeze | `draft_blocked` | 独立 host **未确认** |
 | 最新 live 证据 | `environment=scaffold` · `production_signed=false` | 不算 staging |
 
