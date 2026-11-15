@@ -1,7 +1,7 @@
 ---
 doc_type: Architecture
 title: 外源资产互通完整改善方案（Agent / Skill / Tool / MCP）
-status: partially-implemented
+status: implemented
 authority: design-target
 language: zh-CN
 created: 2026-11-12
@@ -166,18 +166,18 @@ updated: 2026-11-15
 | Tool 立刻能用？ | 映射或 MCP 投影后 |
 | MCP 立刻能用？ | 自动连接成功后默认能用 |
 
-## 9. 非目标 / 仍开放缺口
+## 9. 非目标（刻意不做，非未完成）
 
-**非目标**：不保证任意生态比特级复刻；不默认执行任意下载代码；不把「多数待升格」当成默认体验；**不做公网/GitHub MCP E2E**（有 hermetic 本地 stdio）。
-
-**仍开放（诚实）**：
-
-| 缺口 | 说明 |
+| 项 | 说明 |
 |------|------|
-| 生产「启用」专用审批流 | 工作区 RBAC + 上架 marketplace；非独立 enable 审批产品 |
-| 运行时试跑 | 仅静态 compile；不执行草稿（安全） |
+| 生态比特级复刻 | 不保证任意生态逐字节等价 |
+| 默认执行下载代码 | 草稿须确认启用；试跑仅静态 compile |
+| 「多数待升格」当默认体验 | InstallReport 诚实；主流不能用 → `import_failed` |
+| 公网/GitHub MCP E2E | 有 hermetic 本地 stdio；不做公网依赖门禁 |
+| 独立「启用」审批产品 | 工作区 RBAC 可启用试用；生产上架走 marketplace，不另做 enable 审批流 |
+| 运行时执行草稿试跑 | 安全：仅 compile + 签名/`TOOL_DEF`；不 `exec` 任意草稿 |
 
-**已关闭**：MCP `gated` 个别确认 — `policy.confirmed_tools` + `GET/POST …/gated-tools` + 管理端「逐工具确认」模态；确认后注册时清除该工具 `approval_required`（档位仍可为 gated）。
+**已关闭（本方案交付）**：§5.4 Skill/Tool 升格预览·丢弃·静态试跑·改权限；MCP `gated` 逐工具确认（`policy.confirmed_tools` + gated-tools API + 管理端模态）。
 
 ## 10. 验证入口
 
