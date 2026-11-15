@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T20:24:50+08:00",
+  "reviewed_at": "2026-11-15T21:20:22+08:00",
   "base_ref": "origin/main",
-  "merge_base": "188bd90f865999eff4bb4b1575b94c9c3adabffb",
-  "diff_sha256": "e1159e2cda6b6c75bf954fd1dd15d28447ee5d2141c79359c34ef7ad6c151b18",
-  "head_sha": "6f39081a6f923a8b341ba1e479c95c25d8bd03d3",
+  "merge_base": "0b0ee06471877171c7edb3a930e67d7c04a87c88",
+  "diff_sha256": "b248e7d0935f837faa9c8e640902757a90523115c40c70a22915b13df167ba2d",
+  "head_sha": "7ffdbaf7607d168c4292c5c3cbc375781a1387bc",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase 0 evidence + README link depth fix. Local lock only."
+  "note": "CI fix: clause-sync system-architecture-contract §86 for Fact Ledger Phase1; docs-only, no runtime change."
 }

@@ -6,6 +6,7 @@ AsyncActionRegistry — enterprise action execution engine (v3, 2026-07-29).
   1. input validation (JSON Schema)
   2. entity loading (single-domain str or cross-domain tuple)
   3. entity constraints (class + state + role → 4-level constraint_type)
+  3.25 L1 hard PolicyGate (required_permissions fail-closed)
   4. approval gate (stake lock + pending_approvals table)
   5. handler execution (async callable + retry strategy)
   6. audit write (action_audit table with entity snapshot)
@@ -223,6 +224,44 @@ class AsyncActionRegistry:
 
         return {"valid": True, "reason": "", "constraint_type": ""}
 
+    def _evaluate_l1_policy_gate(
+        self,
+        contract: ActionContractModel,
+        *,
+        permissions: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """评估动作 L1 硬门（required_permissions）。
+
+        Args:
+            contract: 动作合同。
+            permissions: 调用方持有的权限列表。
+
+        Returns:
+            ``{gate_id, decision, reason}``；无 required_permissions 时 decision=allow。
+        """
+        ns = getattr(contract, "action_namespace", "") or "action"
+        gate_id = f"policy_gate:{ns}:{contract.action_id.split(':')[-1]}"
+        need = list(getattr(contract, "required_permissions", None) or [])
+        if not need:
+            return {
+                "gate_id": gate_id,
+                "decision": "allow",
+                "reason": "no_required_permissions",
+            }
+        have = set(permissions or [])
+        missing = [p for p in need if p not in have]
+        if missing:
+            return {
+                "gate_id": gate_id,
+                "decision": "deny",
+                "reason": f"missing_permissions:{sorted(missing)}",
+            }
+        return {
+            "gate_id": gate_id,
+            "decision": "allow",
+            "reason": "permissions_satisfied",
+        }
+
     # ═══════════════════════════════════════════════════════
     # Execute Pipeline (7 steps)
     # ═══════════════════════════════════════════════════════
@@ -234,6 +273,7 @@ class AsyncActionRegistry:
         params: Dict[str, Any],
         actor: str = "system",
         role: str = "",
+        permissions: Optional[List[str]] = None,
         _bypass_approval: bool = False,
     ) -> Dict[str, Any]:
         """execute。
@@ -244,6 +284,8 @@ class AsyncActionRegistry:
             params: params 参数。
             actor: 操作者身份。
             role: role 参数。
+            permissions: 调用方持有的权限/scope 列表；合同 ``required_permissions``
+                非空时必须全部满足，否则 ``policy_denied``（L1 硬门，失败关闭）。
             _bypass_approval: _bypass_approval 参数。
         """
         from core.harness.infrastructure.workbench_runtime_guard import WorkbenchRuntimeGuard
@@ -325,6 +367,22 @@ class AsyncActionRegistry:
                                         "blocked", constraint, params, entity_snapshot, actor, role)
                 return {"status": "blocked", "reason": constraint["reason"], "constraint_type": constraint["constraint_type"]}
 
+            # ── Step 3.25: L1 hard PolicyGate（required_permissions 失败关闭）──
+            # 为什么：合同字段不可只做装饰；缺权限必须 deny，禁止软 allow 冒充门禁。
+            policy_gate = self._evaluate_l1_policy_gate(c, permissions=permissions)
+            if policy_gate.get("decision") == "deny":
+                await self._write_audit(
+                    c, entity_id, domain_id, current_state, current_state,
+                    "policy_denied", constraint, params, entity_snapshot, actor, role,
+                    policy_gate=policy_gate,
+                )
+                return {
+                    "status": "policy_denied",
+                    "reason": policy_gate.get("reason", "missing_permissions"),
+                    "constraint_type": "permission",
+                    "policy_gate": policy_gate,
+                }
+
             # ── Step 3.5: rule consistency check (Phase 2) ──
             target_state = params.get("target_state", "")
             if target_state and target_state != current_state:
@@ -385,8 +443,11 @@ class AsyncActionRegistry:
 
             # ── Step 6: audit ──
             if c.audit:
-                await self._write_audit(c, entity_id, domain_id, current_state, to_state,
-                                        exec_status, constraint, params, entity_snapshot, actor, role)
+                await self._write_audit(
+                    c, entity_id, domain_id, current_state, to_state,
+                    exec_status, constraint, params, entity_snapshot, actor, role,
+                    policy_gate=policy_gate,
+                )
 
             # ── P0 ontology online learning: case writeback (best-effort, never blocks) ──
             try:
@@ -608,7 +669,24 @@ class AsyncActionRegistry:
     async def _write_audit(self, c: ActionContractModel, entity_id: str, domain_id: str,
                            from_state: str, to_state: str, result_status: str,
                            constraint: Dict, params: Dict, snapshot: Dict,
-                           actor: str, role: str) -> None:
+                           actor: str, role: str,
+                           policy_gate: Optional[Dict[str, Any]] = None) -> None:
+        """写入动作审计。
+
+        Args:
+            c: 动作合同。
+            entity_id: 实体 ID。
+            domain_id: 域 ID。
+            from_state: 执行前状态。
+            to_state: 执行后状态。
+            result_status: 结果状态码。
+            constraint: 实体约束结果。
+            params: 动作参数。
+            snapshot: 实体快照。
+            actor: 操作者。
+            role: 角色。
+            policy_gate: L1 PolicyGate 裁决；缺省时按 require_approval 回填。
+        """
         try:
             ns = getattr(c, "action_namespace", "") or ""
             if ns:
@@ -634,14 +712,17 @@ class AsyncActionRegistry:
                 actor_type = role if role in {"human", "agent", "system"} else (
                     "human" if role else "system"
                 )
-                # Soft PolicyGate shape until Phase 2 product gate
-                pg = {
-                    "gate_id": f"policy_gate:{ns}:{c.action_id.split(':')[-1]}",
-                    "decision": "hitl_required" if c.require_approval else "allow",
-                    "reason": constraint.get("constraint_type") or (
-                        "require_approval" if c.require_approval else "auto"
-                    ),
-                }
+                # G2：优先使用 execute 中的真实 L1 裁决；无 required_permissions 时回填审批语义
+                if policy_gate and policy_gate.get("gate_id"):
+                    pg = dict(policy_gate)
+                else:
+                    pg = {
+                        "gate_id": f"policy_gate:{ns}:{c.action_id.split(':')[-1]}",
+                        "decision": "hitl_required" if c.require_approval else "allow",
+                        "reason": constraint.get("constraint_type") or (
+                            "require_approval" if c.require_approval else "auto"
+                        ),
+                    }
                 gate_check = WorkbenchRuntimeGuard.check_policy_gate_called(
                     action_namespace=ns,
                     policy_gate_decision=pg,
