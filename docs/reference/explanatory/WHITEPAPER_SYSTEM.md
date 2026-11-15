@@ -119,6 +119,22 @@ authority: supporting
 - **同步触发**：overview / comparison / 任一 §3.3 工程权威源变更时，同一 PR 内更新索引行/节选参数 + `bash scripts/sync_whitepapers.sh`
 - **验收**：01 卷以 §3.1 叙事为主；§3.2 无完整 18 维星级表；§3.3.1–§3.3.10 存在且链接目标在 suite supporting；无手写第二份工程全文或编造 QPS
 
+### 产品卷正文编排（02 卷 §3）
+
+产品卷面向产品/技术评估链，**以场景切片为主**，避免变成 CAPABILITIES 第二份清单：
+
+| 节 | 内容策略 |
+|----|----------|
+| §3.0 | 典型场景**索引表 + 正文节选**（§3.0.0 索引；§3.0.1–§3.0.10 权威源节选；渠道 §3.0.6 只交叉生态卷） |
+| §3.1 | CAPABILITIES **统计表**摘录（非完整能力行） |
+| §3.2 | 上手路径节选 |
+| §3.3 | 变更影响矩阵节选 |
+| §3.4 | Pi 交付边界**摘要**（正文在 §3.0.10） |
+
+- **维护位置**：`scripts/generate_whitepaper_volumes.py` → `product-capability`（`_append_eng_section`）
+- **同步触发**：任一 §3.0 场景权威源变更时，同一 PR 内更新索引行/节选参数 + `bash scripts/sync_whitepapers.sh`
+- **验收**：02 卷 §3.0.1–§3.0.10 存在（§3.0.6 可为交叉说明）；链接目标在 suite supporting/canonical；无手写第二份能力表或编造客户 ROI
+
 ## 对标与评级（横切，必须进总白皮书目录）
 
 | 类型 | 权威源 | 说明 |

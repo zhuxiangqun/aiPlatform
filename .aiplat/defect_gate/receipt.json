@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T19:17:58+08:00",
+  "reviewed_at": "2026-11-15T19:50:51+08:00",
   "base_ref": "origin/main",
-  "merge_base": "96fca6f9099baf1525702ab24f6b8c724903a192",
-  "diff_sha256": "e497923d8e597e8b1c6ead552ddbfdc47979103e09715e248d0907a857819ed2",
-  "head_sha": "3a33e4fe3f3912e512dec71a626ac4ab29235614",
+  "merge_base": "c1199a9dd7732c25ca69b460cff10ecb7e0b7a64",
+  "diff_sha256": "4abea98e6d65361f0e9ff54918086fdba1e6b2575c40de4b03e01952d155b43c",
+  "head_sha": "ef1d4c349e5a231a948f742e942e4b1b7dc6ef0a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "\u00a73.3 eng body port on current generator; suite paths remapped; verify-whitepaper-ready OK. Local lock only."
+  "note": "Product scenario bodies + excerpt link rewrite; verify_doc_links --strict broken=0. Local lock only."
 }
