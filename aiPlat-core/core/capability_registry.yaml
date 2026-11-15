@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2721
+total_capabilities: 2723
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 259
+    caps_count: 261
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3022,6 +3022,14 @@ domains:
         module: core/apps/fde/service/k_wave_signal.py
         type: function
         signature: "Phase K1: confirm → change signal with trace_id; no live YAML/edge"
+      - symbol: "run_confirm_extraction"
+        module: core/apps/fde/service/extraction_confirm.py
+        type: function
+        signature: "G2: K1+Graph+Fact confirm orchestration; ActionRegistry handler caller"
+      - symbol: "run_confirm_extraction"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade re-export: confirm orchestration for harness Action handlers"
       - symbol: "k1_confirm_extraction"
         module: core/api/core_facade.py
         type: function
@@ -3238,7 +3246,7 @@ domains:
       - symbol: "confirm_extraction"
         module: aiPlat-platform/apps/fde/api/extraction_routes.py
         type: function
-        signature: "POST /fde/extractions/{id}/confirm — K1 signal path"
+        signature: "POST /fde/extractions/{id}/confirm — ActionRegistry L1 then K1+Graph+Fact"
       - symbol: "VersionedOntologyStore.apply_proposal"
         module: core/harness/knowledge/versioned_ontology_store.py
         type: function

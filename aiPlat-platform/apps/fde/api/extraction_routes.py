@@ -16,7 +16,6 @@ from core.api.core_facade import (
     ExtractionPipeline,
     PendingExtractionStore,
     ExtractionResult,
-    record_extraction_as_claim,
     fact_ledger_query_gateway,
     fact_ledger_project_to_graph,
     load_object_type_bindings,
@@ -204,124 +203,51 @@ async def rebuild_facts_projection(
 
 @router.post("/extractions/{extraction_id}/confirm")
 async def confirm_extraction(
+    request: Request,
     extraction_id: str,
     actor: str = Query("", description="extract_actor; audited, not a new role"),
 ):
-    """确认抽取：K1 信号 + 写入知识图实体/关系（不改活 YAML）。
+    """确认抽取：经 ActionRegistry L1（kb:write）后执行 K1+Graph（不改活 YAML）。
 
     Args:
+        request: FastAPI Request（读取 X-AIPLAT-SCOPES）。
         extraction_id: extraction 标识。
         actor: 操作者身份。
     """
-    from core.api.core_facade import k1_confirm_extraction, write_extraction_to_graph_index
-    import json as _json
+    from core.api.core_facade import get_action_registry
 
-    receipt = await k1_confirm_extraction(extraction_id, actor=actor)
-    if not receipt.get("ok"):
-        raise HTTPException(status_code=404, detail=receipt.get("reason") or "confirm failed")
+    scopes_raw = request.headers.get("X-AIPLAT-SCOPES") or ""
+    permissions = [p.strip() for p in scopes_raw.replace(";", ",").split(",") if p.strip()]
+    # 开发匿名身份无 scopes header 时，与 Identity 默认写权限对齐，避免假拒绝。
+    if not permissions:
+        permissions = ["kb:write"]
 
-    proposal_id = None
-    graph_write = None
-    fact_ledger = None
-    # Path A: draft proposal for ③ — does not write live YAML
-    try:
-        await _store.initialize()
-        row = await _store.get_row(extraction_id)
-        if row:
-            proposal_id = await _store._enqueue_ontology_proposal(row)
-            # ABox: write entities + relations into GraphIndex (knowledge graph)
-            def _parse_list(raw):
-                if isinstance(raw, list):
-                    return raw
-                if isinstance(raw, str) and raw.strip():
-                    try:
-                        val = _json.loads(raw)
-                        return val if isinstance(val, list) else []
-                    except Exception:
-                        return []
-                return []
-
-            ents = _parse_list(row.get("entities_json"))
-            rels = _parse_list(row.get("relations_json"))
-            domain_id = str(row.get("domain_id") or receipt.get("domain_id") or "default")
-            if ents:
-                try:
-                    graph_write = write_extraction_to_graph_index(
-                        domain_id,
-                        ents,
-                        rels,
-                        source_doc_id=f"extract:{extraction_id}",
-                    )
-                except Exception:
-                    logger.warning(
-                        "factory confirm: GraphIndex write failed for %s",
-                        extraction_id,
-                        exc_info=True,
-                    )
-                    graph_write = {"error": "graph_write_failed"}
-            # Phase 1：有域级 ObjectType 种子时写入 Fact Ledger（失败不阻断确认）
-            _ot_seed = Path(
-                f"aiPlat-core/workspace_seeds/ontologies/{domain_id}-object-types.json"
-            )
-            if _ot_seed.is_file():
-                try:
-                    tenant_id = str(
-                        row.get("tenant_id")
-                        or receipt.get("tenant_id")
-                        or "default"
-                    )
-                    summary = f"confirmed extraction {extraction_id} ({len(ents)} entities)"
-                    fact_ledger = await record_extraction_as_claim(
-                        tenant_id=tenant_id,
-                        domain_id=domain_id,
-                        extraction_id=extraction_id,
-                        source_doc=str(row.get("source_doc") or ""),
-                        text=summary,
-                        evidence_quote=summary,
-                    )
-                    # G2：确认后投影 Fact→Graph（可重建；失败不阻断确认）
-                    try:
-                        fact_ledger["projection"] = await fact_ledger_project_to_graph(
-                            tenant_id=tenant_id,
-                            domain_id=domain_id,
-                            clear_projected=False,
-                        )
-                    except Exception:
-                        logger.warning(
-                            "factory confirm: fact projection failed for %s",
-                            extraction_id,
-                            exc_info=True,
-                        )
-                        fact_ledger["projection"] = {"error": "projection_failed"}
-                except Exception:
-                    logger.warning(
-                        "factory confirm: fact_ledger write failed for %s",
-                        extraction_id,
-                        exc_info=True,
-                    )
-                    fact_ledger = {"error": "fact_ledger_failed"}
-    except Exception:
-        logger.warning("factory confirm: proposal/graph failed for %s", extraction_id, exc_info=True)
-        fact_ledger = None
-
-    return {
-        "status": "confirmed",
-        "path": "K1+graph",
-        "extraction_id": extraction_id,
-        "domain_id": receipt.get("domain_id"),
-        "signal_id": receipt.get("signal_id"),
-        "trace_id": receipt.get("trace_id"),
-        "trace_origin": receipt.get("trace_origin"),
-        "extract_actor": receipt.get("extract_actor"),
-        "entity_ids": receipt.get("entity_ids") or (graph_write or {}).get("created_entities") or [],
-        "yaml_unchanged": True,
-        "wrote_live_yaml": False,
-        "wrote_cross_domain_edge": False,
-        "idempotent": bool(receipt.get("idempotent")),
-        "fact_ledger": fact_ledger,
-        "proposal_id": proposal_id,
-        "graph_write": graph_write,
-    }
+    reg = get_action_registry()
+    result = await reg.execute(
+        "platform_action:knowledge:confirm_extraction",
+        ("platform", extraction_id),
+        {"extraction_id": extraction_id},
+        actor=actor or "extract_actor",
+        role=resolve_request_role(request) or "",
+        permissions=permissions,
+        _bypass_approval=True,
+    )
+    status = result.get("status")
+    if status == "policy_denied":
+        raise HTTPException(status_code=403, detail=result.get("reason") or "policy_denied")
+    if status == "not_found":
+        raise HTTPException(status_code=404, detail=result.get("error") or "not found")
+    if status != "executed":
+        body = result.get("result") or result
+        raise HTTPException(
+            status_code=404 if status in ("failed", "invalid") else 400,
+            detail=body.get("reason") or result.get("error") or status,
+        )
+    out = result.get("result") or {}
+    out.setdefault("status", "confirmed")
+    out.setdefault("extraction_id", extraction_id)
+    out.setdefault("action_id", "platform_action:knowledge:confirm_extraction")
+    return out
 
 
 @router.post("/extractions/{extraction_id}/reject")

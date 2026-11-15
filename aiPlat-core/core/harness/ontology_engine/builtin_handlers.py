@@ -221,6 +221,31 @@ async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor
     }
 
 
+async def confirm_extraction(
+    entity: Dict[str, Any], params: Dict[str, Any], actor: str = ""
+) -> Dict[str, Any]:
+    """抽取确认：经 ActionRegistry L1 后执行 K1+Graph+Fact 编排。
+
+    Args:
+        entity: 合成/审计实体（extraction_id 绑在 id 上）。
+        params: 须含 ``extraction_id``（可回落到 entity.id）。
+        actor: 操作者身份。
+    """
+    # 经 CoreFacade，禁止 harness→apps 直导（constitution boundaries）
+    from core.api.core_facade import run_confirm_extraction
+
+    eid = str(
+        params.get("extraction_id")
+        or entity.get("id")
+        or entity.get("entity_id")
+        or ""
+    ).strip()
+    out = await run_confirm_extraction(eid, actor=actor)
+    if not out.get("ok"):
+        raise ValueError(out.get("reason") or "confirm_failed")
+    return out
+
+
 async def assert_inferred_edge(
     entity: Dict[str, Any], params: Dict[str, Any], actor: str = ""
 ) -> Dict[str, Any]:
