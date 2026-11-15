@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T23:09:19+08:00",
+  "reviewed_at": "2026-11-15T23:16:37+08:00",
   "base_ref": "origin/main",
   "merge_base": "2c5aebbd6b9968087058069168e12a65ac82f68c",
-  "diff_sha256": "793d3846c1c53ad21015be276fb2bf1be56feec239168cbc6e90b3b30efce393",
-  "head_sha": "5656bcc2bf62182d43622a2d0925a40487d326a5",
+  "diff_sha256": "82de9155354f09596315af3b8dc05191dabd289639af2152a3d32c1c6d691606",
+  "head_sha": "7b7a2fff0d23ce568e0f6e3a3abdf546b7404296",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs line-count sync only; confirm\u2192ActionRegistry path unchanged. Wiki-readonly out of scope."
+  "note": "clause-sync system contract for confirm\u2192ActionRegistry; Wiki-readonly out of scope."
 }
