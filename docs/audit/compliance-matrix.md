@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: COMPLIANCE_MATRIX_629C5B
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 统一架构合规矩阵 (Unified Architecture Compliance Matrix)
 
 > 本文档编码所有已知的架构违规模式。每当一轮审计发现新型问题，在此登记，

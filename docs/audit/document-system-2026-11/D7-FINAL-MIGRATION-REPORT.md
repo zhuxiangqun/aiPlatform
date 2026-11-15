@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: D7_FINAL_MIGRATION_REPORT_C0DB9A
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # D7 最终迁移报告（v2.4）
 
 > 日期：2026-11-11  

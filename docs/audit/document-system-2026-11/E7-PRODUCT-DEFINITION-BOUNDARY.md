@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E7_PRODUCT_DEFINITION_BOUNDARY_7CD45D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E7 产品定义与 reports 边界
 
 ## 1. 结论

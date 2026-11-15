@@ -1,5 +1,6 @@
 ---
 generated_at: 2026-11-11
+snapshot_date: 2026-06-01
 doc_type: Report
 ---
 

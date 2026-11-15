@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E12_REMAINING_REFERENCE_TRIAGE_80BCE7
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E12 剩余旧引用分类
 
 ## 1. 最新结果

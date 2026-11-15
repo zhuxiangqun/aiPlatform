@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E5_FDE_CONTENT_BOUNDARY_13FF5D
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E5 FDE 内容边界与去重
 
 ## 1. 结论

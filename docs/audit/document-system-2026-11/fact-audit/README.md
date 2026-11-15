@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: README_1BDADB
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # 逐篇事实审核台账
 
 ## 审核维度

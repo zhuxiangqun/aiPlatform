@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E13_COMMERCIAL_SEMANTIC_REVIEW_9185BE
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E13 商业/客户类文档语义复核
 
 ## 1. 复核范围

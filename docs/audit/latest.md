@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: LATEST_5BBE46
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # aiPlat 能力审计报告
 
 **生成时间**: 2026-08-18T14:37:06.456243

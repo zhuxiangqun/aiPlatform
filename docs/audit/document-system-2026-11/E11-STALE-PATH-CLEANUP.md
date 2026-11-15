@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E11_STALE_PATH_CLEANUP_1B3D72
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E11 旧路径清理
 
 ## 1. 处理

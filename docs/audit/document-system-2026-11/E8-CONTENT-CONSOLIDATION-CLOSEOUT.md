@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: E8_CONTENT_CONSOLIDATION_CLOSEOUT_FA2483
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # E8 内容合并收口
 
 ## 1. 扫描结果

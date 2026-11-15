@@ -1,7 +1,10 @@
 ---
 doc_type: Report
+doc_id: NEEDS_OWNER_3947A4
+last_reviewed: 2026-11-15
+status: active
+authority: supporting
 ---
-
 # needs-owner 事项清单
 
 > 这些事项不是“文档写错”，而是**仓库无法独立证明**。  
