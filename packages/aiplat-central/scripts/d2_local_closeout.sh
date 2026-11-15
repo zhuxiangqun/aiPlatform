@@ -7,13 +7,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/d1_lib.sh"
 
 ROOT="$(d1_repo_root)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DEMO_ROOT="${AIPLAT_CENTRAL_D2_DEMO_ROOT:-/tmp/aiplat-central-d2-${STAMP}}"
 export AIPLAT_HOME="$DEMO_ROOT/home"
 export AIPLAT_CENTRAL_PREFIX="$DEMO_ROOT/central"
 mkdir -p "$AIPLAT_HOME" "$AIPLAT_CENTRAL_PREFIX"
-EVID="$ROOT/reports/five-products/ops/evidence"
-CLOSEOUT="$ROOT/reports/five-products/ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md"
+EVID="$OPS/evidence"
+CLOSEOUT="$OPS/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md"
 DRILL="$ROOT/packages/aiplat-central/docs/drills"
 mkdir -p "$EVID" "$DRILL"
 

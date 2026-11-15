@@ -3,6 +3,10 @@
 # Does NOT set staging_ready. Does NOT authorize.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 cd "$ROOT"
 PY=python3
 [[ -x "$ROOT/.venv/bin/python" ]] && PY="$ROOT/.venv/bin/python"
@@ -44,9 +48,9 @@ for t in d["tracks"]:
 print("PASS: ops_live_status all ready_to_authorize=false")
 '
 
-[[ -f reports/five-products/ops/ENGINEERING_FREEZE.md ]] || fail "missing ENGINEERING_FREEZE.md"
-[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1.md ]] || fail "missing EVAL_V1 unfreeze"
-[[ -f reports/five-products/ops/EVAL_V1_E1_INVENTORY.md ]] || fail "missing EVAL_V1 E1 inventory"
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_FREEZE.md" ]] || fail "missing ENGINEERING_FREEZE.md"
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_UNFREEZE_EVAL_V1.md" ]] || fail "missing EVAL_V1 unfreeze"
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/EVAL_V1_E1_INVENTORY.md" ]] || fail "missing EVAL_V1 E1 inventory"
 grep -q 'prefix="/api/platform/apps/eval"' aiPlat-platform/api/rest/routes.py \
   || fail "eval canonical mount /api/platform/apps/eval missing"
 grep -q 'EvalLegacyDeprecationMiddleware' aiPlat-platform/api/rest/routes.py \
@@ -58,7 +62,7 @@ grep -q 'class EvalStore' aiPlat-core/core/apps/eval/service/store.py \
   || fail "EvalStore class missing"
 grep -q 'store_api' aiPlat-platform/apps/eval/api/router.py \
   || fail "eval store_api not mounted on eval router"
-[[ -f reports/five-products/ops/EVAL_V1_E3_GOLD_SOURCES.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/EVAL_V1_E3_GOLD_SOURCES.md" ]] \
   || fail "missing EVAL_V1 E3 gold sources inventory"
 [[ -f aiPlat-core/core/apps/eval/service/gold_bootstrap.py ]] \
   || fail "missing EVAL_V1 E3 gold_bootstrap"
@@ -90,39 +94,39 @@ grep -q 'gate-g2a' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "gate-g2a API not wired"
 grep -q 'lock-v0' aiPlat-platform/apps/eval/api/store_api.py \
   || fail "lock-v0 API not wired"
-[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md" ]] \
   || fail "missing EVAL_V1 UI preview unfreeze"
-[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_E6.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_UNFREEZE_EVAL_E6.md" ]] \
   || fail "missing EVAL_V1 E6 unfreeze"
-[[ -f reports/five-products/ops/EVAL_V1_E6_CLOSEOUT.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/EVAL_V1_E6_CLOSEOUT.md" ]] \
   || fail "missing EVAL_V1 E6 closeout"
-[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_E7.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_UNFREEZE_EVAL_E7.md" ]] \
   || fail "missing EVAL_V1 E7 unfreeze"
-[[ -f reports/five-products/ops/EVAL_V1_E7_CLOSEOUT.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/EVAL_V1_E7_CLOSEOUT.md" ]] \
   || fail "missing EVAL_V1 E7 closeout"
-[[ -f reports/five-products/ops/EVALUATION_D2_LOCAL_CLOSEOUT.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/EVALUATION_D2_LOCAL_CLOSEOUT.md" ]] \
   || fail "missing evaluation D2 local closeout"
-[[ -f reports/five-products/ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md" ]] \
   || fail "missing EVAL G2c self-consistency decision"
-grep -q 'self-consistency' reports/five-products/ops/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md \
+grep -q 'self-consistency' "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md" \
   || fail "G2c decision must state self-consistency"
-grep -q '工程指标' reports/five-products/ops/DIAGNOSIS_V1_C3_CLOSEOUT.md \
+grep -q '工程指标' "$AIPLAT_FIVE_PRODUCTS_OPS_REL/DIAGNOSIS_V1_C3_CLOSEOUT.md" \
   || fail "DIAGNOSIS C3 closeout must state fixture metrics are engineering-only"
 [[ -f aiPlat-management/frontend/src/pages/Eval/EvalCenter.tsx ]] \
   || fail "missing EvalCenter (E6)"
 grep -q "EvalCenter" aiPlat-management/frontend/src/App.tsx \
   || fail "App.tsx must mount EvalCenter"
-[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_UNFREEZE_DIAGNOSIS_V1.md" ]] \
   || fail "missing DIAGNOSIS_V1 C0 unfreeze"
 [[ -f docs/architecture/plans/diagnosis-v1-charter.md ]] \
   || fail "missing diagnosis-v1-charter"
-[[ -f reports/five-products/ops/DIAGNOSIS_V1_C0_SEED_CASES.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/DIAGNOSIS_V1_C0_SEED_CASES.md" ]] \
   || fail "missing DIAGNOSIS_V1 C0 seed cases"
 [[ -f docs/products/five-products/modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json ]] \
   || fail "missing diagnosis evidence schema v0"
-[[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md" ]] \
   || fail "missing DIAGNOSIS_V1 C3 unfreeze"
-[[ -f reports/five-products/ops/DIAGNOSIS_V1_C3_CLOSEOUT.md ]] \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/DIAGNOSIS_V1_C3_CLOSEOUT.md" ]] \
   || fail "missing DIAGNOSIS_V1 C3 closeout"
 [[ -x packages/aiplat-diagnosis/scripts/d2_local_closeout.sh ]] \
   || fail "missing diagnosis d2_local_closeout"
@@ -134,19 +138,19 @@ grep -q "path: 'eval'" aiPlat-management/frontend/src/App.tsx \
   || fail "/eval route missing in App.tsx"
 grep -q "key: '/eval'" aiPlat-management/frontend/src/pageManifest.ts \
   || fail "/eval menu entry missing in pageManifest"
-[[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-08.md ]] || fail "missing STAGING_REVIEW 2026-11-08"
-[[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-15.md ]] || fail "missing STAGING_REVIEW 2026-11-15"
-[[ -f reports/five-products/ops/STAGING_REVIEW_2026-11-22.md ]] || fail "missing STAGING_REVIEW 2026-11-22"
-[[ -f reports/five-products/ops/STAGING_REVIEW_EVENT_DRIVEN.md ]] || fail "missing STAGING_REVIEW_EVENT_DRIVEN"
-grep -q '事件驱动' reports/five-products/ops/STAGING_REVIEW_EVENT_DRIVEN.md \
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/STAGING_REVIEW_2026-11-08.md" ]] || fail "missing STAGING_REVIEW 2026-11-08"
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/STAGING_REVIEW_2026-11-15.md" ]] || fail "missing STAGING_REVIEW 2026-11-15"
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/STAGING_REVIEW_2026-11-22.md" ]] || fail "missing STAGING_REVIEW 2026-11-22"
+[[ -f "$AIPLAT_FIVE_PRODUCTS_OPS_REL/STAGING_REVIEW_EVENT_DRIVEN.md" ]] || fail "missing STAGING_REVIEW_EVENT_DRIVEN"
+grep -q '事件驱动' "$AIPLAT_FIVE_PRODUCTS_OPS_REL/STAGING_REVIEW_EVENT_DRIVEN.md" \
   || fail "STAGING_REVIEW_EVENT_DRIVEN must declare event-driven policy"
-grep -q 'cancelled_calendar_review' reports/five-products/ops/STAGING_REVIEW_2026-11-29.md \
+grep -q 'cancelled_calendar_review' "$AIPLAT_FIVE_PRODUCTS_OPS_REL/STAGING_REVIEW_2026-11-29.md" \
   || fail "STAGING_REVIEW_2026-11-29 must stay cancelled (no calendar churn)"
-grep -q 'staging_ready=false' reports/five-products/ops/STAGING_READY.md \
+grep -q 'staging_ready=false' "$AIPLAT_FIVE_PRODUCTS_OPS_REL/STAGING_READY.md" \
   || fail "STAGING_READY must remain false until review"
-grep -q 'continue_defer' reports/five-products/ops/STAGING_REVIEW_2026-11-15.md \
+grep -q 'continue_defer' "$AIPLAT_FIVE_PRODUCTS_OPS_REL/STAGING_REVIEW_2026-11-15.md" \
   || fail "STAGING_REVIEW_2026-11-15 must record continue_defer"
-grep -q 'continue_defer' reports/five-products/ops/STAGING_REVIEW_2026-11-22.md \
+grep -q 'continue_defer' "$AIPLAT_FIVE_PRODUCTS_OPS_REL/STAGING_REVIEW_2026-11-22.md" \
   || fail "STAGING_REVIEW_2026-11-22 must record continue_defer"
 
 pass "engineering freeze check"

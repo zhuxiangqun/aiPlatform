@@ -4,7 +4,7 @@ doc_type: Reference
 
 # Self-learning resistance baseline v0（P2-3）
 
-> **Unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_SELF_LEARN.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_P2_SELF_LEARN.md)  
+> **Unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_SELF_LEARN.md`](../../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_P2_SELF_LEARN.md)  
 > **Honesty**: `accuracy_claim=false` · `writeback_authorized=false`（受 P2-0 校准约束）  
 > **Risk input**: [`human_calibration_aggregate.v0.json`](./evidence/human_calibration_aggregate.v0.json) overall disagree_rate=0.2667
 

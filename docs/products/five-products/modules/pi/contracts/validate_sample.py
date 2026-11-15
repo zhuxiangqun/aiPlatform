@@ -6,7 +6,8 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[5]
+# parents[6] = repo root (parents[5] wrongly resolves under docs/).
+ROOT = Path(__file__).resolve().parents[6]
 SCHEMA = ROOT / "packages/aiplat-pi-runtime/contracts/schemas/healthz.schema.json"
 HEALTHZ = {
     "status": "ok",

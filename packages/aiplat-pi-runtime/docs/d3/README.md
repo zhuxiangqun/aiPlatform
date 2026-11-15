@@ -18,7 +18,7 @@ doc_type: Index
 ```bash
 # 一键本地收口（推荐 · Option B）
 bash packages/aiplat-pi-runtime/scripts/d3_local_closeout.sh
-# → reports/five-products/ops/PI_D3_LOCAL_CLOSEOUT.md
+# → reports/products/five-products/ops/PI_D3_LOCAL_CLOSEOUT.md
 
 # 拆步
 bash packages/aiplat-pi-runtime/scripts/d3_local_rehearsal.sh      # #3/#4 → 🟨

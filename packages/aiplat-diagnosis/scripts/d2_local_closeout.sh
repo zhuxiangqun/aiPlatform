@@ -6,13 +6,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/d1_lib.sh"
 
 ROOT="$(d1_repo_root)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DEMO_ROOT="${AIPLAT_DIAGNOSIS_D2_DEMO_ROOT:-/tmp/aiplat-diagnosis-d2-${STAMP}}"
 export AIPLAT_HOME="$DEMO_ROOT/home"
 export AIPLAT_DIAGNOSIS_PREFIX="$DEMO_ROOT/diagnosis"
 mkdir -p "$AIPLAT_HOME" "$AIPLAT_DIAGNOSIS_PREFIX"
-EVID="$ROOT/reports/five-products/ops/evidence"
-CLOSEOUT="$ROOT/reports/five-products/ops/DIAGNOSIS_D2_LOCAL_CLOSEOUT.md"
+EVID="$OPS/evidence"
+CLOSEOUT="$OPS/DIAGNOSIS_D2_LOCAL_CLOSEOUT.md"
 DRILL="$ROOT/packages/aiplat-diagnosis/docs/drills"
 mkdir -p "$EVID" "$DRILL"
 

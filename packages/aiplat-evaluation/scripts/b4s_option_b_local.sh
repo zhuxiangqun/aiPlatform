@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # Wire B4-S staging scaffold → Option B local rehearsal (≠ staging / ≠ Chart flip).
 # Emits unsigned scaffold template, runs b4s_local_rehearsal on :5434, copies
-# evidence into reports/five-products/ops/evidence/, asserts authorize locked.
+# evidence into $OPS/evidence/, asserts authorize locked.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 PKG="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-EVID_OPS="$ROOT/reports/five-products/ops/evidence"
-NOTE="$ROOT/reports/five-products/ops/OPTION_B_B4S_LAST_RUN.md"
+EVID_OPS="$OPS/evidence"
+NOTE="$OPS/OPTION_B_B4S_LAST_RUN.md"
 mkdir -p "$EVID_OPS"
 
 PY=python3
@@ -22,7 +26,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 echo "== B4-S ↔ Option B local (environment=local; does NOT authorize) =="
 echo "stamp=$STAMP py=$PY"
 
-[[ -f "$ROOT/reports/five-products/ops/OPTION_B_LOCAL_VM.md" ]] || fail "missing OPTION_B_LOCAL_VM.md"
+[[ -f "$OPS/OPTION_B_LOCAL_VM.md" ]] || fail "missing OPTION_B_LOCAL_VM.md"
 [[ -f "$PKG/docs/a3/B4S_STAGING_SCAFFOLD.md" ]] || fail "missing B4S_STAGING_SCAFFOLD.md"
 
 if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then

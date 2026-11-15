@@ -37,7 +37,7 @@ docs/products/five-products/modules/
 ## 3. 保留在 reports/
 
 ```text
-reports/five-products/ops/       运行证据/收口
+reports/products/five-products/ops/       运行证据/收口
 reports/five-products/contracts/ 产品契约证据
 reports/five-products/ADR-*      决策/方案
 reports/five-products/*.md       方案/报告/快照

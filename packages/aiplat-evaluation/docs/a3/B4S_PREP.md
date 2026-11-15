@@ -4,8 +4,8 @@ doc_type: Reference
 
 # B4-S prep — blocked until independent staging host
 
-> Parent local unfreeze: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)  
-> Staging unfreeze draft: [`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md) (`draft_blocked`)  
+> Parent local unfreeze: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)  
+> Staging unfreeze draft: [`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md) (`draft_blocked`)  
 > Scaffold page: [`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md)  
 > Honesty: **local track closed** · scaffold ≠ staging authorize · Chart still false
 
@@ -16,7 +16,7 @@ doc_type: Reference
 | Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0+v1 / preference fixture | ✅ engineering complete on laptop（`local_track_closeout.sh` v2；G2b n=100 双标已齐 → [`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md)） |
 | Local B4-S rehearsal (Docker PG on :5434) | ✅ script PASS — [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md) · [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) · evidence `local-eval-b4s-rehearsal-*.json` · **≠ staging evidence** |
 | B4-S staging scaffold / unfreeze draft | ✅ opened · still `draft_blocked` |
-| Option B local rehearsal (`b4s_option_b_local`) | ✅ PASS · [`OPTION_B_B4S_LAST_RUN.md`](../../../../reports/five-products/ops/OPTION_B_B4S_LAST_RUN.md) · **≠** staging |
+| Option B local rehearsal (`b4s_option_b_local`) | ✅ PASS · [`OPTION_B_B4S_LAST_RUN.md`](../../../../reports/products/five-products/ops/OPTION_B_B4S_LAST_RUN.md) · **≠** staging |
 | Independent staging host | ❌ **not confirmed** → B4-S **staging** blocked |
 | PITR / backup live drill on staging | ❌ needs host |
 | Production dual-read backfill | ❌ forbidden until B4 PITR |
@@ -34,7 +34,7 @@ doc_type: Reference
 ## Activation
 
 Unfreeze draft already opened as **`draft_blocked`**:
-[`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md).  
+[`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md).  
 Activate (`status=active`) **only** after host confirmed.  
 Do **not** reuse the local-dev unfreeze to claim staging.
 

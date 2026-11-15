@@ -4,6 +4,10 @@
 # bundle rollback → Gate3 phase a/b/c.
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${REPO}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${REPO}")"
+
 cd "$REPO"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -13,7 +17,7 @@ export AIPLAT_HOME="$DEMO_ROOT/home"
 export AIPLAT_PI_PREFIX="$DEMO_ROOT/pi"
 mkdir -p "$AIPLAT_HOME" "$AIPLAT_PI_PREFIX"
 
-RUNLOG="${AIPLAT_PI_D1_RUNLOG:-$REPO/reports/five-products/ops/PI_D1_LOCAL_REGRESSION.md}"
+RUNLOG="${AIPLAT_PI_D1_RUNLOG:-$OPS/PI_D1_LOCAL_REGRESSION.md}"
 mkdir -p "$(dirname "$RUNLOG")"
 
 pass() { echo "PASS: $*"; }

@@ -127,9 +127,9 @@ packages/aiplat-pi-runtime/docs/d3/drills/
 # Accidental local agent scaffold (not a product)
 aiPlat-core/core/engine/agents/my_agent/
 
-# FDE local drills (samples under reports/five-products/ops/evidence)
+# FDE local drills (samples under reports/products/five-products/ops/evidence)
 packages/aiplat-fde/docs/drills/
 
-# Ontology/Eval local drills (samples under reports/five-products/ops/evidence)
+# Ontology/Eval local drills (samples under reports/products/five-products/ops/evidence)
 packages/aiplat-ontology/docs/drills/
 packages/aiplat-evaluation/docs/drills/

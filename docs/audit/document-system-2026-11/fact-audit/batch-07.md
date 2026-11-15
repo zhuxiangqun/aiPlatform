@@ -19,9 +19,9 @@ authority: supporting
 | security | `reports/security/aiplat-security-quality-report-2026-11-09-v3.md` |
 | security | `reports/security/aiplat-security-quality-report-2026-11-09-v2-evidence.md` |
 | security | `reports/security/security-quality-dimensions.md` |
-| ops | `reports/five-products/ops/STAGING_REVIEW_EVENT_DRIVEN.md` |
-| ops | `reports/five-products/ops/STAGING_REVIEW_2026-11-29.md` |
-| ops | `reports/five-products/ops/STAGING_READY.md` |
+| ops | `reports/products/five-products/ops/STAGING_REVIEW_EVENT_DRIVEN.md` |
+| ops | `reports/products/five-products/ops/STAGING_REVIEW_2026-11-29.md` |
+| ops | `reports/products/five-products/ops/STAGING_READY.md` |
 | governance | `reports/docs-governance/docs-system-status-analysis-2026-10.md` |
 | whitepaper | `reports/whitepapers/aiplat-platform-status-whitepaper.md` |
 

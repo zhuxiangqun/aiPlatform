@@ -4,7 +4,7 @@ doc_type: Reference
 
 # Context management baseline v0（P2-1）
 
-> **Unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_CONTEXT.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_P2_CONTEXT.md)  
+> **Unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_CONTEXT.md`](../../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_P2_CONTEXT.md)  
 > **Honesty**: `accuracy_claim=false` · ≠ Session v0/v1 短轮次 · ≠ 持久记忆 · ≠ 生产对话质量
 
 ## 1. 目的

@@ -312,19 +312,19 @@ checks:
       - "all authorize paths REFUSED"
   - id: staging_review_checklist
     description: 2026-11-08 staging review checklist present
-    path: reports/five-products/ops/STAGING_REVIEW_2026-11-08.md
+    path: reports/products/five-products/ops/STAGING_REVIEW_2026-11-08.md
     must_contain:
       - "2026-11-08"
       - "continue_defer"
   - id: staging_review_2026_11_15_draft
     description: Next staging review draft present
-    path: reports/five-products/ops/STAGING_REVIEW_2026-11-15.md
+    path: reports/products/five-products/ops/STAGING_REVIEW_2026-11-15.md
     must_contain:
       - "2026-11-15"
       - "STAGING_PROVISIONING"
   - id: staging_provisioning_pack
     description: Remote staging provisioning pack (not Option B)
-    path: reports/five-products/ops/STAGING_PROVISIONING.md
+    path: reports/products/five-products/ops/STAGING_PROVISIONING.md
     must_contain:
       - "非本机 Option B"
       - "environment=staging"
@@ -342,7 +342,7 @@ checks:
       - "不打开"
   - id: engineering_unfreeze_d3_e2e
     description: Explicit D3/E2E unfreeze record keeps authorize frozen
-    path: reports/five-products/ops/ENGINEERING_UNFREEZE_D3_E2E.md
+    path: reports/products/five-products/ops/ENGINEERING_UNFREEZE_D3_E2E.md
     must_contain:
       - "解冻"
       - "仍冻结"

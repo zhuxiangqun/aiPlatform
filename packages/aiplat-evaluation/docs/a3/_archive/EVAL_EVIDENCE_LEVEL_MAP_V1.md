@@ -7,7 +7,7 @@ doc_type: Archive
 > **状态**：✅ **Accepted**（2026-11-05 · 方法 朱向群 · 治理 朱莹）
 > **签认留存**：EVAL_EET_ACCEPT_2026-11-05.md（历史链接失效）
 > **日期**：2026-11-05
-> **依据**：[改善执行计划](../../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §6 · 落地方案 §3.6
+> **依据**：[改善执行计划](../../../../../reports/products/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §6 · 落地方案 §3.6
 > **原则**：不另建与 E0–E5 并行的正式 gate 等级；Eval 侧只用 **EET** 证据类型标签。
 
 ## 1. 三套「E」勿混用

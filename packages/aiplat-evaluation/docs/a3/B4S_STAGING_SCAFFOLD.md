@@ -4,7 +4,7 @@ doc_type: Reference
 
 # B4-S staging scaffold（≠ authorize）
 
-> Unfreeze draft：[`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md) · `status=draft_blocked`  
+> Unfreeze draft：[`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md) · `status=draft_blocked`  
 > Template：[`templates/live-scaffold-b4s-staging-template.v0.json`](./templates/live-scaffold-b4s-staging-template.v0.json)  
 > Live evidence 写入 `docs/a3/drills/`（gitignore；≠ 本模板）  
 > Parent prep：[`B4S_PREP.md`](./B4S_PREP.md) · local runbook：[`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md)
@@ -32,7 +32,7 @@ bash scripts/ops_option_b_all.sh
 | 产出 | 禁止 |
 |---|---|
 | `environment=local` · `local-eval-b4s-rehearsal-*.json` | `environment=staging` |
-| [`OPTION_B_B4S_LAST_RUN.md`](../../../../reports/five-products/ops/OPTION_B_B4S_LAST_RUN.md) | `production_signed` / Chart flip |
+| [`OPTION_B_B4S_LAST_RUN.md`](../../../../reports/products/five-products/ops/OPTION_B_B4S_LAST_RUN.md) | `production_signed` / Chart flip |
 | `ready_to_authorize=false` | 宣称替代独立 staging host |
 
 ## Host confirmation checklist（D2）
@@ -48,7 +48,7 @@ bash scripts/ops_option_b_all.sh
 ## Sequence
 
 1. Confirm host（本清单）  
-2. Activate [`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md)  
+2. Activate [`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING`](../../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md)  
 3. Fill / emit template（仍可 scaffold 直到 live）  
 4. On real host：JWKS + object store + PITR backup/restore/rollback → sign live  
 5. Only then：`bash packages/aiplat-evaluation/scripts/a3_split_authorize.sh authorize`

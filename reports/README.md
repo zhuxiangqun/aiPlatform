@@ -18,7 +18,7 @@ last_reviewed: 2026-11-15
 |---|---|---|---|
 | `docs/products/five-products/modules/` | 产品定义（规范树） | 长期 | 维护 |
 | `reports/five-products/contracts/` | 产品叙事契约（暂留；稳定后再迁） | 长期 | 维护 |
-| `reports/five-products/ops/` | 运行证据/回执（脚本 SoT） | 180 天 | 归档 `_archive` |
+| `reports/products/five-products/ops/` | 运行证据/回执（`aiplat_five_products_paths.sh` SoT；旧 `reports/five-products/ops/` 为 Index stub） | 180 天 | 归档 `_archive` |
 | `reports/security/evidence/` | 安全证据 | 365 天 | 合规归档 |
 | `reports/docs-governance/` | 文档治理过程 | 365 天 | 归档 |
 | 根 `reports/*.md` | 分析快照 / 活日志 | 90 天（`doc_type: Index` stub 除外） | 超期归档；`audit_changelog.md` 为活日志保留 |

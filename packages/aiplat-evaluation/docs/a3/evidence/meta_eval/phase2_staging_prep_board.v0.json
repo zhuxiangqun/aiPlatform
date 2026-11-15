@@ -24,8 +24,8 @@
   "refs": {
     "b4s_prep": "docs/a3/B4S_PREP.md",
     "b4s_staging_scaffold": "docs/a3/B4S_STAGING_SCAFFOLD.md",
-    "option_b_b4s_last_run": "reports/five-products/ops/OPTION_B_B4S_LAST_RUN.md",
-    "unfreeze": "reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md",
+    "option_b_b4s_last_run": "reports/products/five-products/ops/OPTION_B_B4S_LAST_RUN.md",
+    "unfreeze": "reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md",
     "drill_template": "docs/a3/templates/live-scaffold-b4s-staging-template.v0.json",
     "process_split_authorize": "docs/a3/evidence/meta_eval/phase3_process_split_authorize.v0.json"
   },

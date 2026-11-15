@@ -7,12 +7,16 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/d1_lib.sh"
 
 ROOT="$(d1_repo_root)"
+# shellcheck source=lib/aiplat_five_products_paths.sh
+source "${ROOT}/scripts/lib/aiplat_five_products_paths.sh"
+OPS="$(aiplat_five_products_ops "${ROOT}")"
+
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DEMO_ROOT="${AIPLAT_ONTOLOGY_D3_DEMO_ROOT:-/tmp/aiplat-ontology-d3-uat-${STAMP}}"
 export AIPLAT_HOME="$DEMO_ROOT/home"
 export AIPLAT_ONTOLOGY_PREFIX="$DEMO_ROOT/ontology"
 mkdir -p "$AIPLAT_HOME" "$AIPLAT_ONTOLOGY_PREFIX"
-EVID="$ROOT/reports/five-products/ops/evidence"
+EVID="$OPS/evidence"
 DRILL="$ROOT/packages/aiplat-ontology/docs/drills"
 mkdir -p "$EVID" "$DRILL"
 PY=python3

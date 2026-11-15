@@ -51,7 +51,7 @@ flowchart TD
 - [x] P0：platform `response_model` / shim / module docs gate
 - [x] P1：composite v1.2 弱代理 · store 诚实面 · gate 枚举 · G2b 改判规程
 - [x] 本机 B4-S Docker rehearsal（≠ staging）— [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md)
-- [x] B4-S staging **脚手架** + unfreeze **草稿** — [`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md)
+- [x] B4-S staging **脚手架** + unfreeze **草稿** — [`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md)
 - [x] Chart 骨架存在且 `a3_process_split_authorized=false`
 
 ### B — 阻塞在你（治理 / 主机；代码无法代劳）

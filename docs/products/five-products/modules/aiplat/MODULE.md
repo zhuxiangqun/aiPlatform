@@ -132,7 +132,7 @@ Package / module / SSOT locked at **0.1.0**. PG/HA still Draft ADR.
 |------|------|
 | Scope | `packages/aiplat-central/docs/D2_THIN.md` |
 | Closeout | `packages/aiplat-central/scripts/d2_local_closeout.sh` |
-| Evidence | `reports/five-products/ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md` |
+| Evidence | `reports/products/five-products/ops/AIPLAT_D2_THIN_LOCAL_CLOSEOUT.md` |
 
 Aggregates A2 + compat + security + sibling D2 packs + install/N-1 + PG/HA local rehearsal; **cutover stays false**.
 

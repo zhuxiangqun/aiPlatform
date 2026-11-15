@@ -92,7 +92,7 @@ cd packages/aiplat-evaluation && PYTHONPATH=. python3 -m pytest \
 - Migrations: [`migrations/`](./migrations/)
 - D2 pack: [`docs/D2_COHOST.md`](./docs/D2_COHOST.md)
 - A3 local plan: [`eval-a3-independent-service.md`](../../docs/architecture/plans/eval-a3-independent-service.md)
-- Unfreeze local: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)
+- Unfreeze local: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)
 - B1-L runbook: [`docs/a3/B1L_LOCAL.md`](./docs/a3/B1L_LOCAL.md)
 - Production plan: [`eval-production-independent-service.md`](../../docs/architecture/plans/eval-production-independent-service.md)
 

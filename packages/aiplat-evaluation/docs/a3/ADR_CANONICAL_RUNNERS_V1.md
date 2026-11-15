@@ -6,7 +6,7 @@ doc_type: Reference
 
 > **状态**：Accepted（2026-11-05）· 逾期默认条款按改善执行计划 P1a  
 > **范围**：engineering 计分与本地 gate；不打开 `accuracy_claim`  
-> **关联**：[P1_CANONICAL.md](./P1_CANONICAL.md) · 对象卡 Prompt/KB · [改善计划](../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md)
+> **关联**：[P1_CANONICAL.md](./P1_CANONICAL.md) · 对象卡 Prompt/KB · [改善计划](../../../../reports/products/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md)
 
 ## 决策
 
