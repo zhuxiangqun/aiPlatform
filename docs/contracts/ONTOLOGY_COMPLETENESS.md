@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ONTOLOGY_COMPLETENESS_AF8D80
+last_reviewed: 2026-11-15
 ---
-
 # 本体完整性契约（Ontology Completeness）
 
 | 字段 | 值 |

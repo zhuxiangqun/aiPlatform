@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_S_WAVE_CHARTER_2B1989
+last_reviewed: 2026-11-15
 ---
-
 # S 波 Charter — 商业短板补齐（不是 M4，不是放权）
 
 | 字段 | 值 |

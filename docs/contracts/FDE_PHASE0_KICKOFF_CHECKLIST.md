@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_PHASE0_KICKOFF_CHECKLIST_7B7689
+last_reviewed: 2026-11-15
 ---
-
 # FDE Phase 0 开工检查清单
 
 | 字段 | 值 |

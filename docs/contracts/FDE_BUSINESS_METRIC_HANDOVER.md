@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_BUSINESS_METRIC_HANDOVER_48DB56
+last_reviewed: 2026-11-15
 ---
-
 # 业务指标交接单
 
 | 字段 | 值 |

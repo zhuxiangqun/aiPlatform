@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_CAPABILITY_LEDGER_TEMPLATE_79373B
+last_reviewed: 2026-11-15
 ---
-
 # FDE 工作台能力台账（模板）
 
 | 字段 | 值 |

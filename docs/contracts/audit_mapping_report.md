@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: AUDIT_MAPPING_REPORT_2187B5
+last_reviewed: 2026-11-15
 ---
-
 # audit_schema.v1 ↔ ActionStore 映射报告
 
 | 字段 | 值 |

@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_PHASE5_CUSTOMER_ONBOARDING_3A6864
+last_reviewed: 2026-11-15
 ---
-
 # FDE Phase 5 — 新客户接入清单（配置驱动，不改 harness）
 
 | 字段 | 值 |

@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+doc_id: CORE_GOVERNANCE_RELEASE_CONTRACT
+last_reviewed: 2026-11-15
+status: active
+authority: canonical
 ---
-
 # Governance & Release Contract（治理/发布契约）
 
 本文件约束系统的“可控变更、可回滚、可审计”。

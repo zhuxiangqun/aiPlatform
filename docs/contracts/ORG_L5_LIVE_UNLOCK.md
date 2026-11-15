@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_L5_LIVE_UNLOCK_477D51
+last_reviewed: 2026-11-15
 ---
-
 # Org L5 Live Unlock — 书面解锁意图（模板）
 
 | 字段 | 值 |

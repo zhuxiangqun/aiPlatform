@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ONTOLOGY_CONNECTOR_TEMPLATES_0F92C1
+last_reviewed: 2026-11-15
 ---
-
 # ABox Connector 模板（路径 B 生产入轨）
 
 | 字段 | 值 |

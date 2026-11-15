@@ -6,8 +6,10 @@ scope: aiPlat-platform + aiPlat-core + aiPlat-management（全链路）
 status: approved
 draft_date: 2026-07-04
 approved_date: 2026-08-16
+authority: supporting
+doc_id: CORE_RUN_ID_TRACE_ID_REQUEST_ID_F65122
+last_reviewed: 2026-11-15
 ---
-
 ## 1. 三个 ID 的分工（必须分离）
 
 | 名称 | 权威生成方 | 格式建议 | 目的 |

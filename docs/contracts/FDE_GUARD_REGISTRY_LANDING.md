@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_GUARD_REGISTRY_LANDING_BD5487
+last_reviewed: 2026-11-15
 ---
-
 # FDE 守卫与 Registry 落地说明
 
 | 字段 | 值 |

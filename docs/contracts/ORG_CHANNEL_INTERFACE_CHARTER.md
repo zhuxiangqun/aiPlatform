@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_CHANNEL_INTERFACE_CHARTER_00BDB2
+last_reviewed: 2026-11-15
 ---
-
 # Org Phase C Charter — 渠道入站 · Interface 一等化 · 岗位治理
 
 | 字段 | 值 |

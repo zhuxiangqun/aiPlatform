@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_AI_FDE_CONTROLLED_APPLY_LOOP_5D5CF8
+last_reviewed: 2026-11-15
 ---
-
 # AI FDE 半步：受控应用闭环设计
 
 | 字段 | 值 |

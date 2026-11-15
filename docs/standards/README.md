@@ -1,7 +1,10 @@
 ---
 doc_type: Index
+status: active
+authority: supporting
+doc_id: README_AE2958
+last_reviewed: 2026-11-15
 ---
-
 # 标准索引
 
 ## 知识体系标准

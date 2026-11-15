@@ -1,7 +1,10 @@
 ---
 doc_type: Standard
+status: active
+authority: supporting
+doc_id: ADR_KS_V4_3_1_2026_11_11_BA2D84
+last_reviewed: 2026-11-15
 ---
-
 # ADR-KS-v4.3.1-2026-11-11：批准知识体系标准 v4.3.1
 
 ## 状态

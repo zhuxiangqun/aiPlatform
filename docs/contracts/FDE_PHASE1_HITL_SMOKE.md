@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_PHASE1_HITL_SMOKE_A0C824
+last_reviewed: 2026-11-15
 ---
-
 # FDE Phase 1 HITL 冒烟清单
 
 | 字段 | 值 |

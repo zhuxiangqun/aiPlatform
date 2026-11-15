@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+doc_id: CORE_PROMPT_CONTEXT_CONTRACT
+last_reviewed: 2026-11-15
+status: active
+authority: canonical
 ---
-
 # Prompt & Context Contract（提示词/上下文契约）
 
 本文件约束“提示词工程与上下文管理”的行为边界，避免 token 失控与不可预测的上下文污染。

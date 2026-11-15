@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: FDE_ACCEPT_ORDER_ALIAS_DEPRECATION_971A4B
+last_reviewed: 2026-11-15
 ---
-
 # FDE — `accept_order` legacy alias deprecation (D3 close-out)
 
 | 字段 | 值 |

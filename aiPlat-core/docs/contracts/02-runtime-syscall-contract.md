@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+doc_id: CORE_RUNTIME_SYSCALL_CONTRACT
+last_reviewed: 2026-11-15
+status: active
+authority: canonical
 ---
-
 # Runtime & Syscall Contract（运行时与系统调用契约）
 
 本文件约束“执行边界”：什么必须在 syscall 内做、什么必须可观测、什么必须可恢复。

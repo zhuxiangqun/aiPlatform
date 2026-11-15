@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_L5_RUNBOOK_EFD33A
+last_reviewed: 2026-11-15
 ---
-
 # Org L5 现场运行手册（W7 / Phase 4）
 
 | 字段 | 值 |

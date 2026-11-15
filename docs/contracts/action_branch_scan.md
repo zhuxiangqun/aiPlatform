@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ACTION_BRANCH_SCAN_BCE42F
+last_reviewed: 2026-11-15
 ---
-
 # Action 分支存量扫描报告
 
 | 字段 | 值 |

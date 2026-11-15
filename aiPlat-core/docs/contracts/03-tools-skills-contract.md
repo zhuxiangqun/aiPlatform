@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+doc_id: CORE_TOOLS_SKILLS_CONTRACT
+last_reviewed: 2026-11-15
+status: active
+authority: canonical
 ---
-
 # Tools & Skills Contract（工具/技能契约）
 
 本文件约束 Tool/Skill 的“可发现、可治理、可观测、可验收”。

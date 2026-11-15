@@ -1,7 +1,10 @@
 ---
 doc_type: Contract
+status: active
+authority: supporting
+doc_id: ORG_EDGE_ROLLBACK_CHARTER_CFFADE
+last_reviewed: 2026-11-15
 ---
-
 # E 波 Charter — 仲裁边回滚（先契约，不是 M4）
 
 | 字段 | 值 |
