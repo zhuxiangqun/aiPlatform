@@ -22,9 +22,8 @@ frozen: 2026-11-11
 # aiPlat 文档系统治理框架 v2.4（已批准）
 
 > **状态：Approved，2026-11-11 生效。**
-> 本版定义目标文档结构；当前仓库仍处于迁移期，当前目录结构与目标结构的差异见 §一、§十一。
-> 未完成迁移前，不得声称仓库已符合 v2.4 目标目录。
-> 2026-11-15：§十一映射补「状态」列；§十二验收计数与 `verify_doc_metadata` 对齐（1069）。
+> 本版定义目标文档结构。2026-11-15：§十一可迁项已 **done**；故意保留项见 §11.1 `keep`（如 `architecture/plans/`、`packages/*/docs`）。
+> 验收以机读脚本为准（`verify_doc_metadata` / `verify_canonical` / `verify_document_system`），计数随仓漂移。
 
 ## 零、文档宪法自检（Batch 0）
 
@@ -64,22 +63,22 @@ workspace-root/
 │   │   └── PHASE_STATUS.md           ← Phase 实施状态快照
 │   │
 │   ├── architecture/                 ← 架构设计
-│   │   ├── overview.md               ← 权威架构全景（唯一出处）
-│   │   ├── boundary-standard.md      ← 层边界判定标准
+│   │   ├── overview.md               ← 架构全景入口（supporting）
+│   │   ├── boundary-standard.md      ← 层边界判定标准（canonical）
 │   │   ├── system-architecture-contract.md ← 跨层契约
 │   │   ├── core/                     ← Core 层详述
 │   │   │   └── core-layer1-latest.md
-│   │   ├── plans/                    ← 规划（非现状；含 pi-thin-runtime、五产品等）
-│   │   └── decisions/                ← 架构裁决记录 (ADR)
-│   │       ├── evaluator_calibration.md
-│   │       └── tot_reserve.md
+│   │   ├── plans/                    ← 规划（非现状；keep）
+│   │   └── decisions/                ← 旧位 Index stub（正文 → docs/decisions/architecture/）
 │   │
-│   ├── contracts/                    ← 跨仓契约（FDE / Ontology 等；索引见 README.md）
-│   │   └── README.md
+│   ├── contracts/                    ← 跨仓契约（FDE / Ontology / 五产品叙事等）
+│   │   ├── README.md
+│   │   ├── knowledge/                ← Ontology 契约正文
+│   │   └── products/five-products/   ← 五产品叙事契约
 │   │
-│   ├── decisions/                    ← v2.4 顶层 ADR（迁移中；旧 architecture/decisions 保留）
-│   ├── products/                     ← v2.4 产品定义（迁移中）
-│   ├── reference/                    ← v2.4 参考/API/模板/非规范解释材料（迁移中）
+│   ├── decisions/                    ← v2.4 顶层 ADR（architecture/ 正文已迁入）
+│   ├── products/                     ← 产品定义（five-products/modules 已就位）
+│   ├── reference/                    ← 参考/API/模板/非规范解释材料
 │   │   └── explanatory/
 │   │
 │   ├── guides/                       ← 补充指南（如 PR 架构检查清单）
@@ -244,7 +243,7 @@ aiPlatform/
         └── runtime/
 ```
 
-> 目标结构是 v2.4 的 canonical 模型；当前迁移期仍保留旧目录。迁移映射见 §十一。
+> 目标结构是 v2.4 的 canonical 模型；故意保留的旧/旁路目录见 §十一 `keep`。
 
 ## 三、结构说明与合理性
 
@@ -266,7 +265,7 @@ reference / project / audit / archive
 
 ### 3.2 每个目录的职责
 
-目标结构中的每个目录职责如下（当前迁移期仍保留的旧目录见 §一，不在本表重复）：
+目标结构中的每个目录职责如下（故意保留的旁路目录见 §十一 `keep`，不在本表重复）：
 
 | 目录 | 放什么 | 不放什么 |
 |---|---|---|
@@ -673,20 +672,22 @@ docs/doc-paths.yaml
 
 ## 十二、验收
 
-- **1069** 份带 frontmatter 的文档全部有有效 `doc_type`（验证：`python3 scripts/verify_doc_metadata.py` → `scanned=1069`；计数随仓漂移，以脚本为准）；
-- canonical 文档有 owner/purpose/scope（`authority: canonical` 元数据仍待铺开，见 §十六）；
+- 带 frontmatter 的文档全部有有效 `doc_type`（验证：`python3 scripts/verify_doc_metadata.py`；计数随仓漂移，以脚本为准；2026-11-15 机读约 `scanned=1092`）；
+- canonical 文档有 owner/purpose/scope（验证：`python3 scripts/verify_canonical.py --strict`；2026-11-15 机读 `canonical=15`；`docs/**` 非 archive 的 `doc_id` 已铺满，见 §十六 #6）；
 - 根 `reports/`、`packages/*/docs` 纳入登记；
-- CI 能阻断维护区断链；
+- CI 能阻断维护区断链（`verify_doc_links.py --strict`）；
 - 不再出现“只加版本声明就称对齐”；
 - 每个主题只有一个 canonical。
 
 ## 十三、未决问题
 
-1. 文档系统 owner；
-2. 架构 canonical 的最终 owner；
-3. `reports/` 保留期；
-4. `docs/products` 迁移时间；
-5. ~~旧 `docs/manuals` 与 `docs/guides` 的合并节奏~~（manuals 顶层已迁完；残留见 §11.1 open 行）。
+1. ~~文档系统 owner~~ → 朱向群 / 文档治理组（§十六 #3）；
+2. ~~架构 canonical 的最终 owner~~ → 朱向群（与文档治理组一致；见 `boundary-standard.md` 等 canonical 元数据）；
+3. ~~`reports/` 保留期~~ → 已写入 §8.3 / `reports/README.md`；
+4. ~~`docs/products` 迁移时间~~ → 模块定义与叙事契约已就位（§11.1）；
+5. ~~旧 `docs/manuals` 与 `docs/guides` 的合并节奏~~（manuals 顶层已迁完）。
+
+当前无开放未决项；后续若新增 keep/迁移动作，先改 §十一再改本表。
 
 ## 十四、数字声明治理
 
@@ -728,7 +729,7 @@ docs/doc-paths.yaml
 | 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
 | 5 | `reports/` 生命周期仍在迁移 | 关闭（2026-11-15）：round 变更日志 + findings 已入 `_archive/`；`ops` → `reports/products/five-products/ops/`；`contracts` → `docs/contracts/products/five-products/`；`cleanup_reports` undated=0 |
-| 6 | `authority: canonical` / `doc_id` 铺开 | 部分关闭（2026-11-15）：canonical=15；`docs/**`（非 archive）机读 `doc_id` 已铺满；`reports/` 按生命周期不参与 |
+| 6 | `authority: canonical` / `doc_id` 铺开 | 关闭（2026-11-15）：canonical=15 且 `verify_canonical --strict` 通过；`docs/**`（非 archive）机读 `doc_id` 已铺满；`reports/` 按生命周期不参与 canonical 铺开 |
 | 7 | ADR 正文已迁至 `docs/decisions/architecture/`；旧位仅 Index stub | 关闭（2026-11-15） |
 
 ## 十七、文档宪法自检

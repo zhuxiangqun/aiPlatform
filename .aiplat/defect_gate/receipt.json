@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T15:49:17+08:00",
+  "reviewed_at": "2026-11-15T16:04:19+08:00",
   "base_ref": "origin/main",
-  "merge_base": "e284b2146a31972174752cc3ac345a6e6f78c0f7",
-  "diff_sha256": "5d0f38585ae83208946c196f9db1d70ce408b4cb840902a3da050fb837f32aee",
-  "head_sha": "5cc0f27a94f7d86a000ea1ef7f3f4b8f33a0a069",
+  "merge_base": "861399405735a17f9fbb553cee7e2a2d6a2db36f",
+  "diff_sha256": "739f07e308022a088746006ed67cbcdb2444c247f0a721157cf92d470aeb0f81",
+  "head_sha": "1400eab5c08ba846b94a20222cde418ba5976ec5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Contracts migrate to docs/contracts/products/five-products; old path Index stub. verify_doc_links --include-archive broken=0; no shell SoT (unlike ops)."
+  "note": "DOCUMENT_SYSTEM text-only closeout: banner/§1/§12/§13/§16#6 aligned to machine checks; no path moves. verify_document_system + verify_canonical --strict pass."
 }
