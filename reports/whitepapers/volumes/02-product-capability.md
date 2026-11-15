@@ -4,7 +4,7 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-15T11:45:04Z"
+generated_at: "2026-11-15T11:50:04Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-15T11:45:04Z` |
+| 生成时间 (UTC) | `2026-11-15T11:50:04Z` |
 | CAPABILITIES sha256 | `6fa22627617d…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -180,7 +180,7 @@ language: zh-CN
 ##### 相关文档
 
 - [交付手册模板](../../../docs/guides/fde/templates/fde-delivery-manual.md) — 交付后自动生成的客户验收文档
-- [输入输出文档模板](./templates/) — 10 个标准文档模板（客户档案/诊断报告/签收单等）
+- [输入输出文档模板](../../../docs/guides/fde/templates) — 10 个标准文档模板（客户档案/诊断报告/签收单等）
 - [标书审查实例](../../../docs/guides/fde/examples/bid-review/delivery-manual.md) — 投标场景实操参考
 - [知识系统完整指南](../../../docs/guides/knowledge/knowledge-system.md) — 知识库反馈闭环
 - [知识系统完整指南](../../../docs/guides/knowledge/knowledge-system.md) — 域本体与 FDE 集成
@@ -502,7 +502,7 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 | **microVM guest_boot authorize** | [`docs/a3/MICROVM_GUEST_BOOT.md`](../../../packages/aiplat-evaluation/docs/a3/MICROVM_GUEST_BOOT.md) + `scripts/microvm_guest_boot_gate.sh` | GUEST_BOOT+KERNEL/ROOTFS+InstanceStart; ≠ process_split; Darwin ineligible |
 | **microVM Linux track v1** | [`docs/a3/MICROVM_LINUX_TRACK.md`](../../../packages/aiplat-evaluation/docs/a3/MICROVM_LINUX_TRACK.md) + `scripts/microvm_linux_track_gate.sh` | KVM host admit + host allowlist CLI; guest_boot deferred; Darwin ineligible |
 | **Prod live 25×3** | [`docs/a3/PROD_LIVE.md`](../../../packages/aiplat-evaluation/docs/a3/PROD_LIVE.md) + `scripts/prod_live_baseline.sh` | candidate model latency/cost; accuracy_claim=false |
-| **G2b accuracy closeout** | [`docs/a3/G2B_ACCURACY_CLOSEOUT.md`](./docs/a3/G2B_ACCURACY_CLOSEOUT.md) + `scripts/g2b_accuracy_closeout_gate.sh` | adjudicated gold + pass-rate/CI; accuracy_claim=false until attestation |
+| **G2b accuracy closeout** | [`docs/a3/G2B_ACCURACY_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/G2B_ACCURACY_CLOSEOUT.md) + `scripts/g2b_accuracy_closeout_gate.sh` | adjudicated gold + pass-rate/CI; accuracy_claim=false until attestation |
 | **Local chaos / backup-restore** | [`docs/a3/LOCAL_CHAOS.md`](../../../packages/aiplat-evaluation/docs/a3/LOCAL_CHAOS.md) + `scripts/local_chaos_drill.sh` | SQLite crash/wipe/partial + optional B4-S PG kill; ≠ staging/authorize |
 
 | **B1/B2 contract converge** | `bash scripts/b12_contract_gate.sh` | error body + dual-point + temporary_proxy=0; see [`docs/a3/CONTRACT_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md) |
@@ -520,7 +520,7 @@ bash packages/aiplat-evaluation/scripts/a5_local_closeout.sh
 ### backup / rollback / contracts / A4–A5 tests → docs/a3/drills/local-eval-a3-a5-closeout-*.json
 ```
 
-See [`docs/a3/A_LOCAL_CLOSEOUT.md`](./docs/a3/A_LOCAL_CLOSEOUT.md).
+See [`docs/a3/A_LOCAL_CLOSEOUT.md`](../../../packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md).
 
 #### B2-L closeout
 
@@ -891,7 +891,7 @@ _(节选；全文见权威源)_
 
 > **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。
 > **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.12** · 2026-10-17
-> **互补文档**：[产物怎么验收](../../../docs/architecture/execution-quality-gates.md) · [能力剖面细节](../../../docs/architecture/capability-profile.md) · [知识 / Memory / CRAG](../../../docs/guides/knowledge/knowledge-system.md) · [Agent 总览](../reference/agents/agent-system.md)（后端规则以本文为准）
+> **互补文档**：[产物怎么验收](../../../docs/architecture/execution-quality-gates.md) · [能力剖面细节](../../../docs/architecture/capability-profile.md) · [知识 / Memory / CRAG](../../../docs/guides/knowledge/knowledge-system.md) · [Agent 总览](../../../docs/reference/agents/agent-system.md)（后端规则以本文为准）
 
 ---
 
@@ -1453,7 +1453,7 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 | FDE 现场八步交付 | **FDE 工作台** `/diagnostics/fde` |
 | it-ops 组织试点 / 签收准备 | **组织试点** `/org/pilot` |
 
-操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../../docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../../docs/contracts/ORG_L5_RUNBOOK.md)。
+操作手册入口：[`manuals/README.md`](../../../docs/guides/README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../../docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../../docs/contracts/ORG_L5_RUNBOOK.md)。
 
 - [API Reference](../../../docs/reference/API/api-reference.md) — 完整 API 文档
 - [自主性评估报告](../../framework/aiplat-complete-assessment.md) — 系统能力评估

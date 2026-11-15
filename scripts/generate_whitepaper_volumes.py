@@ -103,6 +103,44 @@ def _strip_frontmatter(text: str) -> str:
     return text
 
 
+def _rewrite_excerpt_links(text: str, source: Path, dest_dir: Path) -> str:
+    """把节选内相对链接从源文件目录改写为相对生成卷目录。
+
+    Args:
+        text: 节选 Markdown。
+        source: 权威源文件路径（链接相对此文件解析）。
+        dest_dir: 生成卷所在目录（``reports/whitepapers/volumes``）。
+
+    Returns:
+        链接已改写的 Markdown；无法解析或指向仓外的链接原样保留。
+    """
+    import os
+
+    src_dir = source.parent.resolve()
+    dest = dest_dir.resolve()
+    repo = REPO.resolve()
+
+    def _repl(m: re.Match) -> str:
+        label, raw = m.group(1), m.group(2)
+        link = raw.split("#")[0]
+        if not link or link.startswith(("http://", "https://", "#", "mailto:")):
+            return m.group(0)
+        # 已是从 volumes/ 出发的 ../../../… 仓库相对链接则留给 _repair_generated_links
+        if link.startswith("../../../"):
+            return m.group(0)
+        target = (src_dir / link).resolve()
+        try:
+            target.relative_to(repo)
+        except ValueError:
+            return m.group(0)
+        if not target.exists():
+            return m.group(0)
+        rel = os.path.relpath(target, dest)
+        return f"[{label}]({rel}{raw[len(link):]})"
+
+    return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", _repl, text)
+
+
 def _read_excerpt(
     path: Path, max_chars: int = 12000, *, demote: int = 2
 ) -> Tuple[str, bool]:
@@ -114,6 +152,7 @@ def _read_excerpt(
         text = text[:max_chars].rstrip() + "\n\n…\n\n_(节选；全文见权威源)_\n"
     if demote:
         text = _demote_md_headings(text, demote)
+    text = _rewrite_excerpt_links(text, path, OUT_DIR)
     return text, True
 
 
@@ -143,6 +182,7 @@ def _read_heading_excerpt(
         block = block[:max_chars].rstrip() + "\n\n…\n\n_(节选；全文见权威源)_\n"
     if demote:
         block = _demote_md_headings(block, demote)
+    block = _rewrite_excerpt_links(block, path, OUT_DIR)
     return block, True
 
 

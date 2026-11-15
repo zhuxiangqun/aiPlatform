@@ -4,7 +4,7 @@ volume_id: tech-architecture
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-15T11:45:04Z"
+generated_at: "2026-11-15T11:50:04Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-15T11:45:04Z` |
+| 生成时间 (UTC) | `2026-11-15T11:50:04Z` |
 | CAPABILITIES sha256 | `6fa22627617d…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -1747,7 +1747,7 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 | FDE 现场八步交付 | **FDE 工作台** `/diagnostics/fde` |
 | it-ops 组织试点 / 签收准备 | **组织试点** `/org/pilot` |
 
-操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../../docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../../docs/contracts/ORG_L5_RUNBOOK.md)。
+操作手册入口：[`manuals/README.md`](../../../docs/guides/README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../../docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../../docs/contracts/ORG_L5_RUNBOOK.md)。
 
 - [API Reference](../../../docs/reference/API/api-reference.md) — 完整 API 文档
 - [自主性评估报告](../../framework/aiplat-complete-assessment.md) — 系统能力评估
