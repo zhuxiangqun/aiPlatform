@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T12:46:00+08:00",
+  "reviewed_at": "2026-11-15T13:12:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "af94ba51d6a12fc57f98ac63b77de6f56527ffe2",
-  "diff_sha256": "7caebeced9f940cfb2b02bc52a54941fdb524a8c63190204a4574bd4d04c0a74",
-  "head_sha": "7553b9d763fd16e40e9dd9f72a4cfb7b29f29175",
+  "merge_base": "fea32ad4f7f047d324be09945e1f613a8c09387f",
+  "diff_sha256": "15ba159a2175a737fe051391e69f96dc3cab8031b03df46fab86991628512776",
+  "head_sha": "d36abe175a651e9e6e1b9c005f897ae65e2185eb",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs governance closeout + impact matrix frontmatter/CI sync. Residual: reports retention dates. Local lock only."
+  "note": "Docs residuals: remaining docs doc_id + cleanup_reports earliest-date + archive one snapshot. Residual: undated root reports need snapshot_date; dir migration #2. Local lock only."
 }
