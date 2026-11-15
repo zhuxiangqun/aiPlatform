@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T15:21:54+08:00",
+  "reviewed_at": "2026-11-15T15:23:34+08:00",
   "base_ref": "origin/main",
   "merge_base": "41bce053dd60823ae9caf10e9d210bb5125c0b49",
-  "diff_sha256": "57000d169be5b0ee0cdd8104afaedf306a2244aac745808eee9601f4cc75e644",
-  "head_sha": "fe30f45f0aa78cc02ae16de93e544f5e71bb3aa5",
+  "diff_sha256": "b5123e07aa8ceb1f477a59a7c1eb4335b27a48718f72acb2b15b9aeb260498e6",
+  "head_sha": "71f6df77690e338217e91ae18915d35424cdeee0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Follow-up: retarget reports/five-products ./ops links; sync whitepapers. verify_doc_links --all --strict broken=0. Prior ops SoT still holds."
+  "note": "Archive ADR link depth fix; verify_doc_links --include-archive broken=0."
 }
