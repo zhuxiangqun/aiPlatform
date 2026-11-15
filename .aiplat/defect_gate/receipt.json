@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T12:35:00+08:00",
+  "reviewed_at": "2026-11-15T12:46:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "af94ba51d6a12fc57f98ac63b77de6f56527ffe2",
-  "diff_sha256": "fef1e726fc84d3ba2232b5939cc3239eb5faf3b7836bd85a00b89b58effcd3c1",
-  "head_sha": "14d9ce86cea8a4a1c9e6e366aa2e42b20a71e29f",
+  "diff_sha256": "7caebeced9f940cfb2b02bc52a54941fdb524a8c63190204a4574bd4d04c0a74",
+  "head_sha": "7553b9d763fd16e40e9dd9f72a4cfb7b29f29175",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs governance: reference doc_id complete (~237 ids); reports out of doc_id scope. Residual: optional root reports archive hygiene. Local lock only."
+  "note": "Docs governance closeout + impact matrix frontmatter/CI sync. Residual: reports retention dates. Local lock only."
 }
