@@ -249,6 +249,13 @@ class AsyncActionRegistry:
                 "reason": "no_required_permissions",
             }
         have = set(permissions or [])
+        # 为什么：平台身份常见 `*` / `admin` 超权 scope；精确匹配否则会假拒绝已授权调用方。
+        if "*" in have or "admin" in have:
+            return {
+                "gate_id": gate_id,
+                "decision": "allow",
+                "reason": "admin_or_wildcard_scope",
+            }
         missing = [p for p in need if p not in have]
         if missing:
             return {
@@ -354,7 +361,23 @@ class AsyncActionRegistry:
             else:
                 entity = await self._get_entity(domain_id, entity_id)
             if not entity:
-                return {"status": "not_found", "error": f"Entity {entity_id} not found in {domain_id}"}
+                # 为什么：platform_action 可绑定非 Graph 主体（如 extraction_id）；
+                # GLOBAL + 无 target_class 时合成审计实体，避免假 not_found。
+                if c.scope == ActionScope.GLOBAL and not (c.target_class or ""):
+                    entity = {
+                        "id": entity_id,
+                        "entity_id": entity_id,
+                        "name": entity_id,
+                        "class": "",
+                        "state": "",
+                        "domain": domain_id,
+                        "domain_id": domain_id,
+                    }
+                else:
+                    return {
+                        "status": "not_found",
+                        "error": f"Entity {entity_id} not found in {domain_id}",
+                    }
 
             class_name = entity.get("class") or c.target_class or "Unknown"
             current_state = entity.get("state") or ""

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3510
+total_capabilities: 3511
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1203,6 +1203,7 @@ scan_hash: 8f9548ec24f4
 | **Knowledge Pipeline v3** | `harness/knowledge_pipeline/extractor.py` + `resolver.py` + `retriever.py` | ✅ | 知识生命周期三层管线：`DocumentIngestor`（文档分块）→ `EntityExtractor`（LLM驱动9实体+10关系自动抽取，置信度三级路由≥0.85自动/0.60-0.85待审/<0.60丢弃）→ `DraftYamlWriter`（YAML草稿输出）→ `CrossDomainResolver`（三级匹配：精确键0.6+Jaro-Winkler名称0.25+向量余弦0.15）→ `GraphRAGRetriever`（实体路由→BFS 2跳子图→定向向量检索→推理路径注入） | 已合入 |
 | **Fact Ledger（v4.3.1 Phase 1）** | `harness/knowledge_pipeline/fact_ledger.py` + CoreFacade `fact_ledger_query_gateway` + FDE confirm / `GET .../extractions/facts` | ✅ | 附录 A/D 最小账本：不可变 Raw（sha256+快照）、Fact/Claim（published 必须 evidence）、查询 SQL 层 `tenant_id` 前置过滤；有 `{domain}-object-types.json` 种子的域在确认时写账本；跨租户测试见 `test_fact_ledger_phase1.py`。**未宣称**附录 N 全量符合 | 已合入 |
 | **Fact→Graph 投影 + Action L1（v4.3.1 Phase 2 G2）** | `fact_projector.py` + `action_registry` Step 3.25 + `POST …/extractions/facts/rebuild` | ✅ | `project_facts_to_graph`（`exact_replay_from_facts`）；`required_permissions` 缺省 → `policy_denied`；试点合同 `lock_service_accept_order.yaml`。证据 `phase2-g2-evidence.md`。**未宣称** Wiki 只读/ObjectSet/N24 | 已合入 |
+| **抽取 confirm→ActionRegistry（G2 收口）** | `platform_action:knowledge:confirm_extraction` + `run_confirm_extraction` + `POST …/extractions/{id}/confirm` | ✅ | confirm 经 L1（`kb:write`/`admin`/`*`）；HTTP scopes→permissions；证据 `phase2-g2-evidence.md`。**未宣称** Wiki 只读/ObjectSet/N24 | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
 | **service-domain 参考实现** | `~/.aiplat/ontologies/service-domain.yaml` + `~/.aiplat/actions/service-domain_actions.yaml` + `custom_handlers/service_handlers.py` + `~/.aiplat/tests/service-domain_tests.yaml` + `scripts/sop_validate.py` + `docs/manuals/fde/06-sop-domain-delivery.md` | ✅ | 生产级参考实现：6类实体+6种关系+4态状态机+inference_rules + 5个动作（assign/start/submit/complete/reopen）+ 5个async handler + 12条测试用例 + SOP验证脚本6/6 PASS + 5天标准交付流程文档 | 已合入 |
@@ -4410,7 +4411,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 635 | 1 | 636 |
+| Harness 执行引擎 | 636 | 1 | 637 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 400 | 9 | 409 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4455,7 +4456,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3499** | **11** | **3510** |
+| **总计** | **3500** | **11** | **3511** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -1,7 +1,6 @@
-"""Factory confirm: K1 signal + Path A proposal enqueue."""
+"""Factory confirm: ActionRegistry L1 + K1 signal + Path A proposal enqueue."""
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,45 +11,41 @@ async def test_confirm_route_enqueues_proposal_after_k1():
     """HTTP confirm keeps K1 (no live YAML) but also returns proposal_id for ③."""
     from apps.fde.api import extraction_routes as routes
 
-    k1 = {
-        "ok": True,
-        "signal_id": "sig-x",
-        "trace_id": "tr-x",
-        "trace_origin": "extraction_confirm",
-        "extract_actor": "t",
-        "entity_ids": ["e1"],
-        "yaml_unchanged": True,
-        "domain_id": "lock-service",
-        "idempotent": False,
-    }
-    row = {
-        "extraction_id": "ext-1",
-        "domain_id": "lock-service",
-        "source_doc": "doc",
-        "entities_json": '[{"name":"张三","class_type":"安装师傅"}]',
-    }
+    mock_reg = MagicMock()
+    mock_reg.execute = AsyncMock(
+        return_value={
+            "status": "executed",
+            "result": {
+                "ok": True,
+                "status": "confirmed",
+                "signal_id": "sig-x",
+                "trace_id": "tr-x",
+                "trace_origin": "extraction_confirm",
+                "extract_actor": "t",
+                "entity_ids": ["e1"],
+                "yaml_unchanged": True,
+                "wrote_live_yaml": False,
+                "domain_id": "lock-service",
+                "idempotent": False,
+                "proposal_id": "prop_lock-service_test",
+                "graph_write": {"created_entities": ["张三"], "relations": []},
+            },
+        }
+    )
+    req = MagicMock()
+    req.headers = {"X-AIPLAT-SCOPES": "kb:write"}
 
-    with patch(
-        "core.api.core_facade.k1_confirm_extraction",
-        new=AsyncMock(return_value=k1),
-    ), patch.object(routes._store, "initialize", new=AsyncMock()), patch.object(
-        routes._store, "get_row", new=AsyncMock(return_value=row)
-    ), patch.object(
-        routes._store,
-        "_enqueue_ontology_proposal",
-        new=AsyncMock(return_value="prop_lock-service_test"),
-    ), patch(
-        "core.harness.knowledge_pipeline.extractor.write_extraction_to_graph_index",
-        return_value={"created_entities": ["e1"], "relations": []},
+    with patch("core.api.core_facade.get_action_registry", return_value=mock_reg), patch(
+        "apps.fde.api.extraction_routes.resolve_request_role", return_value="factory"
     ):
-        out = await routes.confirm_extraction("ext-1", actor="factory")
+        out = await routes.confirm_extraction(req, "ext-1", actor="factory")
 
     assert out["status"] == "confirmed"
     assert out["signal_id"] == "sig-x"
     assert out["proposal_id"] == "prop_lock-service_test"
     assert out["wrote_live_yaml"] is False
-    # Graph write uses entity names from extraction row (not opaque e1 ids)
     assert out.get("graph_write", {}).get("created_entities") == ["张三"]
+    mock_reg.execute.assert_awaited_once()
 
 
 def test_cross_domain_name_score_without_primary_keys():

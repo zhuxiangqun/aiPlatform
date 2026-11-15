@@ -25,6 +25,7 @@ from core.harness.ontology_engine.builtin_handlers import (  # noqa: F401
     assign_work_order,
     assert_inferred_edge,
     assert_inferred_edges,
+    confirm_extraction,
     set_entity_state,
 )
 
@@ -36,6 +37,29 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════
 
 BUILTIN_CONTRACTS: List[ActionContractModel] = [
+    ActionContractModel(
+        action_id="platform_action:knowledge:confirm_extraction",
+        label="确认知识抽取",
+        description="K1 信号 + Graph/Fact 投影；须经 ActionRegistry L1（kb:write）",
+        category=ActionCategory.MUTATION,
+        scope=ActionScope.GLOBAL,
+        domain_id="platform",
+        risk_level=RiskLevel.MEDIUM,
+        require_approval=False,
+        throttle_limit=0,
+        failure_strategy=FailureStrategy.LOG_ONLY,
+        action_namespace="platform_action",
+        # 知识工厂写路径：与 Identity 默认 kb:write 对齐；admin/* 由 L1 通配放行
+        required_permissions=["kb:write"],
+        handler="core.harness.ontology_engine.builtin_handlers:confirm_extraction",
+        input_schema={
+            "type": "object",
+            "required": ["extraction_id"],
+            "properties": {
+                "extraction_id": {"type": "string"},
+            },
+        },
+    ),
     ActionContractModel(
         action_id="platform_action:graph:assert_inferred_edge",
         label="确认推断边",

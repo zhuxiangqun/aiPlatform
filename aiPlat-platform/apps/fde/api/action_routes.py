@@ -869,6 +869,10 @@ async def execute_action(
                     "constraint_type": "abox_acl",
                 }
 
+        # G2 L1：把身份 scopes 作为 permissions 传入；缺省则无法满足 required_permissions。
+        permissions = _parse_scopes(x_aiplat_scopes)
+        if not permissions and request is not None:
+            permissions = _parse_scopes(request.headers.get("X-AIPLAT-SCOPES"))
         reg = get_action_registry()
         result = await reg.execute(
             action_id=action_id,
@@ -876,6 +880,7 @@ async def execute_action(
             params=params,
             actor=actor,
             role=role,
+            permissions=permissions or None,
         )
 
         # Map constraint types to HTTP-friendly responses
