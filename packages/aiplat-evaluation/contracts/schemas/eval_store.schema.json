@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aiplat.local/schemas/evaluation/eval_store.schema.json",
   "title": "EvalStoreV0",
-  "description": "EVAL_V1 E2 store envelope (charter §5.3). SQLite tables mirror these object shapes.",
+  "description": "EVAL_V1 E2 store envelope (charter §5.3). SQLite tables mirror these object shapes. Standalone package API currently implements eval_set + eval_report (+ jobs via payload_json); other entities are DDL/schema-forward only — see docs/a3/STORE_SURFACE_V0.md.",
   "type": "object",
   "required": ["schema_version", "entity"],
   "properties": {

@@ -95,7 +95,8 @@ async def get_latest_run_evaluation(run_id: str):
     from core.api.core_facade import runs_eval_latest
 
     try:
-        return await runs_eval_latest(run_id=run_id)
+        # ItemResponse 要求载荷在 data；顶层返回会被默认 data={} 盖住。
+        return {"data": await runs_eval_latest(run_id=run_id)}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 
@@ -110,7 +111,7 @@ async def get_latest_investigate_report(run_id: str):
     from core.api.core_facade import runs_eval_investigate_latest
 
     try:
-        return await runs_eval_investigate_latest(run_id=run_id)
+        return {"data": await runs_eval_investigate_latest(run_id=run_id)}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 
@@ -150,7 +151,7 @@ async def get_latest_run_state(run_id: str):
     from core.api.core_facade import runs_eval_state_latest
 
     try:
-        return await runs_eval_state_latest(run_id=run_id)
+        return {"data": await runs_eval_state_latest(run_id=run_id)}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 
@@ -165,7 +166,7 @@ async def get_latest_evidence_pack(run_id: str):
     from core.api.core_facade import runs_eval_evidence_pack_latest
 
     try:
-        return await runs_eval_evidence_pack_latest(run_id=run_id)
+        return {"data": await runs_eval_evidence_pack_latest(run_id=run_id)}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 
@@ -245,7 +246,7 @@ async def get_run_evidence(run_id: str):
     from core.api.core_facade import runs_eval_evidence
 
     try:
-        return await runs_eval_evidence(run_id=run_id)
+        return {"data": await runs_eval_evidence(run_id=run_id)}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 

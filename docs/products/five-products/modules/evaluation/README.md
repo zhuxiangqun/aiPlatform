@@ -16,9 +16,27 @@ doc_type: Index
 | 模块清单 | [`module.yaml`](./module.yaml) |
 | 产品根与范围 | [`packages/aiplat-evaluation/docs/a3/PRODUCT_ROOT_V1.md`](../../../../../packages/aiplat-evaluation/docs/a3/PRODUCT_ROOT_V1.md) |
 | 记分范围（非准确率） | [`packages/aiplat-evaluation/docs/a3/SCORE_SCOPE_V1.md`](../../../../../packages/aiplat-evaluation/docs/a3/SCORE_SCOPE_V1.md) |
-| 评审基线（2026-11-04） | [`ops/EVALUATION_PRODUCT_REVIEW_2026-11-04.md`](../../../../../reports/five-products/ops/EVALUATION_PRODUCT_REVIEW_2026-11-04.md) |
-| 改进执行计划 | [`ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](../../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) |
+| **G2b / 记分卡现状源** | [`packages/aiplat-evaluation/docs/a3/scorecard_v1.json`](../../../../../packages/aiplat-evaluation/docs/a3/scorecard_v1.json) · [`G2B_ACCURACY_CLOSEOUT.md`](../../../../../packages/aiplat-evaluation/docs/a3/G2B_ACCURACY_CLOSEOUT.md)（数值以二者为准；勿从下方 11-04 基线手抄） |
+| G2b 改判规程 | [`packages/aiplat-evaluation/docs/a3/G2B_RE_REVIEW_PROCEDURE.md`](../../../../../packages/aiplat-evaluation/docs/a3/G2B_RE_REVIEW_PROCEDURE.md) |
+| Store 诚实面 | [`packages/aiplat-evaluation/docs/a3/STORE_SURFACE_V0.md`](../../../../../packages/aiplat-evaluation/docs/a3/STORE_SURFACE_V0.md) |
+| Engineering composite | package `build_composite` **v1.2**（弱代理 report-only）；Central `legacy_7dim` 仅遗留 |
+| **P2 staging 总览** | [`packages/aiplat-evaluation/docs/a3/P2_STAGING_ROADMAP.md`](../../../../../packages/aiplat-evaluation/docs/a3/P2_STAGING_ROADMAP.md) — host 未确认前 `ready_to_authorize=false` |
+| 评审基线（2026-11-04 · **历史基线**） | [`ops/EVALUATION_PRODUCT_REVIEW_2026-11-04.md`](../../../../../reports/five-products/ops/EVALUATION_PRODUCT_REVIEW_2026-11-04.md) — 保留效力作对照，**不是**当前 G2b/tab 数现状源 |
+| 改进执行计划（2026-11-04 · **历史计划**） | [`ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](../../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) — 轨道规划；进度以 scorecard/closeout 为准 |
 | 能力事实（跟代码同步） | [`AIPLAT_CAPABILITIES.md`](../../../../../AIPLAT_CAPABILITIES.md)（搜 Evaluation / Eval Center） |
+
+## 契约校验
+
+```bash
+# SSOT
+python3 packages/aiplat-evaluation/contracts/validate_sample.py
+
+# Legacy shim（parents[6] → repo root）
+python3 docs/products/five-products/modules/evaluation/contracts/validate_sample.py
+
+# 模块文档一致性门
+python3 packages/aiplat-evaluation/scripts/check_eval_module_docs.py
+```
 
 ## 平台白皮书（整平台，非评测专册）
 

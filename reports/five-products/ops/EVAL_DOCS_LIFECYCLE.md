@@ -1,5 +1,5 @@
 ---
-generated_at: 2026-11-12
+generated_at: 2026-11-15
 doc_type: Report
 ---
 
@@ -37,13 +37,20 @@ doc_type: Report
 | `packages/aiplat-evaluation/docs/a3/PRODUCT_ROOT_V1.md` | 产品根 |
 | `packages/aiplat-evaluation/docs/a3/SCORE_SCOPE_V1.md` | 记分范围 |
 | `packages/aiplat-evaluation/docs/a3/SCORECARD_V1.md` | 记分卡 |
+| `packages/aiplat-evaluation/docs/a3/P2_STAGING_ROADMAP.md` | P2 staging 总览（host→live→authorize） |
 | `AIPLAT_CAPABILITIES.md` | 能力事实 |
 
 ## frozen-gate（本批已迁 archive；勿扩写）
 
 目录：[`_archive/eval-gates/`](./_archive/eval-gates/)
 
-含 `ENGINEERING_UNFREEZE_EVAL_*.md`（16 份）。原路径留 **stub**；`ops_engineering_freeze_check.sh` 仍按原路径做存在性检查。
+含 `ENGINEERING_UNFREEZE_EVAL_*.md` **archive 正文 16 份**；`ops/` 原路径对应 stub 亦为 16 份。另有 **1 份未归档的现行草稿**（合计 ops 根下该前缀 **17** 个文件）：
+
+| 文件 | 状态 |
+|------|------|
+| [`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](./ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md) | **现行全文草稿**（`draft_blocked`，2026-11-14）；**未**迁 archive、**不是** stub |
+
+其余解冻门原路径留 **stub**；`ops_engineering_freeze_check.sh` 仍按原路径做存在性检查。
 
 ## inventories（本批已迁 archive）
 

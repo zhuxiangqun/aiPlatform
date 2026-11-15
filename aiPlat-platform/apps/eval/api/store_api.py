@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from auth.deps import require_auth
-from apps.common_schemas import ItemResponse, ListResponse
+from apps.common_schemas import ItemResponse
 from apps.eval.api.eval_upstream import proxy_eval_store, proxy_status
 
 router = APIRouter(prefix="/store", tags=["eval-store"])
@@ -50,7 +50,7 @@ async def store_health(
     return {"data": eval_store_health(tenant_id=tenant_id)}
 
 
-@router.get("/sets", response_model=ListResponse)
+@router.get("/sets", response_model=ItemResponse)
 async def list_sets(
     request: Request,
     tenant_id: str = "",
@@ -124,7 +124,7 @@ async def get_set(
     return {"data": row or {"error": "not_found", "id": set_id}}
 
 
-@router.get("/tasks", response_model=ListResponse)
+@router.get("/tasks", response_model=ItemResponse)
 async def list_tasks(
     set_id: str = "",
     tenant_id: str = "",
@@ -242,7 +242,7 @@ async def get_e3_status(
     return {"data": eval_e3_status(tenant_id=tenant_id)}
 
 
-@router.get("/judges", response_model=ListResponse)
+@router.get("/judges", response_model=ItemResponse)
 async def list_judges(
     tenant_id: str = "eval-v1",
     limit: int = Query(50, ge=1, le=200),
@@ -1150,7 +1150,7 @@ async def post_g2c_report(
     return {"data": out}
 
 
-@router.get("/gates", response_model=ListResponse)
+@router.get("/gates", response_model=ItemResponse)
 async def list_gates(
     tenant_id: str = "eval-v1",
     limit: int = Query(50, ge=1, le=200),
@@ -1188,7 +1188,7 @@ async def get_gate(
     return {"data": row or {"error": "not_found", "id": gate_id}}
 
 
-@router.get("/reports", response_model=ListResponse)
+@router.get("/reports", response_model=ItemResponse)
 async def list_store_reports(
     request: Request,
     tenant_id: str = "eval-v1",

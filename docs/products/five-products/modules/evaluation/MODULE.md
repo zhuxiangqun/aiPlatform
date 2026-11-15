@@ -47,7 +47,11 @@ See [`EVAL_PROTOCOL.md`](./EVAL_PROTOCOL.md).
 | Schema | Path |
 |--------|------|
 | Eval Protocol v0 | `packages/aiplat-evaluation/contracts/schemas/eval_protocol.schema.json`（模块内为 shim） |
-| validate | `python3 contracts/validate_sample.py` |
+| validate（SSOT） | `python3 packages/aiplat-evaluation/contracts/validate_sample.py` |
+| validate（legacy shim） | `python3 docs/.../evaluation/contracts/validate_sample.py` — **已修复**（`parents[6]` → repo root） |
+| docs gate | `python3 packages/aiplat-evaluation/scripts/check_eval_module_docs.py` |
+
+完整契约清单见 [`module.yaml`](./module.yaml) `contracts`（6 个 schema，SSOT 均在 package）。
 
 ## SLO / disable behavior
 
@@ -55,23 +59,31 @@ See [`EVAL_PROTOCOL.md`](./EVAL_PROTOCOL.md).
 
 ## CODEOWNERS
 
-- `aiPlat-platform/apps/eval/ @platform`
+与仓库 [`.github/CODEOWNERS`](../../../../../.github/CODEOWNERS) 对齐（以仓库文件为准）：
+
+- `/packages/aiplat-evaluation/` → `@zhuxiangqun`
+- `/docs/products/five-products/modules/evaluation/` → `@zhuxiangqun`
+
+（平台侧 `aiPlat-platform/apps/eval/` 无单独 CODEOWNERS 条目；日常变更仍走产品 owner 评审。）
 
 ## Wiring (A1)
 
-| Path | Behavior |
-|------|----------|
-| `POST …/runs/{id}/evaluate` | response includes `eval_protocol` |
-| `POST …/runs/{id}/evaluate/auto` | response includes `eval_protocol` |
-| `GET …/runs/{id}/evaluation/latest` | response includes `eval_protocol` |
-| `POST …/skill-evals/suites/{id}/run` | response includes `eval_protocol` |
-| `GET …/skill-evals/runs/{id}` | response includes `eval_protocol` |
-| `POST …/code-review-gold/evaluate` (+ reevaluate) | `eval_protocol` |
-| `POST …/kb-eval/run` | `eval_protocol` |
-| `POST …/prompts/eval/runs` (+ GET run) | `eval_protocol` |
-| `POST …/arena/run` | `eval_protocol` |
-| Adapter | `core.harness.evaluation.eval_protocol` via CoreFacade |
-| `GET /api/core/eval/healthz` | `product_id=evaluation` |
+> **契约目标**：下列端点的响应应包含 `eval_protocol`（服务层已 `attach_eval_protocol`）。  
+> **HTTP 层（2026-11-15）**：`common_schemas` 已 `extra="allow"`；Item 端点统一 `{"data": …}`；store 列表改为 `ItemResponse`。回归：`aiPlat-platform/tests/test_eval_response_models.py`。
+
+| Path | Behavior（契约） | 当前状态 |
+|------|----------|----------|
+| `POST …/runs/{id}/evaluate` | response includes `eval_protocol` | 已修复（StatusResponse 保留额外字段） |
+| `POST …/runs/{id}/evaluate/auto` | response includes `eval_protocol` | 已修复 |
+| `GET …/runs/{id}/evaluation/latest` | response includes `eval_protocol` | 已修复（`{"data": …}`） |
+| `POST …/skill-evals/suites/{id}/run` | response includes `eval_protocol` | 已接线（`data` 嵌套） |
+| `GET …/skill-evals/runs/{id}` | response includes `eval_protocol` | 已修复（`{"data": …}`） |
+| `POST …/code-review-gold/evaluate` (+ reevaluate) | `eval_protocol` | 已修复（顶层协议字段保留） |
+| `POST …/kb-eval/run` | `eval_protocol` | 已修复 |
+| `POST …/prompts/eval/runs` (+ GET run) | `eval_protocol` | 已修复 |
+| `POST …/arena/run` | `eval_protocol` | 已核实/对齐（随 StatusResponse extra） |
+| Adapter | `core.harness.evaluation.eval_protocol` via CoreFacade | 服务层已接线 |
+| `GET /api/core/eval/healthz` | `product_id=evaluation` | 已接线 |
 
 ## D1 (Thin, co-hosted) — done
 
@@ -91,15 +103,15 @@ See [`EVAL_PROTOCOL.md`](./EVAL_PROTOCOL.md).
 | Upgrade / rollback | `d1_upgrade.sh` · `d1_rollback.sh --runtime` |
 | Closeout | `scripts/d2_local_closeout.sh` · [`ops/EVALUATION_D2_LOCAL_CLOSEOUT.md`](../../../../../reports/five-products/ops/EVALUATION_D2_LOCAL_CLOSEOUT.md) |
 
-`current_delivery` 仍为 **D1**（D1c）；`process_split_authorized=false`。
+`current_delivery` 仍为 **D1**（D1c；与 [`module.yaml`](./module.yaml) / `capabilities.manifest.yaml` 一致）；D2 ops pack **本地完成 ≠ 独立交付升级**。`process_split_authorized=false`。
 
-A3 process/DB split **forbidden** without ADR Accepted + `process_split_authorized`.
+A3 process/DB split **forbidden** without ADR Accepted + `process_split_authorized`。
 
-## A3 prep (Draft · not authorized)
+## A3 prep (Accepted 有条件 · not authorized)
 
 | Item | Path |
 |------|------|
-| ADR | `reports/five-products/ADR-EVALUATION-A3.md` **Accepted（有条件）** |
+| ADR | `reports/five-products/ADR-EVALUATION-A3.md` **Accepted（有条件）**（`module.yaml` `adr_for_a3` 已指向） |
 | Chart skeleton | `packages/aiplat-evaluation/chart/` (`a3_process_split_authorized=false`) |
 | Checklist / prep | `docs/a3/SPLIT_CHECKLIST.md` · `scripts/a3_prep_check.sh` |
 | Local rehearsal | `scripts/a3_local_rehearsal.sh`（#4→🟨；非 live） |
@@ -111,5 +123,6 @@ A3 process/DB split **forbidden** without ADR Accepted + `process_split_authoriz
 
 ## Next
 
-- EVAL G2b（第二标注者 + κ）或 E8/A3 live drills → authorize split
+- **P2 staging**：见 [`P2_STAGING_ROADMAP.md`](../../../../../packages/aiplat-evaluation/docs/a3/P2_STAGING_ROADMAP.md) — 阻塞在独立 staging host；`ready_to_authorize=false`
 - Field/edge eval hosting not in scope
+- P3 生产在线评测（trace 采样）在 P2 授权前不立项为发布门禁

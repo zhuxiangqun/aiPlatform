@@ -9,6 +9,19 @@ from apps.common_schemas import StatusResponse, ItemResponse
 router = APIRouter(prefix="/kb-eval", tags=["kb-eval"])
 
 
+def _as_item(out: Any) -> Dict[str, Any]:
+    """Wrap facade payloads for ItemResponse ({data: dict}).
+
+    Args:
+        out: 服务层返回值。
+    """
+    if isinstance(out, list):
+        return {"data": {"items": out, "total": len(out)}}
+    if isinstance(out, dict):
+        return {"data": out}
+    return {"data": {"value": out}}
+
+
 @router.get("/samples", response_model=ItemResponse)
 async def list_samples(limit: int = 100, offset: int = 0, tag: Optional[str] = None):
     """列出 samples。
@@ -20,7 +33,7 @@ async def list_samples(limit: int = 100, offset: int = 0, tag: Optional[str] = N
     """
     from core.api.core_facade import kb_eval_list_samples
 
-    return kb_eval_list_samples(limit=limit, offset=offset, tag=tag)
+    return _as_item(kb_eval_list_samples(limit=limit, offset=offset, tag=tag))
 
 
 @router.post("/samples", response_model=StatusResponse)
@@ -72,7 +85,7 @@ async def list_reports(limit: int = 50, offset: int = 0):
     """
     from core.api.core_facade import kb_eval_list_reports
 
-    return kb_eval_list_reports(limit=limit, offset=offset)
+    return _as_item(kb_eval_list_reports(limit=limit, offset=offset))
 
 
 @router.post("/samples/import", response_model=StatusResponse)
@@ -101,7 +114,7 @@ async def reports_time_series(days: int = 30):
     """
     from core.api.core_facade import kb_eval_reports_series
 
-    return kb_eval_reports_series(days=days)
+    return _as_item(kb_eval_reports_series(days=days))
 
 
 @router.get("/reports/compare", response_model=ItemResponse)
@@ -114,4 +127,6 @@ async def compare_reports(session_a: str = "", session_b: str = ""):
     """
     from core.api.core_facade import kb_eval_compare_reports
 
-    return kb_eval_compare_reports(session_a=session_a, session_b=session_b)
+    return _as_item(
+        kb_eval_compare_reports(session_a=session_a, session_b=session_b)
+    )

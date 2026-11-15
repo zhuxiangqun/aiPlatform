@@ -22,7 +22,7 @@
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 architecture in-scope",
       "full_score_eligible": true,
-      "note": "v1.4: single mount+308; thin routes; contracts SSOT; PRODUCT_ROOT_V1; legacy_7dim frozen deprecated_for_engineering (not silent reweight)",
+      "note": "v1.5: single mount+308; thin routes; contracts SSOT; PRODUCT_ROOT_V1; legacy_7dim frozen deprecated_for_engineering; package composite_version=v1.2 (text_quality+content_safety+refusal report-only smoke); STORE_SURFACE_V0 honest subset; G2B_RE_REVIEW_PROCEDURE living",
       "gaps": []
     },
     "local_independence_no_microvm": {

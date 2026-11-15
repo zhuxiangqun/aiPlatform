@@ -1,3 +1,6 @@
+# Evaluation module inventory.
+# current_delivery remains D1 (D1c/cohost) even though D2 ops pack is done locally —
+# same honesty as capabilities.manifest.yaml (D2 pack ≠ independent deploy).
 id: evaluation
 version: 0.1.0
 owner: platform
@@ -9,13 +12,19 @@ current_delivery: D1
 a2_versioning: true
 wiring: eval.protocol.v0
 hosted_by: aiplat
+# Identity marker (five-products convention); real smoke is test.command.
 build:
   command: "echo aiPlat-platform/apps/eval"
 test:
   command: "bash packages/aiplat-evaluation/scripts/d1_smoke.sh"
+# Contract SSOT lives in the package (module contracts/ is shim-only).
 contracts:
-  - contracts/schemas/eval_protocol.schema.json
-  - contracts/schemas/healthz.schema.json
+  - packages/aiplat-evaluation/contracts/schemas/eval_protocol.schema.json
+  - packages/aiplat-evaluation/contracts/schemas/healthz.schema.json
+  - packages/aiplat-evaluation/contracts/schemas/eval_store.schema.json
+  - packages/aiplat-evaluation/contracts/schemas/eval_gate.schema.json
+  - packages/aiplat-evaluation/contracts/schemas/eval_calibration.schema.json
+  - packages/aiplat-evaluation/contracts/schemas/eval_compliance_pii.schema.json
 migrations:
-  path: null
-adr_for_a3: null
+  path: packages/aiplat-evaluation/migrations
+adr_for_a3: reports/five-products/ADR-EVALUATION-A3.md

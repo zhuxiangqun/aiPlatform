@@ -9,7 +9,9 @@ doc_type: Index
 Do not add or edit JSON schemas here. Validate via:
 
 ```bash
+# SSOT
 python3 packages/aiplat-evaluation/contracts/validate_sample.py
-# or legacy path (shim):
+
+# Legacy shim（parents[6] → repo root）
 python3 docs/products/five-products/modules/evaluation/contracts/validate_sample.py
 ```

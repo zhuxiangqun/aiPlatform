@@ -17,20 +17,20 @@ doc_type: Reference
 | efficiency | `latency_ms`, `cost_estimate`, `cost_per_success` | from LLM audit when present |
 | security | `asr` | owned by S1; classified for honesty |
 
-Every `runner_result` attaches `scoring` (`eval.scoring.semantics.v1`) including `composite` (`eval.scoring.composite.v1`, `policy.composite_version=v1.1`: `text_quality` report-only). See [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md).
+Every `runner_result` attaches `scoring` (`eval.scoring.semantics.v1`) including `composite` (`eval.scoring.composite.v1`, `policy.composite_version=v1.2`: keyword/length smokes report-only). See [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md).
 
 **v1 dimensions** (see [`P1_DIMENSIONS.md`](./P1_DIMENSIONS.md)):
 - `groundedness` — scored **only with gold** (expected/context/sources); else report-only / omitted from composite
 - `efficiency` — `latency_p50_ms` / `latency_p95_ms` / `cost_per_success` from LLM audit (`eval.scoring.efficiency.v0`)
 
-## Composite policy (explicit)
+## Composite policy (explicit · v1.2)
 
 | Role | Metrics |
 |---|---|
-| **Scored** into engineering composite 0–100 | `text_quality`, `content_safety`, `refusal`, `groundedness`, `exact_match`, `pass`, `coverage`, normalized `latency_ms`/`cost_*`/`steps` |
-| **Report-only** (not weighted) | `asr` / security family, `accuracy`, `winner`, counts (`gold_n`, `hit_count`, …) |
+| **Scored** into engineering composite 0–100 | `groundedness`, `exact_match`, `pass`, `coverage`, `parsed`, normalized `latency_ms`/`cost_*`/`steps` / session rates |
+| **Report-only** (not weighted) | `text_quality`, `content_safety`, `refusal` (weak proxies), `asr` / security, `accuracy`, `winner`, counts |
 
-Weights (renormalized over present families): quality 0.55 · safety 0.25 · efficiency 0.20.
+Weights (renormalized over present families): quality 0.55 · safety 0.25 · efficiency 0.20. With safety metrics report-only, active weights typically re-normalize over quality+efficiency only.
 
 This composite is **not** G2b accuracy. Dual-path honesty: see [`P1_CANONICAL.md`](./P1_CANONICAL.md) — package `build_composite` is engineering **canonical**; Central `AgentEvalResult.composite_score` stays **legacy_7dim** with text/safety/refusal **report-only**.
 

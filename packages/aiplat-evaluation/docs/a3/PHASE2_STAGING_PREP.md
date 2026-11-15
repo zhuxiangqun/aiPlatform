@@ -5,8 +5,8 @@ doc_type: Reference
 # Phase 2 · Staging 预备板
 
 > 机器：[`evidence/meta_eval/phase2_staging_prep_board.v0.json`](./evidence/meta_eval/phase2_staging_prep_board.v0.json)  
+> **总览入口**：[`P2_STAGING_ROADMAP.md`](./P2_STAGING_ROADMAP.md)  
 > 父页：[`PHASE2_PREP.md`](./PHASE2_PREP.md) · [`B4S_PREP.md`](./B4S_PREP.md) · [`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md)
-
 ## 当前
 
 | 项 | 状态 |

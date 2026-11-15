@@ -7,7 +7,7 @@ from app.scoring.report_stamp import ensure_report_scoring
 
 def test_stamps_composite_when_known_metrics():
     out = ensure_report_scoring({"exact_match": 1.0, "content_safety": 1.0})
-    assert extract_composite_version(out) == "v1.1"
+    assert extract_composite_version(out) == "v1.2"
     assert out["scoring"]["accuracy_claim"] is False
     assert out["scoring"]["composite"]["score"] is not None
 
@@ -54,7 +54,7 @@ def test_meta_promotes_runner_and_composite_version():
     assert out["meta"]["runner_id"] == "prompt_eval"
     assert out["meta"]["judge_id"] == "j1"
     assert out["meta"]["dataset_version"] == "d1"
-    assert out["meta"]["composite_version"] == "v1.1"
+    assert out["meta"]["composite_version"] == "v1.2"
     assert out["meta"]["evidence_level"] == "gold"
     only = ensure_report_meta({"runner_version": "rv1"})
     assert only["meta"]["runner_version"] == "rv1"
@@ -70,7 +70,9 @@ def test_evidence_level_smoke_arena_and_preserves_explicit():
     )
     assert arena["meta"]["evidence_level"] == "smoke"
     assert infer_evidence_level({"text_quality": 0.9}) == "smoke"
-    assert infer_evidence_level({"content_safety": 1.0, "refusal": 1.0}) == "fixture"
+    # v1.2: content_safety/refusal are report-only → smoke evidence, not fixture.
+    assert infer_evidence_level({"content_safety": 1.0, "refusal": 1.0}) == "smoke"
+    assert infer_evidence_level({"exact_match": 1.0, "content_safety": 1.0}) == "gold"
     kept = ensure_report_scoring(
         {"exact_match": 1.0},
         meta={"evidence_level": "human", "runner_id": "prompt_eval"},

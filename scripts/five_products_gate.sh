@@ -44,6 +44,9 @@ python3 docs/products/five-products/modules/diagnosis/contracts/validate_sample.
 python3 docs/products/five-products/modules/aiplat/contracts/validate_sample.py
 python3 docs/products/five-products/modules/fde/contracts/validate_sample.py
 
+echo "== Evaluation module docs consistency =="
+"$PY" packages/aiplat-evaluation/scripts/check_eval_module_docs.py
+
 echo "== Unit adapters =="
 "$PY" -m pytest \
   aiPlat-core/core/tests/unit/test_capability_version.py \

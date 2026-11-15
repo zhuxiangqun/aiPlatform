@@ -36,12 +36,19 @@ doc_type: Report
 ## 收敛路径
 
 1. ✅ 适配器 `to_eval_protocol_v0` / `from_run_evaluation` / `from_skill_eval_run` / generic  
-2. ✅ 已接线：run evaluate / auto / latest · skill-eval run+GET · gold · kb · prompt · arena  
-3. A2 build/version；A3 进程/DB 另 ADR  
+2. ✅ 服务层已接线：run evaluate / auto / latest · skill-eval run+GET · gold · kb · prompt · arena（`attach_eval_protocol`）  
+3. ✅ HTTP 层（2026-11-15）：`common_schemas` `extra="allow"` + Item 包装对齐 — 见 [`MODULE.md` Wiring](./MODULE.md)  
+4. A2 build/version；A3 进程/DB 另 ADR（Accepted 有条件，未授权拆分）
 
 ## 验证
 
 ```bash
+# SSOT
+python3 packages/aiplat-evaluation/contracts/validate_sample.py
+
+# Legacy shim（parents[6] → repo root）
 python3 docs/products/five-products/modules/evaluation/contracts/validate_sample.py
-python3 -m pytest aiPlat-core/core/tests/unit/test_eval_protocol_v0.py -q
+
+python3 packages/aiplat-evaluation/scripts/check_eval_module_docs.py
+python3 -m pytest aiPlat-core/core/tests/unit/test_eval_protocol_v0.py aiPlat-platform/tests/test_eval_response_models.py -q
 ```
