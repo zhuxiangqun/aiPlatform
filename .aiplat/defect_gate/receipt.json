@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T13:18:00+08:00",
+  "reviewed_at": "2026-11-15T13:40:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "fea32ad4f7f047d324be09945e1f613a8c09387f",
-  "diff_sha256": "1c5d5fe5262b620100593342249ded486322700e0e2b00af5905e03d3997baf9",
-  "head_sha": "bd0d58af6caa7d096277718a619fee5f1f61f038",
+  "merge_base": "f338b88645a71832e2d1c325082ac9f09f1cede1",
+  "diff_sha256": "5c728ec3367a214cbb0fc81ba144e377c903d4015eae4acdab24f8350aa1426e",
+  "head_sha": "74e5e6db79ef0659729a2af41c013c4179515090",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "PR742: doc_id gaps + reports snapshot_date archive. Residual: audit_changelog* root, 6 undated security evidence files, dir migration #2. Local lock only."
+  "note": "Residuals-2: security evidence dates + ONTOLOGY→knowledge. Residual: five-products contracts/ops path migration, audit_changelog* root. Local lock only."
 }
