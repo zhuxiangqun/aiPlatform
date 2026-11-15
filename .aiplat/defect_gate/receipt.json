@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T18:47:00+08:00",
+  "reviewed_at": "2026-11-15T19:17:58+08:00",
   "base_ref": "origin/main",
-  "merge_base": "3a2188d385196dc5e21214cf7c18775656b6692a",
-  "diff_sha256": "6af690e32baaa78a9768b2b1d877cb574160a4c805a885cec925a40be426254d",
-  "head_sha": "64383ee401a52b89eb346cb0e2af6c1ed658ab84",
+  "merge_base": "96fca6f9099baf1525702ab24f6b8c724903a192",
+  "diff_sha256": "e497923d8e597e8b1c6ead552ddbfdc47979103e09715e248d0907a857819ed2",
+  "head_sha": "3a33e4fe3f3912e512dec71a626ac4ab29235614",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Harden process_split name gate only; no authorize flip. Checks: PHASE3 rule text, runtime false table row, PREP_STATUS false."
+  "note": "\u00a73.3 eng body port on current generator; suite paths remapped; verify-whitepaper-ready OK. Local lock only."
 }
