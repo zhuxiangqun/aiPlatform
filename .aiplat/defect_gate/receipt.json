@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T15:09:00+08:00",
+  "reviewed_at": "2026-11-16T15:21:51+08:00",
   "base_ref": "origin/main",
   "merge_base": "52359e9acedd76c8da22648649484e4e5bfc9747",
-  "diff_sha256": "12a3473535b41fa96f3b3ea4c278e43473bdc888452212f7d5e0909083347927",
-  "head_sha": "de9e7839a284bc3b39c2a9b021358851f4138460",
+  "diff_sha256": "e52047c7a2f9d56f42f2f7661576a68d4665cf76e96b9a7e889b3ec5a394dfc3",
+  "head_sha": "02f48a20ee7f749dd429174f104fa2dd720d226f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "After whitepaper refresh for Code References gate. Residual: no human cert / SLO fill / N04·N12·N18."
+  "note": "docs-only: AUTO-STATS + whitepaper stamp sync for contracts-guard; no product logic change"
 }
