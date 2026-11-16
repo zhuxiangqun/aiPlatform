@@ -1330,6 +1330,7 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| default_catalog_path | `core/harness/knowledge_pipeline/conformance_pack.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_conformance_gate_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
 | get_conformance_pack_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
 | load_conformance_catalog | `core/harness/knowledge_pipeline/conformance_pack.py` | ✅ | 自动同步 | 已合入 |

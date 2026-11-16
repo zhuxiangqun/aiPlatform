@@ -29,7 +29,7 @@ def test_gate_fails_when_claimed_evidence_missing(tmp_path):
     cat = {
         "standard": "test",
         "standard_section": "N",
-        "pilot_domain": "lock-service",
+        "pilot_domain": "pilot-domain",
         "measured_at": "2026-11-16",
         "items": [
             {
