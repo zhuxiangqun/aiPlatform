@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T13:45:00+08:00",
+  "reviewed_at": "2026-11-16T14:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f985896a5c664ac4c0483a6eaae4e6e0e0d09793",
-  "diff_sha256": "a7922ee30987735fd5e03e567412bac17584c44707d58d9615c4c3863973a5f1",
-  "head_sha": "d03bb907061059e4604f90b67fb53169bd0e49b7",
+  "merge_base": "c45824ae46087b38fae94b4d55e845e5f161fa23",
+  "diff_sha256": "3bcc20ee8882ef183c5e52abadecb1364b923391fcbdda9a46932e81f9b5d8b7",
+  "head_sha": "86c5ffb604e1f81231b7a66b9bbf8a2040067103",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "W10 OCS: CI ratchet seeds full logic-class ABox after C5 coverage change. Residual: edge coverage presence-only."
+  "note": "Merge main into #773 after #772: keep OCS+Migration; stats/matrix/whitepapers regenerated. Residual: certification/N24 pack still out of slice."
 }
