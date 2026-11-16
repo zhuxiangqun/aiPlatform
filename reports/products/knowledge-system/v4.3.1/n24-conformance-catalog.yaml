@@ -154,11 +154,13 @@ items:
     note: 参考策略用例；非实现方运行时权威
   - id: N18
     title: 实现方语义测试通过
-    status: missing
+    status: partial
     phase: W10/P4
-    gap_type: 缺失
-    evidence: []
-    note: conformance README 要求的真实 RBAC/Fact Store 套件未交付
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-implementer-semantics-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/implementer_semantics.py
+    note: 最小 5 探针（Raw/evidence/citation/跨租户/customer_action）；非生产 RBAC 源替换；非 N18 全量认证
   - id: N19
     title: 运行时权威与审计快照
     status: partial

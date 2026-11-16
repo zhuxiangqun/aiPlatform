@@ -35,7 +35,7 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | 15 | JSON Schema 与附录一致 | exists | phase0 标准包 | 标准包就绪 | — |
 | 16 | 附录示例 Schema 校验 | exists | phase0 标准包 | 标准包就绪 | — |
 | 17 | 记录级语义校验 | exists | phase0 参考策略 | 标准包就绪 | — |
-| 18 | 实现方语义测试 | missing | — | 缺失 | W10 |
+| 18 | 实现方语义测试 | partial | Implementer Semantics 5 探针 + gate | 有实现无证据 | W10 |
 | 19 | 运行时权威与审计快照 | partial | ActionExecution before/after | 有实现无证据 | W7 |
 | 20 | L1/L2/L3 约束分层 | partial | G2 / FunctionContract L1 | 有动作无门禁 | W7 |
 | 21 | 防假绿 | partial | OCS/校准诚实锁 | 有实现无证据 | W6/W10 |
@@ -48,8 +48,8 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | 状态 | 项数 | 说明 |
 |------|:----:|------|
 | exists | 3 | #15–17 标准包（不变） |
-| partial | 18 | W5–W10 最小切片推进后由 missing 升格 |
-| missing | 3 | #4 来源策略 / #12 Fact 状态机 / #18 实现方语义套件 |
+| partial | 19 | W5–W10 最小切片推进后由 missing 升格（含 N18） |
+| missing | 2 | #4 来源策略 / #12 Fact 状态机 |
 
 **目标等级（记录）**：Core（仍未达成）。  
 **禁止话术**：不得因本表 partial 增多而宣称「附录 N 已符合」或「可认证」。

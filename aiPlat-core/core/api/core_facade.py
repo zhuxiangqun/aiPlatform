@@ -5408,6 +5408,37 @@ def evaluate_conformance_gate(
     return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
 
 
+async def run_implementer_semantics_suite(
+    *,
+    work_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """W10 N18：跑实现方语义最小探针套件（FactLedger + ActionExecution）。
+
+    Args:
+        work_dir: 可选工作目录。
+    """
+    from core.harness.knowledge_pipeline.implementer_semantics import (
+        run_implementer_semantics_suite as _run,
+    )
+
+    return await _run(work_dir=work_dir)
+
+
+def evaluate_implementer_semantics_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """W10 N18：实现方语义门槛门（禁止冒充 N18 全量认证）。
+
+    Args:
+        suite: ``run_implementer_semantics_suite`` 回执；缺省视为未跑。
+    """
+    from core.harness.knowledge_pipeline.implementer_semantics import (
+        evaluate_implementer_semantics_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def publish_confidence_calibration(
     *,
     tenant_id: str,
