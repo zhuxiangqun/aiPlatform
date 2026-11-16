@@ -148,6 +148,5 @@ async def test_action_l1_policy_denied_without_permissions(tmp_path):
         actor="u1",
         role="operator",
         permissions=["action:lock-service:accept_order"],
-        _bypass_approval=True,
     )
     assert allowed["status"] in {"executed", "done", "completed", "success", "ok"}

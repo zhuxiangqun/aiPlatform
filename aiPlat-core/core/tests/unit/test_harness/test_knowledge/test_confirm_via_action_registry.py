@@ -33,7 +33,6 @@ async def test_confirm_action_l1_denied_without_kb_write(aiplat_home):
         {"extraction_id": "ext-denied"},
         actor="u1",
         permissions=["kb:read"],
-        _bypass_approval=True,
     )
     assert denied.get("status") == "policy_denied", denied
 
@@ -64,7 +63,6 @@ async def test_confirm_action_executes_with_kb_write(aiplat_home):
             {"extraction_id": "ext-ok"},
             actor="factory",
             permissions=["kb:write"],
-            _bypass_approval=True,
         )
     assert ok.get("status") == "executed", ok
     body = ok.get("result") or {}

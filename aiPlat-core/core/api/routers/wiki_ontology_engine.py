@@ -2777,7 +2777,6 @@ async def run_graph_inference(req: dict):
                 },
                 actor=str(req.get("actor") or "inference-ui"),
                 role=str(req.get("role") or "analyst"),
-                _bypass_approval=True,
             )
             action_results.append(ar)
             if ar.get("status") == "executed":

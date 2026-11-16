@@ -47,5 +47,5 @@ PYTHONPATH=aiPlat-core:aiPlat-platform:. .venv/bin/python -m pytest \
 - ObjectSet SDK / Interface
 - FunctionContract → 见 `phase2-function-contract-evidence.md`（本批另切片）
 - 字段级 ACL 全矩阵
-- confirm 全量走审批队列（本切片 `_bypass_approval=True`，仅硬门权限）
+- confirm 合同为 `require_approval=false` + L1 `kb:write`；裸 Registry bypass 已收紧（见 Batch B / `phase2-action-execution-evidence.md`）
 - Wiki 读模型硬门 → 见 `phase2-wiki-readonly-evidence.md`（本批另切片）

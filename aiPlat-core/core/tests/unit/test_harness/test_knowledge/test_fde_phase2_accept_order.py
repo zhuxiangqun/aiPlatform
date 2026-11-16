@@ -23,6 +23,20 @@ def aiplat_home(tmp_path, monkeypatch):
     return home
 
 
+REENTRY_LOCK = "ut-accept-reentry"
+
+
+def _wire_approved_reentry(store: AsyncMock) -> None:
+    """高风险合同强制 HITL：单测用已批准 lock 模拟 approve() 重入。"""
+    store.get_pending = AsyncMock(
+        return_value={
+            "lock_id": REENTRY_LOCK,
+            "action_id": CANONICAL,
+            "status": "approved",
+        }
+    )
+
+
 def _seed_orders(domain: str, prefix: str, count: int) -> list:
     g = GraphIndex(domain)
     ids = []
@@ -77,7 +91,6 @@ async def test_accept_order_l1_rejects_non_pending(aiplat_home):
         {"assigned_technician": "tech-9"},
         actor="fda-1",
         role="agent",
-        _bypass_approval=True,
     )
     assert r.get("status") == "blocked", r
     assert r.get("constraint_type") == "state"
@@ -95,6 +108,7 @@ async def test_accept_order_execute_canonical(aiplat_home):
 
     store = AsyncMock()
     store.insert_audit = AsyncMock(return_value="aud_1")
+    _wire_approved_reentry(store)
     reg = AsyncActionRegistry(store=store)
     register_all(reg)
 
@@ -106,6 +120,7 @@ async def test_accept_order_execute_canonical(aiplat_home):
         role="agent",
         permissions=ACCEPT_PERMS,
         _bypass_approval=True,
+        _approval_reentry_lock_id=REENTRY_LOCK,
     )
     assert r1.get("status") == "executed", r1
     store.insert_audit.assert_awaited()
@@ -122,6 +137,7 @@ async def test_accept_order_execute_canonical(aiplat_home):
         role="agent",
         permissions=ACCEPT_PERMS,
         _bypass_approval=True,
+        _approval_reentry_lock_id=REENTRY_LOCK,
     )
     assert r2.get("status") == "executed", r2
 
@@ -132,6 +148,7 @@ async def test_bench_sample_20_zero_fail(aiplat_home):
     ids = _seed_orders("lock-service", "IO-S20", 20)
     store = AsyncMock()
     store.insert_audit = AsyncMock(side_effect=lambda rec: "aud")
+    _wire_approved_reentry(store)
     reg = AsyncActionRegistry(store=store)
     register_all(reg)
     fails = 0
@@ -144,6 +161,7 @@ async def test_bench_sample_20_zero_fail(aiplat_home):
             role="agent",
             permissions=ACCEPT_PERMS,
             _bypass_approval=True,
+            _approval_reentry_lock_id=REENTRY_LOCK,
         )
         if r.get("status") != "executed":
             fails += 1

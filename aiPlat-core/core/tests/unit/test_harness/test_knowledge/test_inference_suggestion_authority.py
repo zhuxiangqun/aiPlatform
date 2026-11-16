@@ -74,7 +74,6 @@ async def test_assert_inferred_edge_via_action(aiplat_home):
         },
         actor="analyst-1",
         role="analyst",
-        _bypass_approval=True,
     )
     assert r.get("status") == "executed", r
     body = r.get("result") or {}

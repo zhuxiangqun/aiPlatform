@@ -79,7 +79,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-action-execute-tool-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
-    note: ActionRegistry L1 + 幂等/快照；审批 bypass 路径仍存
+    note: Registry 裸 bypass 拒绝；仅 approve 重入；非全量认证
   - id: N09
     title: 跨租户 0 泄漏
     status: partial
@@ -174,7 +174,7 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - aiPlat-core/core/harness/infrastructure/action_execution.py
-    note: customer_action before/after；Fact/Query 权威快照未统一
+    note: customer_action before/after；审批重入有 lock 权威；Fact/Query 快照未统一
   - id: N20
     title: L1/L2/L3 约束分层
     status: partial
@@ -183,7 +183,8 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-function-contract-evidence.md
-    note: Action/Function L1 形状；知识面未按标准完整分层
+      - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
+    note: L1+审批门加深（裸 bypass 拒）；知识面未按标准完整分层
   - id: N21
     title: 防假绿
     status: partial

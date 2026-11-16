@@ -282,8 +282,9 @@ class AsyncActionRegistry:
         role: str = "",
         permissions: Optional[List[str]] = None,
         _bypass_approval: bool = False,
+        _approval_reentry_lock_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """execute。
+        """执行动作（7 步流水线）。
 
         Args:
             action_id: action 标识。
@@ -293,7 +294,8 @@ class AsyncActionRegistry:
             role: role 参数。
             permissions: 调用方持有的权限/scope 列表；合同 ``required_permissions``
                 非空时必须全部满足，否则 ``policy_denied``（L1 硬门，失败关闭）。
-            _bypass_approval: _bypass_approval 参数。
+            _bypass_approval: 仅审批回调重入可 True；裸 True 返回 ``bypass_forbidden``。
+            _approval_reentry_lock_id: 已 approved 的 pending lock_id（与 bypass 成对）。
         """
         from core.harness.infrastructure.workbench_runtime_guard import WorkbenchRuntimeGuard
 
@@ -304,6 +306,19 @@ class AsyncActionRegistry:
         c = self._contracts.get(action_id)
         if not c:
             return {"status": "invalid", "error": f"Unknown action: {action_id}"}
+
+        # 为什么：生产/HTTP 禁止测试式裸 bypass；仅 approve() 持有效 approved 记录可重入
+        if _bypass_approval:
+            reentry = await self._assert_approval_reentry(
+                action_id=action_id,
+                lock_id=_approval_reentry_lock_id,
+            )
+            if not reentry.get("ok"):
+                return {
+                    "status": "bypass_forbidden",
+                    "error": reentry.get("error") or "approval_reentry_required",
+                    "constraint_type": "approval",
+                }
 
         # resolve entity
         if isinstance(entity_ref, tuple):
@@ -526,6 +541,7 @@ class AsyncActionRegistry:
             params=pending.get("params", {}),
             actor=pending.get("actor", "system"),
             _bypass_approval=True,
+            _approval_reentry_lock_id=lock_id,
         )
         return {"status": "approved", "execution": result}
 
@@ -811,6 +827,38 @@ class AsyncActionRegistry:
             })
         except Exception:
             logger.error("Audit write failed for %s", c.action_id, exc_info=True)
+
+    async def _assert_approval_reentry(
+        self,
+        *,
+        action_id: str,
+        lock_id: Optional[str],
+    ) -> Dict[str, Any]:
+        """校验 ``_bypass_approval`` 是否来自已批准的审批重入。
+
+        Args:
+            action_id: 当前要执行的 action_id（已 resolve）。
+            lock_id: approve() 传入的 pending lock_id。
+
+        Returns:
+            ``{"ok": True}`` 或 ``{"ok": False, "error": ...}``。
+        """
+        lid = (lock_id or "").strip()
+        if not lid:
+            return {"ok": False, "error": "approval_reentry_required"}
+        try:
+            pending = await self._store.get_pending(lid)
+        except Exception:
+            logger.debug("approval reentry lookup failed", exc_info=True)
+            return {"ok": False, "error": "approval_reentry_lookup_failed"}
+        if not pending:
+            return {"ok": False, "error": "approval_reentry_not_found"}
+        if str(pending.get("status") or "") != "approved":
+            return {"ok": False, "error": "approval_reentry_not_approved"}
+        pending_aid = self.resolve_action_id(str(pending.get("action_id") or ""))
+        if pending_aid and pending_aid != action_id:
+            return {"ok": False, "error": "approval_reentry_action_mismatch"}
+        return {"ok": True}
 
     async def _enqueue_approval(self, c: ActionContractModel, entity_id: str,
                                  domain_id: str, params: Dict, actor: str) -> Dict[str, Any]:

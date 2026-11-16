@@ -70,7 +70,6 @@ async def test_triage_blocked_when_not_open(aiplat_home):
         {"new_state": "triaging"},
         actor="fda-1",
         role="agent",
-        _bypass_approval=True,
     )
     assert r.get("status") == "blocked", r
     assert r.get("constraint_type") == "state"
@@ -91,7 +90,6 @@ async def test_alert_triage_full_path(aiplat_home):
         {"new_state": "triaging", "suspected_root": "MW-REDIS-1"},
         actor="fda-1",
         role="agent",
-        _bypass_approval=True,
     )
     assert r1.get("status") == "executed", r1
 
@@ -105,7 +103,6 @@ async def test_alert_triage_full_path(aiplat_home):
         },
         actor="fda-1",
         role="agent",
-        _bypass_approval=True,
     )
     assert r2.get("status") == "executed", r2
 
@@ -115,7 +112,6 @@ async def test_alert_triage_full_path(aiplat_home):
         {"new_state": "rooted", "root_entity_id": "MW-REDIS-1"},
         actor="fda-1",
         role="agent",
-        _bypass_approval=True,
     )
     assert r3.get("status") == "executed", r3
 
@@ -166,7 +162,6 @@ async def test_complex_demo_seed_triage(aiplat_home):
         {"new_state": "triaging", "suspected_root": "MW-Redis主"},
         actor="fda-1",
         role="agent",
-        _bypass_approval=True,
     )
     assert r.get("status") == "executed", r
 
@@ -285,6 +280,5 @@ async def test_import_sample_then_triage(aiplat_home):
         {"new_state": "triaging", "suspected_root": "MW-Redis主"},
         actor="fda-1",
         role="agent",
-        _bypass_approval=True,
     )
     assert r.get("status") == "executed", r

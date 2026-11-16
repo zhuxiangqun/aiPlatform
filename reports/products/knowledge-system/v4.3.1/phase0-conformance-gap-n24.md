@@ -25,7 +25,7 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | 5 | Wiki/索引有条件重建 | partial | Wiki 读模型硬门 + G2 可重建 | 有 Wiki 无事实源 | W4 |
 | 6 | Gateway 查询契约 | partial | FactLedger 网关 + ObjectSet；非附录 M 统一入口 | 有实现无证据 | W6 |
 | 7 | 权限召回前过滤 | partial | ObjectSet 租户前置 + ACL | 有查询无权限 | W6/W8 |
-| 8 | 动作 Policy/Approval/Audit | partial | ActionRegistry L1 + 幂等/快照；bypass 仍存 | 有动作无门禁 | W5/W7 |
+| 8 | 动作 Policy/Approval/Audit | partial | L1+幂等；裸 bypass 拒绝（仅 approve 重入） | 有动作无门禁 | W5/W7 |
 | 9 | 跨租户 0 泄漏 | partial | ACL/Scenario 负向用例；未认证全域 0 | 有实现无证据 | W8 |
 | 10 | 评测定义/数据集/门槛 | partial | Confidence Calibration 附录 O | 有实现无证据 | W10 |
 | 11 | 迁移/回滚方案 | partial | Migration 双写/对账/回滚演练；切写未授权 | 有实现无证据 | W10 |
