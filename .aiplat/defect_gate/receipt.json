@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T11:32:00+08:00",
+  "reviewed_at": "2026-11-16T13:30:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4faeedd2af2a78238fdd40345ef705131470401d",
-  "diff_sha256": "0e698a4bc7839f0d9e574c2877d697798bf0303408e1418dc2f12a93cc8624bc",
-  "head_sha": "0ba5a04a4ee933fbb9fa6e46892d0831f4c7f110",
+  "merge_base": "f985896a5c664ac4c0483a6eaae4e6e0e0d09793",
+  "diff_sha256": "77db5cc754bca186ebdb3054c6b5e2f381be4218efa9ba27af5c94280ea74fba",
+  "head_sha": "037ad8735e6adae1f80776aa432ef4428eb11481",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Rebased onto main after #767 merge. W8 ObjectSet ABox ACL; clauses 95(W7)+96(W8) both present."
+  "note": "W10 OCS min: C5 coverage scoring replaces node-count tiers; evaluate_ocs_gate wired. Residual: edge coverage is presence-only (not per object_property); N24 pack out of slice."
 }
