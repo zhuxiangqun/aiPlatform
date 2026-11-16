@@ -1,7 +1,8 @@
-"""ObjectSet 最小查询（附录 E.1/E.2）— 租户前置、只读。
+"""ObjectSet 最小查询（附录 E.1/E.2 / W8）— 租户前置、只读、ABox ACL。
 
-职责：按 object_type + filter 从 FactLedger 组装对象集合视图。
-非目标：不实现 SDK、Link traverse、字段级 ACL、写路径。
+职责：按 object_type + filter 从 FactLedger 组装对象集合视图；
+经 ``role`` 应用实例级拒绝与字段脱敏（附录 H.1）。
+非目标：不实现 SDK、写路径、Scenario/Package、Wiki/KB 全入口字段 ACL。
 """
 from __future__ import annotations
 
@@ -19,6 +20,38 @@ from core.harness.knowledge_pipeline.fact_ledger import (
 from core.harness.knowledge_pipeline.fact_projector import _parse_subject
 
 logger = logging.getLogger(__name__)
+
+
+def _apply_abox_acl(
+    items: List[Dict[str, Any]],
+    *,
+    domain_id: str,
+    pk_field: str,
+    role: str,
+) -> List[Dict[str, Any]]:
+    """实例拒绝 + 字段脱敏；无 ACL 文件时透传。
+
+    Args:
+        items: 过滤后的对象行。
+        domain_id: 域 id（ABox ACL 目录键）。
+        pk_field: 主键字段名。
+        role: 调用方角色（空则 ACL 默认放行，与 graph_abox_acl 一致）。
+    """
+    if not domain_id:
+        return items
+    from core.policy.graph_abox_acl import check_entity_acl, redact_entity_fields
+
+    out: List[Dict[str, Any]] = []
+    for it in items:
+        eid = str(it.get(pk_field) or it.get("id") or "").strip()
+        if not eid:
+            out.append(it)
+            continue
+        # 为什么：召回前过滤——deny 的实例不得进入 items/aggregates
+        if not check_entity_acl(domain_id, eid, role, "read"):
+            continue
+        out.append(redact_entity_fields(domain_id, eid, it, role))
+    return out
 
 
 class ObjectSetRequest(BaseModel):
@@ -113,16 +146,18 @@ async def query_object_set(
     tenant_id: str,
     permissions: Optional[List[str]] = None,
     required_permissions: Optional[List[str]] = None,
+    role: str = "",
     bindings_path: Optional[Path] = None,
     ledger=None,
 ) -> Dict[str, Any]:
-    """执行 ObjectSet 查询（只读；租户 SQL 前置）。
+    """执行 ObjectSet 查询（只读；租户 SQL 前置；可选 ABox 实例/字段 ACL）。
 
     Args:
         request: E.1 请求或 dict。
         tenant_id: 租户（必填）。
         permissions: 调用方 scopes。
         required_permissions: 合同级权限，默认 ``["kb:read"]``。
+        role: 调用方角色（透传 ABox ACL；空则字段/实例默认放行）。
         bindings_path: ObjectType 种子路径。
         ledger: 可选 FactLedger 注入（测试）。
 
@@ -209,6 +244,12 @@ async def query_object_set(
             bucket[pred] = f.get("object")
 
     items = [v for v in by_subject.values() if _item_matches_filter(v, req.filter)]
+    items = _apply_abox_acl(
+        items,
+        domain_id=domain_id,
+        pk_field=pk_field,
+        role=role or "",
+    )
     _sort_items(items, req.sort)
     limited = items[: req.limit]
 
@@ -238,4 +279,5 @@ async def query_object_set(
         "policy_gate": gate,
         "domain_id": domain_id,
         "tenant_id": tenant_id,
+        "role": role or "",
     }

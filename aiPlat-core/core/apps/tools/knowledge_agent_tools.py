@@ -64,6 +64,7 @@ async def _facade_query_object_set(
     *,
     tenant_id: str,
     permissions: Optional[List[str]] = None,
+    role: str = "",
 ) -> Dict[str, Any]:
     """经 CoreFacade 查询 ObjectSet（可被单测 monkeypatch）。
 
@@ -71,11 +72,12 @@ async def _facade_query_object_set(
         request: E.1 请求 dict。
         tenant_id: 租户。
         permissions: 权限/scopes。
+        role: 角色（ABox ACL）。
     """
     from core.api.core_facade import query_object_set
 
     return await query_object_set(
-        request, tenant_id=tenant_id, permissions=permissions
+        request, tenant_id=tenant_id, permissions=permissions, role=role or ""
     )
 
 
@@ -177,7 +179,7 @@ class ObjectQueryTool(BaseTool):
                 name="object.query",
                 description=(
                     "按 object_type + filter 查询对象集合（只读；须 tenant_id；经 CoreFacade）。"
-                    "禁止 sql/直写 Fact。"
+                    "role 透传 ABox 实例/字段 ACL。禁止 sql/直写 Fact。"
                 ),
                 parameters={
                     "type": "object",
@@ -205,6 +207,10 @@ class ObjectQueryTool(BaseTool):
                         "domain_id": {
                             "type": "string",
                             "description": "可选域 id",
+                        },
+                        "role": {
+                            "type": "string",
+                            "description": "调用方角色（ABox 字段/实例 ACL）",
                         },
                         "permissions": {
                             "type": "array",
@@ -243,12 +249,14 @@ class ObjectQueryTool(BaseTool):
             "domain_id": str((params or {}).get("domain_id") or ""),
         }
         permissions = _parse_permissions(params or {})
+        role = str((params or {}).get("role") or "")
 
         try:
             out = await _facade_query_object_set(
                 request,
                 tenant_id=tenant_id,
                 permissions=permissions,
+                role=role,
             )
         except Exception as e:
             logger.warning("object.query failed", exc_info=True)
@@ -534,12 +542,14 @@ class ObjectSetAggregateTool(BaseTool):
             "aggregate": aggregate,
         }
         permissions = _parse_permissions(params or {})
+        role = str((params or {}).get("role") or "")
 
         try:
             out = await _facade_query_object_set(
                 request,
                 tenant_id=tenant_id,
                 permissions=permissions,
+                role=role,
             )
         except Exception as e:
             logger.warning("object_set.aggregate failed", exc_info=True)
