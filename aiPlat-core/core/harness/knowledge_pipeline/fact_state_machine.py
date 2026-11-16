@@ -7,9 +7,9 @@
   - 门槛门；``certified`` 恒 false
 
 非目标：
-  - 不把裸 ``put_fact`` 改为唯一强制入口（提供 transition API）
   - 不做 reviewer RBAC 角色源替换
   - 不宣称 N12 全量 / 附录 N 认证
+  - transition 写回 ``put_fact(..., enforce_write_gates=False)``（边已在外层校验）
 """
 from __future__ import annotations
 
@@ -283,6 +283,7 @@ async def transition_fact_review(
     actor: str,
     reason: str,
     db_path: Optional[str] = None,
+    source_policy_db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """审核态转换（须 actor/reason；published 须 evidence + active）。
 
@@ -294,6 +295,7 @@ async def transition_fact_review(
         actor: 操作人。
         reason: 理由。
         db_path: 审计库路径。
+        source_policy_db_path: 来源策略/冲突库路径。
 
     Returns:
         更新后的 Fact + transition 审计。
@@ -311,6 +313,22 @@ async def transition_fact_review(
             raise FactStateMachineError(
                 "published review requires lifecycle status=active"
             )
+        # N04：未裁决冲突 / 未登记策略不得经 transition 发布
+        from core.harness.knowledge_pipeline.source_policy import (
+            SourcePolicyError,
+            assert_publish_allowed,
+        )
+
+        try:
+            assert_publish_allowed(
+                tenant_id=tenant_id,
+                source_policy=str(fact.get("source_policy") or ""),
+                subject=str(fact.get("subject") or ""),
+                predicate=str(fact.get("predicate") or ""),
+                db_path=source_policy_db_path,
+            )
+        except SourcePolicyError as exc:
+            raise FactStateMachineError(str(exc)) from exc
     new_rev = int(fact.get("revision") or 1) + 1
     audit = _record_audit(
         tenant_id=tenant_id,
@@ -342,6 +360,8 @@ async def transition_fact_review(
         valid_from=fact.get("valid_from"),
         valid_to=fact.get("valid_to"),
         revision=new_rev,
+        # 为什么关硬门：边与冲突门已在本函数校验；避免「改状态须走 transition」自锁
+        enforce_write_gates=False,
     )
     return {"fact": updated, "transition": audit}
 
@@ -412,6 +432,7 @@ async def transition_fact_lifecycle(
         valid_from=fact.get("valid_from"),
         valid_to=fact.get("valid_to"),
         revision=new_rev,
+        enforce_write_gates=False,
     )
     return {"fact": updated, "transition": audit}
 

@@ -5614,10 +5614,12 @@ async def put_fact_with_source_policy(
     review_status: str,
     confidence: float,
     db_path: Optional[str] = None,
+    actor: str = "",
+    reason: str = "",
     ledger: Any = None,
     **kwargs: Any,
 ) -> Dict[str, Any]:
-    """W3 N04：经来源策略/冲突门写入 Fact。
+    """W3 N04：经来源策略/冲突门写入 Fact；published 须 actor/reason。
 
     Args:
         tenant_id / collection_id / subject / predicate / object: Fact 键值。
@@ -5627,6 +5629,7 @@ async def put_fact_with_source_policy(
         review_status: 审核状态。
         confidence: 置信度。
         db_path: 策略库路径。
+        actor / reason: published 时必填。
         ledger: 可选 FactLedger。
         **kwargs: 透传 put_fact。
     """
@@ -5652,6 +5655,8 @@ async def put_fact_with_source_policy(
         review_status=review_status,
         confidence=confidence,
         db_path=db_path,
+        actor=actor,
+        reason=reason,
         **kwargs,
     )
 
@@ -5730,6 +5735,7 @@ async def transition_fact_review(
     actor: str,
     reason: str,
     db_path: Optional[str] = None,
+    source_policy_db_path: Optional[str] = None,
     ledger: Any = None,
 ) -> Dict[str, Any]:
     """W3 N12：Fact 审核态转换。
@@ -5741,6 +5747,7 @@ async def transition_fact_review(
         actor: 操作人。
         reason: 理由。
         db_path: 审计库。
+        source_policy_db_path: 来源策略库。
         ledger: 可选 FactLedger。
     """
     from core.harness.knowledge_pipeline.fact_state_machine import (
@@ -5760,6 +5767,7 @@ async def transition_fact_review(
         actor=actor,
         reason=reason,
         db_path=db_path,
+        source_policy_db_path=source_policy_db_path,
     )
 
 

@@ -8,6 +8,7 @@
 非目标：
   - 完整 ObjectSet/SDK、Wiki 只读化、Scenario Package（后续 Phase）
   - 替代现有 DataSourceRegistry 外部连接器（本模块是附录 A/D 契约层）
+  - 宣称附录 N 全量认证（写入硬门加深仍为 partial）
 """
 from __future__ import annotations
 
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _PUBLISHED = "published"
+_ALLOWED_NEW_REVIEW = frozenset({"draft", "reviewed", "rejected"})
 
 
 def default_fact_ledger_db_path() -> str:
@@ -359,8 +361,11 @@ class FactLedger:
         valid_from: Optional[str] = None,
         valid_to: Optional[str] = None,
         revision: int = 1,
+        enforce_write_gates: bool = True,
+        allow_bootstrap_published: bool = False,
+        source_policy_db_path: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """写入 Fact；published 必须有 evidence。
+        """写入 Fact；默认强制来源策略 / 冲突门 / 状态边。
 
         Args:
             tenant_id: 租户。
@@ -379,6 +384,9 @@ class FactLedger:
             inferred: 是否推断。
             valid_from / valid_to: 有效期。
             revision: 修订号。
+            enforce_write_gates: 为 True 时强制策略登记、冲突门、状态边（默认）。
+            allow_bootstrap_published: 测试种子专用；跳过写入硬门（Facade 不暴露）。
+            source_policy_db_path: 来源策略库路径（冲突/策略查询）。
 
         Returns:
             Fact 记录。
@@ -397,6 +405,24 @@ class FactLedger:
                 )
 
         fid = fact_id or f"fact-{uuid.uuid4().hex[:12]}"
+        existing: Optional[Dict[str, Any]] = None
+        if fact_id:
+            existing = await self.get_fact(fid, tenant_id=tenant_id)
+
+        # 为什么：transition / 已校验路径可关硬门；测试种子用 bootstrap 跳过
+        apply_gates = bool(enforce_write_gates) and not bool(allow_bootstrap_published)
+        if apply_gates:
+            await self._enforce_put_fact_write_gates(
+                tenant_id=tenant_id,
+                subject=subject,
+                predicate=predicate,
+                source_policy=source_policy,
+                review_status=review_status,
+                status=status,
+                existing=existing,
+                source_policy_db_path=source_policy_db_path,
+            )
+
         recorded_at = _utc_now()
         vf = valid_from or recorded_at
         record = {
@@ -453,6 +479,78 @@ class FactLedger:
             )
             await db.commit()
         return record
+
+    async def _enforce_put_fact_write_gates(
+        self,
+        *,
+        tenant_id: str,
+        subject: str,
+        predicate: str,
+        source_policy: str,
+        review_status: str,
+        status: str,
+        existing: Optional[Dict[str, Any]],
+        source_policy_db_path: Optional[str] = None,
+    ) -> None:
+        """N04/N12 写入硬门：策略已登记、冲突已裁决、状态边合法。
+
+        Args:
+            tenant_id: 租户。
+            subject / predicate: Fact 键。
+            source_policy: 策略 ID。
+            review_status / status: 目标审核态与生命周期。
+            existing: 已有 Fact；None 表示新建。
+            source_policy_db_path: 策略库路径。
+        """
+        from core.harness.knowledge_pipeline.source_policy import (
+            SourcePolicyError,
+            assert_publish_allowed,
+            get_source_policy,
+        )
+
+        pol_id = (source_policy or "").strip()
+        if not pol_id:
+            raise FactLedgerError("source_policy required")
+        if get_source_policy(pol_id, tenant_id=tenant_id, db_path=source_policy_db_path) is None:
+            raise FactLedgerError(f"unknown source_policy: {pol_id}")
+
+        rs = (review_status or "").strip()
+        st = (status or "").strip() or "active"
+
+        if existing is None:
+            if rs == _PUBLISHED:
+                raise FactLedgerError(
+                    "new fact cannot be published; use draft/reviewed then transition"
+                )
+            if rs not in _ALLOWED_NEW_REVIEW:
+                raise FactLedgerError(
+                    f"new fact review_status must be draft/reviewed/rejected, got {rs!r}"
+                )
+            if st != "active":
+                raise FactLedgerError(
+                    "new fact lifecycle status must be active"
+                )
+        else:
+            old_rs = str(existing.get("review_status") or "")
+            old_st = str(existing.get("status") or "")
+            # 为什么禁止在 put_fact 改状态：边校验与 actor/reason 审计只走 transition API
+            if rs != old_rs or st != old_st:
+                raise FactLedgerError(
+                    "review_status/status changes require transition API "
+                    f"(got review {old_rs!r}→{rs!r}, lifecycle {old_st!r}→{st!r})"
+                )
+
+        if rs == _PUBLISHED:
+            try:
+                assert_publish_allowed(
+                    tenant_id=tenant_id,
+                    source_policy=pol_id,
+                    subject=subject,
+                    predicate=predicate,
+                    db_path=source_policy_db_path,
+                )
+            except SourcePolicyError as exc:
+                raise FactLedgerError(str(exc)) from exc
 
     async def put_claim(
         self,
@@ -832,6 +930,26 @@ async def record_extraction_as_claim(
             "fetched_at": src["fetched_at"],
         }
     ]
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        transition_fact_review,
+    )
+    from core.harness.knowledge_pipeline.source_policy import register_source_policy
+
+    # 确保确认抽取策略已登记（幂等）
+    try:
+        register_source_policy(
+            tenant_id=tenant_id,
+            policy_id="extraction_confirm_v1",
+            authority="system",
+            freshness={"valid_days": 3650},
+            scope=["extraction_confirm"],
+            license="internal",
+            trust="high",
+            conflict_rule="prefer_newer_primary_then_human_review",
+        )
+    except Exception as exc:  # noqa: BLE001 — 已存在策略时忽略
+        if "fixed" in str(exc).lower():
+            raise
     claim = await ledger.put_claim(
         tenant_id=tenant_id,
         collection_id=f"{domain_id}-extractions",
@@ -844,7 +962,7 @@ async def record_extraction_as_claim(
         domain_id=domain_id,
         status="accepted",
     )
-    # 同步写一条 Fact，保证 put_fact 有生产调用链（确认抽取 → Claim + Fact）
+    # 同步写 Fact：draft → reviewed → published（写入硬门）
     fact = await ledger.put_fact(
         tenant_id=tenant_id,
         collection_id=f"{domain_id}-extractions",
@@ -854,10 +972,26 @@ async def record_extraction_as_claim(
         evidence=evidence,
         source_policy="extraction_confirm_v1",
         extractor_version="knowledge_pipeline.extractor",
-        review_status="published",
+        review_status="draft",
         confidence=0.8,
         domain_id=domain_id,
         status="active",
         inferred=False,
     )
-    return {"source": src, "claim": claim, "fact": fact}
+    await transition_fact_review(
+        ledger,
+        fact_id=fact["fact_id"],
+        tenant_id=tenant_id,
+        to_status="reviewed",
+        actor="extraction_confirm",
+        reason="confirm extraction",
+    )
+    published = await transition_fact_review(
+        ledger,
+        fact_id=fact["fact_id"],
+        tenant_id=tenant_id,
+        to_status="published",
+        actor="extraction_confirm",
+        reason="confirm extraction",
+    )
+    return {"source": src, "claim": claim, "fact": published["fact"]}

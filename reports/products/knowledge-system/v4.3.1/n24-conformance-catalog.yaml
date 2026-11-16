@@ -31,7 +31,7 @@ items:
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
-    note: G1 Fact Ledger 最小切片；非全量 Claim 冲突记录
+    note: G1 + put_fact 写入硬门；非全量 Claim 冲突记录/非认证
   - id: N04
     title: 来源策略与冲突裁决
     status: partial
@@ -40,7 +40,8 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-source-policy-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/source_policy.py
-    note: 策略登记+冲突显式落库+人审裁决+publish 门；非全写入路径强制/非 N04 全量认证
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_fact_write_gates_phase2.py
+    note: 写入硬门+冲突门+transition 发布；非 N04 全量认证
   - id: N05
     title: Wiki/索引有条件重建
     status: partial
@@ -114,7 +115,7 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-fact-state-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_state_machine.py
-    note: review/lifecycle/claim 边表+审计+transition API；非裸 put_fact 唯一强制/非 N12 全量认证
+    note: 边表+审计+put_fact 禁改状态/直发；非 reviewer RBAC/非 N12 全量认证
   - id: N13
     title: confidence 校准规则
     status: partial
