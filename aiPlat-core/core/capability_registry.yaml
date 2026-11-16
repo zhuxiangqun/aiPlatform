@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2772
+total_capabilities: 2787
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 310
+    caps_count: 325
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3210,6 +3210,66 @@ domains:
         module: aiPlat-platform/apps/fde/api/scenario_routes.py
         type: function
         signature: "POST /fde/scenarios via Facade"
+      - symbol: "satisfies_version_constraint"
+        module: core/harness/knowledge_pipeline/ontology_package.py
+        type: function
+        signature: "W9: semver dependency constraint check"
+      - symbol: "compute_content_hash"
+        module: core/harness/knowledge_pipeline/ontology_package.py
+        type: function
+        signature: "W9: Ontology Package content SHA-256"
+      - symbol: "publish_package"
+        module: core/harness/knowledge_pipeline/ontology_package.py
+        type: function
+        signature: "W9: publish Ontology Package version + content_hash"
+      - symbol: "get_package"
+        module: core/harness/knowledge_pipeline/ontology_package.py
+        type: function
+        signature: "W9: get Ontology Package by tenant (cross-tenant hidden)"
+      - symbol: "validate_package"
+        module: core/harness/knowledge_pipeline/ontology_package.py
+        type: function
+        signature: "W9: validate package content_hash + required fields"
+      - symbol: "check_compatibility"
+        module: core/harness/knowledge_pipeline/ontology_package.py
+        type: function
+        signature: "W9: check Ontology Package compatibility matrix"
+      - symbol: "check_dependency_lock"
+        module: core/harness/knowledge_pipeline/ontology_package.py
+        type: function
+        signature: "W9: check Ontology Package dependency lock"
+      - symbol: "rollback_package"
+        module: core/harness/knowledge_pipeline/ontology_package.py
+        type: function
+        signature: "W9: rollback active Ontology Package version"
+      - symbol: "publish_ontology_package"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: publish Ontology Package"
+      - symbol: "get_ontology_package"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: get Ontology Package"
+      - symbol: "validate_ontology_package"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: validate Ontology Package"
+      - symbol: "check_ontology_package_compatibility"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: check Ontology Package compatibility"
+      - symbol: "check_ontology_package_dependencies"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: check Ontology Package dependencies"
+      - symbol: "rollback_ontology_package"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: rollback Ontology Package"
+      - symbol: "publish_ontology_package_route"
+        module: aiPlat-platform/apps/fde/api/ontology_package_routes.py
+        type: function
+        signature: "POST /fde/ontology-packages via Facade"
       - symbol: "traverse_links_route"
         module: aiPlat-platform/apps/fde/api/link_traverse_routes.py
         type: function

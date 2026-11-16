@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3570
+total_capabilities: 3583
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1215,6 +1215,7 @@ scan_hash: 8f9548ec24f4
 | **action.execute（v4.3.1 W6 最小切片）** | `apps/tools/knowledge_agent_tools.py` → `ActionExecuteTool` + CoreFacade `execute_action` | ✅ | 附录 F.2；经 ActionRegistry L1；禁 sql/直写/`_bypass_approval`。证据 `phase2-action-execute-tool-evidence.md`。**未宣称** SDK/字段 ACL/N24 | 本批 |
 | **ActionExecution（v4.3.1 W7 最小切片）** | `harness/infrastructure/action_execution.py` + CoreFacade `execute_action`/`lookup_action_execution` + FDE `POST …/actions/execute` / `GET …/actions/executions/lookup` | ✅ | 附录 C.2；`customer_action` 强制 `tenant_id`+`idempotency_key`；重复键 `idempotent_replay`；before/after 快照落盘；HTTP 经 Facade。证据 `phase2-action-execution-evidence.md`。**未宣称** kill switch/字段 ACL/取消 Registry bypass（confirm）/N24。生成物适用：已接线（经 Facade） | 本批 |
 | **Knowledge Scenario（v4.3.1 W9 最小切片）** | `harness/knowledge_pipeline/scenario_branch.py` + CoreFacade create/simulate/merge + FDE `/scenarios/*` | ✅ | 附录 H.2；dry_run 分支；模拟不写主 Fact；合并须人审（pending_review→approver）；跨租户隐藏。证据 `phase2-scenario-evidence.md`。**未宣称** 合并后自动回写主事实 / Package 版本签名 / N24。生成物适用：已接线（经 Facade） | 本批 |
+| **Ontology Package（v4.3.1 W9 最小切片）** | `harness/knowledge_pipeline/ontology_package.py` + CoreFacade publish/validate/compat/deps/rollback + FDE `/ontology-packages/*` | ✅ | 附录 H.3；semver 发布；content_hash 可验证；依赖锁定；兼容矩阵；发布/回滚。证据 `phase2-ontology-package-evidence.md`。**未宣称** PKI 签名密钥管理 / 自动执行 migrations / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
 | **service-domain 参考实现** | `~/.aiplat/ontologies/service-domain.yaml` + `~/.aiplat/actions/service-domain_actions.yaml` + `custom_handlers/service_handlers.py` + `~/.aiplat/tests/service-domain_tests.yaml` + `scripts/sop_validate.py` + `docs/manuals/fde/06-sop-domain-delivery.md` | ✅ | 生产级参考实现：6类实体+6种关系+4态状态机+inference_rules + 5个动作（assign/start/submit/complete/reopen）+ 5个async handler + 12条测试用例 + SOP验证脚本6/6 PASS + 5天标准交付流程文档 | 已合入 |
@@ -1325,6 +1326,14 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| compute_content_hash | `core/harness/knowledge_pipeline/ontology_package.py` | ✅ | 自动同步 | 已合入 |
+| satisfies_version_constraint | `core/harness/knowledge_pipeline/ontology_package.py` | ✅ | 自动同步 | 已合入 |
+| publish_ontology_package_route | `aiPlat-platform/apps/fde/api/ontology_package_routes.py` | ✅ | 自动同步 | 已合入 |
+| rollback_package | `core/harness/knowledge_pipeline/ontology_package.py` | ✅ | 自动同步 | 已合入 |
+| check_dependency_lock | `core/harness/knowledge_pipeline/ontology_package.py` | ✅ | 自动同步 | 已合入 |
+| validate_package | `core/harness/knowledge_pipeline/ontology_package.py` | ✅ | 自动同步 | 已合入 |
+| get_package | `core/harness/knowledge_pipeline/ontology_package.py` | ✅ | 自动同步 | 已合入 |
+| publish_package | `core/harness/knowledge_pipeline/ontology_package.py` | ✅ | 自动同步 | 已合入 |
 | LinkTraverseRequest | `core/harness/knowledge_pipeline/link_traverse.py` | ✅ | 自动同步 | 已合入 |
 | traverse_links_route | `aiPlat-platform/apps/fde/api/link_traverse_routes.py` | ✅ | 自动同步 | 已合入 |
 | query_object_set_route | `aiPlat-platform/apps/fde/api/object_set_routes.py` | ✅ | 自动同步 | 已合入 |
@@ -1357,6 +1366,12 @@ scan_hash: 8f9548ec24f4
 | simulate_knowledge_scenario_change | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
 | approve_knowledge_scenario_merge | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
 | reject_knowledge_scenario_merge | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
+| publish_ontology_package | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
+| get_ontology_package | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
+| validate_ontology_package | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
+| check_ontology_package_compatibility | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
+| check_ontology_package_dependencies | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
+| rollback_ontology_package | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
 | create_scenario | `core/harness/knowledge_pipeline/scenario_branch.py` | ✅ | 自动同步 | 本批 |
 | get_scenario | `core/harness/knowledge_pipeline/scenario_branch.py` | ✅ | 自动同步 | 本批 |
 | simulate_change | `core/harness/knowledge_pipeline/scenario_branch.py` | ✅ | 自动同步 | 本批 |
@@ -4470,9 +4485,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 647 | 1 | 648 |
+| Harness 执行引擎 | 648 | 1 | 649 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 448 | 9 | 457 |
+| 知识引擎（本体） | 460 | 9 | 469 |
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4515,7 +4530,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3559** | **11** | **3570** |
+| **总计** | **3572** | **11** | **3583** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
