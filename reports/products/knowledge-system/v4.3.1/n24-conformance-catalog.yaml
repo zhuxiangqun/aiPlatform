@@ -51,7 +51,8 @@ items:
       - aiPlat-core/core/harness/knowledge/wiki_read_model.py
       - reports/products/knowledge-system/v4.3.1/phase2-wiki-readonly-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
-    note: 读模型硬门 + Fact→Graph 可重建；缺重建条件分类契约
+      - reports/products/knowledge-system/v4.3.1/phase2-rebuild-taxonomy-evidence.md
+    note: 三分类 rebuild_mode+reason+门槛门；非 Wiki 全量/certified
   - id: N06
     title: Gateway 查询契约
     status: partial
