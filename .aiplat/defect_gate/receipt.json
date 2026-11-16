@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T09:37:32+08:00",
+  "reviewed_at": "2026-11-16T09:53:33+08:00",
   "base_ref": "origin/main",
-  "merge_base": "9aec3ebe02cc2abfadfb8c278d5be2052b42454a",
-  "diff_sha256": "84198d1e111a63b10ff830b6c1f0cc428606736cbe03375bf7bc5eac5b92e391",
-  "head_sha": "583cb084522418027cf53d70d3328f1b21a2b139",
+  "merge_base": "4291156e2bec40a06cde80ffcdf819646a585af5",
+  "diff_sha256": "f685648d78c705a621c17355bf5577da0c98afec5ede1d2c6d89adfcf3244c00",
+  "head_sha": "740f93c3889beb9ac3edc27273b6054b7977f813",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "W6 object_set.aggregate + stats/whitepaper sync. Local lock only."
+  "note": "W6 action.execute tool via ActionRegistry L1; no bypass. Local lock only."
 }

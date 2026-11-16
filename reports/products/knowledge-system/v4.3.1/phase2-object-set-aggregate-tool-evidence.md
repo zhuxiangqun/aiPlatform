@@ -43,5 +43,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做（后续）
 
-- `sum`/`avg` 等非 count 聚合；`action.execute`；SDK
+- `sum`/`avg` 等非 count 聚合；SDK
+- `action.execute` → 见 `phase2-action-execute-tool-evidence.md`（本批另切片）
 - 字段级 ACL；附录 N 全量符合

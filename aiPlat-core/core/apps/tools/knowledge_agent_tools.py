@@ -1,8 +1,9 @@
 """知识系统 Agent 工具面（附录 F.2 最小切片）。
 
-提供 ``object.query`` / ``function.call`` / ``link.traverse`` / ``object_set.aggregate``，
-一律经 CoreFacade；禁止通用 SQL / 直写 Fact。
-非目标：不实现 action.execute / SDK 生成。
+提供 ``object.query`` / ``function.call`` / ``link.traverse`` /
+``object_set.aggregate`` / ``action.execute``，一律经 CoreFacade；
+禁止通用 SQL / 直写 Fact。
+非目标：不实现 SDK 生成。
 """
 from __future__ import annotations
 
@@ -98,6 +99,52 @@ async def _facade_invoke_function(
     return await invoke_function(
         function_id, params or {}, permissions=permissions, actor=actor
     )
+
+
+async def _facade_execute_action(
+    action_id: str,
+    entity_ref: Any,
+    params: Optional[Dict[str, Any]] = None,
+    *,
+    permissions: Optional[List[str]] = None,
+    actor: str = "",
+    role: str = "",
+) -> Dict[str, Any]:
+    """经 CoreFacade 执行 Action（可被单测 monkeypatch）。
+
+    Args:
+        action_id: ActionContract id。
+        entity_ref: 实体引用。
+        params: 动作入参。
+        permissions: 权限/scopes。
+        actor: 操作者。
+        role: 角色。
+    """
+    from core.api.core_facade import execute_action
+
+    return await execute_action(
+        action_id,
+        entity_ref,
+        params or {},
+        permissions=permissions,
+        actor=actor,
+        role=role,
+    )
+
+
+def _resolve_entity_ref(params: Dict[str, Any]) -> Any:
+    """从工具入参解析 entity_ref。
+
+    Args:
+        params: 工具入参（entity_ref / entity_id / domain_id）。
+    """
+    if "entity_ref" in params and params.get("entity_ref") not in (None, ""):
+        return params.get("entity_ref")
+    entity_id = str(params.get("entity_id") or "").strip()
+    domain_id = str(params.get("domain_id") or "").strip()
+    if entity_id and domain_id:
+        return (domain_id, entity_id)
+    return entity_id
 
 
 async def _facade_traverse_links(
@@ -504,5 +551,118 @@ class ObjectSetAggregateTool(BaseTool):
         return ToolResult(
             success=False,
             error=out.get("reason") or status or "aggregate_failed",
+            output=out,
+        )
+
+
+class ActionExecuteTool(BaseTool):
+    """附录 F.2 ``action.execute`` — 经 ActionRegistry L1 执行动作。"""
+
+    def __init__(self) -> None:
+        """注册 action.execute 工具合同。"""
+        super().__init__(
+            ToolConfig(
+                name="action.execute",
+                description=(
+                    "执行 ActionContract（经 CoreFacade → ActionRegistry；L1+审批）。"
+                    "禁止 sql/直写 Fact；禁止 bypass_approval。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "action_id": {
+                            "type": "string",
+                            "description": "ActionContract id",
+                        },
+                        "entity_id": {
+                            "type": "string",
+                            "description": "实体 id（可与 domain_id 组合）",
+                        },
+                        "domain_id": {
+                            "type": "string",
+                            "description": "可选域 id",
+                        },
+                        "entity_ref": {
+                            "description": "实体引用（优先于 entity_id）",
+                        },
+                        "params": {
+                            "type": "object",
+                            "description": "动作入参",
+                        },
+                        "permissions": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "调用方权限/scopes",
+                        },
+                        "actor": {
+                            "type": "string",
+                            "description": "操作者",
+                        },
+                        "role": {
+                            "type": "string",
+                            "description": "角色（可选）",
+                        },
+                    },
+                    "required": ["action_id"],
+                },
+                metadata={"category": "knowledge", "appendix": "F.2"},
+            )
+        )
+
+    async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """执行 action.execute。
+
+        Args:
+            params: 含 action_id / entity_id|entity_ref / params。
+        """
+        bad = _reject_sql_or_write(params or {})
+        if bad:
+            return ToolResult(success=False, error=bad)
+
+        # 为什么：工具面永不允许绕过审批门
+        if (params or {}).get("bypass_approval") or (params or {}).get(
+            "_bypass_approval"
+        ):
+            return ToolResult(success=False, error="bypass_approval_forbidden")
+
+        action_id = str((params or {}).get("action_id") or "").strip()
+        if not action_id:
+            return ToolResult(success=False, error="action_id_required")
+
+        entity_ref = _resolve_entity_ref(params or {})
+        if entity_ref in (None, ""):
+            return ToolResult(success=False, error="entity_ref_required")
+
+        action_params = (params or {}).get("params")
+        if not isinstance(action_params, dict):
+            action_params = {}
+        bad2 = _reject_sql_or_write(action_params)
+        if bad2:
+            return ToolResult(success=False, error=bad2)
+
+        permissions = _parse_permissions(params or {})
+        actor = str((params or {}).get("actor") or "")
+        role = str((params or {}).get("role") or "")
+
+        try:
+            out = await _facade_execute_action(
+                action_id,
+                entity_ref,
+                action_params,
+                permissions=permissions,
+                actor=actor,
+                role=role,
+            )
+        except Exception as e:
+            logger.warning("action.execute failed", exc_info=True)
+            return ToolResult(success=False, error=str(e)[:500])
+
+        status = out.get("status")
+        # executed / pending_approval 为合法终态；其余按失败透传
+        if status in ("executed", "pending_approval"):
+            return ToolResult(success=True, output=out)
+        return ToolResult(
+            success=False,
+            error=out.get("reason") or out.get("error") or status or "execute_failed",
             output=out,
         )
