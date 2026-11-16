@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T15:21:51+08:00",
+  "reviewed_at": "2026-11-16T16:00:22+08:00",
   "base_ref": "origin/main",
-  "merge_base": "52359e9acedd76c8da22648649484e4e5bfc9747",
-  "diff_sha256": "e52047c7a2f9d56f42f2f7661576a68d4665cf76e96b9a7e889b3ec5a394dfc3",
-  "head_sha": "02f48a20ee7f749dd429174f104fa2dd720d226f",
+  "merge_base": "84ca30a85128bee867d277e61cf0a787acaca349",
+  "diff_sha256": "f9a8157eb375036863da03b2411b137a4743e9164b0c966bdd46c0719fc38166",
+  "head_sha": "201a2e7469c40ca53b18ef8f0c8f3e4dae0d975c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "docs-only: AUTO-STATS + whitepaper stamp sync for contracts-guard; no product logic change"
+  "note": "N18 min: 5 in-process probes + honesty gate; missing remain N04/N12; not full certify"
 }
