@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T21:36:30+08:00",
+  "reviewed_at": "2026-11-16T21:50:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4b9678bee304da6ab5a29abf176d6c1eeddb98c1",
-  "diff_sha256": "0d709066f718b08ccd543a44adf3761109942791b85262b975ef0d370c860948",
-  "head_sha": "e3097513b1928d721a3e15cae14894ebec8e35a4",
+  "merge_base": "b1c0abb6fb2083d7d80d9188f1ef53fa4c7bdffd",
+  "diff_sha256": "e48f0bfe1ef82b566a0423033045cf995cdbf93c03889e9ec168b52e205ddffe",
+  "head_sha": "a449b288805b430e5574f08f35ffc66b43460043",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Batch C N07/N22: link.traverse ACL. Residual: Wiki/KB full ACL out of scope; remains partial."
+  "note": "Batch D N05: rebuild_mode taxonomy + gate. Residual: Wiki full rebuild out of scope; N05 remains partial."
 }
