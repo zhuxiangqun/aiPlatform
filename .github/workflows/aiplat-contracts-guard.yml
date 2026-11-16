@@ -220,14 +220,23 @@ jobs:
           export AIPLAT_HOME="$(mktemp -d)"
           mkdir -p "$AIPLAT_HOME/ontologies"
           cp workspace_seeds/ontologies/lock-service.yaml "$AIPLAT_HOME/ontologies/"
+          # v4.3.1 C5=logic 类覆盖：每个 logic 类 ≥1 实例（禁止靠节点数刷分）
           PYTHONPATH=. python3 - <<'PY'
           import os
           from core.harness.ontology_engine.graph_index import GraphIndex
           GraphIndex._loaded_instances.clear()
           g = GraphIndex("lock-service")
-          for i in range(6):
-              g.add_entity(f"IO-{i}", f"o{i}", "安装工单", source_doc_id="ci")
-          g.add_relation("IO-0", "assigned_to", "IO-1")
+          for eid, cls in [
+              ("IO-0", "安装工单"),
+              ("IO-1", "安装工单"),
+              ("T-0", "安装师傅"),
+              ("DM-0", "设备型号"),
+              ("FT-0", "故障类型"),
+              ("MR-0", "维修记录"),
+              ("CS-0", "客户现场"),
+          ]:
+              g.add_entity(eid, eid, cls, source_doc_id="ci")
+          g.add_relation("IO-0", "assigned_to", "T-0")
           g.save()
           print("seeded GraphIndex under", os.environ["AIPLAT_HOME"])
           PY
@@ -235,6 +244,7 @@ jobs:
             --domain lock-service --min-ocs 80
           pytest -q \
             core/tests/unit/test_harness/test_knowledge/test_ontology_completeness_ocs.py \
+            core/tests/unit/test_harness/test_knowledge/test_ocs_v431_phase2.py \
             --tb=short
 
       - name: Contracts acceptance tests

@@ -1,6 +1,8 @@
-"""Ontology Completeness Score (OCS) — docs/contracts/ONTOLOGY_COMPLETENESS.md
+"""Ontology Completeness Score (OCS) — v4.3.1 §13.4 + ONTOLOGY_COMPLETENESS.md
 
-Weighted 0–100 per domain. ≥80 = 纵深完整; ≥70 = pilot.
+加权 0–100；默认门槛 80（域 YAML `ocs_threshold` 可更严）。
+C5 按声明类的实例/边覆盖计分，禁止用节点数/页面数档位替代。
+非目标：不替代准确率/忠实度/权限/Action 审计；不宣称 N24 全量符合。
 """
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
@@ -19,6 +21,16 @@ WEIGHTS = {
     "C4": 25,
     "C5": 15,
     "C6": 10,
+}
+DEFAULT_OCS_THRESHOLD = 80.0
+# 维度显示名（附录 §13.4）
+DIMENSION_LABELS = {
+    "C1": "类与属性",
+    "C2": "状态机",
+    "C3": "公理/证据",
+    "C4": "Action 硬门",
+    "C5": "事实层",
+    "C6": "演化闭环",
 }
 
 
@@ -126,21 +138,61 @@ def _score_c4_from_seeds(domain_id: str) -> float:
     return 0.5 * count_score + 0.5 * gate_ratio
 
 
-def _score_c5(domain_id: str) -> float:
+def _class_key(cls: Any) -> str:
+    """类的图匹配键（优先 label）。
+
+    Args:
+        cls: OntologyClass。
+    """
+    return str(getattr(cls, "label", None) or getattr(cls, "name", None) or "").strip()
+
+
+def _score_c5(domain_id: str, domain: Any = None) -> float:
+    """事实层：声明类的实例覆盖 + 声明关系的边覆盖（禁止节点数档位）。
+
+    Args:
+        domain_id: 域 id。
+        domain: 可选已加载本体；缺省时仅按图统计会退化为 0。
+    """
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
 
         g = GraphIndex.load(domain_id)
-        stats = g.stats() if hasattr(g, "stats") else {}
-        nodes = int(stats.get("nodes") or len(getattr(g, "_nodes", {}) or {}))
-        edges = int(stats.get("edges") or 0)
-        if nodes <= 0:
+        classes = list(getattr(domain, "classes", None) or [])
+        # 为什么：edge 档是脚手架/投影类，不算业务纵深分母（v4.3.1 事实层=经营闭环覆盖）
+        logic_classes = [
+            c
+            for c in classes
+            if str(getattr(c, "tier", "logic") or "logic").lower() != "edge"
+        ]
+        if not logic_classes:
             return 0.0
-        score = 60.0 if nodes < 5 else 85.0 if nodes < 20 else 100.0
-        if edges > 0:
-            score = min(100.0, score + 15.0)
-        return score
+
+        covered = 0
+        for c in logic_classes:
+            key = _class_key(c)
+            if not key:
+                continue
+            ents = g.get_entities_by_class(key)
+            if ents:
+                covered += 1
+        class_cov = 100.0 * covered / len(logic_classes)
+
+        props = list(getattr(domain, "object_properties", None) or [])
+        edge_cov = 100.0
+        if props:
+            stats = g.stats() if hasattr(g, "stats") else {}
+            edge_count = int(
+                stats.get("edge_count")
+                or stats.get("edges")
+                or len(getattr(g, "_edges", {}) or getattr(g, "edges", []) or [])
+            )
+            # 有声明关系但无边 → 边覆盖 0；有边则按「至少存在事实边」给满分（最小切片）
+            edge_cov = 100.0 if edge_count > 0 else 0.0
+            return round(0.85 * class_cov + 0.15 * edge_cov, 1)
+        return round(class_cov, 1)
     except Exception:
+        logger.debug("C5 coverage score failed", exc_info=True)
         return 0.0
 
 
@@ -178,53 +230,87 @@ def _score_c6(domain_id: str, *, credit_test_evidence: bool = True) -> float:
     return score
 
 
+def _resolve_ontology_path(domain_id: str) -> Optional[Path]:
+    """解析域 YAML 路径（home → workspace_seeds）。
+
+    Args:
+        domain_id: 域 id。
+    """
+    path = _home() / "ontologies" / f"{domain_id}.yaml"
+    if path.is_file():
+        return path
+    seed = (
+        Path(__file__).resolve().parents[3]
+        / "workspace_seeds"
+        / "ontologies"
+        / f"{domain_id}.yaml"
+    )
+    if seed.is_file():
+        return seed
+    return None
+
+
+def _read_ocs_threshold(path: Path) -> float:
+    """读取域 owner 门槛（缺省 80；只允许更严）。
+
+    Args:
+        path: 域 YAML 路径。
+    """
+    try:
+        import yaml
+
+        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        val = raw.get("ocs_threshold")
+        if val is None:
+            return DEFAULT_OCS_THRESHOLD
+        thr = float(val)
+        # 为什么：域可更严不可更松，防止用低门槛假绿
+        return max(thr, DEFAULT_OCS_THRESHOLD)
+    except Exception:
+        return DEFAULT_OCS_THRESHOLD
+
+
 def compute_domain_ocs(
     domain_id: str,
     *,
     credit_test_evidence: bool = True,
 ) -> Dict[str, Any]:
-    """Return OCS breakdown for one domain.
+    """计算单域 OCS 分解（v4.3.1 权重）。
 
     Args:
-        domain_id: domain 标识。
-        credit_test_evidence: credit_test_evidence 参数。
+        domain_id: 域标识。
+        credit_test_evidence: 是否给 C6 测试证据加分（兼容存量 ratchet）。
     """
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
 
-    path = _home() / "ontologies" / f"{domain_id}.yaml"
-    if not path.is_file():
-        # Fall back to repo workspace_seeds (CI / fresh home)
-        seed = (
-            Path(__file__).resolve().parents[3]
-            / "workspace_seeds"
-            / "ontologies"
-            / f"{domain_id}.yaml"
-        )
-        if seed.is_file():
-            path = seed
-    if not path.is_file():
+    path = _resolve_ontology_path(domain_id)
+    if path is None:
         return {
             "domain_id": domain_id,
             "ocs": 0.0,
             "level": "missing",
             "dimensions": {},
             "error": f"ontology not found: {_home() / 'ontologies' / f'{domain_id}.yaml'}",
+            "accuracy_claim": False,
+            "faithfulness_claim": False,
+            "action_audit_substitute": False,
         }
 
     domain = load_ontology_from_yaml(str(path))
+    threshold = _read_ocs_threshold(path)
     dims = {
         "C1": round(_score_c1(domain), 1),
         "C2": round(_score_c2(domain), 1),
         "C3": round(_score_c3(domain), 1),
         "C4": round(_score_c4(domain_id), 1),
-        "C5": round(_score_c5(domain_id), 1),
+        "C5": round(_score_c5(domain_id, domain), 1),
         "C6": round(_score_c6(domain_id, credit_test_evidence=credit_test_evidence), 1),
     }
     total = 0.0
     for k, w in WEIGHTS.items():
         total += dims[k] * w / 100.0
     total = round(total, 1)
-    if total >= 80:
+    if total >= threshold:
         level = "complete"
     elif total >= 70:
         level = "pilot"
@@ -236,10 +322,63 @@ def compute_domain_ocs(
         "domain_id": domain_id,
         "ocs": total,
         "level": level,
+        "threshold": threshold,
         "dimensions": dims,
+        "dimension_labels": dict(DIMENSION_LABELS),
         "weights": dict(WEIGHTS),
         "axioms": len(domain.axioms or []),
         "classes": len(domain.classes or []),
+        # 诚实锁：OCS ≠ 准确率/忠实度/Action 审计
+        "accuracy_claim": False,
+        "faithfulness_claim": False,
+        "action_audit_substitute": False,
+        "node_count_substitute": False,
+    }
+
+
+def evaluate_ocs_gate(
+    domain_id: str,
+    *,
+    threshold: Optional[float] = None,
+    credit_test_evidence: bool = False,
+) -> Dict[str, Any]:
+    """OCS 门槛门：达标才 pass；默认不给测试证据加分。
+
+    Args:
+        domain_id: 域 id。
+        threshold: 可选覆盖门槛（不得低于域配置/默认 80）。
+        credit_test_evidence: 是否计入 C6 测试加分。
+    """
+    report = compute_domain_ocs(
+        domain_id, credit_test_evidence=credit_test_evidence
+    )
+    if report.get("error"):
+        return {
+            "pass": False,
+            "status": "missing",
+            "issues": ["ontology_missing"],
+            "report": report,
+        }
+    base_thr = float(report.get("threshold") or DEFAULT_OCS_THRESHOLD)
+    thr = base_thr if threshold is None else max(float(threshold), base_thr)
+    ocs = float(report.get("ocs") or 0.0)
+    issues: List[str] = []
+    if ocs < thr:
+        issues.append("ocs_below_threshold")
+    # 防御：若调用方误把节点数当完整度，dimensions 仍必须含覆盖型 C5
+    if report.get("node_count_substitute"):
+        issues.append("node_count_substitute_forbidden")
+    ok = not issues
+    return {
+        "pass": ok,
+        "status": "pass" if ok else "failed",
+        "ocs": ocs,
+        "threshold": thr,
+        "issues": issues,
+        "report": report,
+        "accuracy_claim": False,
+        "faithfulness_claim": False,
+        "action_audit_substitute": False,
     }
 
 

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T13:32:00+08:00",
+  "reviewed_at": "2026-11-16T14:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f985896a5c664ac4c0483a6eaae4e6e0e0d09793",
-  "diff_sha256": "771804dc0b0eee68d3aa4e07dafe5ce1d39830c10313d25ce2982b13fe129708",
-  "head_sha": "56729ae800083df41ba0365e6d597a5a473baa1e",
+  "merge_base": "c45824ae46087b38fae94b4d55e845e5f161fa23",
+  "diff_sha256": "3bcc20ee8882ef183c5e52abadecb1364b923391fcbdda9a46932e81f9b5d8b7",
+  "head_sha": "86c5ffb604e1f81231b7a66b9bbf8a2040067103",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "W10 Migration min + AUTO-STATS 3603/3614 re-sync. Residual: process_cutover_authorized stays false; production cutover out of slice."
+  "note": "Merge main into #773 after #772: keep OCS+Migration; stats/matrix/whitepapers regenerated. Residual: certification/N24 pack still out of slice."
 }

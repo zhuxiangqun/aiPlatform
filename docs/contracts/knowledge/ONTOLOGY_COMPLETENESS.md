@@ -46,7 +46,7 @@ last_reviewed: 2026-11-15
 | C2 状态机 | 20 | 有 states.enum 的类占比；有 transitions 加分 |
 | C3 公理/证据 | 15 | axioms≥3 满分；1–2 按比例；compiler 可加载再加分 |
 | C4 Action 硬门 | 25 | 该域 `customer_action` 数；有 `required_state`/`forbidden_states` 的占比 |
-| C5 事实层 | 15 | GraphIndex 节点数>0；有边再加分 |
+| C5 事实层 | 15 | **实例/边覆盖**（logic 类有实例占比；声明关系有边加分）。**禁止**用节点数/页面数档位替代（v4.3.1 §13.4） |
 | C6 演化闭环 | 10 | 存在 applied 本体提案；或种子/测试证明中深档（配置覆盖） |
 
 **试点阈值**：OCS ≥ 70 → `pilot`；≥ 80 → 可称纵深完整（ledger `production` 域级）。
@@ -74,8 +74,10 @@ CI：
 
 ```bash
 # Ratchet — Phase A 纵深标杆（contracts-guard workflow 同步执行）
+# 种子 ABox 须覆盖全部 logic 类（C5=覆盖计分，禁止仅堆安装工单节点数）
 PYTHONPATH=aiPlat-core python3 scripts/report_ontology_completeness.py --domain lock-service --min-ocs 80
-pytest aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ontology_completeness_ocs.py -q
+pytest aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ontology_completeness_ocs.py \
+  aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ocs_v431_phase2.py -q
 ```
 
 `lock-service` OCS 不得低于 **80**；缺 `required_state` 的新 customer_action 由测试守卫。无 `~/.aiplat` 时从 `workspace_seeds/ontologies` 回退加载。

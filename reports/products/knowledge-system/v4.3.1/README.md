@@ -31,6 +31,7 @@ authority: supporting
 | [phase2-scenario-evidence.md](./phase2-scenario-evidence.md) | Phase 2 W9 Knowledge Scenario（模拟不写主事实 + 合并人审） |
 | [phase2-ontology-package-evidence.md](./phase2-ontology-package-evidence.md) | Phase 2 W9 Ontology Package（版本/哈希校验 + 兼容 + 依赖锁定 + 回滚） |
 | [phase2-confidence-calibration-evidence.md](./phase2-confidence-calibration-evidence.md) | W10 Confidence Calibration（附录 O 门槛 + 失败降级 medium） |
+| [phase2-ocs-evidence.md](./phase2-ocs-evidence.md) | W10 OCS Completeness（§13.4 覆盖计分 + 门槛门；禁节点数档位） |
 | [phase2-knowledge-migration-evidence.md](./phase2-knowledge-migration-evidence.md) | W10 Knowledge Migration（双写/对账/回滚演练；切写未授权） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
