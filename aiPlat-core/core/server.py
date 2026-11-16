@@ -1219,6 +1219,7 @@ async def lifespan(app: FastAPI):
         # v4.3.1 W6 Agent Tool min (appendix F.2)
         ("core.apps.tools.knowledge_agent_tools", "ObjectQueryTool", {}),
         ("core.apps.tools.knowledge_agent_tools", "FunctionCallTool", {}),
+        ("core.apps.tools.knowledge_agent_tools", "LinkTraverseTool", {}),
     ]
     for module_path, cls_name, kwargs in _tool_modules:
         try:

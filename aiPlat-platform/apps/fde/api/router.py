@@ -41,6 +41,7 @@ from .extraction_routes import router as _extraction_router
 from .function_routes import router as _function_router
 from .interface_routes import router as _interface_router
 from .object_set_routes import router as _object_set_router
+from .link_traverse_routes import router as _link_traverse_router
 from .rapid_insight import router as _rapid_insight_router
 from .fde_phase4 import router as _phase4_router
 from .fde_slice import router as _slice_router
@@ -78,6 +79,7 @@ router.include_router(_extraction_router, prefix="/fde")
 router.include_router(_function_router, prefix="/fde")
 router.include_router(_interface_router, prefix="/fde")
 router.include_router(_object_set_router, prefix="/fde")
+router.include_router(_link_traverse_router, prefix="/fde")
 router.include_router(_rapid_insight_router, prefix="/fde")
 router.include_router(_phase4_router, prefix="/fde")
 router.include_router(_slice_router, prefix="/fde")

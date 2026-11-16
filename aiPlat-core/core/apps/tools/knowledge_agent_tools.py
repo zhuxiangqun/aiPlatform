@@ -1,7 +1,8 @@
 """知识系统 Agent 工具面（附录 F.2 最小切片）。
 
-提供 ``object.query`` / ``function.call``，一律经 CoreFacade；禁止通用 SQL / 直写 Fact。
-非目标：不实现 link.traverse / action.execute / object_set.aggregate / SDK 生成。
+提供 ``object.query`` / ``function.call`` / ``link.traverse``，一律经 CoreFacade；
+禁止通用 SQL / 直写 Fact。
+非目标：不实现 action.execute / object_set.aggregate / SDK 生成。
 """
 from __future__ import annotations
 
@@ -96,6 +97,26 @@ async def _facade_invoke_function(
 
     return await invoke_function(
         function_id, params or {}, permissions=permissions, actor=actor
+    )
+
+
+async def _facade_traverse_links(
+    request: Dict[str, Any],
+    *,
+    tenant_id: str,
+    permissions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """经 CoreFacade 多跳链接遍历（可被单测 monkeypatch）。
+
+    Args:
+        request: link.traverse 请求 dict。
+        tenant_id: 租户。
+        permissions: 权限/scopes。
+    """
+    from core.api.core_facade import traverse_object_links
+
+    return await traverse_object_links(
+        request, tenant_id=tenant_id, permissions=permissions
     )
 
 
@@ -277,5 +298,108 @@ class FunctionCallTool(BaseTool):
         return ToolResult(
             success=False,
             error=out.get("reason") or status or "invoke_failed",
+            output=out,
+        )
+
+
+class LinkTraverseTool(BaseTool):
+    """附录 F.2 ``link.traverse`` — 经 FactLedger 多跳只读遍历。"""
+
+    def __init__(self) -> None:
+        """注册 link.traverse 工具合同。"""
+        super().__init__(
+            ToolConfig(
+                name="link.traverse",
+                description=(
+                    "从 start_id 多跳遍历对象链接（只读；须 tenant_id；经 CoreFacade）。"
+                    "禁止 sql/直写 Fact。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "tenant_id": {
+                            "type": "string",
+                            "description": "租户 ID（必填）",
+                        },
+                        "start_id": {
+                            "type": "string",
+                            "description": "起点，建议 Type:id",
+                        },
+                        "object_type": {
+                            "type": "string",
+                            "description": "当 start_id 无冒号时补全类型",
+                        },
+                        "link_types": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "允许的谓词/链接类型；空=全部链接",
+                        },
+                        "max_hops": {
+                            "type": "integer",
+                            "description": "最大跳数 1–5，默认 2",
+                        },
+                        "domain_id": {
+                            "type": "string",
+                            "description": "可选域 id",
+                        },
+                        "direction": {
+                            "type": "string",
+                            "description": "outgoing|incoming|both",
+                        },
+                        "permissions": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "调用方权限/scopes（须含 kb:read）",
+                        },
+                    },
+                    "required": ["tenant_id", "start_id"],
+                },
+                metadata={"category": "knowledge", "appendix": "F.2"},
+            )
+        )
+
+    async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """执行 link.traverse。
+
+        Args:
+            params: 含 tenant_id / start_id 等。
+        """
+        bad = _reject_sql_or_write(params or {})
+        if bad:
+            return ToolResult(success=False, error=bad)
+
+        tenant_id = str((params or {}).get("tenant_id") or "").strip()
+        start_id = str((params or {}).get("start_id") or "").strip()
+        if not tenant_id:
+            return ToolResult(success=False, error="tenant_id_required")
+        if not start_id:
+            return ToolResult(success=False, error="start_id_required")
+
+        request = {
+            "start_id": start_id,
+            "object_type": str((params or {}).get("object_type") or ""),
+            "link_types": list((params or {}).get("link_types") or []),
+            "max_hops": int((params or {}).get("max_hops") or 2),
+            "domain_id": str((params or {}).get("domain_id") or ""),
+            "direction": str((params or {}).get("direction") or "both"),
+        }
+        permissions = _parse_permissions(params or {})
+
+        try:
+            out = await _facade_traverse_links(
+                request,
+                tenant_id=tenant_id,
+                permissions=permissions,
+            )
+        except Exception as e:
+            logger.warning("link.traverse failed", exc_info=True)
+            return ToolResult(success=False, error=str(e)[:500])
+
+        status = out.get("status")
+        if status == "ok":
+            return ToolResult(success=True, output=out)
+        return ToolResult(
+            success=False,
+            error=out.get("reason") or status or "traverse_failed",
             output=out,
         )

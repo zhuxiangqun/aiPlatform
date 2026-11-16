@@ -5092,6 +5092,33 @@ async def query_object_set(
     )
 
 
+async def traverse_object_links(
+    request: Dict[str, Any],
+    *,
+    tenant_id: str,
+    permissions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """W6：link.traverse 多跳只读（租户前置 + L1 kb:read）。
+
+    Args:
+        request: start_id / link_types / max_hops / domain_id 等。
+        tenant_id: 租户 ID（必填）。
+        permissions: 调用方权限/scopes。
+
+    Returns:
+        nodes/edges 回执，或 policy_denied / error。
+    """
+    from core.harness.knowledge_pipeline.link_traverse import (
+        traverse_links as _traverse,
+    )
+
+    return await _traverse(
+        request,
+        tenant_id=tenant_id,
+        permissions=permissions,
+    )
+
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 
@@ -14505,6 +14532,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
 )
 from core.harness.knowledge_pipeline.fact_projector import project_facts_to_graph  # noqa: boundary
 from core.harness.knowledge_pipeline.object_set import ObjectSetRequest  # noqa: boundary
+from core.harness.knowledge_pipeline.link_traverse import LinkTraverseRequest  # noqa: boundary
 from core.harness.infrastructure.gates.marking_propagation import get_entity_max_marking_level, MARKING_LABELS  # noqa: boundary
 
 
