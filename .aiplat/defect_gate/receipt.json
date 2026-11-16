@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T23:03:57+08:00",
+  "reviewed_at": "2026-11-16T23:07:04+08:00",
   "base_ref": "origin/main",
   "merge_base": "ab893f96b52fe8c9e9bb78f2a6996af41b17246f",
-  "diff_sha256": "5611a8cb825415c5cfed0ef74864289a91d103688ae047688f4e3d880fcc5e7f",
-  "head_sha": "68e82631781f1152b8cb3f75c4b0f6ba4f5c9f44",
+  "diff_sha256": "bd123319fd77db17bbe6f705be34463f251665ecd85d6fb93ba7e6315d9a38d8",
+  "head_sha": "b8fb848a53ce3548becfac95c7be3df0a9ef4c01",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "E1\u2013E4 deepen: verify-on-read, F.1 gateway, cross-tenant suite, pilot readiness; certified flags stay false; domain_id from caller/catalog only."
+  "note": "E1\u2013E4 deepen + whitepaper resync; certified flags stay false; domain_id from caller/catalog only."
 }
