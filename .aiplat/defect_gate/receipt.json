@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T07:55:00+08:00",
+  "reviewed_at": "2026-11-16T09:19:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "9e45055aca7ed3c6adaa42300754aa2f43ad6a5e",
-  "diff_sha256": "e49fe9f3511a00d794ff3366aeb0b85c88774123790bdf9afb92fd00c7fddd2b",
-  "head_sha": "4bdfeb1b251de668cda47e5d11be3ddbaff2b947",
+  "merge_base": "9aec3ebe02cc2abfadfb8c278d5be2052b42454a",
+  "diff_sha256": "b1d9052f3816d7be9fd80534e7d41089b51a9fdb700d6f1f1e4e9efc539e9a4c",
+  "head_sha": "85082167b04328a1f6666068f316d0de191461ae",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Interface W5 after merge main(ObjectSet). Local lock only."
+  "note": "W6 object_set.aggregate tool: count-only via Facade; SQL/write rejected. Local lock only."
 }
