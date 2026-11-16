@@ -3093,11 +3093,11 @@ domains:
       - symbol: "query_object_set"
         module: core/harness/knowledge_pipeline/object_set.py
         type: function
-        signature: "Read-only ObjectSet; tenant_id required; kb:read L1; no fact writes"
+        signature: "Read-only ObjectSet; tenant_id + kb:read L1; optional ABox role ACL"
       - symbol: "query_object_set"
         module: core/api/core_facade.py
         type: function
-        signature: "CoreFacade: ObjectSet query (tenant_id, permissions)"
+        signature: "CoreFacade: ObjectSet query (tenant_id, permissions, role)"
       - symbol: "query_object_set_route"
         module: aiPlat-platform/apps/fde/api/object_set_routes.py
         type: function

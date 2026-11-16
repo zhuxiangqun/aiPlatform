@@ -5070,13 +5070,15 @@ async def query_object_set(
     *,
     tenant_id: str,
     permissions: Optional[List[str]] = None,
+    role: str = "",
 ) -> Dict[str, Any]:
-    """W6：ObjectSet 只读查询（租户前置 + L1 kb:read）。
+    """W6/W8：ObjectSet 只读查询（租户前置 + L1 kb:read + ABox 字段/实例 ACL）。
 
     Args:
         request: 附录 E.1 请求 dict（object_type / filter / sort / limit）。
         tenant_id: 租户 ID（必填）。
         permissions: 调用方权限/scopes。
+        role: 调用方角色（透传 ABox ACL）。
 
     Returns:
         附录 E.2 形状回执（或 policy_denied / not_found）。
@@ -5089,6 +5091,7 @@ async def query_object_set(
         request,
         tenant_id=tenant_id,
         permissions=permissions,
+        role=role or "",
     )
 
 

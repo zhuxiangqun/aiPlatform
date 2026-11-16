@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3556
+total_capabilities: 3557
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1207,6 +1207,7 @@ scan_hash: 8f9548ec24f4
 | **Wiki 读模型硬门（v4.3.1 试点）** | `harness/knowledge/wiki_read_model.py` + `POST/DELETE /wiki/pages` | ✅ | `AIPLAT_WIKI_READ_MODEL_COLLECTIONS` 配置名单内人工写 → 403 `wiki_is_read_model`（默认空=不拦）；`AIPLAT_WIKI_ALLOW_MANUAL_WRITE` 破窗记 WARNING；编译器 `write_page` 不经门。证据 `phase2-wiki-readonly-evidence.md`。**未宣称** N5 全量/全局禁写/ObjectSet | 本批 |
 | **FunctionContract（v4.3.1 W5 最小切片）** | `harness/infrastructure/function_contract.py` + `function_registry.py` + `builtin_functions.py` + `POST …/fde/functions/{id}/invoke` | ✅ | 附录 C.3 合同；`side_effects=true`→`side_effects_forbidden`；`required_permissions` L1（对齐 Action）；YAML seed `workspace_seeds/functions` + `AIPLAT_HOME/functions`；CoreFacade `invoke_function`。证据 `phase2-function-contract-evidence.md`。**未宣称** ObjectSet/Interface/副作用分级/N24 | 本批 |
 | **ObjectSet（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/object_set.py` + `POST …/fde/object-sets/query` | ✅ | 附录 E.1/E.2；`tenant_id` 必填且 SQL 前置；`kb:read` L1；ObjectType 经 `*-object-types.json`；查询不写 Fact。证据 `phase2-objectset-evidence.md`。**未宣称** SDK/Link/Interface/字段 ACL/N24 | 本批 |
+| **ObjectSet ABox ACL（v4.3.1 W8 最小切片）** | `object_set._apply_abox_acl` + CoreFacade `query_object_set(role=)` + Tool/HTTP role 透传 | ✅ | 附录 H.1；召回前实例 deny + 字段脱敏；聚合不泄漏；跨租户负向。证据 `phase2-objectset-acl-evidence.md`。**未宣称** Wiki/KB 全入口字段 ACL / Scenario / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **Interface（v4.3.1 W5 最小切片）** | `harness/infrastructure/interface_contract.py` + `interface_registry.py` + `POST …/fde/interfaces/{id}/check-compatibility` | ✅ | 附录 C.4；`check_compatibility`：implementers 声明 + properties/links/actions 覆盖；`kb:read` L1；YAML seed `workspace_seeds/interfaces`；CoreFacade `check_interface_compatibility`。证据 `phase2-interface-evidence.md`。**未宣称** ObjectSet/SDK/publish 流水线/N24 | 本批 |
 | **Agent Tool（v4.3.1 W6 最小切片）** | `apps/tools/knowledge_agent_tools.py` → `object.query` / `function.call` | ✅ | 附录 F.2；经 CoreFacade ObjectSet/Function；禁 sql/直写 Fact；`tenant_id`+`kb:read` 透传。证据 `phase2-agent-tool-evidence.md`。**未宣称** link.traverse/action.execute/SDK/N24 | 本批 |
 | **link.traverse（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/link_traverse.py` + `LinkTraverseTool` + `POST …/fde/links/traverse` | ✅ | 附录 F.2；FactLedger BFS；租户前置 + L1 `kb:read`；禁 sql/直写。证据 `phase2-link-traverse-evidence.md`。**未宣称** action.execute/aggregate/SDK/N24 | 本批 |
@@ -4456,7 +4457,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 645 | 1 | 646 |
+| Harness 执行引擎 | 646 | 1 | 647 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 436 | 9 | 445 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4501,7 +4502,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3545** | **11** | **3556** |
+| **总计** | **3546** | **11** | **3557** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

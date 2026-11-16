@@ -32,25 +32,29 @@ async def query_object_set_route(
     body: ObjectSetQueryBody = Body(...),
     tenant_id: str = Query(..., description="tenant id (required)"),
     x_aiplat_scopes: Optional[str] = Header(None, alias="X-AIPLAT-SCOPES"),
+    x_aiplat_actor_role: Optional[str] = Header(None, alias="X-AIPLAT-ACTOR-ROLE"),
 ):
-    """ObjectSet 只读查询（租户前置 + L1 permissions）。
+    """ObjectSet 只读查询（租户前置 + L1 + ABox role ACL）。
 
     Args:
         request: FastAPI Request。
         body: E.1 请求。
         tenant_id: 租户。
         x_aiplat_scopes: 权限 scopes。
+        x_aiplat_actor_role: 角色（透传字段/实例 ACL）。
     """
     from core.api.core_facade import query_object_set
 
     permissions = _parse_scopes(x_aiplat_scopes)
     if not permissions:
         permissions = _parse_scopes(request.headers.get("X-AIPLAT-SCOPES"))
+    role = (x_aiplat_actor_role or request.headers.get("X-AIPLAT-ACTOR-ROLE") or "").strip()
 
     out = await query_object_set(
         body.model_dump(),
         tenant_id=tenant_id,
         permissions=permissions or None,
+        role=role,
     )
     status = out.get("status")
     if status == "not_found":
