@@ -45,5 +45,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做（后续）
 
 - 合并后自动回写主 Fact / ActionExecution
-- Package 版本 / 签名 / 兼容矩阵
+- Package → 见 `phase2-ontology-package-evidence.md`（本批另切片）
 - 附录 N 全量符合

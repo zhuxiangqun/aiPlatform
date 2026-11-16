@@ -41,6 +41,7 @@ review_cycle: 90d
 > 2026-11-16：知识系统 v4.3.1 W7 ActionExecution 最小切片（customer_action 幂等键 + before/after；经 Facade）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-16：知识系统 v4.3.1 W8 ObjectSet ABox ACL 最小切片（实例 deny + 字段脱敏；role 透传）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-16：知识系统 v4.3.1 W9 Knowledge Scenario 最小切片（dry_run 分支；模拟不写主事实；合并人审）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-16：知识系统 v4.3.1 W9 Ontology Package 最小切片（semver 发布；content_hash 可验证；兼容矩阵；依赖锁定；回滚）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 
 ---
 

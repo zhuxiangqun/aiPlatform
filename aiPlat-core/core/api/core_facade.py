@@ -5228,6 +5228,150 @@ def reject_knowledge_scenario_merge(
     )
 
 
+def publish_ontology_package(
+    *,
+    tenant_id: str,
+    package_id: str,
+    version: str,
+    schema: Optional[List[str]] = None,
+    actions: Optional[List[str]] = None,
+    functions: Optional[List[str]] = None,
+    interfaces: Optional[List[str]] = None,
+    dependencies: Optional[List[Dict[str, Any]]] = None,
+    compatibility: Optional[Dict[str, Any]] = None,
+    migrations: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """W9：发布 Ontology Package 版本（内容哈希 + active）。
+
+    Args:
+        tenant_id: 租户。
+        package_id: 包 id。
+        version: semver。
+        schema: 类型列表。
+        actions: 动作列表。
+        functions: 函数列表。
+        interfaces: 接口列表。
+        dependencies: 依赖锁定。
+        compatibility: 兼容矩阵。
+        migrations: 迁移标识（仅记录）。
+    """
+    from core.harness.knowledge_pipeline.ontology_package import publish_package
+
+    return publish_package(
+        tenant_id=tenant_id,
+        package_id=package_id,
+        version=version,
+        schema=schema,
+        actions=actions,
+        functions=functions,
+        interfaces=interfaces,
+        dependencies=dependencies,
+        compatibility=compatibility,
+        migrations=migrations,
+    )
+
+
+def get_ontology_package(
+    package_id: str,
+    *,
+    tenant_id: str,
+    version: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """W9：按租户读取 Ontology Package。
+
+    Args:
+        package_id: 包 id。
+        tenant_id: 租户。
+        version: 指定版本；空则 active。
+    """
+    from core.harness.knowledge_pipeline.ontology_package import get_package
+
+    return get_package(package_id, tenant_id=tenant_id, version=version)
+
+
+def validate_ontology_package(
+    package_id: str,
+    *,
+    tenant_id: str,
+    version: Optional[str] = None,
+) -> Dict[str, Any]:
+    """W9：校验包可验证（哈希 + 必填 + 依赖约束可解析）。
+
+    Args:
+        package_id: 包 id。
+        tenant_id: 租户。
+        version: 指定版本；空则 active。
+    """
+    from core.harness.knowledge_pipeline.ontology_package import validate_package
+
+    return validate_package(package_id, tenant_id=tenant_id, version=version)
+
+
+def check_ontology_package_compatibility(
+    package_id: str,
+    *,
+    tenant_id: str,
+    from_version: str,
+    to_version: str,
+) -> Dict[str, Any]:
+    """W9：检查包版本兼容矩阵。
+
+    Args:
+        package_id: 包 id。
+        tenant_id: 租户。
+        from_version: 源版本。
+        to_version: 目标版本。
+    """
+    from core.harness.knowledge_pipeline.ontology_package import check_compatibility
+
+    return check_compatibility(
+        package_id,
+        tenant_id=tenant_id,
+        from_version=from_version,
+        to_version=to_version,
+    )
+
+
+def check_ontology_package_dependencies(
+    package_id: str,
+    *,
+    tenant_id: str,
+    version: Optional[str] = None,
+) -> Dict[str, Any]:
+    """W9：检查依赖锁定是否满足。
+
+    Args:
+        package_id: 包 id。
+        tenant_id: 租户。
+        version: 指定版本；空则 active。
+    """
+    from core.harness.knowledge_pipeline.ontology_package import check_dependency_lock
+
+    return check_dependency_lock(
+        tenant_id=tenant_id, package_id=package_id, version=version
+    )
+
+
+def rollback_ontology_package(
+    package_id: str,
+    *,
+    tenant_id: str,
+    to_version: str,
+) -> Dict[str, Any]:
+    """W9：回滚 active 到已发布版本。
+
+    Args:
+        package_id: 包 id。
+        tenant_id: 租户。
+        to_version: 目标版本。
+    """
+    from core.harness.knowledge_pipeline.ontology_package import rollback_package
+
+    return rollback_package(
+        package_id, tenant_id=tenant_id, to_version=to_version
+    )
+
+
 async def traverse_object_links(
     request: Dict[str, Any],
     *,
