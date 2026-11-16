@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2787
+total_capabilities: 2797
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 325
+    caps_count: 335
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3270,6 +3270,46 @@ domains:
         module: aiPlat-platform/apps/fde/api/ontology_package_routes.py
         type: function
         signature: "POST /fde/ontology-packages via Facade"
+      - symbol: "publish_calibration_report"
+        module: core/harness/knowledge_pipeline/confidence_calibration.py
+        type: function
+        signature: "W10: publish Confidence Calibration Report (appendix O)"
+      - symbol: "get_calibration_report"
+        module: core/harness/knowledge_pipeline/confidence_calibration.py
+        type: function
+        signature: "W10: get calibration report (cross-tenant hidden)"
+      - symbol: "validate_calibration_report"
+        module: core/harness/knowledge_pipeline/confidence_calibration.py
+        type: function
+        signature: "W10: validate calibration thresholds"
+      - symbol: "evaluate_calibration_gate"
+        module: core/harness/knowledge_pipeline/confidence_calibration.py
+        type: function
+        signature: "W10: evaluate appendix O gate offline"
+      - symbol: "resolve_max_confidence"
+        module: core/harness/knowledge_pipeline/confidence_calibration.py
+        type: function
+        signature: "W10: cap confidence to medium when calibration fails"
+      - symbol: "publish_confidence_calibration"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: publish confidence calibration"
+      - symbol: "get_confidence_calibration"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: get confidence calibration"
+      - symbol: "validate_confidence_calibration"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: validate confidence calibration"
+      - symbol: "resolve_confidence_ceiling"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: resolve confidence ceiling"
+      - symbol: "publish_confidence_calibration_route"
+        module: aiPlat-platform/apps/fde/api/confidence_calibration_routes.py
+        type: function
+        signature: "POST /fde/confidence-calibrations via Facade"
       - symbol: "traverse_links_route"
         module: aiPlat-platform/apps/fde/api/link_traverse_routes.py
         type: function
