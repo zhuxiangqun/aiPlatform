@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T00:33:36+08:00",
+  "reviewed_at": "2026-11-17T07:21:32+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c6b65272554a1fe910124cdcc44ef64086202f8b",
-  "diff_sha256": "237a5b6d274825beb7c17a737c622ae44ac75674b255eff1d7720ea80d6c00be",
-  "head_sha": "283056de8d7ae09f60db45322ddb5cf8a665d9a5",
+  "merge_base": "be2f2c7b77835db2a68797e23fae74d5ebf49dd7",
+  "diff_sha256": "ca2808fe2a3495ec3bb04655f3067a82f90214abbc7f5da1fb08444afe4ebc1d",
+  "head_sha": "8a89b634146177199eb1e9faf021ff99cd618431",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve. Batch G1: DataSourceConfig content_hash→Raw; five checks clean."
+  "note": "Batch G2 N24 Fact Revision: bump+archive on put_fact; suite/gate honesty locks; Facade wired. Residual: Claim/Source revision and rollback UI still open; certified false."
 }
