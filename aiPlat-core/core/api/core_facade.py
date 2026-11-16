@@ -15761,12 +15761,14 @@ from core.harness.knowledge_pipeline.extractor import ExtractionPipeline, Extrac
 from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     FactLedger,
     FactLedgerError,
+    evaluate_claim_evidence_gate,
     evaluate_cross_tenant_gate,
     evaluate_gateway_contract_gate,
     evaluate_raw_integrity_gate,
     get_fact_ledger,
     load_object_type_bindings,
     record_extraction_as_claim,
+    run_claim_evidence_suite,
     run_cross_tenant_isolation_suite,
     validate_gateway_response,
 )
@@ -15922,6 +15924,35 @@ def evaluate_fact_cross_tenant_gate(suite: dict | None = None) -> dict:
         gate 结果。
     """
     return evaluate_cross_tenant_gate(suite)
+
+
+async def fact_ledger_run_claim_evidence_suite(
+    *,
+    tenant_id: str = "n03-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N03 Claim 证据加深套件（临时账本；certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域过滤（调用方传入）。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_claim_evidence_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_claim_evidence_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N03 Claim 证据门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_claim_evidence_gate(suite)
 
 
 async def fact_ledger_project_to_graph(

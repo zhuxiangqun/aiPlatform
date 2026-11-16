@@ -20,7 +20,7 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 |---|---------------|:----:|--------------|----------|:-----:|
 | 1 | Raw 不可变 | partial | 读时验 hash+篡改拒绝（`phase2-raw-integrity-evidence.md`）；非 certified | 有实现无证据 | W1 |
 | 2 | 语义模型版本化 | partial | 域 YAML version + Package 切片 | 有数据无契约 | W2 |
-| 3 | Fact/Claim 有 evidence | partial | G1 + 写入硬门 | 有实现无证据 | W3 |
+| 3 | Fact/Claim 有 evidence | partial | Claim 证据硬门+冲突记录（`phase2-claim-evidence-evidence.md`）；非 certified | 有实现无证据 | W3 |
 | 4 | 来源策略与冲突裁决 | partial | 写入硬门 + Conflict/transition（`phase2-source-policy-evidence.md`） | 有实现无证据 | W3 |
 | 5 | Wiki/索引有条件重建 | partial | 三分类 rebuild_mode+reason+门槛门（Wiki 硬门保持） | 有 Wiki 无事实源 | W4 |
 | 6 | Gateway 查询契约 | partial | F.1 契约+confidence_factors（`phase2-gateway-contract-evidence.md`）；非统一入口/certified | 有实现无证据 | W6 |

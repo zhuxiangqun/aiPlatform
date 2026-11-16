@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T23:07:04+08:00",
+  "reviewed_at": "2026-11-17T00:01:16+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ab893f96b52fe8c9e9bb78f2a6996af41b17246f",
-  "diff_sha256": "bd123319fd77db17bbe6f705be34463f251665ecd85d6fb93ba7e6315d9a38d8",
-  "head_sha": "b8fb848a53ce3548becfac95c7be3df0a9ef4c01",
+  "merge_base": "e24f2757a5f84969fe08845db9265ff27a5706bf",
+  "diff_sha256": "b1162bbd4dce1954dc2f4bd32cdcc955cd66e22ecd3b6d6cca05db50b10b02fb",
+  "head_sha": "765eb614941015be7a8e313a5ce0f979b0bdef3c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "E1\u2013E4 deepen + whitepaper resync; certified flags stay false; domain_id from caller/catalog only."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. Batch F: F1 slots + N03 claim evidence; five checks clean on merge-base..HEAD."
 }

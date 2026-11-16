@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2873
+total_capabilities: 2877
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 408
+    caps_count: 412
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3062,6 +3062,22 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "evaluate_fact_cross_tenant_gate(suite)→gate (certified=false)"
+      - symbol: "run_claim_evidence_suite"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "run_claim_evidence_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_claim_evidence_gate"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "evaluate_claim_evidence_gate(suite)→gate (certified=false)"
+      - symbol: "fact_ledger_run_claim_evidence_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_run_claim_evidence_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_fact_claim_evidence_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_claim_evidence_gate(suite)→gate (certified=false)"
       - symbol: "fact_ledger_query_gateway"
         module: core/api/core_facade.py
         type: function

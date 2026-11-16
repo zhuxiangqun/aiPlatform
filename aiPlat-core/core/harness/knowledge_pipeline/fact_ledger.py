@@ -165,12 +165,47 @@ class FactLedger:
                     valid_to TEXT,
                     recorded_at TEXT NOT NULL,
                     revision INTEGER NOT NULL,
-                    status TEXT NOT NULL
+                    status TEXT NOT NULL,
+                    conflict_key TEXT NOT NULL DEFAULT ''
                 )
                 """
             )
             await db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_claims_tenant ON claims(tenant_id)"
+            )
+            await db.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_claims_conflict_key
+                ON claims(tenant_id, collection_id, conflict_key)
+                """
+            )
+            # 为什么：存量库缺 conflict_key 时补列，避免破坏已有 claims 行
+            try:
+                await db.execute(
+                    "ALTER TABLE claims ADD COLUMN conflict_key TEXT NOT NULL DEFAULT ''"
+                )
+            except Exception as exc:  # noqa: schema-idempotent
+                logger.debug("claims.conflict_key column ready: %s", exc)
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS claim_conflicts (
+                    conflict_id TEXT PRIMARY KEY,
+                    tenant_id TEXT NOT NULL,
+                    collection_id TEXT NOT NULL,
+                    conflict_key TEXT NOT NULL,
+                    claim_ids_json TEXT NOT NULL,
+                    texts_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    resolved_at TEXT
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_claim_conflicts_open
+                ON claim_conflicts(tenant_id, collection_id, conflict_key, status)
+                """
             )
             await db.commit()
 
@@ -654,8 +689,11 @@ class FactLedger:
         valid_from: Optional[str] = None,
         valid_to: Optional[str] = None,
         revision: int = 1,
+        conflict_key: str = "",
+        enforce_write_gates: bool = False,
+        source_policy_db_path: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """写入 Claim；published 必须有 evidence。
+        """写入 Claim；published 必须有 evidence；同 conflict_key 不同主张记冲突。
 
         Args:
             tenant_id: 租户。
@@ -671,9 +709,15 @@ class FactLedger:
             status: Claim 状态。
             valid_from / valid_to: 有效期。
             revision: 修订号。
+            conflict_key: 冲突键；空则不自动扫冲突。
+            enforce_write_gates: True 时要求 source_policy 已登记。
+            source_policy_db_path: 策略库路径。
 
         Returns:
-            Claim 记录。
+            Claim 记录（可能含 ``conflict_id`` 若触发冲突记录）。
+
+        Raises:
+            FactLedgerError: 无证据 published / 未知 source / 策略未登记。
         """
         import aiosqlite
 
@@ -685,7 +729,22 @@ class FactLedger:
                     f"evidence source not found in tenant: {ev['source_id']}"
                 )
 
+        if enforce_write_gates:
+            from core.harness.knowledge_pipeline.source_policy import get_source_policy
+
+            pol_id = (source_policy or "").strip()
+            if not pol_id:
+                raise FactLedgerError("source_policy required")
+            if (
+                get_source_policy(
+                    pol_id, tenant_id=tenant_id, db_path=source_policy_db_path
+                )
+                is None
+            ):
+                raise FactLedgerError(f"unknown source_policy: {pol_id}")
+
         cid = claim_id or f"cl-{uuid.uuid4().hex[:12]}"
+        ckey = (conflict_key or "").strip()
         recorded_at = _utc_now()
         vf = valid_from or recorded_at
         record = {
@@ -704,6 +763,7 @@ class FactLedger:
             "recorded_at": recorded_at,
             "revision": int(revision),
             "status": status,
+            "conflict_key": ckey,
         }
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("PRAGMA busy_timeout=5000")
@@ -712,8 +772,9 @@ class FactLedger:
                 INSERT OR REPLACE INTO claims (
                     claim_id, tenant_id, collection_id, domain_id, text,
                     evidence_json, source_policy, extractor_version, review_status,
-                    confidence, valid_from, valid_to, recorded_at, revision, status
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    confidence, valid_from, valid_to, recorded_at, revision, status,
+                    conflict_key
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     cid,
@@ -731,10 +792,246 @@ class FactLedger:
                     recorded_at,
                     int(revision),
                     status,
+                    ckey,
+                ),
+            )
+            await db.commit()
+
+        # 为什么：冲突只记录不裁决；同键不同主张 → open conflict
+        if ckey:
+            peers = await self.list_claims_by_conflict_key(
+                tenant_id=tenant_id,
+                collection_id=collection_id,
+                conflict_key=ckey,
+            )
+            others = [
+                p
+                for p in peers
+                if p.get("claim_id") != cid and str(p.get("text") or "") != str(text)
+            ]
+            if others:
+                conf = await self.record_claim_conflict(
+                    tenant_id=tenant_id,
+                    collection_id=collection_id,
+                    conflict_key=ckey,
+                    claim_ids=[cid] + [str(p["claim_id"]) for p in others],
+                    texts=[str(text)] + [str(p.get("text") or "") for p in others],
+                )
+                record["conflict_id"] = conf["conflict_id"]
+        return record
+
+    def _row_to_claim(self, row: Any) -> Dict[str, Any]:
+        """将 claims 表行转为 Claim dict。
+
+        Args:
+            row: aiosqlite.Row 或兼容映射。
+        """
+        keys = set(row.keys()) if hasattr(row, "keys") else set()
+        return {
+            "claim_id": row["claim_id"],
+            "tenant_id": row["tenant_id"],
+            "collection_id": row["collection_id"],
+            "domain_id": row["domain_id"],
+            "text": row["text"],
+            "evidence": json.loads(row["evidence_json"] or "[]"),
+            "source_policy": row["source_policy"],
+            "extractor_version": row["extractor_version"],
+            "review_status": row["review_status"],
+            "confidence": row["confidence"],
+            "valid_from": row["valid_from"],
+            "valid_to": row["valid_to"],
+            "recorded_at": row["recorded_at"],
+            "revision": row["revision"],
+            "status": row["status"],
+            "conflict_key": row["conflict_key"] if "conflict_key" in keys else "",
+        }
+
+    async def get_claim(
+        self,
+        claim_id: str,
+        *,
+        tenant_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """按租户读取 Claim。
+
+        Args:
+            claim_id: Claim ID。
+            tenant_id: 调用方租户。
+        """
+        import aiosqlite
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                "SELECT * FROM claims WHERE claim_id=? AND tenant_id=?",
+                (claim_id, tenant_id),
+            )
+            row = await cur.fetchone()
+        return self._row_to_claim(row) if row else None
+
+    async def list_claims_by_conflict_key(
+        self,
+        *,
+        tenant_id: str,
+        collection_id: str,
+        conflict_key: str,
+    ) -> List[Dict[str, Any]]:
+        """列出同租户/集合/冲突键下的 Claim。
+
+        Args:
+            tenant_id: 租户。
+            collection_id: 集合。
+            conflict_key: 冲突键（空则返回空列表）。
+        """
+        import aiosqlite
+
+        ckey = (conflict_key or "").strip()
+        if not ckey:
+            return []
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                """
+                SELECT * FROM claims
+                WHERE tenant_id=? AND collection_id=? AND conflict_key=?
+                ORDER BY recorded_at ASC
+                """,
+                (tenant_id, collection_id, ckey),
+            )
+            rows = await cur.fetchall()
+        return [self._row_to_claim(r) for r in rows]
+
+    async def record_claim_conflict(
+        self,
+        *,
+        tenant_id: str,
+        collection_id: str,
+        conflict_key: str,
+        claim_ids: List[str],
+        texts: List[str],
+        conflict_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """显式记录 Claim 冲突（open）；不自动裁决。
+
+        Args:
+            tenant_id: 租户。
+            collection_id: 集合。
+            conflict_key: 冲突键。
+            claim_ids: 涉事 Claim。
+            texts: 冲突主张文本。
+            conflict_id: 可选显式 ID。
+
+        Returns:
+            冲突记录。
+
+        Raises:
+            FactLedgerError: 参数不足或主张不足两条。
+        """
+        import aiosqlite
+
+        tid = (tenant_id or "").strip()
+        cid = (collection_id or "").strip()
+        ckey = (conflict_key or "").strip()
+        if not tid or not cid or not ckey:
+            raise FactLedgerError(
+                "tenant_id, collection_id, conflict_key required for claim conflict"
+            )
+        if len(set(texts)) < 2 or len(claim_ids) < 2:
+            raise FactLedgerError("claim conflict requires >=2 distinct texts/claim_ids")
+        conf_id = conflict_id or f"cc-{uuid.uuid4().hex[:12]}"
+        created_at = _utc_now()
+        record = {
+            "conflict_id": conf_id,
+            "tenant_id": tid,
+            "collection_id": cid,
+            "conflict_key": ckey,
+            "claim_ids": list(claim_ids),
+            "texts": list(texts),
+            "status": "open",
+            "created_at": created_at,
+            "resolved_at": None,
+        }
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA busy_timeout=5000")
+            await db.execute(
+                """
+                INSERT OR REPLACE INTO claim_conflicts (
+                    conflict_id, tenant_id, collection_id, conflict_key,
+                    claim_ids_json, texts_json, status, created_at, resolved_at
+                ) VALUES (?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    conf_id,
+                    tid,
+                    cid,
+                    ckey,
+                    json.dumps(record["claim_ids"], ensure_ascii=False),
+                    json.dumps(record["texts"], ensure_ascii=False),
+                    "open",
+                    created_at,
+                    None,
                 ),
             )
             await db.commit()
         return record
+
+    async def list_claim_conflicts(
+        self,
+        *,
+        tenant_id: str,
+        collection_id: Optional[str] = None,
+        conflict_key: Optional[str] = None,
+        status: str = "open",
+    ) -> List[Dict[str, Any]]:
+        """列出 Claim 冲突。
+
+        Args:
+            tenant_id: 租户。
+            collection_id: 可选集合过滤。
+            conflict_key: 可选冲突键过滤。
+            status: 状态过滤；空串表示不过滤。
+        """
+        import aiosqlite
+
+        clauses = ["tenant_id=?"]
+        args: List[Any] = [tenant_id]
+        if collection_id:
+            clauses.append("collection_id=?")
+            args.append(collection_id)
+        if conflict_key:
+            clauses.append("conflict_key=?")
+            args.append(conflict_key)
+        if status:
+            clauses.append("status=?")
+            args.append(status)
+        sql = (
+            "SELECT * FROM claim_conflicts WHERE "
+            + " AND ".join(clauses)
+            + " ORDER BY created_at DESC"
+        )
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(sql, args)
+            rows = await cur.fetchall()
+        out: List[Dict[str, Any]] = []
+        for row in rows:
+            out.append(
+                {
+                    "conflict_id": row["conflict_id"],
+                    "tenant_id": row["tenant_id"],
+                    "collection_id": row["collection_id"],
+                    "conflict_key": row["conflict_key"],
+                    "claim_ids": json.loads(row["claim_ids_json"] or "[]"),
+                    "texts": json.loads(row["texts_json"] or "[]"),
+                    "status": row["status"],
+                    "created_at": row["created_at"],
+                    "resolved_at": row["resolved_at"],
+                }
+            )
+        return out
 
     def _row_to_fact(self, row: Any) -> Dict[str, Any]:
         """将 facts 表行转为 Fact dict。
@@ -1300,6 +1597,199 @@ def evaluate_cross_tenant_gate(
         "certified": False,
         "n09_full_conformance": False,
         "note": "FactLedger suite deepen; not platform-wide zero-leak certified",
+    }
+
+
+_N03_CASES = (
+    "published_without_evidence_rejected",
+    "published_with_evidence_ok",
+    "claim_conflict_recorded",
+)
+
+
+async def run_claim_evidence_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n03-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N03 Claim 证据硬门 + 冲突记录最小加深套件。
+
+    Args:
+        ledger: 可选账本；默认临时目录新建。
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入；harness 不默认业务域名）。
+
+    Returns:
+        套件汇总；``certified`` / ``n03_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n03-claim-evidence-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n03-kb",
+            kind="file",
+            uri="file://n03/claim-evidence.txt",
+            content=b"n03-claim-evidence",
+            connector="n03",
+            domain_id=domain_id,
+        )
+        evidence = [
+            {
+                "source_id": src["source_id"],
+                "locator": "extract",
+                "quote": "n03",
+                "fetched_at": src["fetched_at"],
+            }
+        ]
+
+        rejected = False
+        try:
+            await lg.put_claim(
+                tenant_id=tenant_id,
+                collection_id="n03-kb",
+                text="published without evidence",
+                evidence=[],
+                source_policy="n03_policy",
+                extractor_version="n03",
+                review_status="published",
+                confidence=0.5,
+                domain_id=domain_id,
+            )
+        except FactLedgerError:
+            rejected = True
+        cases.append(
+            {
+                "id": "published_without_evidence_rejected",
+                "ok": rejected,
+                "detail": "" if rejected else "empty_evidence_accepted",
+            }
+        )
+
+        claim_a = await lg.put_claim(
+            tenant_id=tenant_id,
+            collection_id="n03-kb",
+            text="door is locked",
+            evidence=evidence,
+            source_policy="n03_policy",
+            extractor_version="n03",
+            review_status="published",
+            confidence=0.8,
+            domain_id=domain_id,
+            conflict_key="door.lock_state",
+        )
+        # 为什么：生产路径读回 Claim，避免 get_claim 零 caller
+        roundtrip = await lg.get_claim(claim_a["claim_id"], tenant_id=tenant_id)
+        ok_write = (
+            bool(claim_a.get("claim_id"))
+            and not claim_a.get("conflict_id")
+            and roundtrip is not None
+            and roundtrip.get("text") == "door is locked"
+        )
+        cases.append(
+            {
+                "id": "published_with_evidence_ok",
+                "ok": ok_write,
+                "detail": "" if ok_write else "write_failed",
+            }
+        )
+
+        claim_b = await lg.put_claim(
+            tenant_id=tenant_id,
+            collection_id="n03-kb",
+            text="door is unlocked",
+            evidence=evidence,
+            source_policy="n03_policy",
+            extractor_version="n03",
+            review_status="published",
+            confidence=0.7,
+            domain_id=domain_id,
+            conflict_key="door.lock_state",
+        )
+        conflicts = await lg.list_claim_conflicts(
+            tenant_id=tenant_id,
+            collection_id="n03-kb",
+            conflict_key="door.lock_state",
+            status="open",
+        )
+        conf_ok = bool(claim_b.get("conflict_id")) and len(conflicts) >= 1
+        cases.append(
+            {
+                "id": "claim_conflict_recorded",
+                "ok": conf_ok,
+                "detail": "" if conf_ok else "conflict_missing",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N03_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "claim_evidence",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n03_full_conformance": False,
+        "note": "Claim evidence + conflict record slice; not N03 full certification",
+    }
+
+
+def evaluate_claim_evidence_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N03 Claim 证据门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_claim_evidence_suite`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n03_full_conformance") is True:
+        # 为什么：套件误标认证仍拒绝
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "claim_evidence",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n03_full_conformance": False,
+        "note": "Claim evidence harden; not N03/N24 certified",
     }
 
 

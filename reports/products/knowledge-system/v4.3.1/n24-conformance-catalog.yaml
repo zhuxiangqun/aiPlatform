@@ -33,7 +33,9 @@ items:
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
-    note: G1 + put_fact 写入硬门；非全量 Claim 冲突记录/非认证
+      - reports/products/knowledge-system/v4.3.1/phase2-claim-evidence-evidence.md
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_claim_evidence_phase2.py
+    note: Claim 证据硬门+冲突记录+门槛门；非全量 Claim 状态机/非认证
   - id: N04
     title: 来源策略与冲突裁决
     status: partial
@@ -251,9 +253,9 @@ certification_slots:
     path: reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
   - id: slo
     title: SLO
-    path: ""
-    note: 知识系统生产 SLO 证据未登记
+    path: reports/products/knowledge-system/v4.3.1/phase2-slo-target-evidence.md
+    note: 目标登记；非生产遥测达标
   - id: exception_adr
     title: 例外 ADR
-    path: ""
-    note: 无集中例外 ADR 包；缺口见 N 项 note
+    path: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
+    note: 集中 partial 例外清单；非全量 ADR 体系
