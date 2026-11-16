@@ -1,7 +1,8 @@
-"""Link traverse 最小实现（附录 F.2 link.traverse）— 租户前置、只读。
+"""Link traverse 最小实现（附录 F.2 link.traverse）— 租户前置、只读、ABox ACL。
 
-从 FactLedger 三元组构造边（object 形如 ``Type:id`` 视为链接目标），BFS 多跳。
-非目标：不写 Fact；不实现 SDK / action.execute / 字段级 ACL；不直连 GraphIndex 写路径。
+从 FactLedger 三元组构造边（object 形如 ``Type:id`` 视为链接目标），BFS 多跳；
+经 ``role`` 在召回前做实例拒绝与字段脱敏（复用 graph_abox_acl）。
+非目标：不写 Fact；不实现 SDK / action.execute；不宣称 Wiki/KB 全入口字段 ACL。
 """
 from __future__ import annotations
 
@@ -21,6 +22,42 @@ from core.harness.knowledge_pipeline.fact_projector import _parse_subject
 logger = logging.getLogger(__name__)
 
 _REF_RE = re.compile(r"^[A-Za-z_][\w-]*:[^\s]+$")
+
+
+def _entity_readable(domain_id: str, entity_id: str, role: str) -> bool:
+    """实例读 ACL；无 domain/role/ACL 时放行（与 ObjectSet 一致）。
+
+    Args:
+        domain_id: 域 id。
+        entity_id: 实体 id（不含 Type: 前缀）。
+        role: 调用方角色。
+    """
+    if not domain_id or not entity_id:
+        return True
+    from core.policy.graph_abox_acl import check_entity_acl
+
+    return bool(check_entity_acl(domain_id, entity_id, role, "read"))
+
+
+def _redact_node(
+    domain_id: str,
+    entity_id: str,
+    payload: Dict[str, Any],
+    role: str,
+) -> Dict[str, Any]:
+    """节点字段脱敏。
+
+    Args:
+        domain_id: 域 id。
+        entity_id: 实体 id。
+        payload: 节点 dict。
+        role: 调用方角色。
+    """
+    if not domain_id or not entity_id:
+        return payload
+    from core.policy.graph_abox_acl import redact_entity_fields
+
+    return redact_entity_fields(domain_id, entity_id, payload, role)
 
 
 class LinkTraverseRequest(BaseModel):
@@ -115,15 +152,17 @@ async def traverse_links(
     tenant_id: str,
     permissions: Optional[List[str]] = None,
     required_permissions: Optional[List[str]] = None,
+    role: str = "",
     ledger=None,
 ) -> Dict[str, Any]:
-    """多跳链接遍历（只读；租户 SQL 前置）。
+    """多跳链接遍历（只读；租户 SQL 前置；可选 ABox ACL）。
 
     Args:
         request: F.2 请求或 dict。
         tenant_id: 租户（必填）。
         permissions: 调用方 scopes。
         required_permissions: 合同级权限，默认 ``["kb:read"]``。
+        role: ABox ACL 角色；空则实例 ACL 默认放行。
         ledger: 可选 FactLedger 注入（测试）。
 
     Returns:
@@ -171,6 +210,7 @@ async def traverse_links(
     fl = ledger or get_fact_ledger()
     await fl.initialize()
     domain_id = (req.domain_id or "").strip()
+    actor_role = (role or "").strip()
     try:
         facts = await fl.query_facts(
             tenant_id=tenant_id,
@@ -190,14 +230,31 @@ async def traverse_links(
     outgoing, incoming = _build_adjacency(facts, link_types=req.link_types)
     direction = req.direction
 
+    cls0, eid0 = _parse_subject(start)
+    # 为什么：起点被 deny 时不得返回子图（召回前过滤）
+    if not _entity_readable(domain_id, eid0 or "", actor_role):
+        return {
+            "status": "ok",
+            "start_id": start,
+            "nodes": [],
+            "edges": [],
+            "hops_reached": 0,
+            "max_hops": req.max_hops,
+            "domain_id": domain_id,
+            "policy_gate": gate,
+            "acl_filtered": True,
+            "acl_denied_start": True,
+        }
+
     # BFS：(node, hop)
     seen: Set[str] = {start}
     nodes: Dict[str, Dict[str, Any]] = {}
-    cls0, eid0 = _parse_subject(start)
-    nodes[start] = {"id": eid0 or start, "object_type": cls0 or "", "ref": start}
+    start_node = {"id": eid0 or start, "object_type": cls0 or "", "ref": start}
+    nodes[start] = _redact_node(domain_id, eid0 or "", start_node, actor_role)
     edges: List[Dict[str, Any]] = []
     q: deque = deque([(start, 0)])
     hops_reached = 0
+    acl_dropped = 0
 
     while q:
         cur, hop = q.popleft()
@@ -213,6 +270,10 @@ async def traverse_links(
                 neighbors.append((nb, lt, "incoming"))
 
         for nb, lt, ed in neighbors:
+            _cls, eid = _parse_subject(nb)
+            if not _entity_readable(domain_id, eid or "", actor_role):
+                acl_dropped += 1
+                continue
             edges.append(
                 {
                     "from": cur,
@@ -226,8 +287,8 @@ async def traverse_links(
             if nb in seen:
                 continue
             seen.add(nb)
-            cls, eid = _parse_subject(nb)
-            nodes[nb] = {"id": eid or nb, "object_type": cls or "", "ref": nb}
+            node = {"id": eid or nb, "object_type": _cls or "", "ref": nb}
+            nodes[nb] = _redact_node(domain_id, eid or "", node, actor_role)
             q.append((nb, hop + 1))
 
     return {
@@ -239,4 +300,6 @@ async def traverse_links(
         "max_hops": req.max_hops,
         "domain_id": domain_id,
         "policy_gate": gate,
+        "acl_filtered": bool(actor_role and domain_id),
+        "acl_dropped": acl_dropped,
     }
