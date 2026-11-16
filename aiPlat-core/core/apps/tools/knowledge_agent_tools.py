@@ -1,8 +1,8 @@
 """知识系统 Agent 工具面（附录 F.2 最小切片）。
 
-提供 ``object.query`` / ``function.call`` / ``link.traverse``，一律经 CoreFacade；
-禁止通用 SQL / 直写 Fact。
-非目标：不实现 action.execute / object_set.aggregate / SDK 生成。
+提供 ``object.query`` / ``function.call`` / ``link.traverse`` / ``object_set.aggregate``，
+一律经 CoreFacade；禁止通用 SQL / 直写 Fact。
+非目标：不实现 action.execute / SDK 生成。
 """
 from __future__ import annotations
 
@@ -401,5 +401,108 @@ class LinkTraverseTool(BaseTool):
         return ToolResult(
             success=False,
             error=out.get("reason") or status or "traverse_failed",
+            output=out,
+        )
+
+
+class ObjectSetAggregateTool(BaseTool):
+    """附录 F.2 ``object_set.aggregate`` — 经 ObjectSet 只读聚合。"""
+
+    def __init__(self) -> None:
+        """注册 object_set.aggregate 工具合同。"""
+        super().__init__(
+            ToolConfig(
+                name="object_set.aggregate",
+                description=(
+                    "对 ObjectSet 做只读聚合（须 tenant_id + aggregate；经 CoreFacade）。"
+                    "当前支持 count[+group_by]；禁止 sql/直写 Fact。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "tenant_id": {
+                            "type": "string",
+                            "description": "租户 ID（必填）",
+                        },
+                        "object_type": {
+                            "type": "string",
+                            "description": "ObjectType id",
+                        },
+                        "aggregate": {
+                            "type": "array",
+                            "description": "聚合规格，如 [{type:count, group_by:[status]}]",
+                        },
+                        "filter": {
+                            "type": "object",
+                            "description": "等值过滤",
+                        },
+                        "domain_id": {
+                            "type": "string",
+                            "description": "可选域 id",
+                        },
+                        "permissions": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "调用方权限/scopes（须含 kb:read）",
+                        },
+                    },
+                    "required": ["tenant_id", "object_type", "aggregate"],
+                },
+                metadata={"category": "knowledge", "appendix": "F.2"},
+            )
+        )
+
+    async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """执行 object_set.aggregate。
+
+        Args:
+            params: 含 tenant_id / object_type / aggregate。
+        """
+        bad = _reject_sql_or_write(params or {})
+        if bad:
+            return ToolResult(success=False, error=bad)
+
+        tenant_id = str((params or {}).get("tenant_id") or "").strip()
+        object_type = str((params or {}).get("object_type") or "").strip()
+        aggregate = (params or {}).get("aggregate")
+        if not tenant_id:
+            return ToolResult(success=False, error="tenant_id_required")
+        if not object_type:
+            return ToolResult(success=False, error="object_type_required")
+        if not isinstance(aggregate, list) or not aggregate:
+            return ToolResult(success=False, error="aggregate_required")
+        # 为什么：最小切片仅允许 count，避免冒充任意 SQL 聚合
+        for spec in aggregate:
+            if not isinstance(spec, dict):
+                return ToolResult(success=False, error="aggregate_spec_invalid")
+            if str(spec.get("type") or "") != "count":
+                return ToolResult(success=False, error="aggregate_type_unsupported")
+
+        request = {
+            "object_type": object_type,
+            "filter": (params or {}).get("filter") or {},
+            "sort": [],
+            "limit": 1,
+            "domain_id": str((params or {}).get("domain_id") or ""),
+            "aggregate": aggregate,
+        }
+        permissions = _parse_permissions(params or {})
+
+        try:
+            out = await _facade_query_object_set(
+                request,
+                tenant_id=tenant_id,
+                permissions=permissions,
+            )
+        except Exception as e:
+            logger.warning("object_set.aggregate failed", exc_info=True)
+            return ToolResult(success=False, error=str(e)[:500])
+
+        status = out.get("status")
+        if status == "ok":
+            return ToolResult(success=True, output=out)
+        return ToolResult(
+            success=False,
+            error=out.get("reason") or status or "aggregate_failed",
             output=out,
         )

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2751
+total_capabilities: 2752
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 289
+    caps_count: 290
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3126,6 +3126,10 @@ domains:
         module: core/apps/tools/knowledge_agent_tools.py
         type: class
         signature: "Appendix F.2 link.traverse via CoreFacade; reject sql/write"
+      - symbol: "ObjectSetAggregateTool"
+        module: core/apps/tools/knowledge_agent_tools.py
+        type: class
+        signature: "Appendix F.2 object_set.aggregate via ObjectSet; count-only"
       - symbol: "traverse_links_route"
         module: aiPlat-platform/apps/fde/api/link_traverse_routes.py
         type: function
