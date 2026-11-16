@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T14:15:00+08:00",
+  "reviewed_at": "2026-11-16T15:21:51+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c45824ae46087b38fae94b4d55e845e5f161fa23",
-  "diff_sha256": "3bcc20ee8882ef183c5e52abadecb1364b923391fcbdda9a46932e81f9b5d8b7",
-  "head_sha": "86c5ffb604e1f81231b7a66b9bbf8a2040067103",
+  "merge_base": "52359e9acedd76c8da22648649484e4e5bfc9747",
+  "diff_sha256": "e52047c7a2f9d56f42f2f7661576a68d4665cf76e96b9a7e889b3ec5a394dfc3",
+  "head_sha": "02f48a20ee7f749dd429174f104fa2dd720d226f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Merge main into #773 after #772: keep OCS+Migration; stats/matrix/whitepapers regenerated. Residual: certification/N24 pack still out of slice."
+  "note": "docs-only: AUTO-STATS + whitepaper stamp sync for contracts-guard; no product logic change"
 }

@@ -1,0 +1,241 @@
+# 附录 N 24 项符合性目录（机器可读 SSOT）
+# 人读摘要：phase0-conformance-gap-n24.md；证据包 API：conformance_pack.build_conformance_pack
+# status: exists | partial | missing — 无一项表示「已认证符合」；certified 仅由 evaluate_conformance_gate 在 24/24 exists+证据齐时置真
+standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md
+standard_section: N
+pilot_domain: lock-service
+measured_at: "2026-11-16"
+items:
+  - id: N01
+    title: Raw 不可变
+    status: partial
+    phase: W1/P1
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
+    note: FactLedger.register_source 写 sha256；DataSourceConfig 全路径仍未强制 hash
+  - id: N02
+    title: 语义模型版本化
+    status: partial
+    phase: W2/P1
+    gap_type: 有数据无契约
+    evidence:
+      - aiPlat-core/workspace_seeds/ontologies/lock-service.yaml
+      - reports/products/knowledge-system/v4.3.1/phase2-ontology-package-evidence.md
+    note: 域 YAML version + Package 最小切片；缺全量 ObjectType 人审发布流水线
+  - id: N03
+    title: Fact/Claim 有 evidence
+    status: partial
+    phase: W3/P1
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
+    note: G1 Fact Ledger 最小切片；非全量 Claim 冲突记录
+  - id: N04
+    title: 来源策略与冲突裁决
+    status: missing
+    phase: W3/P1
+    gap_type: 缺失
+    evidence: []
+    note: 生产知识路径无 source_policy / Claim 冲突裁决
+  - id: N05
+    title: Wiki/索引有条件重建
+    status: partial
+    phase: W4/P2
+    gap_type: 有 Wiki 无事实源
+    evidence:
+      - aiPlat-core/core/harness/knowledge/wiki_read_model.py
+      - reports/products/knowledge-system/v4.3.1/phase2-wiki-readonly-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
+    note: 读模型硬门 + Fact→Graph 可重建；缺重建条件分类契约
+  - id: N06
+    title: Gateway 查询契约
+    status: partial
+    phase: W6/P1-P2
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-objectset-evidence.md
+    note: FactLedger 查询网关 + ObjectSet 最小闭环；非附录 M 统一 Gateway
+  - id: N07
+    title: 权限召回前过滤
+    status: partial
+    phase: W6/W8/P1
+    gap_type: 有查询无权限
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-objectset-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
+    note: ObjectSet/租户前置 + ACL；非全入口字段级
+  - id: N08
+    title: 动作执行走 Policy/Approval/Audit
+    status: partial
+    phase: W5/W7/P2
+    gap_type: 有动作无门禁
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-action-execute-tool-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
+    note: ActionRegistry L1 + 幂等/快照；审批 bypass 路径仍存
+  - id: N09
+    title: 跨租户 0 泄漏
+    status: partial
+    phase: W8/P1
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-scenario-evidence.md
+    note: 专项负向用例存在；未宣称全域 0 泄漏认证
+  - id: N10
+    title: 评测有定义/数据集/门槛
+    status: partial
+    phase: W10/P4
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/confidence_calibration.py
+    note: 附录 O 校准报告门槛已接线；非全知识域 gold 流水线
+  - id: N11
+    title: 迁移/回滚方案
+    status: partial
+    phase: W10/P4
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/knowledge_migration.py
+    note: 双写/对账/回滚演练最小切片；切写未授权
+  - id: N12
+    title: Fact 状态机
+    status: missing
+    phase: W3/P1
+    gap_type: 缺失
+    evidence: []
+    note: 无 Fact review/lifecycle 状态机完整实现
+  - id: N13
+    title: confidence 校准规则
+    status: partial
+    phase: W10/P4
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
+    note: 失败/缺失/过期 → 最高 medium；未宣称准确率
+  - id: N14
+    title: 跨存储失败恢复/对账
+    status: partial
+    phase: W10/P3-P4
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
+    note: 迁移 job 本地 store 对账；非生产 Raw↔Fact↔Index 全链路
+  - id: N15
+    title: JSON Schema 与附录一致
+    status: exists
+    phase: standard
+    gap_type: 标准包就绪
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase0-standard-pack-baseline.md
+      - docs/standards/knowledge-system/v4.3.1/schemas
+    note: 标准包 schema 已发布
+  - id: N16
+    title: 附录示例通过 Schema 校验
+    status: exists
+    phase: standard
+    gap_type: 标准包就绪
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase0-standard-pack-baseline.md
+    note: phase0 schema validate 摘要
+  - id: N17
+    title: 记录级语义校验通过
+    status: exists
+    phase: standard
+    gap_type: 标准包就绪
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase0-standard-pack-baseline.md
+    note: 参考策略用例；非实现方运行时权威
+  - id: N18
+    title: 实现方语义测试通过
+    status: missing
+    phase: W10/P4
+    gap_type: 缺失
+    evidence: []
+    note: conformance README 要求的真实 RBAC/Fact Store 套件未交付
+  - id: N19
+    title: 运行时权威与审计快照
+    status: partial
+    phase: W7/P2
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
+      - aiPlat-core/core/harness/infrastructure/action_execution.py
+    note: customer_action before/after；Fact/Query 权威快照未统一
+  - id: N20
+    title: L1/L2/L3 约束分层
+    status: partial
+    phase: W7/P2
+    gap_type: 有动作无门禁
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-function-contract-evidence.md
+    note: Action/Function L1 形状；知识面未按标准完整分层
+  - id: N21
+    title: 防假绿
+    status: partial
+    phase: W6/P2
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-ocs-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
+    note: OCS/校准诚实锁；查询统一 abstain+citations 未全覆盖
+  - id: N22
+    title: 实例/字段级 ACL
+    status: partial
+    phase: W8/P2-P3
+    gap_type: 有查询无权限
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/object_set.py
+    note: ObjectSet ABox ACL 最小切片；非全召回路径
+  - id: N23
+    title: OCS 完整度
+    status: partial
+    phase: W10/P4
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-ocs-evidence.md
+      - aiPlat-core/core/harness/knowledge/ontology_completeness.py
+    note: §13.4 覆盖计分 + 门槛门；未宣称企业全域完整
+  - id: N24
+    title: 版本/变更/审计
+    status: partial
+    phase: W2-W3/P1
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-ontology-package-evidence.md
+      - docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
+    note: Package 版本/哈希 + Action 审计碎片；无统一 Fact Revision 账本
+
+# §9.4 认证证据包槽位（路径或 explicit missing）
+certification_slots:
+  - id: architecture
+    title: 架构说明
+    path: docs/architecture/system-architecture-contract.md
+  - id: data_contracts
+    title: 数据契约
+    path: docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
+  - id: permission_matrix
+    title: 权限矩阵
+    path: docs/reference/matrix/capability-impact-matrix.md
+  - id: eval_reports
+    title: 测试/评测报告
+    path: reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
+  - id: migration_rollback
+    title: 迁移/回滚记录
+    path: reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
+  - id: slo
+    title: SLO
+    path: ""
+    note: 知识系统生产 SLO 证据未登记
+  - id: exception_adr
+    title: 例外 ADR
+    path: ""
+    note: 无集中例外 ADR 包；缺口见 N 项 note
