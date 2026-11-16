@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2797
+total_capabilities: 2800
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -4172,12 +4172,12 @@ domains:
         reason: "OCS 本体完整性六维评分"
 
   # ══════════════════════════════════════════════════════════════
-  # 四、RAG 检索 (7 caps)
+  # 四、RAG 检索 (10 caps)
   # ══════════════════════════════════════════════════════════════
   rag-retrieval:
     section: "四"
     section_name: "RAG 检索"
-    caps_count: 7
+    caps_count: 10
     provides:
       - symbol: "MaterialsChatAgent"
         type: "class"
@@ -4207,6 +4207,18 @@ domains:
         type: "function"
         signature: "compute_domain_ocs(domain_id)→{ocs,level,dimensions}"
         module: "core/harness/knowledge/ontology_completeness.py"
+      - symbol: "evaluate_ocs_gate"
+        type: "function"
+        signature: "W10: evaluate OCS threshold gate (v4.3.1 §13.4)"
+        module: "core/harness/knowledge/ontology_completeness.py"
+      - symbol: "get_domain_ocs_route"
+        type: "function"
+        signature: "GET /fde/ocs/{domain_id} via Facade"
+        module: "aiPlat-platform/apps/fde/api/ocs_routes.py"
+      - symbol: "evaluate_ocs_gate_route"
+        type: "function"
+        signature: "GET /fde/ocs/{domain_id}/gate via Facade"
+        module: "aiPlat-platform/apps/fde/api/ocs_routes.py"
     breaks: []
     consumers_expected:
       - module: "core/apps/agents/materials_chat.py"

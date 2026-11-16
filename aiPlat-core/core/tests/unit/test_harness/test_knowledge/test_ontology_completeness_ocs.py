@@ -117,14 +117,25 @@ def test_ocs_lock_service_seed_ratchet_complete(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPLAT_HOME", str(home))
     GraphIndex._loaded_instances.clear()
     g = GraphIndex(DOMAIN)
-    for i in range(6):
-        g.add_entity(f"IO-{i}", f"o{i}", "安装工单", source_doc_id="seed")
-    g.add_relation("IO-0", "assigned_to", "IO-1")
+    # v4.3.1 C5=类覆盖：每个 logic 类至少 1 实例（禁止靠节点数档位刷分）
+    seed_abox = [
+        ("IO-0", "安装工单"),
+        ("IO-1", "安装工单"),
+        ("T-0", "安装师傅"),
+        ("DM-0", "设备型号"),
+        ("FT-0", "故障类型"),
+        ("MR-0", "维修记录"),
+        ("CS-0", "客户现场"),
+    ]
+    for eid, cls in seed_abox:
+        g.add_entity(eid, eid, cls, source_doc_id="seed")
+    g.add_relation("IO-0", "assigned_to", "T-0")
     g.save()
     GraphIndex._loaded_instances.clear()
     r = compute_domain_ocs(DOMAIN, credit_test_evidence=True)
     assert r["ocs"] >= 80, r
     assert r["level"] == "complete", r
+    assert r["dimensions"]["C5"] >= 85.0, r["dimensions"]
 
 
 def test_seed_cross_domain_config_unified_customer(tmp_path, monkeypatch):

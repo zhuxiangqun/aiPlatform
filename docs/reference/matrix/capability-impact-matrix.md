@@ -8,7 +8,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 2797 capabilities (caps_count) | 2797 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2800 capabilities (caps_count) | 2800 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -74,7 +74,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 7 | FDE 追问 → 检索增强 |
+| rag-retrieval | §四 RAG 检索 | 10 | FDE 追问 → 检索增强 |
 
 ### aiPlat-platform/apps/fde/api/fde_dashboard_v2.py
 
@@ -177,7 +177,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 7 | CRAG + HyDE + RRF 自身 |
+| rag-retrieval | §四 RAG 检索 | 10 | CRAG + HyDE + RRF 自身 |
 
 ### core/apps/agents/multi_agent.py
 
@@ -286,7 +286,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 7 | 域分类 → 检索范围确定 |
+| rag-retrieval | §四 RAG 检索 | 10 | 域分类 → 检索范围确定 |
 
 ### core/harness/knowledge/knowledge_synthesis.py
 
@@ -379,7 +379,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 |--------|---------|:---:|--------|
 | knowledge-engine-ontology | §三 知识引擎（本体） | 335 | GraphIndex 遍历检索 |
 | memory-subsystem | §二 记忆子系统 | 59 | 语义记忆检索 |
-| rag-retrieval | §四 RAG 检索 | 7 | 检索路由 + 多路融合 |
+| rag-retrieval | §四 RAG 检索 | 10 | 检索路由 + 多路融合 |
 
 ### core/harness/syscalls/skill.py
 
@@ -620,7 +620,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **scripts/generate_capability_stats.py** — Phase C 统计表生成入口
 - **.github/workflows/aiplat-contracts-guard.yml** — Phase D critical-path static smoke in CI
 
-### §四 RAG 检索 (7 caps)
+### §四 RAG 检索 (10 caps)
 
 - **core/apps/agents/materials_chat.py** — CRAG + HyDE + RRF 自身
 - **core/harness/syscalls/retrieval.py** — 检索路由 + 多路融合

@@ -45,6 +45,7 @@ from .link_traverse_routes import router as _link_traverse_router
 from .scenario_routes import router as _scenario_router
 from .ontology_package_routes import router as _ontology_package_router
 from .confidence_calibration_routes import router as _confidence_calibration_router
+from .ocs_routes import router as _ocs_router
 from .rapid_insight import router as _rapid_insight_router
 from .fde_phase4 import router as _phase4_router
 from .fde_slice import router as _slice_router
@@ -86,6 +87,7 @@ router.include_router(_link_traverse_router, prefix="/fde")
 router.include_router(_scenario_router, prefix="/fde")
 router.include_router(_ontology_package_router, prefix="/fde")
 router.include_router(_confidence_calibration_router, prefix="/fde")
+router.include_router(_ocs_router, prefix="/fde")
 router.include_router(_rapid_insight_router, prefix="/fde")
 router.include_router(_phase4_router, prefix="/fde")
 router.include_router(_slice_router, prefix="/fde")

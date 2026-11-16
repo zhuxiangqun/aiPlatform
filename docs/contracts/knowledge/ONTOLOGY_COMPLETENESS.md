@@ -46,7 +46,7 @@ last_reviewed: 2026-11-15
 | C2 状态机 | 20 | 有 states.enum 的类占比；有 transitions 加分 |
 | C3 公理/证据 | 15 | axioms≥3 满分；1–2 按比例；compiler 可加载再加分 |
 | C4 Action 硬门 | 25 | 该域 `customer_action` 数；有 `required_state`/`forbidden_states` 的占比 |
-| C5 事实层 | 15 | GraphIndex 节点数>0；有边再加分 |
+| C5 事实层 | 15 | **实例/边覆盖**（logic 类有实例占比；声明关系有边加分）。**禁止**用节点数/页面数档位替代（v4.3.1 §13.4） |
 | C6 演化闭环 | 10 | 存在 applied 本体提案；或种子/测试证明中深档（配置覆盖） |
 
 **试点阈值**：OCS ≥ 70 → `pilot`；≥ 80 → 可称纵深完整（ledger `production` 域级）。
