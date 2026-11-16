@@ -305,7 +305,7 @@ def detect_object_conflicts(
     return out
 
 
-def suggest_by_conflict_rule(
+def _suggest_by_conflict_rule(
     *,
     facts: Sequence[Dict[str, Any]],
     policies: Dict[str, Dict[str, Any]],
@@ -705,7 +705,7 @@ async def scan_and_record_conflicts(
                 pol = get_source_policy(pid, tenant_id=tenant_id, db_path=db_path)
                 if pol:
                     policies[pid] = pol
-        suggestion = suggest_by_conflict_rule(facts=group_facts, policies=policies)
+        suggestion = _suggest_by_conflict_rule(facts=group_facts, policies=policies)
         recorded.append(
             record_conflict(
                 tenant_id=tenant_id,

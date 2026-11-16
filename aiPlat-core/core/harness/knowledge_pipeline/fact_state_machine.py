@@ -115,7 +115,7 @@ def _connect(db_path: Optional[str] = None) -> sqlite3.Connection:
     return conn
 
 
-def is_transition_allowed(machine: str, from_state: str, to_state: str) -> bool:
+def _is_transition_allowed(machine: str, from_state: str, to_state: str) -> bool:
     """判断边是否合法（纯函数）。
 
     Args:
@@ -129,7 +129,7 @@ def is_transition_allowed(machine: str, from_state: str, to_state: str) -> bool:
     return to_state in table.get(from_state, set())
 
 
-def assert_transition_allowed(machine: str, from_state: str, to_state: str) -> None:
+def _assert_transition_allowed(machine: str, from_state: str, to_state: str) -> None:
     """非法边抛错。
 
     Args:
@@ -144,7 +144,7 @@ def assert_transition_allowed(machine: str, from_state: str, to_state: str) -> N
         raise FactStateMachineError(f"unknown machine: {machine}")
     if from_state == to_state:
         raise FactStateMachineError(f"noop transition forbidden: {from_state}")
-    if not is_transition_allowed(machine, from_state, to_state):
+    if not _is_transition_allowed(machine, from_state, to_state):
         raise FactStateMachineError(
             f"illegal {machine} transition: {from_state} -> {to_state}"
         )
@@ -160,7 +160,7 @@ def validate_sequence(machine: str, steps: List[str]) -> bool:
     if len(steps) < 2:
         return False
     for i in range(len(steps) - 1):
-        if not is_transition_allowed(machine, steps[i], steps[i + 1]):
+        if not _is_transition_allowed(machine, steps[i], steps[i + 1]):
             return False
     return True
 
@@ -303,7 +303,7 @@ async def transition_fact_review(
         raise FactStateMachineError(f"fact not found: {fact_id}")
     from_state = str(fact.get("review_status") or "")
     to_s = (to_status or "").strip()
-    assert_transition_allowed("fact_review", from_state, to_s)
+    _assert_transition_allowed("fact_review", from_state, to_s)
     if to_s == "published":
         if not fact.get("evidence"):
             raise FactStateMachineError("published requires non-empty evidence")
@@ -375,7 +375,7 @@ async def transition_fact_lifecycle(
         raise FactStateMachineError(f"fact not found: {fact_id}")
     from_state = str(fact.get("status") or "")
     to_s = (to_status or "").strip()
-    assert_transition_allowed("fact_lifecycle", from_state, to_s)
+    _assert_transition_allowed("fact_lifecycle", from_state, to_s)
     # 为什么：语义校验要求 active 必须已 published
     if to_s == "active" and str(fact.get("review_status") or "") != "published":
         raise FactStateMachineError(
@@ -437,7 +437,7 @@ def transition_claim_status_pure(
         db_path: 审计库。
         revision: 新修订号。
     """
-    assert_transition_allowed("claim_status", from_status, to_status)
+    _assert_transition_allowed("claim_status", from_status, to_status)
     return _record_audit(
         tenant_id=tenant_id,
         record_kind="claim",

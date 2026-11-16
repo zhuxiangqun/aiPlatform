@@ -8,9 +8,9 @@ import pytest
 from core.harness.knowledge_pipeline.fact_ledger import FactLedger
 from core.harness.knowledge_pipeline.fact_state_machine import (
     FactStateMachineError,
-    assert_transition_allowed,
+    _assert_transition_allowed,
     evaluate_fact_state_gate,
-    is_transition_allowed,
+    _is_transition_allowed,
     list_fact_transitions,
     transition_claim_status_pure,
     transition_fact_lifecycle,
@@ -35,17 +35,17 @@ async def ledger(tmp_path: Path) -> FactLedger:
 
 
 def test_review_and_lifecycle_edges():
-    assert is_transition_allowed("fact_review", "draft", "reviewed")
-    assert not is_transition_allowed("fact_review", "draft", "published")
-    assert not is_transition_allowed("fact_review", "published", "draft")
-    assert is_transition_allowed("fact_lifecycle", "active", "superseded")
-    assert not is_transition_allowed("fact_lifecycle", "superseded", "active")
-    assert is_transition_allowed("claim_status", "accepted", "contested")
-    assert not is_transition_allowed("claim_status", "retracted", "accepted")
+    assert _is_transition_allowed("fact_review", "draft", "reviewed")
+    assert not _is_transition_allowed("fact_review", "draft", "published")
+    assert not _is_transition_allowed("fact_review", "published", "draft")
+    assert _is_transition_allowed("fact_lifecycle", "active", "superseded")
+    assert not _is_transition_allowed("fact_lifecycle", "superseded", "active")
+    assert _is_transition_allowed("claim_status", "accepted", "contested")
+    assert not _is_transition_allowed("claim_status", "retracted", "accepted")
     assert validate_sequence("fact_review", ["draft", "reviewed", "published"])
     assert not validate_sequence("fact_review", ["draft", "published"])
     with pytest.raises(FactStateMachineError, match="illegal"):
-        assert_transition_allowed("fact_review", "draft", "published")
+        _assert_transition_allowed("fact_review", "draft", "published")
 
 
 @pytest.mark.asyncio
