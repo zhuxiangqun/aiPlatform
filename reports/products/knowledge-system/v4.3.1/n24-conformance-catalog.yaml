@@ -34,11 +34,13 @@ items:
     note: G1 Fact Ledger 最小切片；非全量 Claim 冲突记录
   - id: N04
     title: 来源策略与冲突裁决
-    status: missing
+    status: partial
     phase: W3/P1
-    gap_type: 缺失
-    evidence: []
-    note: 生产知识路径无 source_policy / Claim 冲突裁决
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-source-policy-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/source_policy.py
+    note: 策略登记+冲突显式落库+人审裁决+publish 门；非全写入路径强制/非 N04 全量认证
   - id: N05
     title: Wiki/索引有条件重建
     status: partial
@@ -106,11 +108,13 @@ items:
     note: 双写/对账/回滚演练最小切片；切写未授权
   - id: N12
     title: Fact 状态机
-    status: missing
+    status: partial
     phase: W3/P1
-    gap_type: 缺失
-    evidence: []
-    note: 无 Fact review/lifecycle 状态机完整实现
+    gap_type: 有实现无证据
+    evidence:
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-state-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/fact_state_machine.py
+    note: review/lifecycle/claim 边表+审计+transition API；非裸 put_fact 唯一强制/非 N12 全量认证
   - id: N13
     title: confidence 校准规则
     status: partial

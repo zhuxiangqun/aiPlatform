@@ -553,6 +553,68 @@ class FactLedger:
             await db.commit()
         return record
 
+    def _row_to_fact(self, row: Any) -> Dict[str, Any]:
+        """将 facts 表行转为 Fact dict。
+
+        Args:
+            row: aiosqlite.Row 或兼容映射。
+        """
+        return {
+            "fact_id": row["fact_id"],
+            "tenant_id": row["tenant_id"],
+            "collection_id": row["collection_id"],
+            "domain_id": row["domain_id"],
+            "subject": row["subject"],
+            "predicate": row["predicate"],
+            "object": row["object"],
+            "evidence": json.loads(row["evidence_json"] or "[]"),
+            "source_policy": row["source_policy"],
+            "extractor_version": row["extractor_version"],
+            "review_status": row["review_status"],
+            "confidence": row["confidence"],
+            "valid_from": row["valid_from"],
+            "valid_to": row["valid_to"],
+            "recorded_at": row["recorded_at"],
+            "revision": row["revision"],
+            "status": row["status"],
+            "inferred": bool(row["inferred"]),
+        }
+
+    async def get_fact(
+        self,
+        fact_id: str,
+        *,
+        tenant_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """按 ID 读取 Fact（租户前置）。
+
+        Args:
+            fact_id: Fact ID。
+            tenant_id: 租户。
+
+        Returns:
+            Fact 记录；不存在或不属于该租户则 None。
+
+        Raises:
+            FactLedgerError: tenant_id 为空。
+        """
+        import aiosqlite
+
+        if not tenant_id:
+            raise FactLedgerError("tenant_id required before recall")
+        fid = (fact_id or "").strip()
+        if not fid:
+            return None
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA busy_timeout=5000")
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT * FROM facts WHERE fact_id=? AND tenant_id=?",
+                (fid, tenant_id),
+            )
+            row = await cur.fetchone()
+        return self._row_to_fact(row) if row else None
+
     async def query_facts(
         self,
         *,
@@ -614,31 +676,7 @@ class FactLedger:
             db.row_factory = aiosqlite.Row
             cur = await db.execute(sql, params)
             rows = await cur.fetchall()
-        out: List[Dict[str, Any]] = []
-        for row in rows:
-            out.append(
-                {
-                    "fact_id": row["fact_id"],
-                    "tenant_id": row["tenant_id"],
-                    "collection_id": row["collection_id"],
-                    "domain_id": row["domain_id"],
-                    "subject": row["subject"],
-                    "predicate": row["predicate"],
-                    "object": row["object"],
-                    "evidence": json.loads(row["evidence_json"] or "[]"),
-                    "source_policy": row["source_policy"],
-                    "extractor_version": row["extractor_version"],
-                    "review_status": row["review_status"],
-                    "confidence": row["confidence"],
-                    "valid_from": row["valid_from"],
-                    "valid_to": row["valid_to"],
-                    "recorded_at": row["recorded_at"],
-                    "revision": row["revision"],
-                    "status": row["status"],
-                    "inferred": bool(row["inferred"]),
-                }
-            )
-        return out
+        return [self._row_to_fact(row) for row in rows]
 
     async def query_facts_gateway(
         self,
