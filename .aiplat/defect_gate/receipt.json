@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T09:24:48+08:00",
+  "reviewed_at": "2026-11-16T09:37:32+08:00",
   "base_ref": "origin/main",
   "merge_base": "9aec3ebe02cc2abfadfb8c278d5be2052b42454a",
-  "diff_sha256": "e746728279c0c6f6ff5687f36c973442c94df71bcd98123f5acdd66da54e1577",
-  "head_sha": "d511df6da6a75b723a077c81944a8aa4b7833c1d",
+  "diff_sha256": "84198d1e111a63b10ff830b6c1f0cc428606736cbe03375bf7bc5eac5b92e391",
+  "head_sha": "583cb084522418027cf53d70d3328f1b21a2b139",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "W6 object_set.aggregate + whitepaper resync. Local lock only."
+  "note": "W6 object_set.aggregate + stats/whitepaper sync. Local lock only."
 }
