@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2859
+total_capabilities: 2873
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 394
+    caps_count: 408
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3014,10 +3014,58 @@ domains:
         module: core/harness/knowledge_pipeline/fact_ledger.py
         type: function
         signature: "load_object_type_bindings(path)→List[ObjectType-shaped dict]"
+      - symbol: "evaluate_raw_integrity_gate"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "evaluate_raw_integrity_gate(results)→gate (certified=false)"
+      - symbol: "fact_ledger_verify_raw_integrity"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_verify_raw_integrity(source_id,tenant_id)→verify receipt"
+      - symbol: "fact_ledger_read_raw_bytes"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_read_raw_bytes(source_id,tenant_id,verify=True)→bytes"
+      - symbol: "evaluate_fact_raw_integrity_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_raw_integrity_gate(results)→gate (certified=false)"
+      - symbol: "validate_gateway_response"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "validate_gateway_response(response)→{ok,errors,certified=false}"
+      - symbol: "evaluate_gateway_contract_gate"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "evaluate_gateway_contract_gate(responses)→gate (certified=false)"
+      - symbol: "validate_fact_gateway_response"
+        module: core/api/core_facade.py
+        type: function
+        signature: "validate_fact_gateway_response(response)→gate (certified=false)"
+      - symbol: "evaluate_fact_gateway_contract_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_gateway_contract_gate(responses)→gate (certified=false)"
+      - symbol: "run_cross_tenant_isolation_suite"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "run_cross_tenant_isolation_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_cross_tenant_gate"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "evaluate_cross_tenant_gate(suite)→gate (certified=false)"
+      - symbol: "fact_ledger_run_cross_tenant_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_run_cross_tenant_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_fact_cross_tenant_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_cross_tenant_gate(suite)→gate (certified=false)"
       - symbol: "fact_ledger_query_gateway"
         module: core/api/core_facade.py
         type: function
-        signature: "fact_ledger_query_gateway(tenant_id,query,...)→Dict appendix-M query"
+        signature: "fact_ledger_query_gateway(tenant_id,query,...)→Dict appendix-F.1 query"
       - symbol: "project_facts_to_graph"
         module: core/harness/knowledge_pipeline/fact_projector.py
         type: function
@@ -4239,6 +4287,14 @@ domains:
       - symbol: "evaluate_conformance_gate"
         type: "function"
         signature: "W10: conformance pack structural gate (not 24/24 certify)"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "build_pilot_cert_readiness_pack"
+        type: "function"
+        signature: "pilot N01/N06/N09 readiness pack (certified=false)"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_pilot_cert_readiness_gate"
+        type: "function"
+        signature: "pilot readiness gate (pilot_certified=false)"
         module: "core/harness/knowledge_pipeline/conformance_pack.py"
       - symbol: "load_conformance_catalog"
         type: "function"

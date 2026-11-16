@@ -13,8 +13,10 @@ items:
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-raw-integrity-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
-    note: FactLedger.register_source 写 sha256；DataSourceConfig 全路径仍未强制 hash
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_raw_integrity_phase2.py
+    note: 读时验 hash+篡改拒绝+门槛门；DataSourceConfig 全路径仍未强制；非 N01 certified
   - id: N02
     title: 语义模型版本化
     status: partial
@@ -61,7 +63,9 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-evidence.md
-    note: FactLedger 查询网关 + ObjectSet 最小闭环；非附录 M 统一 Gateway
+      - reports/products/knowledge-system/v4.3.1/phase2-gateway-contract-evidence.md
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_gateway_contract_phase2.py
+    note: FactLedger F.1 契约+confidence_factors+门槛门；非统一 Query Gateway/非 certified
   - id: N07
     title: 权限召回前过滤
     status: partial
@@ -90,7 +94,9 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-scenario-evidence.md
-    note: 专项负向用例存在；未宣称全域 0 泄漏认证
+      - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-evidence.md
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_cross_tenant_phase2.py
+    note: FactLedger 四探针套件+门槛门；未宣称全域 0 泄漏/非 certified
   - id: N10
     title: 评测有定义/数据集/门槛
     status: partial

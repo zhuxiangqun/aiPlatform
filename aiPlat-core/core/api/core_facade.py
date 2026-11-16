@@ -5408,6 +5408,45 @@ def evaluate_conformance_gate(
     return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
 
 
+async def build_pilot_cert_readiness_pack(
+    *,
+    pilot_domain: Optional[str] = None,
+    catalog_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点域 N01/N06/N09 认证就绪包（加深门槛；不自动 certified）。
+
+    Args:
+        pilot_domain: 试点域覆盖。
+        catalog_path: 可选 N24 catalog。
+
+    Returns:
+        就绪包。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        build_pilot_cert_readiness_pack as _build,
+    )
+
+    return await _build(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_pilot_cert_readiness_gate(
+    readiness: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """试点认证就绪门槛门（certified 恒 false）。
+
+    Args:
+        readiness: 就绪包回执。
+
+    Returns:
+        gate 结果。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_pilot_cert_readiness_gate as _gate,
+    )
+
+    return _gate(readiness)
+
+
 async def run_implementer_semantics_suite(
     *,
     work_dir: Optional[str] = None,
@@ -15722,14 +15761,76 @@ from core.harness.knowledge_pipeline.extractor import ExtractionPipeline, Extrac
 from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     FactLedger,
     FactLedgerError,
+    evaluate_cross_tenant_gate,
+    evaluate_gateway_contract_gate,
+    evaluate_raw_integrity_gate,
     get_fact_ledger,
     load_object_type_bindings,
     record_extraction_as_claim,
+    run_cross_tenant_isolation_suite,
+    validate_gateway_response,
 )
 from core.harness.knowledge_pipeline.fact_projector import project_facts_to_graph  # noqa: boundary
 from core.harness.knowledge_pipeline.object_set import ObjectSetRequest  # noqa: boundary
 from core.harness.knowledge_pipeline.link_traverse import LinkTraverseRequest  # noqa: boundary
 from core.harness.infrastructure.gates.marking_propagation import get_entity_max_marking_level, MARKING_LABELS  # noqa: boundary
+
+
+async def fact_ledger_verify_raw_integrity(
+    *,
+    source_id: str,
+    tenant_id: str,
+) -> dict:
+    """CoreFacade：读时校验 Raw 快照 sha256（N01；非全量认证）。
+
+    Args:
+        source_id: 来源 ID。
+        tenant_id: 调用方租户。
+
+    Returns:
+        verify 回执（ok/sha256/snapshot_uri）。
+
+    Raises:
+        FactLedgerError: 跨租户/缺失/hash 不一致。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.verify_raw_integrity(source_id, tenant_id=tenant_id)
+
+
+async def fact_ledger_read_raw_bytes(
+    *,
+    source_id: str,
+    tenant_id: str,
+    verify: bool = True,
+) -> bytes:
+    """CoreFacade：读取不可变 Raw 快照字节（默认先验完整性）。
+
+    Args:
+        source_id: 来源 ID。
+        tenant_id: 调用方租户。
+        verify: True 时先 verify_raw_integrity。
+
+    Returns:
+        快照字节。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.read_raw_bytes(
+        source_id, tenant_id=tenant_id, verify=verify
+    )
+
+
+def evaluate_fact_raw_integrity_gate(results: list | None = None) -> dict:
+    """CoreFacade：N01 Raw 完整性门槛门（certified 恒 false）。
+
+    Args:
+        results: verify_raw_integrity 回执列表。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_raw_integrity_gate(results)
 
 
 async def fact_ledger_query_gateway(
@@ -15741,7 +15842,7 @@ async def fact_ledger_query_gateway(
     top_k: int = 8,
     require_citations: bool = True,
 ) -> dict:
-    """CoreFacade：Fact Ledger 查询网关（租户前置）。
+    """CoreFacade：Fact Ledger 查询网关（租户前置；附录 F.1 最小契约）。
 
     Args:
         tenant_id: 租户 ID。
@@ -15752,7 +15853,7 @@ async def fact_ledger_query_gateway(
         require_citations: 无引用则 abstain。
 
     Returns:
-        附录 M 形状的查询响应。
+        附录 F 形状的查询响应（含 confidence_factors；非全量 Gateway）。
     """
     ledger = get_fact_ledger()
     await ledger.initialize()
@@ -15764,6 +15865,61 @@ async def fact_ledger_query_gateway(
         top_k=top_k,
         require_citations=require_citations,
     )
+
+
+def validate_fact_gateway_response(response: dict | None = None) -> dict:
+    """CoreFacade：校验 Gateway 查询响应契约（N06；certified 恒 false）。
+
+    Args:
+        response: 网关响应。
+
+    Returns:
+        validate 结果。
+    """
+    return validate_gateway_response(response)
+
+
+def evaluate_fact_gateway_contract_gate(responses: list | None = None) -> dict:
+    """CoreFacade：N06 Gateway 契约门槛门（certified 恒 false）。
+
+    Args:
+        responses: 网关响应列表。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_gateway_contract_gate(responses)
+
+
+async def fact_ledger_run_cross_tenant_suite(
+    *,
+    tenant_a: str = "n09-tenant-a",
+    tenant_b: str = "n09-tenant-b",
+) -> dict:
+    """CoreFacade：N09 跨租户隔离加深套件（临时账本；certified 恒 false）。
+
+    Args:
+        tenant_a: 写入租户。
+        tenant_b: 负向查询租户。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_cross_tenant_isolation_suite(
+        tenant_a=tenant_a, tenant_b=tenant_b
+    )
+
+
+def evaluate_fact_cross_tenant_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N09 跨租户门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_cross_tenant_gate(suite)
 
 
 async def fact_ledger_project_to_graph(

@@ -1,6 +1,7 @@
 """W10 Conformance / 认证证据包最小切片（附录 N + 计划 §9.4）。
 
-职责：加载 N24 目录；校验证据路径；组装认证槽位；门槛门（结构完整 ≠ 24/24 认证）。
+职责：加载 N24 目录；校验证据路径；组装认证槽位；门槛门（结构完整 ≠ 24/24 认证）；
+      试点 N01/N06/N09 就绪包（加深汇总，不自动 certified）。
 非目标：不自动改写差距表；不宣称 Core/认证通过；不做生产 SLO 采集。
 """
 from __future__ import annotations
@@ -306,4 +307,150 @@ def evaluate_conformance_gate(
         "accuracy_claim": False,
         "core_claim": False,
         "pack": pack,
+    }
+
+
+_PILOT_FOCUS_IDS = ("N01", "N06", "N09")
+
+
+async def build_pilot_cert_readiness_pack(
+    *,
+    pilot_domain: Optional[str] = None,
+    catalog_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点域认证就绪包：跑 N01/N06/N09 加深门槛；不自动 certified。
+
+    Args:
+        pilot_domain: 试点域（默认 catalog / lock-service）。
+        catalog_path: 可选 N24 catalog 路径。
+
+    Returns:
+        就绪包；``certified`` / ``pilot_certified`` / ``n24_full_conformance`` 恒 false。
+    """
+    from core.harness.knowledge_pipeline.fact_ledger import (
+        evaluate_cross_tenant_gate,
+        evaluate_gateway_contract_gate,
+        evaluate_raw_integrity_gate,
+        run_cross_tenant_isolation_suite,
+        FactLedger,
+    )
+    import tempfile
+
+    pack = build_conformance_pack(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    domain = str(
+        pilot_domain
+        or pack.get("pilot_domain")
+        or "lock-service"
+    )
+    focus_items = [
+        it
+        for it in ((pack.get("n24") or {}).get("items") or [])
+        if it.get("id") in _PILOT_FOCUS_IDS
+    ]
+
+    tmp = tempfile.TemporaryDirectory(prefix="pilot-cert-ready-")
+    try:
+        root = Path(tmp.name)
+        ledger = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await ledger.initialize()
+        src = await ledger.register_source(
+            tenant_id="pilot-ready-a",
+            collection_id="pilot-kb",
+            kind="file",
+            uri="file://pilot/ready.txt",
+            content=b"pilot-cert-ready",
+            connector="pilot_cert_readiness",
+            domain_id=domain,
+        )
+        verify = await ledger.verify_raw_integrity(
+            src["source_id"], tenant_id="pilot-ready-a"
+        )
+        n01_gate = evaluate_raw_integrity_gate([verify])
+
+        gw = await ledger.query_facts_gateway(
+            tenant_id="pilot-ready-a",
+            query="none",
+            require_citations=True,
+        )
+        n06_gate = evaluate_gateway_contract_gate([gw])
+
+        n09_suite = await run_cross_tenant_isolation_suite(
+            tenant_a="pilot-ready-a",
+            tenant_b="pilot-ready-b",
+        )
+        n09_gate = evaluate_cross_tenant_gate(n09_suite)
+    finally:
+        tmp.cleanup()
+
+    item_gates = {
+        "N01": n01_gate,
+        "N06": n06_gate,
+        "N09": n09_gate,
+    }
+    focus_ok = all(g.get("ok") is True for g in item_gates.values())
+    evidence_ok = all(
+        (it.get("evidence") or []) and not (it.get("issues") or [])
+        for it in focus_items
+    ) and len(focus_items) == len(_PILOT_FOCUS_IDS)
+
+    return {
+        "ok": bool(pack.get("ok")) and focus_ok and evidence_ok,
+        "pilot_domain": domain,
+        "focus_ids": list(_PILOT_FOCUS_IDS),
+        "focus_items": focus_items,
+        "item_gates": item_gates,
+        "focus_gates_ok": focus_ok,
+        "focus_evidence_ok": evidence_ok,
+        "conformance_pack_ok": bool(pack.get("ok")),
+        # 诚实锁：就绪加深 ≠ 试点/附录 N 认证
+        "certified": False,
+        "pilot_certified": False,
+        "n24_full_conformance": False,
+        "accuracy_claim": False,
+        "core_claim": False,
+        "note": "pilot readiness for N01/N06/N09 deepen only; no auto certification",
+    }
+
+
+def evaluate_pilot_cert_readiness_gate(
+    readiness: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """试点认证就绪门槛门；certified 恒 false。
+
+    Args:
+        readiness: ``build_pilot_cert_readiness_pack`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    r = dict(readiness or {})
+    issues: List[str] = []
+    if not r:
+        issues.append("readiness_required")
+    if r.get("ok") is not True:
+        issues.append("readiness_not_ok")
+    if r.get("focus_gates_ok") is not True:
+        issues.append("focus_gates_failed")
+    if r.get("focus_evidence_ok") is not True:
+        issues.append("focus_evidence_incomplete")
+    if (
+        r.get("certified") is True
+        or r.get("pilot_certified") is True
+        or r.get("n24_full_conformance") is True
+    ):
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "pilot_cert_readiness",
+        "ok": not issues,
+        "issues": issues,
+        "focus_ids": list(r.get("focus_ids") or _PILOT_FOCUS_IDS),
+        "certified": False,
+        "pilot_certified": False,
+        "n24_full_conformance": False,
+        "note": "readiness pack pass ≠ pilot/Core certification",
     }
