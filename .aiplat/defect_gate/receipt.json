@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T16:18:00+08:00",
+  "reviewed_at": "2026-11-16T19:46:18+08:00",
   "base_ref": "origin/main",
-  "merge_base": "84ca30a85128bee867d277e61cf0a787acaca349",
-  "diff_sha256": "c1b795969b60e16c5448174eea1bb39583b41846692dfca4b72ddacdaaa3b9d9",
-  "head_sha": "99959c8ab517e6965149168933ddf5573acc01c9",
+  "merge_base": "6d65210a5bb4333d56c2a65ce604e2cd7f89a2f8",
+  "diff_sha256": "6ed1e8f9396071df3e568d4d645a391eee2a823957f4722b5fc4b26fc7811ab4",
+  "head_sha": "786955c1cb5663c2395e52862cff4cbd8ff2327f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N18 min + CAPABILITIES/whitepaper sync; missing remain N04/N12"
+  "note": "N04/N12 min: source_policy + fact_state_machine; bare put_fact remains intentional; gates certified=false; helpers privatized; validate_sequence + list_open_conflicts wired; not full certify"
 }
