@@ -5095,6 +5095,139 @@ async def query_object_set(
     )
 
 
+def create_knowledge_scenario(
+    *,
+    tenant_id: str,
+    branch: str,
+    owner: str = "",
+    base_snapshot_at: str = "",
+    expires_at: Optional[float] = None,
+) -> Dict[str, Any]:
+    """W9：创建 Knowledge Scenario 分支（默认 dry_run）。
+
+    Args:
+        tenant_id: 租户。
+        branch: 分支名。
+        owner: 分支 owner。
+        base_snapshot_at: 基线时间。
+        expires_at: 过期 epoch。
+    """
+    from core.harness.knowledge_pipeline.scenario_branch import create_scenario
+
+    return create_scenario(
+        tenant_id=tenant_id,
+        branch=branch,
+        owner=owner,
+        base_snapshot_at=base_snapshot_at,
+        expires_at=expires_at,
+    )
+
+
+def get_knowledge_scenario(
+    scenario_id: str,
+    *,
+    tenant_id: str,
+) -> Optional[Dict[str, Any]]:
+    """W9：按租户读取 Scenario。
+
+    Args:
+        scenario_id: 场景 id。
+        tenant_id: 租户。
+    """
+    from core.harness.knowledge_pipeline.scenario_branch import get_scenario
+
+    return get_scenario(scenario_id, tenant_id=tenant_id)
+
+
+def simulate_knowledge_scenario_change(
+    *,
+    scenario_id: str,
+    tenant_id: str,
+    action: str,
+    target: str = "",
+    params: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """W9：追加模拟变更（不写主 Fact / ActionExecution）。
+
+    Args:
+        scenario_id: 场景 id。
+        tenant_id: 租户。
+        action: 拟执行动作。
+        target: 目标实体。
+        params: 附加参数。
+    """
+    from core.harness.knowledge_pipeline.scenario_branch import simulate_change
+
+    return simulate_change(
+        scenario_id=scenario_id,
+        tenant_id=tenant_id,
+        action=action,
+        target=target,
+        params=params,
+    )
+
+
+def request_knowledge_scenario_merge(
+    *,
+    scenario_id: str,
+    tenant_id: str,
+) -> Dict[str, Any]:
+    """W9：请求合并 → pending_review。
+
+    Args:
+        scenario_id: 场景 id。
+        tenant_id: 租户。
+    """
+    from core.harness.knowledge_pipeline.scenario_branch import request_merge
+
+    return request_merge(scenario_id=scenario_id, tenant_id=tenant_id)
+
+
+def approve_knowledge_scenario_merge(
+    *,
+    scenario_id: str,
+    tenant_id: str,
+    approver: str,
+    approval_id: str = "",
+) -> Dict[str, Any]:
+    """W9：人审通过合并标记（仍不写主事实）。
+
+    Args:
+        scenario_id: 场景 id。
+        tenant_id: 租户。
+        approver: 审批人。
+        approval_id: 可选审批单 id。
+    """
+    from core.harness.knowledge_pipeline.scenario_branch import approve_merge
+
+    return approve_merge(
+        scenario_id=scenario_id,
+        tenant_id=tenant_id,
+        approver=approver,
+        approval_id=approval_id,
+    )
+
+
+def reject_knowledge_scenario_merge(
+    *,
+    scenario_id: str,
+    tenant_id: str,
+    reason: str = "",
+) -> Dict[str, Any]:
+    """W9：拒绝合并。
+
+    Args:
+        scenario_id: 场景 id。
+        tenant_id: 租户。
+        reason: 原因。
+    """
+    from core.harness.knowledge_pipeline.scenario_branch import reject_merge
+
+    return reject_merge(
+        scenario_id=scenario_id, tenant_id=tenant_id, reason=reason
+    )
+
+
 async def traverse_object_links(
     request: Dict[str, Any],
     *,
