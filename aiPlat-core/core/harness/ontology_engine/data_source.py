@@ -18,6 +18,7 @@ from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
+import hashlib
 import json as _json
 import os as _os
 from abc import ABC, abstractmethod
@@ -25,31 +26,132 @@ from dataclasses import dataclass, field
 from pathlib import Path as _Path
 from typing import Any, Dict, List, Optional
 
+logger = logging.getLogger(__name__)
+
+
+class DataSourceIntegrityError(ValueError):
+    """DataSource 内容 hash / 快照契约错误（N01 加深）。"""
+
 
 @dataclass
 class DataSourceConfig:
-    """DataSourceConfig。"""
+    """外部数据源配置（YAML）；可选 content_hash 用于 Raw 完整性强制。
+
+    Args:
+        name: 显示名。
+        source_type: sql | api | file。
+        connection: 连接参数。
+        mapping: 字段映射。
+        content_hash: 期望 sha256（小写 hex）；空表示未声明。
+        locator: 可选定位符（URI/路径说明）。
+    """
+
     name: str
     source_type: str  # "sql" | "api" | "file"
     connection: Dict[str, Any] = field(default_factory=dict)
     mapping: Dict[str, Any] = field(default_factory=dict)
+    content_hash: str = ""
+    locator: str = ""
 
     @classmethod
     def from_yaml(cls, path: str) -> DataSourceConfig:
-        """from_yaml。
+        """从 YAML 加载配置。
 
         Args:
-            path: 路径。
+            path: YAML 文件路径。
         """
         import yaml
         with open(path, "r") as f:
-            data = yaml.safe_load(f)
+            data = yaml.safe_load(f) or {}
         return cls(
             name=data.get("name", ""),
             source_type=data.get("type", "sql"),
-            connection=data.get("connection", {}),
-            mapping=data.get("mapping", {}),
+            connection=data.get("connection", {}) or {},
+            mapping=data.get("mapping", {}) or {},
+            content_hash=str(data.get("content_hash") or data.get("sha256") or "").strip().lower(),
+            locator=str(data.get("locator") or "").strip(),
         )
+
+
+def sha256_bytes(data: bytes) -> str:
+    """计算内容 sha256（小写 hex）。
+
+    Args:
+        data: 原始字节。
+    """
+    return hashlib.sha256(data).hexdigest()
+
+
+def read_file_datasource_bytes(config: DataSourceConfig) -> bytes:
+    """读取 file 型 DataSource 的原始文件字节。
+
+    Args:
+        config: 须为 source_type=file 且 connection.file_path 存在。
+
+    Returns:
+        文件字节。
+
+    Raises:
+        DataSourceIntegrityError: 类型不对或文件缺失。
+    """
+    if (config.source_type or "").strip().lower() != "file":
+        raise DataSourceIntegrityError(
+            f"read_file_datasource_bytes requires source_type=file, got {config.source_type!r}"
+        )
+    path = str((config.connection or {}).get("file_path") or "").strip()
+    if not path:
+        raise DataSourceIntegrityError("file datasource missing connection.file_path")
+    p = _Path(path).expanduser()
+    if not p.is_file():
+        raise DataSourceIntegrityError(f"file datasource path missing: {p}")
+    return p.read_bytes()
+
+
+def validate_datasource_content_hash(
+    config: DataSourceConfig,
+    content: bytes,
+    *,
+    require_hash: bool = True,
+) -> Dict[str, Any]:
+    """校验 DataSourceConfig.content_hash 与内容一致（N01 加深）。
+
+    Args:
+        config: 数据源配置。
+        content: 待校验字节（file 原文或抓取快照）。
+        require_hash: True 时缺 content_hash 即失败（强制路径）。
+
+    Returns:
+        回执：ok / expected / actual / name。
+
+    Raises:
+        DataSourceIntegrityError: 缺 hash（require 时）或 mismatch。
+    """
+    expected = str(config.content_hash or "").strip().lower()
+    actual = sha256_bytes(content)
+    name = config.name or "(unnamed)"
+    if not expected:
+        if require_hash:
+            raise DataSourceIntegrityError(
+                f"datasource {name!r} missing content_hash (N01 enforce)"
+            )
+        return {
+            "ok": True,
+            "name": name,
+            "expected": "",
+            "actual": actual,
+            "hash_declared": False,
+        }
+    if expected != actual:
+        raise DataSourceIntegrityError(
+            f"datasource {name!r} content_hash mismatch: expected={expected} actual={actual}"
+        )
+    return {
+        "ok": True,
+        "name": name,
+        "expected": expected,
+        "actual": actual,
+        "hash_declared": True,
+    }
 
 
 class DataSource(ABC):
@@ -59,7 +161,7 @@ class DataSource(ABC):
         """初始化。
 
         Args:
-            config: config 参数。
+            config: 数据源配置。
         """
         self.config = config
 

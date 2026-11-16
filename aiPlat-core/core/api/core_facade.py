@@ -15763,13 +15763,16 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     FactLedgerError,
     evaluate_claim_evidence_gate,
     evaluate_cross_tenant_gate,
+    evaluate_datasource_raw_gate,
     evaluate_gateway_contract_gate,
     evaluate_raw_integrity_gate,
     get_fact_ledger,
+    ingest_datasource_raw,
     load_object_type_bindings,
     record_extraction_as_claim,
     run_claim_evidence_suite,
     run_cross_tenant_isolation_suite,
+    run_datasource_raw_suite,
     validate_gateway_response,
 )
 from core.harness.knowledge_pipeline.fact_projector import project_facts_to_graph  # noqa: boundary
@@ -15833,6 +15836,67 @@ def evaluate_fact_raw_integrity_gate(results: list | None = None) -> dict:
         gate 结果。
     """
     return evaluate_raw_integrity_gate(results)
+
+
+async def fact_ledger_ingest_datasource_raw(
+    *,
+    tenant_id: str,
+    collection_id: str,
+    content: bytes,
+    content_hash: str = "",
+    name: str = "",
+    uri: str = "",
+    locator: str = "",
+    connector: str = "datasource",
+    domain_id: str = "",
+    require_hash: bool = True,
+) -> dict:
+    """CoreFacade：DataSource content_hash → FactLedger Raw（N01 G；非全量认证）。
+
+    Args:
+        tenant_id: 租户。
+        collection_id: 集合。
+        content: 原始字节。
+        content_hash: 期望 sha256；require_hash 时必填。
+        name / uri / locator / connector: 来源元数据。
+        domain_id: 可选域（调用方传入）。
+        require_hash: 是否强制声明 hash。
+    """
+    return await ingest_datasource_raw(
+        tenant_id=tenant_id,
+        collection_id=collection_id,
+        content=content,
+        content_hash=content_hash,
+        name=name,
+        uri=uri,
+        locator=locator,
+        connector=connector,
+        domain_id=domain_id,
+        require_hash=require_hash,
+    )
+
+
+async def fact_ledger_run_datasource_raw_suite(
+    *,
+    tenant_id: str = "n01-ds-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N01 DataSource Raw 加深套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+    """
+    return await run_datasource_raw_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_datasource_raw_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N01 DataSource Raw 门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+    """
+    return evaluate_datasource_raw_gate(suite)
 
 
 async def fact_ledger_query_gateway(
