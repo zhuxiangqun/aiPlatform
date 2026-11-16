@@ -1,0 +1,281 @@
+"""知识系统 Agent 工具面（附录 F.2 最小切片）。
+
+提供 ``object.query`` / ``function.call``，一律经 CoreFacade；禁止通用 SQL / 直写 Fact。
+非目标：不实现 link.traverse / action.execute / object_set.aggregate / SDK 生成。
+"""
+from __future__ import annotations
+
+import logging
+from typing import Any, Dict, List, Optional
+
+from core.apps.tools.base import BaseTool, ToolResult
+from core.harness.interfaces import ToolConfig
+
+logger = logging.getLogger(__name__)
+
+_FORBIDDEN_KEYS = frozenset(
+    {
+        "sql",
+        "raw_sql",
+        "query_sql",
+        "write_fact",
+        "mutate",
+        "insert",
+        "update",
+        "delete",
+    }
+)
+
+
+def _reject_sql_or_write(params: Dict[str, Any]) -> Optional[str]:
+    """若入参含 SQL/写路径键则返回拒绝原因。
+
+    Args:
+        params: 工具入参。
+    """
+    for k in params or {}:
+        if str(k).lower() in _FORBIDDEN_KEYS:
+            return f"sql_or_write_forbidden:{k}"
+    return None
+
+
+def _parse_permissions(params: Dict[str, Any]) -> Optional[List[str]]:
+    """从 params 提取 permissions/scopes 列表。
+
+    Args:
+        params: 工具入参。
+    """
+    raw = params.get("permissions")
+    if raw is None:
+        raw = params.get("scopes")
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        return [p.strip() for p in raw.replace(";", ",").split(",") if p.strip()]
+    if isinstance(raw, list):
+        return [str(p).strip() for p in raw if str(p).strip()]
+    return None
+
+
+async def _facade_query_object_set(
+    request: Dict[str, Any],
+    *,
+    tenant_id: str,
+    permissions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """经 CoreFacade 查询 ObjectSet（可被单测 monkeypatch）。
+
+    Args:
+        request: E.1 请求 dict。
+        tenant_id: 租户。
+        permissions: 权限/scopes。
+    """
+    from core.api.core_facade import query_object_set
+
+    return await query_object_set(
+        request, tenant_id=tenant_id, permissions=permissions
+    )
+
+
+async def _facade_invoke_function(
+    function_id: str,
+    params: Optional[Dict[str, Any]] = None,
+    *,
+    permissions: Optional[List[str]] = None,
+    actor: str = "",
+) -> Dict[str, Any]:
+    """经 CoreFacade 调用 Function（可被单测 monkeypatch）。
+
+    Args:
+        function_id: Function id。
+        params: 入参。
+        permissions: 权限/scopes。
+        actor: 操作者。
+    """
+    from core.api.core_facade import invoke_function
+
+    return await invoke_function(
+        function_id, params or {}, permissions=permissions, actor=actor
+    )
+
+
+class ObjectQueryTool(BaseTool):
+    """附录 F.2 ``object.query`` — 经 ObjectSet 只读查询。"""
+
+    def __init__(self) -> None:
+        """注册 object.query 工具合同。"""
+        super().__init__(
+            ToolConfig(
+                name="object.query",
+                description=(
+                    "按 object_type + filter 查询对象集合（只读；须 tenant_id；经 CoreFacade）。"
+                    "禁止 sql/直写 Fact。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "tenant_id": {
+                            "type": "string",
+                            "description": "租户 ID（必填）",
+                        },
+                        "object_type": {
+                            "type": "string",
+                            "description": "ObjectType id，如 InstallOrder",
+                        },
+                        "filter": {
+                            "type": "object",
+                            "description": "等值过滤",
+                        },
+                        "sort": {
+                            "type": "array",
+                            "description": "排序规格",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "上限，默认 50",
+                        },
+                        "domain_id": {
+                            "type": "string",
+                            "description": "可选域 id",
+                        },
+                        "permissions": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "调用方权限/scopes（须含 kb:read）",
+                        },
+                    },
+                    "required": ["tenant_id", "object_type"],
+                },
+                metadata={"category": "knowledge", "appendix": "F.2"},
+            )
+        )
+
+    async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """执行 object.query。
+
+        Args:
+            params: 含 tenant_id / object_type / filter 等。
+        """
+        bad = _reject_sql_or_write(params or {})
+        if bad:
+            return ToolResult(success=False, error=bad)
+
+        tenant_id = str((params or {}).get("tenant_id") or "").strip()
+        object_type = str((params or {}).get("object_type") or "").strip()
+        if not tenant_id:
+            return ToolResult(success=False, error="tenant_id_required")
+        if not object_type:
+            return ToolResult(success=False, error="object_type_required")
+
+        request = {
+            "object_type": object_type,
+            "filter": (params or {}).get("filter") or {},
+            "sort": (params or {}).get("sort") or [],
+            "limit": int((params or {}).get("limit") or 50),
+            "domain_id": str((params or {}).get("domain_id") or ""),
+        }
+        permissions = _parse_permissions(params or {})
+
+        try:
+            out = await _facade_query_object_set(
+                request,
+                tenant_id=tenant_id,
+                permissions=permissions,
+            )
+        except Exception as e:
+            logger.warning("object.query failed", exc_info=True)
+            return ToolResult(success=False, error=str(e)[:500])
+
+        status = out.get("status")
+        if status == "ok":
+            return ToolResult(success=True, output=out)
+        return ToolResult(
+            success=False,
+            error=out.get("reason") or status or "query_failed",
+            output=out,
+        )
+
+
+class FunctionCallTool(BaseTool):
+    """附录 F.2 ``function.call`` — 经 FunctionRegistry 无副作用调用。"""
+
+    def __init__(self) -> None:
+        """注册 function.call 工具合同。"""
+        super().__init__(
+            ToolConfig(
+                name="function.call",
+                description=(
+                    "调用 FunctionContract（默认无副作用；经 CoreFacade）。"
+                    "禁止 sql/直写 Fact。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "function_id": {
+                            "type": "string",
+                            "description": "FunctionContract id",
+                        },
+                        "params": {
+                            "type": "object",
+                            "description": "函数入参",
+                        },
+                        "permissions": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "调用方权限/scopes",
+                        },
+                        "actor": {
+                            "type": "string",
+                            "description": "操作者",
+                        },
+                    },
+                    "required": ["function_id"],
+                },
+                metadata={"category": "knowledge", "appendix": "F.2"},
+            )
+        )
+
+    async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """执行 function.call。
+
+        Args:
+            params: 含 function_id / params / permissions。
+        """
+        bad = _reject_sql_or_write(params or {})
+        if bad:
+            return ToolResult(success=False, error=bad)
+
+        function_id = str((params or {}).get("function_id") or "").strip()
+        if not function_id:
+            return ToolResult(success=False, error="function_id_required")
+
+        fn_params = (params or {}).get("params")
+        if not isinstance(fn_params, dict):
+            fn_params = {}
+        # 为什么：函数入参也不得夹带 SQL/写键
+        bad2 = _reject_sql_or_write(fn_params)
+        if bad2:
+            return ToolResult(success=False, error=bad2)
+
+        permissions = _parse_permissions(params or {})
+        actor = str((params or {}).get("actor") or "")
+
+        try:
+            out = await _facade_invoke_function(
+                function_id,
+                fn_params,
+                permissions=permissions,
+                actor=actor,
+            )
+        except Exception as e:
+            logger.warning("function.call failed", exc_info=True)
+            return ToolResult(success=False, error=str(e)[:500])
+
+        status = out.get("status")
+        if status == "ok":
+            return ToolResult(success=True, output=out)
+        return ToolResult(
+            success=False,
+            error=out.get("reason") or status or "invoke_failed",
+            output=out,
+        )
