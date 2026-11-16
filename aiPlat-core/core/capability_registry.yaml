@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2768
+total_capabilities: 2772
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 306
+    caps_count: 310
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3178,6 +3178,22 @@ domains:
         module: core/harness/knowledge_pipeline/scenario_branch.py
         type: function
         signature: "W9: human approve merge mark; no main fact write"
+      - symbol: "get_scenario"
+        module: core/harness/knowledge_pipeline/scenario_branch.py
+        type: function
+        signature: "W9: lookup Scenario by tenant (cross-tenant hidden)"
+      - symbol: "reject_merge"
+        module: core/harness/knowledge_pipeline/scenario_branch.py
+        type: function
+        signature: "W9: reject Scenario merge"
+      - symbol: "get_knowledge_scenario"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: get Knowledge Scenario"
+      - symbol: "reject_knowledge_scenario_merge"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: reject Scenario merge"
       - symbol: "create_knowledge_scenario"
         module: core/api/core_facade.py
         type: function
