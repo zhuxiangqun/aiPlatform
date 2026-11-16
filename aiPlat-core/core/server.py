@@ -1221,6 +1221,7 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.knowledge_agent_tools", "FunctionCallTool", {}),
         ("core.apps.tools.knowledge_agent_tools", "LinkTraverseTool", {}),
         ("core.apps.tools.knowledge_agent_tools", "ObjectSetAggregateTool", {}),
+        ("core.apps.tools.knowledge_agent_tools", "ActionExecuteTool", {}),
     ]
     for module_path, cls_name, kwargs in _tool_modules:
         try:

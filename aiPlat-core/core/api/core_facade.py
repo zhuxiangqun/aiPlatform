@@ -5119,6 +5119,42 @@ async def traverse_object_links(
     )
 
 
+async def execute_action(
+    action_id: str,
+    entity_ref: Any,
+    params: Optional[Dict[str, Any]] = None,
+    *,
+    actor: str = "",
+    role: str = "",
+    permissions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """W6：action.execute 经 ActionRegistry（L1 + 审批门；禁止 bypass）。
+
+    Args:
+        action_id: ActionContract.action_id。
+        entity_ref: 实体引用（str / (domain, id) / dict）。
+        params: 动作入参。
+        actor: 操作者。
+        role: 角色（可选）。
+        permissions: 调用方权限/scopes（满足合同 required_permissions）。
+
+    Returns:
+        AsyncActionRegistry.execute 回执。
+    """
+    from core.harness.ontology_engine.action_registry import get_action_registry
+
+    reg = get_action_registry()
+    # 为什么：Agent/工具入口禁止 _bypass_approval，审批门必须可生效
+    return await reg.execute(
+        action_id=action_id,
+        entity_ref=entity_ref,
+        params=params or {},
+        actor=actor or "system",
+        role=role or "",
+        permissions=permissions,
+    )
+
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 
