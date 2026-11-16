@@ -20,8 +20,8 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 |---|---------------|:----:|--------------|----------|:-----:|
 | 1 | Raw 不可变 | partial | G1 FactLedger sha256（`phase1-g1-evidence.md`） | 有实现无证据 | W1 |
 | 2 | 语义模型版本化 | partial | 域 YAML version + Package 切片 | 有数据无契约 | W2 |
-| 3 | Fact/Claim 有 evidence | partial | G1 published 拒空 evidence | 有实现无证据 | W3 |
-| 4 | 来源策略与冲突裁决 | partial | Source Policy + Conflict 门（`phase2-source-policy-evidence.md`） | 有实现无证据 | W3 |
+| 3 | Fact/Claim 有 evidence | partial | G1 + 写入硬门 | 有实现无证据 | W3 |
+| 4 | 来源策略与冲突裁决 | partial | 写入硬门 + Conflict/transition（`phase2-source-policy-evidence.md`） | 有实现无证据 | W3 |
 | 5 | Wiki/索引有条件重建 | partial | Wiki 读模型硬门 + G2 可重建 | 有 Wiki 无事实源 | W4 |
 | 6 | Gateway 查询契约 | partial | FactLedger 网关 + ObjectSet；非附录 M 统一入口 | 有实现无证据 | W6 |
 | 7 | 权限召回前过滤 | partial | ObjectSet 租户前置 + ACL | 有查询无权限 | W6/W8 |
@@ -29,7 +29,7 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | 9 | 跨租户 0 泄漏 | partial | ACL/Scenario 负向用例；未认证全域 0 | 有实现无证据 | W8 |
 | 10 | 评测定义/数据集/门槛 | partial | Confidence Calibration 附录 O | 有实现无证据 | W10 |
 | 11 | 迁移/回滚方案 | partial | Migration 双写/对账/回滚演练；切写未授权 | 有实现无证据 | W10 |
-| 12 | Fact 状态机 | partial | review/lifecycle/claim 机 + 审计（`phase2-fact-state-evidence.md`） | 有实现无证据 | W3 |
+| 12 | Fact 状态机 | partial | 写入硬门 + transition 审计（`phase2-fact-state-evidence.md`） | 有实现无证据 | W3 |
 | 13 | confidence 校准规则 | partial | 失败/缺失 → 最高 medium | 有实现无证据 | W10 |
 | 14 | 跨存储失败恢复/对账 | partial | Migration 本地 store 对账 | 有实现无证据 | W10 |
 | 15 | JSON Schema 与附录一致 | exists | phase0 标准包 | 标准包就绪 | — |

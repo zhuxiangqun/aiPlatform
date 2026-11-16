@@ -84,6 +84,7 @@ async def _probe_published_requires_evidence(ledger: Any, *, tenant_id: str) -> 
             review_status="published",
             confidence=0.9,
             domain_id="pilot-domain",
+            allow_bootstrap_published=True,
         )
         return _case(
             "published_requires_evidence",
@@ -134,6 +135,7 @@ async def _probe_citation_resolves(ledger: Any, *, tenant_id: str) -> Dict[str, 
         review_status="published",
         confidence=0.91,
         domain_id="pilot-domain",
+        allow_bootstrap_published=True,
     )
     got = await ledger.get_source(src["source_id"], tenant_id=tenant_id)
     if got is None:
@@ -175,6 +177,7 @@ async def _probe_cross_tenant(ledger: Any, *, tenant_a: str, tenant_b: str) -> D
         review_status="published",
         confidence=0.9,
         domain_id="pilot-domain",
+        allow_bootstrap_published=True,
     )
     same = await ledger.query_facts(tenant_id=tenant_a, domain_id="pilot-domain")
     if not any(r.get("fact_id") == fact["fact_id"] for r in same):

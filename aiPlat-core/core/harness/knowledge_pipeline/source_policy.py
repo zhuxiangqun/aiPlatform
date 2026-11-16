@@ -609,9 +609,11 @@ async def put_fact_with_source_policy(
     review_status: str,
     confidence: float,
     db_path: Optional[str] = None,
+    actor: str = "",
+    reason: str = "",
     **kwargs: Any,
 ) -> Dict[str, Any]:
-    """生产写入包装：published 前强制来源策略 + 冲突门。
+    """生产写入包装：非 published 走 put_fact 硬门；published 经 transition。
 
     Args:
         ledger: FactLedger 实例。
@@ -622,13 +624,14 @@ async def put_fact_with_source_policy(
         review_status: 审核状态。
         confidence: 置信度。
         db_path: 来源策略库路径。
-        **kwargs: 透传 ``put_fact`` 其余参数。
+        actor / reason: ``published`` 时必填（走状态机审计）。
+        **kwargs: 透传 ``put_fact`` 其余参数（含 ``fact_id``）。
 
     Returns:
-        Fact 记录。
+        Fact 记录；published 时为 transition 回执中的 fact。
 
     Raises:
-        SourcePolicyError: 策略/冲突门失败。
+        SourcePolicyError: 策略/冲突门失败或缺少 transition 人因。
     """
     if review_status == "published":
         assert_publish_allowed(
@@ -638,6 +641,71 @@ async def put_fact_with_source_policy(
             predicate=predicate,
             db_path=db_path,
         )
+        fid = str(kwargs.get("fact_id") or "").strip()
+        act = (actor or "").strip()
+        rsn = (reason or "").strip()
+        if not fid or not act or not rsn:
+            raise SourcePolicyError(
+                "published requires fact_id + actor + reason (transition API)"
+            )
+        from core.harness.knowledge_pipeline.fact_state_machine import (
+            transition_fact_review,
+        )
+
+        # 先落内容（保持现有 review），再按边推进到 published
+        current = await ledger.get_fact(fid, tenant_id=tenant_id)
+        if current is None:
+            raise SourcePolicyError(f"fact not found for publish: {fid}")
+        extra = {k: v for k, v in kwargs.items() if k != "fact_id"}
+        await ledger.put_fact(
+            tenant_id=tenant_id,
+            collection_id=collection_id,
+            subject=subject,
+            predicate=predicate,
+            object=object,
+            evidence=evidence,
+            source_policy=source_policy,
+            extractor_version=extractor_version,
+            review_status=str(current.get("review_status") or "draft"),
+            confidence=confidence,
+            source_policy_db_path=db_path,
+            fact_id=fid,
+            status=str(current.get("status") or "active"),
+            inferred=bool(current.get("inferred")),
+            valid_from=current.get("valid_from"),
+            valid_to=current.get("valid_to"),
+            revision=int(current.get("revision") or 1),
+            domain_id=str(
+                current.get("domain_id") or extra.pop("domain_id", "") or ""
+            ),
+            **extra,
+        )
+        cur_rs = str(current.get("review_status") or "draft")
+        if cur_rs == "draft":
+            await transition_fact_review(
+                ledger,
+                fact_id=fid,
+                tenant_id=tenant_id,
+                to_status="reviewed",
+                actor=act,
+                reason=rsn,
+                source_policy_db_path=db_path,
+            )
+        elif cur_rs not in {"reviewed", "published"}:
+            raise SourcePolicyError(
+                f"cannot publish from review_status={cur_rs!r}"
+            )
+        out = await transition_fact_review(
+            ledger,
+            fact_id=fid,
+            tenant_id=tenant_id,
+            to_status="published",
+            actor=act,
+            reason=rsn,
+            source_policy_db_path=db_path,
+        )
+        return out["fact"]
+
     return await ledger.put_fact(
         tenant_id=tenant_id,
         collection_id=collection_id,
@@ -649,6 +717,7 @@ async def put_fact_with_source_policy(
         extractor_version=extractor_version,
         review_status=review_status,
         confidence=confidence,
+        source_policy_db_path=db_path,
         **kwargs,
     )
 

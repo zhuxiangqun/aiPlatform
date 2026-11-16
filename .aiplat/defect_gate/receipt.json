@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T19:54:50+08:00",
+  "reviewed_at": "2026-11-16T20:30:32+08:00",
   "base_ref": "origin/main",
-  "merge_base": "6d65210a5bb4333d56c2a65ce604e2cd7f89a2f8",
-  "diff_sha256": "3e633ab3a0cb9986ba9899d83ab68abaee54700438e57ccd23ad43f4e154f20d",
-  "head_sha": "d785368901a8ce097458b18a7fdcf3ac60a3fab7",
+  "merge_base": "2268f5b9339a208406087e9dca1e272d723d39f8",
+  "diff_sha256": "f06ea11f2d5e38f8c4b4d0bc17974561c960f9e63e6ab1725024e3f1875e611b",
+  "head_sha": "0c6e96bd8d7422c99c0b7b8c0d788eb02a363b26",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "clause-sync system-architecture-contract for N04/N12; prior product review still zero findings"
+  "note": "Batch A write gates: put_fact enforce_write_gates default; bootstrap test-only; transition publish via assert_publish_allowed; not full N04/N12 certify"
 }

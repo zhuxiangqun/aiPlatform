@@ -41,6 +41,7 @@ async def ledger(tmp_path):
         extractor_version="test-1.0",
         review_status="published",
         confidence=0.9,
+        allow_bootstrap_published=True,
     )
     await fl.put_fact(
         tenant_id="t1",
@@ -54,6 +55,7 @@ async def ledger(tmp_path):
         extractor_version="test-1.0",
         review_status="published",
         confidence=0.9,
+        allow_bootstrap_published=True,
     )
     await fl.put_fact(
         tenant_id="t1",
@@ -67,6 +69,7 @@ async def ledger(tmp_path):
         extractor_version="test-1.0",
         review_status="published",
         confidence=0.9,
+        allow_bootstrap_published=True,
     )
     src2 = await fl.register_source(
         tenant_id="t2",
@@ -88,6 +91,7 @@ async def ledger(tmp_path):
         extractor_version="test-1.0",
         review_status="published",
         confidence=0.9,
+        allow_bootstrap_published=True,
     )
     return fl
 

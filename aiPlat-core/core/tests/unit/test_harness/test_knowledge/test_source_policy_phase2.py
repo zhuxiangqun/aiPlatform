@@ -113,6 +113,7 @@ async def test_adjudicate_and_publish_gate(sp_db: str, tmp_path: Path):
         review_status="draft",
         confidence=0.9,
         fact_id="fact-open",
+        source_policy_db_path=sp_db,
     )
     f2 = await ledger.put_fact(
         tenant_id="t1",
@@ -126,6 +127,7 @@ async def test_adjudicate_and_publish_gate(sp_db: str, tmp_path: Path):
         review_status="draft",
         confidence=0.8,
         fact_id="fact-closed",
+        source_policy_db_path=sp_db,
     )
     conflicts = await scan_and_record_conflicts(
         ledger,
@@ -198,9 +200,12 @@ async def test_adjudicate_and_publish_gate(sp_db: str, tmp_path: Path):
         review_status="published",
         confidence=0.95,
         db_path=sp_db,
-        fact_id="fact-published",
+        fact_id="fact-open",
+        actor="reviewer-1",
+        reason="adjudicated publish",
     )
     assert published["review_status"] == "published"
+    assert published["fact_id"] == "fact-open"
     assert f2["fact_id"] == "fact-closed"
 
 

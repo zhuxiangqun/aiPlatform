@@ -50,8 +50,22 @@ def test_review_and_lifecycle_edges():
 
 @pytest.mark.asyncio
 async def test_transition_requires_actor_reason_and_audit(
-    ledger: FactLedger, sm_db: str
+    ledger: FactLedger, sm_db: str, tmp_path: Path
 ):
+    from core.harness.knowledge_pipeline.source_policy import register_source_policy
+
+    sp_db = str(tmp_path / "source_policy.sqlite3")
+    register_source_policy(
+        tenant_id="t1",
+        policy_id="p1",
+        authority="primary",
+        freshness={"valid_days": 30},
+        scope=["test"],
+        license="internal",
+        trust="high",
+        conflict_rule="prefer_newer_primary_then_human_review",
+        db_path=sp_db,
+    )
     src = await ledger.register_source(
         tenant_id="t1",
         collection_id="kb",
@@ -74,6 +88,7 @@ async def test_transition_requires_actor_reason_and_audit(
         confidence=0.9,
         fact_id="fact-n12",
         status="active",
+        source_policy_db_path=sp_db,
     )
     with pytest.raises(FactStateMachineError, match="actor"):
         await transition_fact_review(
@@ -116,6 +131,7 @@ async def test_transition_requires_actor_reason_and_audit(
         actor="reviewer-1",
         reason="approve publish",
         db_path=sm_db,
+        source_policy_db_path=sp_db,
     )
     assert published["fact"]["review_status"] == "published"
 

@@ -21,6 +21,8 @@ pilot_domain: lock-service
 | draft→published 禁止（须经 reviewed） | pass | `skip_review_forbidden` |
 | 转换含 actor/time/reason + revision | pass | `_record_audit` + `test_transition_requires_actor_reason_and_audit` |
 | retracted 不物理删除 | pass | lifecycle→retracted 后 `get_fact` 仍在 |
+| 裸 put_fact 禁止改状态 / 直发 published | pass | `test_fact_write_gates_phase2` |
+| transition→published 经冲突门 | pass | `assert_publish_allowed` 接入 `transition_fact_review` |
 | 门槛门 pass ≠ certified | pass | `evaluate_fact_state_gate` 恒 `certified=false` |
 
 ## 命令
@@ -42,7 +44,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做（后续）
 
-- 将 FactLedger 裸 `put_fact` INSERT OR REPLACE 改为唯一强制走状态机
 - Claim 表写回与 Fact 对称的全量 transition API
 - reviewer RBAC 角色源强制（现仅要求 actor 非空）
-- 宣称 N12 全量 / Core 符合
+- 宣称 N12 全量 / Core 符合（测试种子可用 `allow_bootstrap_published`）

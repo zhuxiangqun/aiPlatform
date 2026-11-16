@@ -53,6 +53,7 @@ async def test_project_facts_rebuildable(ledger: FactLedger, tmp_path, monkeypat
         extractor_version="test",
         review_status="published",
         confidence=0.9,
+        allow_bootstrap_published=True,
         domain_id="lock-service",
     )
     seed = (

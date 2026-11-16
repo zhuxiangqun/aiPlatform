@@ -58,6 +58,7 @@ async def test_published_fact_requires_evidence(ledger: FactLedger):
             extractor_version="test-1.0",
             review_status="published",
             confidence=0.9,
+            allow_bootstrap_published=True,
         )
 
 
@@ -91,6 +92,7 @@ async def test_fact_with_evidence_and_query_tenant_filter(ledger: FactLedger):
         extractor_version="test-1.0",
         review_status="published",
         confidence=0.91,
+        allow_bootstrap_published=True,
         domain_id="pilot-domain",
     )
     assert fact["evidence"]
