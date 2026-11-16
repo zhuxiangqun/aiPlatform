@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T13:35:00+08:00",
+  "reviewed_at": "2026-11-16T13:45:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "f985896a5c664ac4c0483a6eaae4e6e0e0d09793",
-  "diff_sha256": "6de47437dafd9bf1306da16952b1f713873d75074238e47429040d990d0f0375",
-  "head_sha": "cd7d08cf3ee66b9b9f5678368c2d63b792230d7f",
+  "diff_sha256": "a7922ee30987735fd5e03e567412bac17584c44707d58d9615c4c3863973a5f1",
+  "head_sha": "d03bb907061059e4604f90b67fb53169bd0e49b7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "W10 OCS min + AUTO-STATS 3588/3599 re-sync. Residual: per-property edge coverage and N24 pack out of slice."
+  "note": "W10 OCS: CI ratchet seeds full logic-class ABox after C5 coverage change. Residual: edge coverage presence-only."
 }
