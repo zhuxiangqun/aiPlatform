@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3871
+total_capabilities: 3879
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1324,6 +1324,7 @@ scan_hash: 8f9548ec24f4
 | **Implementer Semantics（v4.3.1 W10 / N18 最小切片）** | `harness/knowledge_pipeline/implementer_semantics.py` + CoreFacade run/gate + FDE `/implementer-semantics*` | ✅ | conformance README 真实实现探针：Raw 不可变 / published 拒空 evidence / citation 解析 / 跨租户隔离 / customer_action 审计+幂等；门槛门；`certified` 恒 false。证据 `phase2-implementer-semantics-evidence.md`。**未宣称** 生产 RBAC 源替换 / N18 全量 / 24/24。生成物适用：已接线（经 Facade） | 本批 |
 | **Source Policy / Conflict（v4.3.1 W3 / N04）** | `harness/knowledge_pipeline/source_policy.py` + CoreFacade register/scan/adjudicate/put_fact_with_source_policy/gate + FDE `/source-policies*` `/conflicts*` | ✅ | 附录 K + 写入硬门：策略登记；冲突不自动选边；人审；published 经 transition（actor/reason）；`certified` 恒 false。证据 `phase2-source-policy-evidence.md`。**未宣称** N04 全量 / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **Fact State Machine（v4.3.1 W3 / N12）** | `harness/knowledge_pipeline/fact_state_machine.py` + FactLedger `put_fact` 硬门/`get_fact` + CoreFacade review/lifecycle/claim/gate + FDE `/fact-state*` | ✅ | §7.5 + 写入硬门：禁直发 published；禁裸改状态；transition 审计；retracted 不删。证据 `phase2-fact-state-evidence.md` / `test_fact_write_gates_phase2.py`。**未宣称** reviewer RBAC / N12 全量。生成物适用：已接线（经 Facade） | 本批 |
+| **Knowledge SDK（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/sdk_generator.py` + CoreFacade + `GET/POST …/fde/sdk/*` | ✅ | 附录 E.3；ObjectType→Client 表面/Python 源码仅经 Facade；`kb:read` L1。证据 `phase2-sdk-evidence.md`。**未宣称** 多语言包发布/字段 ACL/N24 | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
 | **service-domain 参考实现** | `~/.aiplat/ontologies/service-domain.yaml` + `~/.aiplat/actions/service-domain_actions.yaml` + `custom_handlers/service_handlers.py` + `~/.aiplat/tests/service-domain_tests.yaml` + `scripts/sop_validate.py` + `docs/manuals/fde/06-sop-domain-delivery.md` | ✅ | 生产级参考实现：6类实体+6种关系+4态状态机+inference_rules + 5个动作（assign/start/submit/complete/reopen）+ 5个async handler + 12条测试用例 + SOP验证脚本6/6 PASS + 5天标准交付流程文档 | 已合入 |
@@ -1623,6 +1624,13 @@ scan_hash: 8f9548ec24f4
 | ObjectSetAggregateTool | `core/apps/tools/knowledge_agent_tools.py` | ✅ | 自动同步 | 本批 |
 | ActionExecuteTool | `core/apps/tools/knowledge_agent_tools.py` | ✅ | 自动同步 | 本批 |
 | execute_action | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
+| build_sdk_surface | `core/harness/knowledge_pipeline/sdk_generator.py` | ✅ | 自动同步 | 本批 |
+| render_sdk_python | `core/harness/knowledge_pipeline/sdk_generator.py` | ✅ | 自动同步 | 本批 |
+| ObjectClient | `core/harness/knowledge_pipeline/sdk_generator.py` | ✅ | 自动同步 | 本批 |
+| create_object_client | `core/harness/knowledge_pipeline/sdk_generator.py` | ✅ | 自动同步 | 本批 |
+| list_sdk_object_types | `core/harness/knowledge_pipeline/sdk_generator.py` | ✅ | 自动同步 | 本批 |
+| generate_knowledge_sdk | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
+| build_knowledge_sdk_surface | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
 | lookup_action_execution | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
 | create_knowledge_scenario | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
 | get_knowledge_scenario | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
@@ -4772,9 +4780,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 755 | 1 | 756 |
+| Harness 执行引擎 | 756 | 1 | 757 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 621 | 9 | 630 |
+| 知识引擎（本体） | 628 | 9 | 637 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4817,7 +4825,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3860** | **11** | **3871** |
+| **总计** | **3868** | **11** | **3879** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

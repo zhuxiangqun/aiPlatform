@@ -6568,6 +6568,118 @@ def lookup_action_execution(
     return lookup_execution(tenant_id, idempotency_key)
 
 
+def build_knowledge_sdk_surface(
+    object_type: str,
+    *,
+    permissions: Optional[List[str]] = None,
+    bindings_path: Any = None,
+) -> Dict[str, Any]:
+    """W6：附录 E.3 SDK 表面（ObjectType → 方法表；L1 kb:read）。
+
+    Args:
+        object_type: ObjectType id。
+        permissions: 调用方权限/scopes。
+        bindings_path: 可选绑定 JSON 路径。
+
+    Returns:
+        build_sdk_surface 回执。
+    """
+    from pathlib import Path
+
+    from core.harness.knowledge_pipeline.sdk_generator import build_sdk_surface
+
+    path = Path(bindings_path) if bindings_path else None
+    return build_sdk_surface(
+        object_type, permissions=permissions, bindings_path=path
+    )
+
+
+def generate_knowledge_sdk(
+    object_type: str,
+    *,
+    permissions: Optional[List[str]] = None,
+    bindings_path: Any = None,
+) -> Dict[str, Any]:
+    """W6：生成仅依赖 CoreFacade 的 Python SDK 源码。
+
+    Args:
+        object_type: ObjectType id。
+        permissions: 调用方权限/scopes。
+        bindings_path: 可选绑定 JSON 路径。
+
+    Returns:
+        含 surface + source 的回执。
+    """
+    from pathlib import Path
+
+    from core.harness.knowledge_pipeline.sdk_generator import (
+        build_sdk_surface,
+        render_sdk_python,
+    )
+
+    path = Path(bindings_path) if bindings_path else None
+    surface = build_sdk_surface(
+        object_type, permissions=permissions, bindings_path=path
+    )
+    rendered = render_sdk_python(surface)
+    return {
+        **rendered,
+        "surface": surface,
+    }
+
+
+def create_knowledge_object_client(
+    object_type: str,
+    *,
+    tenant_id: str,
+    permissions: Optional[List[str]] = None,
+    bindings_path: Any = None,
+) -> Dict[str, Any]:
+    """W6：创建经 Facade 的运行时 ObjectClient。
+
+    Args:
+        object_type: ObjectType id。
+        tenant_id: 租户。
+        permissions: scopes。
+        bindings_path: 可选绑定路径。
+
+    Returns:
+        create_object_client 回执（含 client 或 policy_denied）。
+    """
+    from pathlib import Path
+
+    from core.harness.knowledge_pipeline.sdk_generator import create_object_client
+
+    path = Path(bindings_path) if bindings_path else None
+    return create_object_client(
+        object_type,
+        tenant_id=tenant_id,
+        permissions=permissions,
+        bindings_path=path,
+    )
+
+
+def list_knowledge_sdk_object_types(
+    *,
+    permissions: Optional[List[str]] = None,
+    bindings_path: Any = None,
+) -> Dict[str, Any]:
+    """W6：列出可生成 Knowledge SDK 的 ObjectType。
+
+    Args:
+        permissions: scopes（须含 kb:read）。
+        bindings_path: 可选绑定路径。
+
+    Returns:
+        list_sdk_object_types 回执。
+    """
+    from pathlib import Path
+
+    from core.harness.knowledge_pipeline.sdk_generator import list_sdk_object_types
+
+    path = Path(bindings_path) if bindings_path else None
+    return list_sdk_object_types(permissions=permissions, bindings_path=path)
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 

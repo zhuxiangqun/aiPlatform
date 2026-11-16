@@ -28,6 +28,7 @@ authority: supporting
 | [phase2-link-traverse-evidence.md](./phase2-link-traverse-evidence.md) | Phase 2 W6 link.traverse（多跳只读 + L1） |
 | [phase2-object-set-aggregate-tool-evidence.md](./phase2-object-set-aggregate-tool-evidence.md) | Phase 2 W6 object_set.aggregate 工具（只读 count） |
 | [phase2-action-execute-tool-evidence.md](./phase2-action-execute-tool-evidence.md) | Phase 2 W6 action.execute 工具（ActionRegistry L1） |
+| [phase2-sdk-evidence.md](./phase2-sdk-evidence.md) | Phase 2 W6 Knowledge SDK（ObjectType→Client / Facade） |
 | [phase2-action-execution-evidence.md](./phase2-action-execution-evidence.md) | Phase 2 W7 ActionExecution（幂等 + before/after） |
 | [phase2-objectset-acl-evidence.md](./phase2-objectset-acl-evidence.md) | Phase 2 W8 ObjectSet ABox ACL（实例/字段 + 跨租户负向） |
 | [phase2-scenario-evidence.md](./phase2-scenario-evidence.md) | Phase 2 W9 Knowledge Scenario（模拟不写主事实 + 合并人审） |
