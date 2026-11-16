@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T21:05:30+08:00",
+  "reviewed_at": "2026-11-16T21:15:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "edae422ca3d92f19b742a1f1543f0493e9b4ada5",
-  "diff_sha256": "e45a4b380b1ecb26f02cc00b3b426b735a73262b60148f6a5b5e02aaaad5cafc",
-  "head_sha": "63d855feae63bcfba4da5d0e94c5d8cf929511ee",
+  "diff_sha256": "2c94766a023f65a7f1d71aa1e3d88eb082e085b0b729c5a00abb82740e30aaad",
+  "head_sha": "1776743c0fb48e9c3d63885bf44af91d2fe97355",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Batch B N08: naked bypass rejected; only approve() reentry. HTTP confirm/assert_inferred cleaned. Residual: kill switch/Lv4 not in scope; N08 remains partial."
+  "note": "Batch B N08 + doc line-count sync. Residual: kill switch/Lv4 out of scope; N08 partial."
 }
