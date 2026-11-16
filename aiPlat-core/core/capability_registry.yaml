@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2823
+total_capabilities: 2827
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 358
+    caps_count: 362
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -4244,6 +4244,22 @@ domains:
         type: "function"
         signature: "W10: default n24-conformance-catalog.yaml path"
         module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "run_implementer_semantics_suite"
+        type: "function"
+        signature: "W10 N18: run FactLedger+ActionExecution probe suite"
+        module: "core/harness/knowledge_pipeline/implementer_semantics.py"
+      - symbol: "evaluate_implementer_semantics_gate"
+        type: "function"
+        signature: "W10 N18: implementer semantics gate (not full certify)"
+        module: "core/harness/knowledge_pipeline/implementer_semantics.py"
+      - symbol: "run_implementer_semantics_route"
+        type: "function"
+        signature: "POST /fde/implementer-semantics/run via Facade"
+        module: "aiPlat-platform/apps/fde/api/implementer_semantics_routes.py"
+      - symbol: "evaluate_implementer_semantics_gate_route"
+        type: "function"
+        signature: "POST /fde/implementer-semantics/gate via Facade"
+        module: "aiPlat-platform/apps/fde/api/implementer_semantics_routes.py"
     breaks: []
     consumers_expected:
       - module: "core/api/routers/wiki.py"
