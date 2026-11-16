@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2797
+total_capabilities: 2814
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 335
+    caps_count: 352
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3310,6 +3310,74 @@ domains:
         module: aiPlat-platform/apps/fde/api/confidence_calibration_routes.py
         type: function
         signature: "POST /fde/confidence-calibrations via Facade"
+      - symbol: "start_migration_job"
+        module: core/harness/knowledge_pipeline/knowledge_migration.py
+        type: function
+        signature: "W10: start knowledge migration job (dual-write window)"
+      - symbol: "get_migration_job"
+        module: core/harness/knowledge_pipeline/knowledge_migration.py
+        type: function
+        signature: "W10: get migration job (cross-tenant hidden)"
+      - symbol: "dual_write_record"
+        module: core/harness/knowledge_pipeline/knowledge_migration.py
+        type: function
+        signature: "W10: dual-write source then target (source authoritative)"
+      - symbol: "write_store_record"
+        module: core/harness/knowledge_pipeline/knowledge_migration.py
+        type: function
+        signature: "W10: single-store write for orphan/drift drills"
+      - symbol: "write_knowledge_migration_store"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: single-store migration write"
+      - symbol: "reconcile_migration"
+        module: core/harness/knowledge_pipeline/knowledge_migration.py
+        type: function
+        signature: "W10: reconcile missing/stale/orphan; optional repair"
+      - symbol: "set_read_pointer"
+        module: core/harness/knowledge_pipeline/knowledge_migration.py
+        type: function
+        signature: "W10: shadow read pointer; cutover never authorized in min slice"
+      - symbol: "record_rollback_drill"
+        module: core/harness/knowledge_pipeline/knowledge_migration.py
+        type: function
+        signature: "W10: rollback drill — read pointer back to source"
+      - symbol: "list_migration_events"
+        module: core/harness/knowledge_pipeline/knowledge_migration.py
+        type: function
+        signature: "W10: list migration audit events"
+      - symbol: "start_knowledge_migration"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: start knowledge migration"
+      - symbol: "get_knowledge_migration"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: get knowledge migration"
+      - symbol: "dual_write_knowledge_migration"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: dual-write knowledge migration"
+      - symbol: "reconcile_knowledge_migration"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: reconcile knowledge migration"
+      - symbol: "set_knowledge_migration_read_pointer"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: set migration read pointer"
+      - symbol: "rollback_drill_knowledge_migration"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: migration rollback drill"
+      - symbol: "list_knowledge_migration_events"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: list migration events"
+      - symbol: "start_knowledge_migration_route"
+        module: aiPlat-platform/apps/fde/api/knowledge_migration_routes.py
+        type: function
+        signature: "POST /fde/knowledge-migrations via Facade"
       - symbol: "traverse_links_route"
         module: aiPlat-platform/apps/fde/api/link_traverse_routes.py
         type: function
