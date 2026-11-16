@@ -15895,18 +15895,20 @@ async def fact_ledger_run_cross_tenant_suite(
     *,
     tenant_a: str = "n09-tenant-a",
     tenant_b: str = "n09-tenant-b",
+    domain_id: str = "",
 ) -> dict:
     """CoreFacade：N09 跨租户隔离加深套件（临时账本；certified 恒 false）。
 
     Args:
         tenant_a: 写入租户。
         tenant_b: 负向查询租户。
+        domain_id: 可选域过滤（调用方传入）。
 
     Returns:
         套件汇总。
     """
     return await run_cross_tenant_isolation_suite(
-        tenant_a=tenant_a, tenant_b=tenant_b
+        tenant_a=tenant_a, tenant_b=tenant_b, domain_id=domain_id
     )
 
 

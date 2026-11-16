@@ -321,7 +321,7 @@ async def build_pilot_cert_readiness_pack(
     """试点域认证就绪包：跑 N01/N06/N09 加深门槛；不自动 certified。
 
     Args:
-        pilot_domain: 试点域（默认 catalog / lock-service）。
+        pilot_domain: 试点域覆盖；空则用 catalog ``pilot_domain``（harness 不默认业务域名）。
         catalog_path: 可选 N24 catalog 路径。
 
     Returns:
@@ -339,11 +339,8 @@ async def build_pilot_cert_readiness_pack(
     pack = build_conformance_pack(
         catalog_path=catalog_path, pilot_domain=pilot_domain
     )
-    domain = str(
-        pilot_domain
-        or pack.get("pilot_domain")
-        or "lock-service"
-    )
+    # 为什么：域名只来自调用方或 catalog 配置，禁止 harness 字面量业务域名
+    domain = str(pilot_domain or pack.get("pilot_domain") or "").strip()
     focus_items = [
         it
         for it in ((pack.get("n24") or {}).get("items") or [])
@@ -382,6 +379,7 @@ async def build_pilot_cert_readiness_pack(
         n09_suite = await run_cross_tenant_isolation_suite(
             tenant_a="pilot-ready-a",
             tenant_b="pilot-ready-b",
+            domain_id=domain,
         )
         n09_gate = evaluate_cross_tenant_gate(n09_suite)
     finally:

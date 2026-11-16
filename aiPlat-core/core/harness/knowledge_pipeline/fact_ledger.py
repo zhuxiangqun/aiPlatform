@@ -1133,6 +1133,7 @@ async def run_cross_tenant_isolation_suite(
     ledger: Optional["FactLedger"] = None,
     tenant_a: str = "n09-tenant-a",
     tenant_b: str = "n09-tenant-b",
+    domain_id: str = "",
 ) -> Dict[str, Any]:
     """N09 跨租户 0 泄漏最小加深套件（FactLedger 四探针）。
 
@@ -1140,6 +1141,7 @@ async def run_cross_tenant_isolation_suite(
         ledger: 可选账本；默认临时目录新建（不污染单例）。
         tenant_a: 写入租户。
         tenant_b: 负向查询租户。
+        domain_id: 可选域过滤（由调用方传入；harness 不默认业务域名）。
 
     Returns:
         套件汇总；``certified`` / ``n09_full_conformance`` 恒 false。
@@ -1169,7 +1171,7 @@ async def run_cross_tenant_isolation_suite(
             uri="file://n09/secret.txt",
             content=b"n09-secret-payload",
             connector="n09_cross_tenant",
-            domain_id="lock-service",
+            domain_id=domain_id,
         )
         fact = await lg.put_fact(
             tenant_id=tenant_a,
@@ -1190,10 +1192,10 @@ async def run_cross_tenant_isolation_suite(
             review_status="published",
             confidence=0.9,
             allow_bootstrap_published=True,
-            domain_id="lock-service",
+            domain_id=domain_id,
         )
-        same = await lg.query_facts(tenant_id=tenant_a, domain_id="lock-service")
-        other = await lg.query_facts(tenant_id=tenant_b, domain_id="lock-service")
+        same = await lg.query_facts(tenant_id=tenant_a, domain_id=domain_id or None)
+        other = await lg.query_facts(tenant_id=tenant_b, domain_id=domain_id or None)
         q_ok = any(r.get("fact_id") == fact["fact_id"] for r in same) and not any(
             r.get("fact_id") == fact["fact_id"] for r in other
         )
