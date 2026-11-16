@@ -15771,22 +15771,47 @@ async def fact_ledger_project_to_graph(
     tenant_id: str,
     domain_id: str,
     clear_projected: bool = False,
+    rebuild_mode: str = "",
+    rebuild_reason: str = "",
+    exact_capable: bool = True,
 ) -> dict:
-    """CoreFacade：Fact → GraphIndex 投影（可重建）。
+    """CoreFacade：Fact → GraphIndex 投影（可重建分类）。
 
     Args:
         tenant_id: 租户 ID。
         domain_id: 域 ID。
         clear_projected: 是否先清除既有投影实体。
+        rebuild_mode: 可选三分类 mode；空则 exact。
+        rebuild_reason: 分类理由。
+        exact_capable: 是否可精确重放；False 时禁止标 exact。
 
     Returns:
-        投影回执。
+        投影回执（含 rebuild_mode / rebuild_reason / rebuild_gate）。
     """
     return await project_facts_to_graph(
         tenant_id=tenant_id,
         domain_id=domain_id,
         clear_projected=clear_projected,
+        rebuild_mode=rebuild_mode or None,
+        rebuild_reason=rebuild_reason or "",
+        exact_capable=exact_capable,
     )
+
+
+def validate_fact_rebuild_receipt(receipt: dict) -> dict:
+    """CoreFacade：校验重建分类回执（N05 门槛门；certified 恒 false）。
+
+    Args:
+        receipt: 投影/重建回执。
+
+    Returns:
+        gate 结果。
+    """
+    from core.harness.knowledge_pipeline.fact_projector import (
+        validate_rebuild_receipt as _gate,
+    )
+
+    return _gate(receipt or {})
 
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
