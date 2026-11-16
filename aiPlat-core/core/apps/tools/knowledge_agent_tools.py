@@ -3,7 +3,7 @@
 提供 ``object.query`` / ``function.call`` / ``link.traverse`` /
 ``object_set.aggregate`` / ``action.execute``，一律经 CoreFacade；
 禁止通用 SQL / 直写 Fact。
-非目标：不实现 SDK 生成。
+非目标：SDK 生成见 ``sdk_generator``（不在本工具面实现）。
 """
 from __future__ import annotations
 
