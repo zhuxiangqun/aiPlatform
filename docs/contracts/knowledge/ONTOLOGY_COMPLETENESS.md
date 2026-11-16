@@ -74,8 +74,10 @@ CI：
 
 ```bash
 # Ratchet — Phase A 纵深标杆（contracts-guard workflow 同步执行）
+# 种子 ABox 须覆盖全部 logic 类（C5=覆盖计分，禁止仅堆安装工单节点数）
 PYTHONPATH=aiPlat-core python3 scripts/report_ontology_completeness.py --domain lock-service --min-ocs 80
-pytest aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ontology_completeness_ocs.py -q
+pytest aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ontology_completeness_ocs.py \
+  aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ocs_v431_phase2.py -q
 ```
 
 `lock-service` OCS 不得低于 **80**；缺 `required_state` 的新 customer_action 由测试守卫。无 `~/.aiplat` 时从 `workspace_seeds/ontologies` 回退加载。
