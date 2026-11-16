@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T11:02:00+08:00",
+  "reviewed_at": "2026-11-16T11:32:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "972d7a14207a8105d205ea44559b8c0d450616f8",
-  "diff_sha256": "563be7329941166495abb82070e429b615fb0bbb1beb29a0b9ae03e4a55e3634",
-  "head_sha": "411f8b13917058005213d645e107634f475ff7af",
+  "merge_base": "4faeedd2af2a78238fdd40345ef705131470401d",
+  "diff_sha256": "0e698a4bc7839f0d9e574c2877d697798bf0303408e1418dc2f12a93cc8624bc",
+  "head_sha": "0ba5a04a4ee933fbb9fa6e46892d0831f4c7f110",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "W7 ActionExecution min: Facade/Tool/HTTP customer_action idempotency. Residual: StateMachine Registry bridge and platform_action _bypass_approval out of slice."
+  "note": "Rebased onto main after #767 merge. W8 ObjectSet ABox ACL; clauses 95(W7)+96(W8) both present."
 }
