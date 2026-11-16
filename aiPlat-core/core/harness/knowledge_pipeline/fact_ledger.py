@@ -1413,7 +1413,282 @@ def evaluate_raw_integrity_gate(
         # 诚实锁：单测/试点加深 ≠ 附录 N N01 certified
         "certified": False,
         "n01_full_conformance": False,
-        "note": "FactLedger verify-on-read only; DataSourceConfig path not forced",
+        "note": "FactLedger verify-on-read; DataSourceConfig path via ingest_datasource_raw (Batch G)",
+    }
+
+
+async def ingest_datasource_raw(
+    *,
+    tenant_id: str,
+    collection_id: str,
+    content: bytes,
+    content_hash: str = "",
+    name: str = "",
+    uri: str = "",
+    locator: str = "",
+    connector: str = "datasource",
+    domain_id: str = "",
+    require_hash: bool = True,
+    ledger: Optional["FactLedger"] = None,
+    source_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """DataSource → FactLedger Raw：强制/校验 content_hash 后登记不可变快照（N01 G）。
+
+    Args:
+        tenant_id: 租户。
+        collection_id: 集合。
+        content: 原始字节（file 原文或抓取快照）。
+        content_hash: 期望 sha256；空且 require_hash=True 则拒绝。
+        name: 数据源名（写入 connector 旁注）。
+        uri: 来源 URI；默认 file:// 或 datasource://name。
+        locator: 可选定位说明。
+        connector: 连接器标签。
+        domain_id: 可选域（调用方传入）。
+        require_hash: 是否强制声明 hash。
+        ledger: 可选账本；默认单例。
+        source_id: 可选显式 Source ID。
+
+    Returns:
+        含 source 记录 + integrity 回执；``certified`` 恒 false。
+
+    Raises:
+        FactLedgerError: hash 缺失/不一致或登记失败。
+    """
+    from core.harness.ontology_engine.data_source import (
+        DataSourceConfig,
+        DataSourceIntegrityError,
+        validate_datasource_content_hash,
+    )
+
+    cfg = DataSourceConfig(
+        name=name or "datasource",
+        source_type="file",
+        connection={},
+        mapping={},
+        content_hash=(content_hash or "").strip().lower(),
+        locator=locator or "",
+    )
+    try:
+        check = validate_datasource_content_hash(
+            cfg, content, require_hash=require_hash
+        )
+    except DataSourceIntegrityError as exc:
+        raise FactLedgerError(str(exc)) from exc
+
+    lg = ledger or get_fact_ledger()
+    await lg.initialize()
+    uri_final = (uri or "").strip() or (
+        f"file://{locator}" if locator else f"datasource://{cfg.name}"
+    )
+    src = await lg.register_source(
+        tenant_id=tenant_id,
+        collection_id=collection_id,
+        kind="file",
+        uri=uri_final,
+        content=content,
+        connector=connector,
+        domain_id=domain_id,
+        source_id=source_id,
+    )
+    # 为什么：声明 hash 必须与登记后存储一致（防 register 路径漂移）
+    if check.get("hash_declared") and str(src.get("sha256") or "") != check["actual"]:
+        raise FactLedgerError(
+            "ingest_datasource_raw sha256 drifted after register_source"
+        )
+    verify = await lg.verify_raw_integrity(src["source_id"], tenant_id=tenant_id)
+    return {
+        "source": src,
+        "integrity": verify,
+        "hash_check": check,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": "DataSourceConfig content_hash → FactLedger Raw; not N01 certified",
+    }
+
+
+_N01_DATASOURCE_CASES = (
+    "missing_hash_rejected",
+    "hash_mismatch_rejected",
+    "hash_ok_ingest_and_verify",
+)
+
+
+async def run_datasource_raw_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n01-ds-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N01 DataSourceConfig → Raw 完整性加深套件。
+
+    Args:
+        ledger: 可选账本；默认临时目录。
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+
+    Returns:
+        套件汇总；``certified`` / ``n01_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    from core.harness.ontology_engine.data_source import (
+        DataSourceConfig,
+        DataSourceIntegrityError,
+        read_file_datasource_bytes,
+        sha256_bytes,
+        validate_datasource_content_hash,
+    )
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n01-datasource-raw-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+        work = root
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+        work = Path(tempfile.mkdtemp(prefix="n01-ds-files-"))
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        # 1) 缺 hash 强制拒绝
+        missing_ok = False
+        try:
+            await ingest_datasource_raw(
+                tenant_id=tenant_id,
+                collection_id="n01-ds",
+                content=b"no-hash",
+                content_hash="",
+                name="missing-hash",
+                require_hash=True,
+                ledger=lg,
+                domain_id=domain_id,
+            )
+        except FactLedgerError:
+            missing_ok = True
+        cases.append(
+            {
+                "id": "missing_hash_rejected",
+                "ok": missing_ok,
+                "detail": "" if missing_ok else "missing_hash_accepted",
+            }
+        )
+
+        # 2) mismatch 拒绝（file 路径 + validate）
+        bad_path = work / "payload.bin"
+        bad_path.write_bytes(b"payload-v1")
+        bad_cfg = DataSourceConfig(
+            name="mismatch",
+            source_type="file",
+            connection={"file_path": str(bad_path)},
+            content_hash="0" * 64,
+        )
+        mismatch_ok = False
+        try:
+            blob = read_file_datasource_bytes(bad_cfg)
+            validate_datasource_content_hash(bad_cfg, blob, require_hash=True)
+        except DataSourceIntegrityError:
+            mismatch_ok = True
+        cases.append(
+            {
+                "id": "hash_mismatch_rejected",
+                "ok": mismatch_ok,
+                "detail": "" if mismatch_ok else "mismatch_accepted",
+            }
+        )
+
+        # 3) 正确 hash → 登记 + verify
+        good = b"payload-ok-n01"
+        digest = sha256_bytes(good)
+        good_path = work / "ok.bin"
+        good_path.write_bytes(good)
+        good_cfg = DataSourceConfig(
+            name="ok-ds",
+            source_type="file",
+            connection={"file_path": str(good_path)},
+            content_hash=digest,
+            locator=str(good_path),
+        )
+        blob = read_file_datasource_bytes(good_cfg)
+        receipt = await ingest_datasource_raw(
+            tenant_id=tenant_id,
+            collection_id="n01-ds",
+            content=blob,
+            content_hash=good_cfg.content_hash,
+            name=good_cfg.name,
+            locator=good_cfg.locator,
+            require_hash=True,
+            ledger=lg,
+            domain_id=domain_id,
+        )
+        ok_ingest = (
+            receipt.get("integrity", {}).get("ok") is True
+            and receipt.get("hash_check", {}).get("ok") is True
+            and receipt.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "hash_ok_ingest_and_verify",
+                "ok": ok_ingest,
+                "detail": "" if ok_ingest else "ingest_or_verify_failed",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N01_DATASOURCE_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "datasource_raw_integrity",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": "DataSourceConfig content_hash → FactLedger; not full connector matrix / N01 certified",
+    }
+
+
+def evaluate_datasource_raw_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N01 DataSource Raw 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_datasource_raw_suite`` 回执。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n01_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "datasource_raw_integrity",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": "DataSourceConfig hash path; not all connectors / N01 certified",
     }
 
 

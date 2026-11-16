@@ -14,9 +14,12 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-raw-integrity-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-datasource-raw-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
+      - aiPlat-core/core/harness/ontology_engine/data_source.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_raw_integrity_phase2.py
-    note: 读时验 hash+篡改拒绝+门槛门；DataSourceConfig 全路径仍未强制；非 N01 certified
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_raw_phase2.py
+    note: 读时验+DataSourceConfig content_hash→FactLedger ingest；非全连接器矩阵/非 N01 certified
   - id: N02
     title: 语义模型版本化
     status: partial

@@ -42,5 +42,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- DataSourceConfig / 外部连接器全路径强制 sha256
+- DataSourceConfig content_hash→Raw（见 Batch G1 `phase2-datasource-raw-evidence.md`；非全连接器矩阵）
 - N01 / 附录 N 全量认证

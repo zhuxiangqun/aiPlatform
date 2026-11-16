@@ -17,7 +17,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 
 | ID | 范围 | 期限 | 补偿 |
 |----|------|------|------|
-| N01 | FactLedger 读时 hash；DataSourceConfig 全路径未强制 | 至下一加深批或试点签字 | 读时验 + 篡改拒绝；见 `phase2-raw-integrity-evidence.md` |
+| N01 | FactLedger 读时 hash + DataSourceConfig content_hash→Raw；非全连接器矩阵 | 至 N01 全量/试点签字 | 见 `phase2-raw-integrity-evidence.md` + `phase2-datasource-raw-evidence.md` |
 | N03 | Claim 证据硬门+冲突记录最小切片；非全量 Claim 状态机 | 至 N03 全量加深 | suite/gate；见 `phase2-claim-evidence-evidence.md` |
 | N06 | FactLedger F.1 契约；非统一 Query Gateway | 至 Gateway 统一入口 | confidence_factors + 契约门 |
 | N09 | FactLedger 四探针；未宣称全域 0 泄漏 | 至 ACL 全入口 | 跨租户套件门槛门 |

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2877
+total_capabilities: 2884
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 412
+    caps_count: 419
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3078,6 +3078,34 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "evaluate_fact_claim_evidence_gate(suite)→gate (certified=false)"
+      - symbol: "validate_datasource_content_hash"
+        module: core/harness/ontology_engine/data_source.py
+        type: function
+        signature: "validate_datasource_content_hash(config,content,require_hash=True)→receipt"
+      - symbol: "ingest_datasource_raw"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "ingest_datasource_raw(...)→source+integrity (certified=false)"
+      - symbol: "run_datasource_raw_suite"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "run_datasource_raw_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_datasource_raw_gate"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "evaluate_datasource_raw_gate(suite)→gate (certified=false)"
+      - symbol: "fact_ledger_ingest_datasource_raw"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_ingest_datasource_raw(...)→receipt (certified=false)"
+      - symbol: "fact_ledger_run_datasource_raw_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_run_datasource_raw_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_fact_datasource_raw_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_datasource_raw_gate(suite)→gate (certified=false)"
       - symbol: "fact_ledger_query_gateway"
         module: core/api/core_facade.py
         type: function
