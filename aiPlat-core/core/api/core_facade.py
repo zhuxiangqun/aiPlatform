@@ -5372,6 +5372,159 @@ def rollback_ontology_package(
     )
 
 
+def publish_confidence_calibration(
+    *,
+    tenant_id: str,
+    domain: str,
+    query_type: str,
+    dataset_version: str,
+    sample_size: int,
+    label_protocol: str,
+    inter_annotator_agreement: float,
+    weights: Optional[Dict[str, Any]] = None,
+    calibration_version: str,
+    ece: float,
+    brier: float,
+    high_precision: float,
+    coverage: float,
+    approved_by: str,
+    valid_until: str,
+    model_version: str = "",
+    index_version: str = "",
+    source_policy_version: str = "",
+    sample_shortage_justification: str = "",
+) -> Dict[str, Any]:
+    """W10：发布 Confidence Calibration Report（附录 O）。
+
+    Args:
+        tenant_id: 租户。
+        domain: 域。
+        query_type: 查询类型。
+        dataset_version: 数据集版本。
+        sample_size: 样本量。
+        label_protocol: 标注规程。
+        inter_annotator_agreement: 一致率。
+        weights: 权重。
+        calibration_version: 校准版本。
+        ece: ECE。
+        brier: Brier。
+        high_precision: high 精度。
+        coverage: 覆盖率。
+        approved_by: 批准人。
+        valid_until: 有效期。
+        model_version: 模型版本。
+        index_version: 索引版本。
+        source_policy_version: 来源策略版本。
+        sample_shortage_justification: 样本不足论证。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        publish_calibration_report,
+    )
+
+    return publish_calibration_report(
+        tenant_id=tenant_id,
+        domain=domain,
+        query_type=query_type,
+        dataset_version=dataset_version,
+        sample_size=sample_size,
+        label_protocol=label_protocol,
+        inter_annotator_agreement=inter_annotator_agreement,
+        weights=weights,
+        calibration_version=calibration_version,
+        ece=ece,
+        brier=brier,
+        high_precision=high_precision,
+        coverage=coverage,
+        approved_by=approved_by,
+        valid_until=valid_until,
+        model_version=model_version,
+        index_version=index_version,
+        source_policy_version=source_policy_version,
+        sample_shortage_justification=sample_shortage_justification,
+    )
+
+
+def get_confidence_calibration(
+    calibration_id: Optional[str] = None,
+    *,
+    tenant_id: str,
+    domain: str = "",
+    query_type: str = "",
+) -> Optional[Dict[str, Any]]:
+    """W10：读取校准报告（租户隔离）。
+
+    Args:
+        calibration_id: 报告 id；空则 active。
+        tenant_id: 租户。
+        domain: 域。
+        query_type: 查询类型。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        get_calibration_report,
+    )
+
+    return get_calibration_report(
+        calibration_id,
+        tenant_id=tenant_id,
+        domain=domain,
+        query_type=query_type,
+    )
+
+
+def validate_confidence_calibration(
+    calibration_id: Optional[str] = None,
+    *,
+    tenant_id: str,
+    domain: str = "",
+    query_type: str = "",
+) -> Dict[str, Any]:
+    """W10：校验校准报告门槛。
+
+    Args:
+        calibration_id: 报告 id；空则 active。
+        tenant_id: 租户。
+        domain: 域。
+        query_type: 查询类型。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        validate_calibration_report,
+    )
+
+    return validate_calibration_report(
+        calibration_id,
+        tenant_id=tenant_id,
+        domain=domain,
+        query_type=query_type,
+    )
+
+
+def resolve_confidence_ceiling(
+    *,
+    tenant_id: str,
+    domain: str,
+    query_type: str,
+    requested: str = "high",
+) -> Dict[str, Any]:
+    """W10：解析允许的最大 confidence（失败降级 medium）。
+
+    Args:
+        tenant_id: 租户。
+        domain: 域。
+        query_type: 查询类型。
+        requested: 请求档位。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        resolve_max_confidence,
+    )
+
+    return resolve_max_confidence(
+        tenant_id=tenant_id,
+        domain=domain,
+        query_type=query_type,
+        requested=requested,
+    )
+
+
 async def traverse_object_links(
     request: Dict[str, Any],
     *,
