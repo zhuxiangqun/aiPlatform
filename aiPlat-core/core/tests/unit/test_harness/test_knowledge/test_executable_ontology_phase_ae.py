@@ -81,7 +81,6 @@ async def test_table_map_e2e_action(aiplat_home):
         params={"new_state": "triaging"},
         actor="ut",
         role="analyst",
-        _bypass_approval=True,
     )
     assert out.get("status") == "executed", out
 
@@ -230,7 +229,6 @@ actions:
         {"new_state": "assigned"},
         actor="scaffold",
         role="analyst",
-        _bypass_approval=True,
     )
     assert ok.get("status") == "executed", ok
 
@@ -245,6 +243,5 @@ actions:
         {"new_state": "assigned"},
         actor="scaffold",
         role="analyst",
-        _bypass_approval=True,
     )
     assert blocked.get("status") == "blocked"

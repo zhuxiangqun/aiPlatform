@@ -181,7 +181,6 @@ async def test_lifecycle_assign_requires_accepted(aiplat_home):
         {"new_state": "assigned", "assigned_technician": "T-1"},
         actor="t",
         role="agent",
-        _bypass_approval=True,
     )
     assert blocked.get("status") == "blocked"
     # correct state
@@ -195,7 +194,6 @@ async def test_lifecycle_assign_requires_accepted(aiplat_home):
         {"new_state": "assigned", "assigned_technician": "T-1"},
         actor="t",
         role="agent",
-        _bypass_approval=True,
     )
     assert ok.get("status") == "executed", ok
     GraphIndex._loaded_instances.clear()
@@ -222,6 +220,13 @@ async def test_lifecycle_full_chain_writes_relations(aiplat_home):
     """pending→accepted→assigned→in_progress→completed with evidence relations."""
     store = AsyncMock()
     store.insert_audit = AsyncMock(return_value="a")
+    store.get_pending = AsyncMock(
+        return_value={
+            "lock_id": "ocs-reentry",
+            "action_id": "customer_action:lock-service:accept_order",
+            "status": "approved",
+        }
+    )
     reg = AsyncActionRegistry(store=store)
     register_all(reg)
     GraphIndex._loaded_instances.clear()
@@ -231,6 +236,21 @@ async def test_lifecycle_full_chain_writes_relations(aiplat_home):
     GraphIndex._loaded_instances.clear()
 
     async def run(aid, params, permissions=None):
+        # 高风险合同须 HITL：单测经 approved reentry 模拟 approve()
+        c = reg.get(aid)
+        kwargs = {}
+        if c is not None and bool(getattr(c, "require_approval", False)):
+            store.get_pending = AsyncMock(
+                return_value={
+                    "lock_id": "ocs-reentry",
+                    "action_id": aid,
+                    "status": "approved",
+                }
+            )
+            kwargs = {
+                "_bypass_approval": True,
+                "_approval_reentry_lock_id": "ocs-reentry",
+            }
         return await reg.execute(
             aid,
             (DOMAIN, "IO-1"),
@@ -238,7 +258,7 @@ async def test_lifecycle_full_chain_writes_relations(aiplat_home):
             actor="t",
             role="agent",
             permissions=permissions,
-            _bypass_approval=True,
+            **kwargs,
         )
 
     r1 = await run(

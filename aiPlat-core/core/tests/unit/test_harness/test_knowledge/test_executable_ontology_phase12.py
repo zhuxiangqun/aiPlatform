@@ -103,7 +103,6 @@ async def test_webhook_then_triage(aiplat_home, monkeypatch):
         params={"new_state": "triaging"},
         actor="ut",
         role="analyst",
-        _bypass_approval=True,
     )
     assert out.get("status") == "executed", out
 
@@ -137,7 +136,6 @@ async def test_retail_ops_isomorphic_triage(aiplat_home):
         params={"new_state": "triaging"},
         actor="ut",
         role="analyst",
-        _bypass_approval=True,
     )
     assert r1.get("status") == "executed", r1
 
@@ -154,7 +152,6 @@ async def test_retail_ops_isomorphic_triage(aiplat_home):
         params={"new_state": "rooted", "root_entity_id": "MW-Redis"},
         actor="ut",
         role="analyst",
-        _bypass_approval=True,
     )
     assert blocked.get("status") == "blocked"
     assert blocked.get("constraint_type") == "state"

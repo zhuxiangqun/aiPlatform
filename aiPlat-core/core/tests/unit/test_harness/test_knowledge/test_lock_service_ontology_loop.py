@@ -177,7 +177,6 @@ async def test_deep_tier_exception_then_mode_change(aiplat_home):
         {"assigned_technician": "t1"},
         actor="fde",
         role="agent",
-        _bypass_approval=True,
     )
     assert blocked.get("status") == "blocked"
     assert blocked.get("constraint_type") == "state"

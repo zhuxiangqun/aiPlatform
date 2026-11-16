@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T20:30:32+08:00",
+  "reviewed_at": "2026-11-16T21:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2268f5b9339a208406087e9dca1e272d723d39f8",
-  "diff_sha256": "f06ea11f2d5e38f8c4b4d0bc17974561c960f9e63e6ab1725024e3f1875e611b",
-  "head_sha": "0c6e96bd8d7422c99c0b7b8c0d788eb02a363b26",
+  "merge_base": "edae422ca3d92f19b742a1f1543f0493e9b4ada5",
+  "diff_sha256": "2c94766a023f65a7f1d71aa1e3d88eb082e085b0b729c5a00abb82740e30aaad",
+  "head_sha": "1776743c0fb48e9c3d63885bf44af91d2fe97355",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Batch A write gates: put_fact enforce_write_gates default; bootstrap test-only; transition publish via assert_publish_allowed; not full N04/N12 certify"
+  "note": "Batch B N08 + doc line-count sync. Residual: kill switch/Lv4 out of scope; N08 partial."
 }

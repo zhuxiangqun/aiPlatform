@@ -58,7 +58,6 @@ async def test_service_domain_assign_registers_and_executes(aiplat_home):
         {"assigned_technician": "tech-sd-1"},
         actor="fda-sd",
         role="agent",
-        _bypass_approval=True,
     )
     assert r.get("status") == "executed", r
     store.insert_audit.assert_awaited()

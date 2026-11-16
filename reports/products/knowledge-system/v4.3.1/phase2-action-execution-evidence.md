@@ -43,10 +43,25 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 | HTTP | `POST …/actions/execute` → `facade_execute_action`（不再直调 Registry） |
 | HTTP 查询 | `GET …/actions/executions/lookup` → `lookup_action_execution` |
 
+## Batch B 加深（审批 bypass 收紧）
+
+| Gate 条件 | 状态 | 证据 |
+|-----------|:----:|------|
+| 裸 `_bypass_approval=True` → `bypass_forbidden` | pass | `test_naked_bypass_forbidden` |
+| 未批准 lock 不可重入 | pass | `test_bypass_with_unapproved_lock_forbidden` |
+| approve 后 `_approval_reentry_lock_id` 可执行 | pass | `test_approve_reentry_allows_bypass` |
+| `require_approval=false` 无需 bypass | pass | `test_require_approval_false_no_bypass_needed` |
+| HTTP confirm / assert_inferred 无裸 bypass | pass | `test_http_confirm_source_has_no_bypass` |
+
+```bash
+PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
+  aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_action_bypass_approval_phase2.py -v
+# 预期：5 passed
+```
+
 ## 明确未做（后续）
 
-- kill switch / Lv4 误报门重设计
-- 字段级 ACL（W8）
-- 取消 Registry 内审批通过后的 `_bypass_approval`（如 confirm / assert_inferred_edge）
+- kill switch / Lv4 误报门全量重设计
+- 字段级 ACL 全入口（见 Batch C）
 - StateMachine → ActionRegistry 桥（`ontology_engine/engine.py`）仍直调 Registry；未纳入本切片
-- 附录 N 全量符合
+- 附录 N 全量符合 / N08 certified

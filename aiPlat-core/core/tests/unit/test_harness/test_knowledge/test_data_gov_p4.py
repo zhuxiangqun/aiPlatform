@@ -88,7 +88,6 @@ async def test_data_gov_seed_mount_and_discard(aiplat_home):
         {"new_state": "cataloged", "catalog_id": "CAT-积分流水"},
         actor="fda-1",
         role="analyst",
-        _bypass_approval=True,
     )
     assert r_mount.get("status") == "executed", r_mount
 
@@ -98,7 +97,6 @@ async def test_data_gov_seed_mount_and_discard(aiplat_home):
         {"new_state": "discarded"},
         actor="fda-1",
         role="analyst",
-        _bypass_approval=True,
     )
     assert r_disc.get("status") == "executed", r_disc
 
@@ -129,7 +127,6 @@ async def test_mount_blocked_when_not_meta_ready(aiplat_home):
         {"new_state": "cataloged", "catalog_id": "CAT-积分流水"},
         actor="fda-1",
         role="analyst",
-        _bypass_approval=True,
     )
     assert r.get("status") == "blocked", r
 

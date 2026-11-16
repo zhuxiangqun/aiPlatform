@@ -2,8 +2,8 @@
 
 职责：对 ``customer_action`` 强制 ``tenant_id`` + ``idempotency_key``；
 重复键回放已有执行；落盘 before/after 快照（不改历史）。
-非目标：kill switch、Lv4 误报门重设计、字段级 ACL、取消 Registry 内
-``_bypass_approval``（审批通过后重入仍允许）。
+非目标：kill switch、Lv4 误报门重设计、字段级 ACL。
+Registry 裸 ``_bypass_approval`` 已收紧（仅 approve 重入，见 action_registry）。
 """
 from __future__ import annotations
 

@@ -222,6 +222,7 @@ async def confirm_extraction(
     if not permissions:
         permissions = ["kb:write"]
 
+    # 为什么：合同 require_approval=false + L1 kb:write；禁止测试式 _bypass_approval 泄漏到 HTTP
     reg = get_action_registry()
     result = await reg.execute(
         "platform_action:knowledge:confirm_extraction",
@@ -230,7 +231,6 @@ async def confirm_extraction(
         actor=actor or "extract_actor",
         role=resolve_request_role(request) or "",
         permissions=permissions,
-        _bypass_approval=True,
     )
     status = result.get("status")
     if status == "policy_denied":
