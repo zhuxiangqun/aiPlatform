@@ -5439,6 +5439,423 @@ def evaluate_implementer_semantics_gate(
     return _gate(suite)
 
 
+def register_source_policy(
+    *,
+    tenant_id: str,
+    policy_id: str,
+    authority: str,
+    freshness: Dict[str, Any],
+    scope: List[str],
+    license: str,
+    trust: str,
+    conflict_rule: str,
+    source_id: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """W3 N04：登记来源策略（附录 K）。
+
+    Args:
+        tenant_id: 租户。
+        policy_id: 策略 ID。
+        authority: 权威级别。
+        freshness: 含 valid_days。
+        scope: 适用范围。
+        license: 许可。
+        trust: 可信等级。
+        conflict_rule: 冲突规则（禁固定层序）。
+        source_id: 可选来源绑定。
+        db_path: 可选库路径。
+    """
+    from core.harness.knowledge_pipeline.source_policy import (
+        register_source_policy as _reg,
+    )
+
+    return _reg(
+        tenant_id=tenant_id,
+        policy_id=policy_id,
+        authority=authority,
+        freshness=freshness,
+        scope=scope,
+        license=license,
+        trust=trust,
+        conflict_rule=conflict_rule,
+        source_id=source_id,
+        db_path=db_path,
+    )
+
+
+def get_source_policy(
+    policy_id: str,
+    *,
+    tenant_id: str,
+    db_path: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """W3 N04：读取来源策略。
+
+    Args:
+        policy_id: 策略 ID。
+        tenant_id: 租户。
+        db_path: 可选库路径。
+    """
+    from core.harness.knowledge_pipeline.source_policy import (
+        get_source_policy as _get,
+    )
+
+    return _get(policy_id, tenant_id=tenant_id, db_path=db_path)
+
+
+def list_open_conflicts(
+    *,
+    tenant_id: str,
+    subject: Optional[str] = None,
+    predicate: Optional[str] = None,
+    db_path: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """W3 N04：列出未裁决冲突。
+
+    Args:
+        tenant_id: 租户。
+        subject: 可选主语。
+        predicate: 可选谓词。
+        db_path: 可选库路径。
+    """
+    from core.harness.knowledge_pipeline.source_policy import (
+        list_open_conflicts as _list,
+    )
+
+    return _list(
+        tenant_id=tenant_id,
+        subject=subject,
+        predicate=predicate,
+        db_path=db_path,
+    )
+
+
+def adjudicate_conflict(
+    *,
+    conflict_id: str,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    accepted_fact_id: str,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """W3 N04：人审裁决冲突。
+
+    Args:
+        conflict_id: 冲突 ID。
+        tenant_id: 租户。
+        actor: 裁决人。
+        reason: 理由。
+        accepted_fact_id: 采纳 Fact。
+        db_path: 可选库路径。
+    """
+    from core.harness.knowledge_pipeline.source_policy import (
+        adjudicate_conflict as _adj,
+    )
+
+    return _adj(
+        conflict_id=conflict_id,
+        tenant_id=tenant_id,
+        actor=actor,
+        reason=reason,
+        accepted_fact_id=accepted_fact_id,
+        db_path=db_path,
+    )
+
+
+async def scan_and_record_conflicts(
+    *,
+    tenant_id: str,
+    collection_id: str,
+    subject: Optional[str] = None,
+    predicate: Optional[str] = None,
+    db_path: Optional[str] = None,
+    ledger: Any = None,
+) -> List[Dict[str, Any]]:
+    """W3 N04：扫描 FactLedger 并显式落库冲突（不自动选边）。
+
+    Args:
+        tenant_id: 租户。
+        collection_id: 集合。
+        subject / predicate: 可选过滤。
+        db_path: 可选库路径。
+        ledger: 可选 FactLedger；默认单例。
+    """
+    from core.harness.knowledge_pipeline.source_policy import (
+        scan_and_record_conflicts as _scan,
+    )
+
+    lg = ledger
+    if lg is None:
+        from core.harness.knowledge_pipeline.fact_ledger import get_fact_ledger
+
+        lg = get_fact_ledger()
+    return await _scan(
+        lg,
+        tenant_id=tenant_id,
+        collection_id=collection_id,
+        subject=subject,
+        predicate=predicate,
+        db_path=db_path,
+    )
+
+
+async def put_fact_with_source_policy(
+    *,
+    tenant_id: str,
+    collection_id: str,
+    subject: str,
+    predicate: str,
+    object: str,
+    evidence: List[Dict[str, Any]],
+    source_policy: str,
+    extractor_version: str,
+    review_status: str,
+    confidence: float,
+    db_path: Optional[str] = None,
+    ledger: Any = None,
+    **kwargs: Any,
+) -> Dict[str, Any]:
+    """W3 N04：经来源策略/冲突门写入 Fact。
+
+    Args:
+        tenant_id / collection_id / subject / predicate / object: Fact 键值。
+        evidence: 证据。
+        source_policy: 策略 ID。
+        extractor_version: 抽取器版本。
+        review_status: 审核状态。
+        confidence: 置信度。
+        db_path: 策略库路径。
+        ledger: 可选 FactLedger。
+        **kwargs: 透传 put_fact。
+    """
+    from core.harness.knowledge_pipeline.source_policy import (
+        put_fact_with_source_policy as _put,
+    )
+
+    lg = ledger
+    if lg is None:
+        from core.harness.knowledge_pipeline.fact_ledger import get_fact_ledger
+
+        lg = get_fact_ledger()
+    return await _put(
+        lg,
+        tenant_id=tenant_id,
+        collection_id=collection_id,
+        subject=subject,
+        predicate=predicate,
+        object=object,
+        evidence=evidence,
+        source_policy=source_policy,
+        extractor_version=extractor_version,
+        review_status=review_status,
+        confidence=confidence,
+        db_path=db_path,
+        **kwargs,
+    )
+
+
+def evaluate_source_policy_gate(
+    checks: Optional[Dict[str, bool]] = None,
+) -> Dict[str, Any]:
+    """W3 N04：来源策略门槛门（禁止冒充全量认证）。
+
+    Args:
+        checks: 探针结果；缺省视为未跑。
+    """
+    from core.harness.knowledge_pipeline.source_policy import (
+        evaluate_source_policy_gate as _gate,
+    )
+
+    return _gate(checks=checks)
+
+
+def dump_fact_state_machines() -> Dict[str, Any]:
+    """W3 N12：导出 Fact/Claim 状态机边表。"""
+    from core.harness.knowledge_pipeline.fact_state_machine import dump_machines
+
+    return dump_machines()
+
+
+def validate_fact_state_sequence(
+    *,
+    machine: str,
+    steps: List[str],
+) -> Dict[str, Any]:
+    """W3 N12：校验状态序列是否逐步合法。
+
+    Args:
+        machine: 状态机名（fact_review / fact_lifecycle / claim_status）。
+        steps: 有序状态列表。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import validate_sequence
+
+    ok = validate_sequence(machine, steps)
+    return {"machine": machine, "steps": list(steps), "valid": bool(ok)}
+
+
+def list_fact_state_transitions(
+    *,
+    tenant_id: str,
+    record_id: Optional[str] = None,
+    machine: Optional[str] = None,
+    db_path: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """W3 N12：列出状态转换审计。
+
+    Args:
+        tenant_id: 租户。
+        record_id: 可选记录。
+        machine: 可选状态机。
+        db_path: 可选库路径。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        list_fact_transitions as _list,
+    )
+
+    return _list(
+        tenant_id=tenant_id,
+        record_id=record_id,
+        machine=machine,
+        db_path=db_path,
+    )
+
+
+async def transition_fact_review(
+    *,
+    fact_id: str,
+    tenant_id: str,
+    to_status: str,
+    actor: str,
+    reason: str,
+    db_path: Optional[str] = None,
+    ledger: Any = None,
+) -> Dict[str, Any]:
+    """W3 N12：Fact 审核态转换。
+
+    Args:
+        fact_id: Fact ID。
+        tenant_id: 租户。
+        to_status: 目标 review_status。
+        actor: 操作人。
+        reason: 理由。
+        db_path: 审计库。
+        ledger: 可选 FactLedger。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        transition_fact_review as _tr,
+    )
+
+    lg = ledger
+    if lg is None:
+        from core.harness.knowledge_pipeline.fact_ledger import get_fact_ledger
+
+        lg = get_fact_ledger()
+    return await _tr(
+        lg,
+        fact_id=fact_id,
+        tenant_id=tenant_id,
+        to_status=to_status,
+        actor=actor,
+        reason=reason,
+        db_path=db_path,
+    )
+
+
+async def transition_fact_lifecycle(
+    *,
+    fact_id: str,
+    tenant_id: str,
+    to_status: str,
+    actor: str,
+    reason: str,
+    db_path: Optional[str] = None,
+    ledger: Any = None,
+) -> Dict[str, Any]:
+    """W3 N12：Fact 生命周期转换。
+
+    Args:
+        fact_id: Fact ID。
+        tenant_id: 租户。
+        to_status: 目标 lifecycle status。
+        actor: 操作人。
+        reason: 理由。
+        db_path: 审计库。
+        ledger: 可选 FactLedger。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        transition_fact_lifecycle as _tr,
+    )
+
+    lg = ledger
+    if lg is None:
+        from core.harness.knowledge_pipeline.fact_ledger import get_fact_ledger
+
+        lg = get_fact_ledger()
+    return await _tr(
+        lg,
+        fact_id=fact_id,
+        tenant_id=tenant_id,
+        to_status=to_status,
+        actor=actor,
+        reason=reason,
+        db_path=db_path,
+    )
+
+
+def transition_claim_status(
+    *,
+    claim_id: str,
+    tenant_id: str,
+    from_status: str,
+    to_status: str,
+    actor: str,
+    reason: str,
+    revision: int = 1,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """W3 N12：Claim 状态边校验 + 审计。
+
+    Args:
+        claim_id: Claim ID。
+        tenant_id: 租户。
+        from_status / to_status: 边。
+        actor / reason: 人因。
+        revision: 修订号。
+        db_path: 审计库。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        transition_claim_status_pure as _tr,
+    )
+
+    return _tr(
+        from_status=from_status,
+        to_status=to_status,
+        actor=actor,
+        reason=reason,
+        claim_id=claim_id,
+        tenant_id=tenant_id,
+        revision=revision,
+        db_path=db_path,
+    )
+
+
+def evaluate_fact_state_gate(
+    checks: Optional[Dict[str, bool]] = None,
+) -> Dict[str, Any]:
+    """W3 N12：Fact 状态机门槛门（禁止冒充全量认证）。
+
+    Args:
+        checks: 探针结果；缺省视为未跑。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        evaluate_fact_state_gate as _gate,
+    )
+
+    return _gate(checks=checks)
+
+
 def publish_confidence_calibration(
     *,
     tenant_id: str,
