@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2744
+total_capabilities: 2746
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2818,12 +2818,12 @@ domains:
         reason: "L6 记忆指标展示"
 
   # ══════════════════════════════════════════════════════════════
-  # 三、知识引擎（本体）(282 caps)
+  # 三、知识引擎（本体）(284 caps)
   # ══════════════════════════════════════════════════════════════
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 282
+    caps_count: 284
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3102,6 +3102,14 @@ domains:
         module: aiPlat-platform/apps/fde/api/object_set_routes.py
         type: function
         signature: "POST /fde/object-sets/query — tenant_id + scopes→permissions"
+      - symbol: "ObjectQueryTool"
+        module: core/apps/tools/knowledge_agent_tools.py
+        type: class
+        signature: "Appendix F.2 object.query via CoreFacade; reject sql/write"
+      - symbol: "FunctionCallTool"
+        module: core/apps/tools/knowledge_agent_tools.py
+        type: class
+        signature: "Appendix F.2 function.call via CoreFacade; reject sql/write"
       - symbol: "k1_confirm_extraction"
         module: core/api/core_facade.py
         type: function
