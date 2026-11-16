@@ -38,5 +38,8 @@ authority: supporting
 | [phase2-implementer-semantics-evidence.md](./phase2-implementer-semantics-evidence.md) | W10 N18 实现方语义测试（5 探针 + 门槛门；非全量认证） |
 | [phase2-source-policy-evidence.md](./phase2-source-policy-evidence.md) | W3 N04 Source Policy / Conflict（策略登记 + 冲突不自动选边 + 人审；非全写入强制） |
 | [phase2-fact-state-evidence.md](./phase2-fact-state-evidence.md) | W3 N12 Fact 状态机（review/lifecycle/claim + 审计；非裸 put_fact 唯一强制） |
+| [phase2-claim-evidence-evidence.md](./phase2-claim-evidence-evidence.md) | Batch F2 N03 Claim 证据硬门+冲突记录（门槛门；非全量认证） |
+| [phase2-slo-target-evidence.md](./phase2-slo-target-evidence.md) | Batch F1 §9.4 SLO 目标登记（非生产遥测达标） |
+| [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

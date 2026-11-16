@@ -42,6 +42,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做（后续）
 
 - 人工认证流程 / 非作者批准记录绑定
-- SLO 与例外 ADR 实质内容填空
-- N04 / N12 实现闭环（N18 见 `phase2-implementer-semantics-evidence.md` 最小切片）
+- 生产 SLO 遥测采集（目标登记见 Batch F1 `phase2-slo-target-evidence.md`；例外见 `phase2-exception-adr.md`）
+- N04 / N12 全量认证（N18 见 `phase2-implementer-semantics-evidence.md` 最小切片）
 - 宣称 24/24 或 Core 符合

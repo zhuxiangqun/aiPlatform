@@ -25,6 +25,22 @@ def test_repo_catalog_has_exactly_24_and_gate_passes():
     assert counts["missing"] <= 6
 
 
+def test_repo_catalog_slots_filled_no_explicit_missing_warning():
+    """Batch F1：slo/exception_adr 已填 path；结构门不再发 explicit-missing warning。"""
+    gate = cp.evaluate_conformance_gate()
+    assert gate["pass"] is True, gate
+    assert "slo_and_exception_adr_explicitly_missing" not in (gate.get("warnings") or [])
+    assert gate["certified"] is False
+    slots = {
+        s["id"]: s
+        for s in ((gate.get("pack") or {}).get("certification") or {}).get("slots") or []
+    }
+    for sid in ("slo", "exception_adr"):
+        assert sid in slots
+        assert slots[sid].get("present") is True
+        assert "slot_explicitly_missing" not in (slots[sid].get("issues") or [])
+
+
 def test_gate_fails_when_claimed_evidence_missing(tmp_path):
     cat = {
         "standard": "test",
