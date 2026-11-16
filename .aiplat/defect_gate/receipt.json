@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T14:52:45+08:00",
+  "reviewed_at": "2026-11-16T15:06:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "52359e9acedd76c8da22648649484e4e5bfc9747",
-  "diff_sha256": "e79c39a9f5e18f457bd85aefcf32c803780a67bda69145622520c943b76a0f6f",
-  "head_sha": "0c16d1caabafb8719f012f5ea19379328f4c98da",
+  "diff_sha256": "151ae8e7bbf01373b3a53693e79652b094b53c58b284fd26aa04fc0fa0c238e4",
+  "head_sha": "f87cdedc85b5b2f38aea68b5b649e9ebdc7b934f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "W10 conformance pack: gate pass≠certified (hard false). Fixed missing-item explanatory path not blocking. Residual: no human cert workflow / SLO fill / N04·N12·N18 impl."
+  "note": "CI fix: removed harness lock-service default (§80). Pilot domain from catalog/caller only; certified still hard false."
 }
