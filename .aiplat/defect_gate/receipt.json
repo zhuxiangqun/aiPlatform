@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T09:53:33+08:00",
+  "reviewed_at": "2026-11-16T11:02:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4291156e2bec40a06cde80ffcdf819646a585af5",
-  "diff_sha256": "f685648d78c705a621c17355bf5577da0c98afec5ede1d2c6d89adfcf3244c00",
-  "head_sha": "740f93c3889beb9ac3edc27273b6054b7977f813",
+  "merge_base": "972d7a14207a8105d205ea44559b8c0d450616f8",
+  "diff_sha256": "563be7329941166495abb82070e429b615fb0bbb1beb29a0b9ae03e4a55e3634",
+  "head_sha": "411f8b13917058005213d645e107634f475ff7af",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "W6 action.execute tool via ActionRegistry L1; no bypass. Local lock only."
+  "note": "W7 ActionExecution min: Facade/Tool/HTTP customer_action idempotency. Residual: StateMachine Registry bridge and platform_action _bypass_approval out of slice."
 }

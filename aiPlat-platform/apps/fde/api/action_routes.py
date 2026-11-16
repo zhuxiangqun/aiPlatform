@@ -808,6 +808,25 @@ async def graph_webhook_ingest(
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
+@router.get("/actions/executions/lookup")
+async def lookup_action_execution_route(
+    tenant_id: str = Query(..., description="租户 id"),
+    idempotency_key: str = Query(..., description="幂等键"),
+):
+    """W7：按 tenant + idempotency_key 查询 ActionExecution（只读）。
+
+    Args:
+        tenant_id: 租户。
+        idempotency_key: 幂等键。
+    """
+    from core.api.core_facade import lookup_action_execution
+
+    rec = lookup_action_execution(tenant_id, idempotency_key)
+    if not rec:
+        raise HTTPException(status_code=404, detail="execution_not_found")
+    return {"status": "ok", "execution": rec}
+
+
 @router.post("/actions/execute")
 async def execute_action(
     body: Dict[str, Any],
@@ -848,7 +867,10 @@ async def execute_action(
             entity_ref = str(entity_ref[0])
 
     try:
-        from core.api.core_facade import get_action_registry, check_graph_entity_acl
+        from core.api.core_facade import (
+            check_graph_entity_acl,
+            execute_action as facade_execute_action,
+        )
 
         # Resolve domain + entity id for ABox ACL (T9)
         acl_domain = ""
@@ -870,11 +892,11 @@ async def execute_action(
                 }
 
         # G2 L1：把身份 scopes 作为 permissions 传入；缺省则无法满足 required_permissions。
+        # 为什么：经 Facade 才能命中 W7 customer_action 幂等账本，禁止直调 Registry
         permissions = _parse_scopes(x_aiplat_scopes)
         if not permissions and request is not None:
             permissions = _parse_scopes(request.headers.get("X-AIPLAT-SCOPES"))
-        reg = get_action_registry()
-        result = await reg.execute(
+        result = await facade_execute_action(
             action_id=action_id,
             entity_ref=entity_ref,
             params=params,
@@ -902,6 +924,12 @@ async def execute_action(
             }
         if status == "invalid_params":
             raise HTTPException(status_code=400, detail=result.get("errors", ["Invalid params"]))
+        if status == "invalid":
+            # W7：缺 tenant_id / idempotency_key 等执行账本硬门
+            raise HTTPException(
+                status_code=400,
+                detail=result.get("error") or result.get("reason") or "invalid",
+            )
 
         return result
     except HTTPException:

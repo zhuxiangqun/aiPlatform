@@ -565,6 +565,7 @@ class ActionExecuteTool(BaseTool):
                 name="action.execute",
                 description=(
                     "执行 ActionContract（经 CoreFacade → ActionRegistry；L1+审批）。"
+                    "customer_action 须 tenant_id+idempotency_key。"
                     "禁止 sql/直写 Fact；禁止 bypass_approval。"
                 ),
                 parameters={
@@ -587,7 +588,15 @@ class ActionExecuteTool(BaseTool):
                         },
                         "params": {
                             "type": "object",
-                            "description": "动作入参",
+                            "description": "动作入参（customer_action 含 tenant_id/idempotency_key）",
+                        },
+                        "tenant_id": {
+                            "type": "string",
+                            "description": "租户（customer_action 可顶层或 params 内）",
+                        },
+                        "idempotency_key": {
+                            "type": "string",
+                            "description": "幂等键（customer_action 可顶层或 params 内）",
                         },
                         "permissions": {
                             "type": "array",
@@ -636,9 +645,17 @@ class ActionExecuteTool(BaseTool):
         action_params = (params or {}).get("params")
         if not isinstance(action_params, dict):
             action_params = {}
+        else:
+            action_params = dict(action_params)
         bad2 = _reject_sql_or_write(action_params)
         if bad2:
             return ToolResult(success=False, error=bad2)
+
+        # 为什么：customer_action 顶层键并入 params，供 Facade W7 幂等门读取
+        if action_id.startswith("customer_action:"):
+            for k in ("tenant_id", "idempotency_key"):
+                if (params or {}).get(k) and not action_params.get(k):
+                    action_params[k] = (params or {}).get(k)
 
         permissions = _parse_permissions(params or {})
         actor = str((params or {}).get("actor") or "")
@@ -658,8 +675,8 @@ class ActionExecuteTool(BaseTool):
             return ToolResult(success=False, error=str(e)[:500])
 
         status = out.get("status")
-        # executed / pending_approval 为合法终态；其余按失败透传
-        if status in ("executed", "pending_approval"):
+        # executed / pending_approval / idempotent_replay 为合法终态
+        if status in ("executed", "pending_approval", "idempotent_replay"):
             return ToolResult(success=True, output=out)
         return ToolResult(
             success=False,
