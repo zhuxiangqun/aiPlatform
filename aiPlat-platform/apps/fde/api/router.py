@@ -47,6 +47,7 @@ from .ontology_package_routes import router as _ontology_package_router
 from .confidence_calibration_routes import router as _confidence_calibration_router
 from .ocs_routes import router as _ocs_router
 from .knowledge_migration_routes import router as _knowledge_migration_router
+from .conformance_pack_routes import router as _conformance_pack_router
 from .rapid_insight import router as _rapid_insight_router
 from .fde_phase4 import router as _phase4_router
 from .fde_slice import router as _slice_router
@@ -90,6 +91,7 @@ router.include_router(_ontology_package_router, prefix="/fde")
 router.include_router(_confidence_calibration_router, prefix="/fde")
 router.include_router(_ocs_router, prefix="/fde")
 router.include_router(_knowledge_migration_router, prefix="/fde")
+router.include_router(_conformance_pack_router, prefix="/fde")
 router.include_router(_rapid_insight_router, prefix="/fde")
 router.include_router(_phase4_router, prefix="/fde")
 router.include_router(_slice_router, prefix="/fde")

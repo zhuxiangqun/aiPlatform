@@ -5372,6 +5372,42 @@ def rollback_ontology_package(
     )
 
 
+def build_conformance_pack(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """W10：组装附录 N24 + §9.4 认证证据包（结构汇总，非认证通过）。
+
+    Args:
+        catalog_path: 可选目录 YAML。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        build_conformance_pack as _build,
+    )
+
+    return _build(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_conformance_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """W10：证据包结构门槛门（禁止冒充 24/24 认证）。
+
+    Args:
+        catalog_path: 可选目录 YAML。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_conformance_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
 def publish_confidence_calibration(
     *,
     tenant_id: str,
