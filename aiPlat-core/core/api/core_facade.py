@@ -5128,23 +5128,37 @@ async def execute_action(
     role: str = "",
     permissions: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """W6：action.execute 经 ActionRegistry（L1 + 审批门；禁止 bypass）。
+    """W6/W7：action.execute 经 ActionRegistry；customer_action 走幂等执行账本。
 
     Args:
         action_id: ActionContract.action_id。
         entity_ref: 实体引用（str / (domain, id) / dict）。
-        params: 动作入参。
+        params: 动作入参（customer_action 须含 tenant_id + idempotency_key）。
         actor: 操作者。
         role: 角色（可选）。
         permissions: 调用方权限/scopes（满足合同 required_permissions）。
 
     Returns:
-        AsyncActionRegistry.execute 回执。
+        执行回执；customer_action 可能含 ``execution`` / ``idempotent_replay``。
     """
+    from core.harness.infrastructure.action_execution import (
+        is_customer_action,
+        run_customer_action_with_execution,
+    )
     from core.harness.ontology_engine.action_registry import get_action_registry
 
+    # 为什么：生产入口禁止 _bypass_approval；customer_action 另强制幂等键与快照账本
+    if is_customer_action(action_id):
+        return await run_customer_action_with_execution(
+            action_id=action_id,
+            entity_ref=entity_ref,
+            params=params or {},
+            actor=actor or "system",
+            role=role or "",
+            permissions=permissions,
+        )
+
     reg = get_action_registry()
-    # 为什么：Agent/工具入口禁止 _bypass_approval，审批门必须可生效
     return await reg.execute(
         action_id=action_id,
         entity_ref=entity_ref,
@@ -5153,6 +5167,24 @@ async def execute_action(
         role=role or "",
         permissions=permissions,
     )
+
+
+def lookup_action_execution(
+    tenant_id: str,
+    idempotency_key: str,
+) -> Optional[Dict[str, Any]]:
+    """W7：按租户+幂等键查询 ActionExecution（只读）。
+
+    Args:
+        tenant_id: 租户。
+        idempotency_key: 幂等键。
+
+    Returns:
+        执行记录或 None。
+    """
+    from core.harness.infrastructure.action_execution import lookup_execution
+
+    return lookup_execution(tenant_id, idempotency_key)
 
 
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:

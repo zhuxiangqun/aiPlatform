@@ -26,5 +26,6 @@ authority: supporting
 | [phase2-link-traverse-evidence.md](./phase2-link-traverse-evidence.md) | Phase 2 W6 link.traverse（多跳只读 + L1） |
 | [phase2-object-set-aggregate-tool-evidence.md](./phase2-object-set-aggregate-tool-evidence.md) | Phase 2 W6 object_set.aggregate 工具（只读 count） |
 | [phase2-action-execute-tool-evidence.md](./phase2-action-execute-tool-evidence.md) | Phase 2 W6 action.execute 工具（ActionRegistry L1） |
+| [phase2-action-execution-evidence.md](./phase2-action-execution-evidence.md) | Phase 2 W7 ActionExecution（幂等 + before/after） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
