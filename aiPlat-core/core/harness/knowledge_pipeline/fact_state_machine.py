@@ -362,6 +362,8 @@ async def transition_fact_review(
         revision=new_rev,
         # 为什么关硬门：边与冲突门已在本函数校验；避免「改状态须走 transition」自锁
         enforce_write_gates=False,
+        revision_actor=actor,
+        revision_reason=reason,
     )
     return {"fact": updated, "transition": audit}
 
@@ -433,6 +435,8 @@ async def transition_fact_lifecycle(
         valid_to=fact.get("valid_to"),
         revision=new_rev,
         enforce_write_gates=False,
+        revision_actor=actor,
+        revision_reason=reason,
     )
     return {"fact": updated, "transition": audit}
 

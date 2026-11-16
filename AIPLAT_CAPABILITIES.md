@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3678
+total_capabilities: 3679
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1204,6 +1204,7 @@ scan_hash: 8f9548ec24f4
 | **Fact Ledger（v4.3.1 Phase 1）** | `harness/knowledge_pipeline/fact_ledger.py` + CoreFacade `fact_ledger_query_gateway` + FDE confirm / `GET .../extractions/facts` | ✅ | 附录 A/D 最小账本：不可变 Raw（sha256+快照）、Fact/Claim（published 必须 evidence）、查询 SQL 层 `tenant_id` 前置过滤；有 `{domain}-object-types.json` 种子的域在确认时写账本；跨租户测试见 `test_fact_ledger_phase1.py`。**未宣称**附录 N 全量符合 | 已合入 |
 | **Raw 读时完整性（v4.3.1 N01 partial）** | `verify_raw_integrity` / `read_raw_bytes` / `evaluate_raw_integrity_gate` + Facade `fact_ledger_verify_raw_integrity` / `evaluate_fact_raw_integrity_gate` | ✅ | 读时复算 sha256；篡改/缺失拒绝；门槛门 certified 恒 false。证据 `phase2-raw-integrity-evidence.md`。**未宣称** 全连接器矩阵 / N01 certified。生成物适用：已接线（经 Facade） | 已合入 |
 | **DataSource→Raw 完整性（v4.3.1 N01 G1）** | `validate_datasource_content_hash` / `ingest_datasource_raw` / `run_datasource_raw_suite` / `evaluate_datasource_raw_gate` + Facade ingest/suite/gate | ✅ | DataSourceConfig.content_hash 强制/校验后登记 FactLedger Raw；门槛门 certified 恒 false。证据 `phase2-datasource-raw-evidence.md`。**未宣称** SQL/API 全路径 / N01 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Fact Revision 账本（v4.3.1 N24 G2）** | `list_fact_revisions` / `get_fact_at_revision` / `diff_fact_revisions` / `run_fact_revision_suite` / `evaluate_fact_revision_gate` + Facade list/get/diff/suite/gate | ✅ | put_fact 内容变更强制 revision bump + 归档旧快照；门槛门 certified 恒 false。证据 `phase2-fact-revision-evidence.md`。**未宣称** Claim/回滚 UI/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户隔离加深（v4.3.1 N09 partial）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | query/get_source/gateway/verify 四探针；门槛门 certified 恒 false。证据 `phase2-cross-tenant-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
@@ -1343,6 +1344,11 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_fact_revision_ledger_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fact_ledger_run_fact_revision_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fact_ledger_diff_revisions | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fact_ledger_get_at_revision | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fact_ledger_list_revisions | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_fact_datasource_raw_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_run_datasource_raw_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_ingest_datasource_raw | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4578,7 +4584,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 665 | 1 | 666 |
+| Harness 执行引擎 | 666 | 1 | 667 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 536 | 9 | 545 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4623,7 +4629,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3667** | **11** | **3678** |
+| **总计** | **3668** | **11** | **3679** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
