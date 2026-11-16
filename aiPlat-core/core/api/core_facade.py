@@ -5525,6 +5525,202 @@ def resolve_confidence_ceiling(
     )
 
 
+def start_knowledge_migration(
+    *,
+    tenant_id: str,
+    domain: str,
+    mapping: Optional[Dict[str, Any]] = None,
+    job_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """W10：启动知识迁移作业（双写/对账/回滚演练）。
+
+    Args:
+        tenant_id: 租户。
+        domain: 域。
+        mapping: 资产映射。
+        job_id: 可选作业 id。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        start_migration_job,
+    )
+
+    return start_migration_job(
+        tenant_id=tenant_id,
+        domain=domain,
+        mapping=mapping,
+        job_id=job_id,
+    )
+
+
+def get_knowledge_migration(
+    job_id: str,
+    *,
+    tenant_id: str,
+) -> Optional[Dict[str, Any]]:
+    """W10：读取迁移作业（跨租户隐藏）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        get_migration_job,
+    )
+
+    return get_migration_job(job_id, tenant_id=tenant_id)
+
+
+def dual_write_knowledge_migration(
+    job_id: str,
+    *,
+    tenant_id: str,
+    record_key: str,
+    payload: Dict[str, Any],
+    fail_target: bool = False,
+) -> Dict[str, Any]:
+    """W10：迁移双写（source 权威）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        record_key: 记录键。
+        payload: 内容。
+        fail_target: 模拟 target 失败。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        dual_write_record,
+    )
+
+    return dual_write_record(
+        job_id,
+        tenant_id=tenant_id,
+        record_key=record_key,
+        payload=payload,
+        fail_target=fail_target,
+    )
+
+
+def write_knowledge_migration_store(
+    job_id: str,
+    *,
+    tenant_id: str,
+    store: str,
+    record_key: str,
+    payload: Dict[str, Any],
+    version: Optional[int] = None,
+) -> Dict[str, Any]:
+    """W10：迁移单侧写入（演练 orphan/漂移）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        store: source|target。
+        record_key: 记录键。
+        payload: 内容。
+        version: 可选版本。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        write_store_record,
+    )
+
+    return write_store_record(
+        job_id,
+        tenant_id=tenant_id,
+        store=store,
+        record_key=record_key,
+        payload=payload,
+        version=version,
+    )
+
+
+def reconcile_knowledge_migration(
+    job_id: str,
+    *,
+    tenant_id: str,
+    repair: bool = False,
+) -> Dict[str, Any]:
+    """W10：迁移对账（可选按 source 修复）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        repair: 是否修复。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        reconcile_migration,
+    )
+
+    return reconcile_migration(
+        job_id, tenant_id=tenant_id, repair=repair
+    )
+
+
+def set_knowledge_migration_read_pointer(
+    job_id: str,
+    *,
+    tenant_id: str,
+    pointer: str,
+) -> Dict[str, Any]:
+    """W10：设置迁移读指针（影子读；切写未授权）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        pointer: source|target。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        set_read_pointer,
+    )
+
+    return set_read_pointer(
+        job_id, tenant_id=tenant_id, pointer=pointer
+    )
+
+
+def rollback_drill_knowledge_migration(
+    job_id: str,
+    *,
+    tenant_id: str,
+    note: str = "",
+) -> Dict[str, Any]:
+    """W10：迁移回滚演练（读指针回 source）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        note: 备注。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        record_rollback_drill,
+    )
+
+    return record_rollback_drill(
+        job_id, tenant_id=tenant_id, note=note
+    )
+
+
+def list_knowledge_migration_events(
+    job_id: str,
+    *,
+    tenant_id: str,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    """W10：列出迁移审计事件。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        limit: 条数。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        list_migration_events,
+    )
+
+    return list_migration_events(
+        job_id, tenant_id=tenant_id, limit=limit
+    )
+
+
 async def traverse_object_links(
     request: Dict[str, Any],
     *,

@@ -43,5 +43,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 - 真实 ECE/Brier 训练流水线
 - OCS 完整度运行时聚合接线
-- 迁移双写/对账
+- 迁移双写/对账（见 `phase2-knowledge-migration-evidence.md` 独立切片）
 - 附录 N 24 项全量符合证据包
