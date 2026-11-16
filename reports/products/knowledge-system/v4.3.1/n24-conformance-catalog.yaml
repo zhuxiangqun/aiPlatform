@@ -69,7 +69,8 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
-    note: ObjectSet/租户前置 + ACL；非全入口字段级
+      - reports/products/knowledge-system/v4.3.1/phase2-acl-recall-evidence.md
+    note: ObjectSet + link.traverse 召回前 ACL；非 Wiki/KB 全入口
   - id: N08
     title: 动作执行走 Policy/Approval/Audit
     status: partial
@@ -201,8 +202,10 @@ items:
     gap_type: 有查询无权限
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-acl-recall-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/object_set.py
-    note: ObjectSet ABox ACL 最小切片；非全召回路径
+      - aiPlat-core/core/harness/knowledge_pipeline/link_traverse.py
+    note: ObjectSet + link.traverse ABox ACL；非 Wiki/KB 全入口
   - id: N23
     title: OCS 完整度
     status: partial

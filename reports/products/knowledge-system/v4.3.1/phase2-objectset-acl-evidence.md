@@ -50,3 +50,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 - Scenario / Package（W9）
 - 权限扩大负向套件以外的全量审计留存策略
 - 附录 N 全量符合
+
+> Batch C：`link.traverse` 已扩 ABox ACL — 见 `phase2-acl-recall-evidence.md`。

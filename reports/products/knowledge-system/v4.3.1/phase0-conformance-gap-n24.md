@@ -24,7 +24,7 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | 4 | 来源策略与冲突裁决 | partial | 写入硬门 + Conflict/transition（`phase2-source-policy-evidence.md`） | 有实现无证据 | W3 |
 | 5 | Wiki/索引有条件重建 | partial | Wiki 读模型硬门 + G2 可重建 | 有 Wiki 无事实源 | W4 |
 | 6 | Gateway 查询契约 | partial | FactLedger 网关 + ObjectSet；非附录 M 统一入口 | 有实现无证据 | W6 |
-| 7 | 权限召回前过滤 | partial | ObjectSet 租户前置 + ACL | 有查询无权限 | W6/W8 |
+| 7 | 权限召回前过滤 | partial | ObjectSet + link.traverse 召回前 ACL | 有查询无权限 | W6/W8 |
 | 8 | 动作 Policy/Approval/Audit | partial | L1+幂等；裸 bypass 拒绝（仅 approve 重入） | 有动作无门禁 | W5/W7 |
 | 9 | 跨租户 0 泄漏 | partial | ACL/Scenario 负向用例；未认证全域 0 | 有实现无证据 | W8 |
 | 10 | 评测定义/数据集/门槛 | partial | Confidence Calibration 附录 O | 有实现无证据 | W10 |
@@ -39,7 +39,7 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | 19 | 运行时权威与审计快照 | partial | ActionExecution before/after | 有实现无证据 | W7 |
 | 20 | L1/L2/L3 约束分层 | partial | G2 / FunctionContract L1 | 有动作无门禁 | W7 |
 | 21 | 防假绿 | partial | OCS/校准诚实锁 | 有实现无证据 | W6/W10 |
-| 22 | 实例/字段级 ACL | partial | ObjectSet ABox ACL | 有查询无权限 | W8 |
+| 22 | 实例/字段级 ACL | partial | ObjectSet + link.traverse ABox ACL | 有查询无权限 | W8 |
 | 23 | OCS 完整度 | partial | §13.4 覆盖计分 + gate | 有实现无证据 | W10 |
 | 24 | 版本/变更/审计 | partial | Package + Action 审计碎片 | 有实现无证据 | W2–W3 |
 

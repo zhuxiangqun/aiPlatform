@@ -6218,13 +6218,15 @@ async def traverse_object_links(
     *,
     tenant_id: str,
     permissions: Optional[List[str]] = None,
+    role: str = "",
 ) -> Dict[str, Any]:
-    """W6：link.traverse 多跳只读（租户前置 + L1 kb:read）。
+    """W6：link.traverse 多跳只读（租户前置 + L1 kb:read + ABox ACL）。
 
     Args:
         request: start_id / link_types / max_hops / domain_id 等。
         tenant_id: 租户 ID（必填）。
         permissions: 调用方权限/scopes。
+        role: ABox ACL 角色（实例拒绝 / 字段脱敏）。
 
     Returns:
         nodes/edges 回执，或 policy_denied / error。
@@ -6237,6 +6239,7 @@ async def traverse_object_links(
         request,
         tenant_id=tenant_id,
         permissions=permissions,
+        role=role or "",
     )
 
 

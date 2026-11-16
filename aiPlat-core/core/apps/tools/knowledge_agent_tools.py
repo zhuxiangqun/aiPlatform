@@ -154,6 +154,7 @@ async def _facade_traverse_links(
     *,
     tenant_id: str,
     permissions: Optional[List[str]] = None,
+    role: str = "",
 ) -> Dict[str, Any]:
     """经 CoreFacade 多跳链接遍历（可被单测 monkeypatch）。
 
@@ -161,11 +162,12 @@ async def _facade_traverse_links(
         request: link.traverse 请求 dict。
         tenant_id: 租户。
         permissions: 权限/scopes。
+        role: ABox ACL 角色。
     """
     from core.api.core_facade import traverse_object_links
 
     return await traverse_object_links(
-        request, tenant_id=tenant_id, permissions=permissions
+        request, tenant_id=tenant_id, permissions=permissions, role=role or ""
     )
 
 
@@ -406,6 +408,10 @@ class LinkTraverseTool(BaseTool):
                             "items": {"type": "string"},
                             "description": "调用方权限/scopes（须含 kb:read）",
                         },
+                        "role": {
+                            "type": "string",
+                            "description": "ABox ACL 角色（实例拒绝/字段脱敏）",
+                        },
                     },
                     "required": ["tenant_id", "start_id"],
                 },
@@ -439,12 +445,14 @@ class LinkTraverseTool(BaseTool):
             "direction": str((params or {}).get("direction") or "both"),
         }
         permissions = _parse_permissions(params or {})
+        role = str((params or {}).get("role") or "").strip()
 
         try:
             out = await _facade_traverse_links(
                 request,
                 tenant_id=tenant_id,
                 permissions=permissions,
+                role=role,
             )
         except Exception as e:
             logger.warning("link.traverse failed", exc_info=True)
