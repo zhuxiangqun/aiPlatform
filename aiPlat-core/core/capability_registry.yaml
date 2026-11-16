@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2739
+total_capabilities: 2744
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2818,12 +2818,12 @@ domains:
         reason: "L6 记忆指标展示"
 
   # ══════════════════════════════════════════════════════════════
-  # 三、知识引擎（本体）(277 caps)
+  # 三、知识引擎（本体）(282 caps)
   # ══════════════════════════════════════════════════════════════
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 277
+    caps_count: 282
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3054,6 +3054,26 @@ domains:
         module: core/harness/infrastructure/function_registry.py
         type: function
         signature: "Load FunctionContract YAML into registry; returns count"
+      - symbol: "InterfaceContractModel"
+        module: core/harness/infrastructure/interface_contract.py
+        type: class
+        signature: "Appendix C.4 Interface; properties/links/actions/implementers"
+      - symbol: "InterfaceRegistry"
+        module: core/harness/infrastructure/interface_registry.py
+        type: class
+        signature: "register/get/check_compatibility; implementer + shape + L1"
+      - symbol: "get_interface_registry"
+        module: core/harness/infrastructure/interface_registry.py
+        type: function
+        signature: "Process singleton; loads workspace_seeds/interfaces + AIPLAT_HOME/interfaces"
+      - symbol: "register_builtin_interfaces"
+        module: core/harness/infrastructure/interface_registry.py
+        type: function
+        signature: "Load InterfaceContract YAML into registry; returns count"
+      - symbol: "check_interface_compatibility"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: Interface compatibility check via InterfaceRegistry"
       - symbol: "priority_hint"
         module: core/harness/infrastructure/builtin_functions.py
         type: function

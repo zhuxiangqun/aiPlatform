@@ -1,0 +1,16 @@
+# InterfaceContract 试点种子（W5 最小切片）
+# 装载：InterfaceRegistry ← workspace_seeds/interfaces + AIPLAT_HOME/interfaces
+interfaces:
+  - interface_id: "platform_interface:lock-service:Trackable"
+    version: "1.0.0"
+    label: "可跟踪"
+    description: "要求 status 属性；试点 implementer=InstallOrder"
+    required_permissions:
+      - "kb:read"
+    properties:
+      - id: status
+        type: enum
+    links: []
+    actions: []
+    implementers:
+      - InstallOrder
