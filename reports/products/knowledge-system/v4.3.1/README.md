@@ -22,5 +22,7 @@ authority: supporting
 | [phase2-wiki-readonly-evidence.md](./phase2-wiki-readonly-evidence.md) | Phase 2 Wiki 读模型硬门（试点人工写拦截） |
 | [phase2-function-contract-evidence.md](./phase2-function-contract-evidence.md) | Phase 2 W5 FunctionContract（无副作用硬门 + L1） |
 | [phase2-objectset-evidence.md](./phase2-objectset-evidence.md) | Phase 2 W6 ObjectSet（租户前置只读查询 + L1） |
+| [phase2-agent-tool-evidence.md](./phase2-agent-tool-evidence.md) | Phase 2 W6 Agent Tool（object.query / function.call） |
+| [phase2-link-traverse-evidence.md](./phase2-link-traverse-evidence.md) | Phase 2 W6 link.traverse（多跳只读 + L1） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
