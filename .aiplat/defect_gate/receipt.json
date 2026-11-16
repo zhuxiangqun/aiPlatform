@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-16T21:50:00+08:00",
+  "reviewed_at": "2026-11-16T23:07:04+08:00",
   "base_ref": "origin/main",
-  "merge_base": "b1c0abb6fb2083d7d80d9188f1ef53fa4c7bdffd",
-  "diff_sha256": "e48f0bfe1ef82b566a0423033045cf995cdbf93c03889e9ec168b52e205ddffe",
-  "head_sha": "a449b288805b430e5574f08f35ffc66b43460043",
+  "merge_base": "ab893f96b52fe8c9e9bb78f2a6996af41b17246f",
+  "diff_sha256": "bd123319fd77db17bbe6f705be34463f251665ecd85d6fb93ba7e6315d9a38d8",
+  "head_sha": "b8fb848a53ce3548becfac95c7be3df0a9ef4c01",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Batch D N05: rebuild_mode taxonomy + gate. Residual: Wiki full rebuild out of scope; N05 remains partial."
+  "note": "E1\u2013E4 deepen + whitepaper resync; certified flags stay false; domain_id from caller/catalog only."
 }

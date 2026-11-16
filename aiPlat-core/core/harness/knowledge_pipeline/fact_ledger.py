@@ -287,16 +287,24 @@ class FactLedger:
         return record
 
     async def get_source(
-        self, source_id: str, *, tenant_id: str
+        self,
+        source_id: str,
+        *,
+        tenant_id: str,
+        verify_integrity: bool = False,
     ) -> Optional[Dict[str, Any]]:
         """按租户读取 source（跨租户返回 None）。
 
         Args:
             source_id: 来源 ID。
             tenant_id: 调用方租户；必须匹配行上 tenant_id。
+            verify_integrity: True 时复算快照 sha256，不一致则抛错。
 
         Returns:
             source 字典或 None。
+
+        Raises:
+            FactLedgerError: verify_integrity 且快照缺失/被篡改。
         """
         import aiosqlite
 
@@ -310,7 +318,84 @@ class FactLedger:
             row = await cur.fetchone()
         if not row:
             return None
-        return self._row_source(row)
+        record = self._row_source(row)
+        if verify_integrity:
+            await self.verify_raw_integrity(source_id, tenant_id=tenant_id)
+            record["integrity_ok"] = True
+        return record
+
+    async def verify_raw_integrity(
+        self, source_id: str, *, tenant_id: str
+    ) -> Dict[str, Any]:
+        """读时校验：快照文件 sha256 必须与 Source 行一致。
+
+        Args:
+            source_id: 来源 ID。
+            tenant_id: 调用方租户（召回前过滤）。
+
+        Returns:
+            校验回执：source_id / sha256 / snapshot_uri / ok=True。
+
+        Raises:
+            FactLedgerError: 跨租户/不存在、快照缺失、hash 不一致。
+        """
+        src = await self.get_source(source_id, tenant_id=tenant_id)
+        if src is None:
+            raise FactLedgerError(
+                f"source not found for tenant: {source_id!r}"
+            )
+        snap = Path(src["snapshot_uri"])
+        if not snap.is_file():
+            raise FactLedgerError(
+                f"raw snapshot missing: {snap} (source_id={source_id})"
+            )
+        actual = _sha256_bytes(snap.read_bytes())
+        expected = str(src.get("sha256") or "")
+        if not _SHA256_RE.match(expected):
+            raise FactLedgerError(
+                f"stored sha256 invalid for source_id={source_id}"
+            )
+        if actual != expected:
+            # 篡改/覆盖拒绝：登记时的 digest 是权威，读路径不得 silent 放行
+            raise FactLedgerError(
+                f"raw integrity failed: sha256 mismatch for source_id={source_id}"
+            )
+        return {
+            "ok": True,
+            "source_id": source_id,
+            "tenant_id": tenant_id,
+            "sha256": expected,
+            "snapshot_uri": str(snap),
+            "immutable": bool(src.get("immutable")),
+        }
+
+    async def read_raw_bytes(
+        self, source_id: str, *, tenant_id: str, verify: bool = True
+    ) -> bytes:
+        """读取不可变 Raw 快照字节；默认先验完整性。
+
+        Args:
+            source_id: 来源 ID。
+            tenant_id: 调用方租户。
+            verify: True（默认）时先 ``verify_raw_integrity``。
+
+        Returns:
+            快照文件字节。
+
+        Raises:
+            FactLedgerError: 不存在、校验失败、或快照不可读。
+        """
+        if verify:
+            await self.verify_raw_integrity(source_id, tenant_id=tenant_id)
+        src = await self.get_source(source_id, tenant_id=tenant_id)
+        if src is None:
+            raise FactLedgerError(
+                f"source not found for tenant: {source_id!r}"
+            )
+        snap = Path(src["snapshot_uri"])
+        if not snap.is_file():
+            raise FactLedgerError(f"raw snapshot missing: {snap}")
+        return snap.read_bytes()
 
     @staticmethod
     def _row_source(row: Any) -> Dict[str, Any]:
@@ -826,16 +911,32 @@ class FactLedger:
                     }
                 )
         abstained = bool(require_citations and not citations)
-        answer = None
-        if not abstained and facts:
-            f0 = facts[0]
-            answer = f"{f0['subject']}.{f0['predicate']}={f0['object']}"
-        return {
+        # 为什么：拒答时清空 answer/citations，满足附录 F 语义（abstain 无引用）
+        if abstained:
+            citations = []
+            answer = ""
+            confidence = "low"
+            evidence_coverage = 0.0
+        else:
+            answer = ""
+            if facts:
+                f0 = facts[0]
+                answer = f"{f0['subject']}.{f0['predicate']}={f0['object']}"
+            confidence = "high" if citations else "low"
+            evidence_coverage = 1.0 if citations else 0.0
+        resp = {
             "answer": answer,
             "citations": citations,
             "route_plan": ["fact"],
             "route_reason": "fact_ledger",
-            "confidence": "high" if citations else "low",
+            "confidence": confidence,
+            "confidence_factors": {
+                "evidence_coverage": evidence_coverage,
+                "source_authority": "high" if citations else "low",
+                "conflict": False,
+                "coverage": evidence_coverage,
+                "freshness": "valid" if citations else "unknown",
+            },
             "partial": False,
             "degraded": False,
             "abstained": abstained,
@@ -843,6 +944,114 @@ class FactLedger:
             "facts": facts,
             "tenant_id": tenant_id,
         }
+        gate = validate_gateway_response(resp)
+        resp["gateway_contract_ok"] = gate["ok"]
+        return resp
+
+
+_GATEWAY_REQUIRED = (
+    "answer",
+    "citations",
+    "route_plan",
+    "route_reason",
+    "confidence",
+    "confidence_factors",
+    "partial",
+    "degraded",
+    "abstained",
+    "conflicts",
+)
+_GATEWAY_CONFIDENCE = frozenset({"high", "medium", "low"})
+_GATEWAY_FACTOR_KEYS = (
+    "evidence_coverage",
+    "source_authority",
+    "conflict",
+    "coverage",
+    "freshness",
+)
+
+
+def validate_gateway_response(response: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """校验附录 F 查询响应最小契约（N06）；不宣称全量 Gateway。
+
+    Args:
+        response: ``query_facts_gateway`` 形状的响应。
+
+    Returns:
+        ``{ok, errors, certified=False, n06_full_conformance=False}``。
+    """
+    r = dict(response or {})
+    errors: List[str] = []
+    for key in _GATEWAY_REQUIRED:
+        if key not in r:
+            errors.append(f"missing:{key}")
+    plan = r.get("route_plan")
+    if not isinstance(plan, list) or not plan:
+        errors.append("route_plan_min_items")
+    if not str(r.get("route_reason") or "").strip():
+        errors.append("route_reason_required")
+    conf = r.get("confidence")
+    if conf not in _GATEWAY_CONFIDENCE:
+        errors.append("invalid_confidence")
+    factors = r.get("confidence_factors")
+    if not isinstance(factors, dict):
+        errors.append("confidence_factors_required")
+    else:
+        for fk in _GATEWAY_FACTOR_KEYS:
+            if fk not in factors:
+                errors.append(f"missing_factor:{fk}")
+    if r.get("abstained") is True:
+        cits = r.get("citations") or []
+        if cits:
+            errors.append("abstained_must_not_have_citations")
+        if str(r.get("answer") or "").strip():
+            errors.append("abstained_must_not_have_answer")
+    if r.get("certified") is True or r.get("n06_full_conformance") is True:
+        # 为什么：响应体误标认证不得过门
+        errors.append("honesty_certified_flag_forbidden")
+    return {
+        "ok": not errors,
+        "errors": errors,
+        "certified": False,
+        "n06_full_conformance": False,
+    }
+
+
+def evaluate_gateway_contract_gate(
+    responses: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """N06 Gateway 契约门槛门：汇总 validate；certified 恒 false。
+
+    Args:
+        responses: 网关响应列表。
+
+    Returns:
+        gate 字典；``certified`` / ``n06_full_conformance`` 恒 false。
+    """
+    items = list(responses or [])
+    issues: List[str] = []
+    if not items:
+        issues.append("no_gateway_responses")
+    checked = [validate_gateway_response(x) for x in items]
+    passed = sum(1 for g in checked if g.get("ok") is True)
+    if items and passed != len(items):
+        issues.append("gateway_contract_failures")
+    for g in checked:
+        if "honesty_certified_flag_forbidden" in (g.get("errors") or []):
+            issues.append("honesty_certified_flag_forbidden")
+            break
+    ok = bool(items) and passed == len(items) and not issues
+    return {
+        "gate": "gateway_contract",
+        "ok": ok,
+        "passed": passed,
+        "total": len(items),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n06_full_conformance": False,
+        "note": "FactLedger query gateway F.1 slice; not unified Appendix-F Gateway",
+    }
 
 
 def load_object_type_bindings(path: Path) -> List[Dict[str, Any]]:
@@ -868,6 +1077,230 @@ def load_object_type_bindings(path: Path) -> List[Dict[str, Any]]:
     if not isinstance(items, list):
         raise FactLedgerError("object type bindings must be a list")
     return [x for x in items if isinstance(x, dict)]
+
+
+def evaluate_raw_integrity_gate(
+    results: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """N01 Raw 完整性门槛门：汇总 verify 回执；certified 恒 false。
+
+    Args:
+        results: ``verify_raw_integrity`` 回执列表（可含 ok=False 的探测结果）。
+
+    Returns:
+        gate 字典：passed/total/ok；``certified`` / ``n01_full_conformance`` 永远为 False。
+    """
+    items = list(results or [])
+    total = len(items)
+    passed = sum(1 for r in items if isinstance(r, dict) and r.get("ok") is True)
+    issues: List[str] = []
+    if total == 0:
+        issues.append("no_verify_results")
+    elif passed != total:
+        issues.append("integrity_failures")
+    # 为什么：调用方误标 certified 仍不得冒充 N01 全量认证
+    for r in items:
+        if isinstance(r, dict) and (
+            r.get("certified") is True or r.get("n01_full_conformance") is True
+        ):
+            issues.append("honesty_certified_flag_forbidden")
+            break
+    ok = total > 0 and passed == total and not issues
+    return {
+        "gate": "raw_integrity",
+        "ok": ok,
+        "passed": passed,
+        "total": total,
+        "required": True,
+        "issues": issues,
+        # 诚实锁：单测/试点加深 ≠ 附录 N N01 certified
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": "FactLedger verify-on-read only; DataSourceConfig path not forced",
+    }
+
+
+_N09_CASES = (
+    "query_facts_no_leak",
+    "get_source_no_leak",
+    "gateway_no_leak",
+    "verify_raw_no_leak",
+)
+
+
+async def run_cross_tenant_isolation_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_a: str = "n09-tenant-a",
+    tenant_b: str = "n09-tenant-b",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N09 跨租户 0 泄漏最小加深套件（FactLedger 四探针）。
+
+    Args:
+        ledger: 可选账本；默认临时目录新建（不污染单例）。
+        tenant_a: 写入租户。
+        tenant_b: 负向查询租户。
+        domain_id: 可选域过滤（由调用方传入；harness 不默认业务域名）。
+
+    Returns:
+        套件汇总；``certified`` / ``n09_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n09-cross-tenant-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_a,
+            collection_id="n09-kb",
+            kind="file",
+            uri="file://n09/secret.txt",
+            content=b"n09-secret-payload",
+            connector="n09_cross_tenant",
+            domain_id=domain_id,
+        )
+        fact = await lg.put_fact(
+            tenant_id=tenant_a,
+            collection_id="n09-kb",
+            subject="InstallOrder:n09-secret",
+            predicate="note",
+            object="secret",
+            evidence=[
+                {
+                    "source_id": src["source_id"],
+                    "locator": "1",
+                    "quote": "secret",
+                    "fetched_at": src["fetched_at"],
+                }
+            ],
+            source_policy="n09",
+            extractor_version="n09",
+            review_status="published",
+            confidence=0.9,
+            allow_bootstrap_published=True,
+            domain_id=domain_id,
+        )
+        same = await lg.query_facts(tenant_id=tenant_a, domain_id=domain_id or None)
+        other = await lg.query_facts(tenant_id=tenant_b, domain_id=domain_id or None)
+        q_ok = any(r.get("fact_id") == fact["fact_id"] for r in same) and not any(
+            r.get("fact_id") == fact["fact_id"] for r in other
+        )
+        cases.append(
+            {
+                "id": "query_facts_no_leak",
+                "ok": q_ok,
+                "detail": "" if q_ok else "query_facts_leak_or_miss",
+            }
+        )
+
+        got_a = await lg.get_source(src["source_id"], tenant_id=tenant_a)
+        got_b = await lg.get_source(src["source_id"], tenant_id=tenant_b)
+        s_ok = got_a is not None and got_b is None
+        cases.append(
+            {
+                "id": "get_source_no_leak",
+                "ok": s_ok,
+                "detail": "" if s_ok else "get_source_leak",
+            }
+        )
+
+        gw = await lg.query_facts_gateway(
+            tenant_id=tenant_b, query="secret", require_citations=True
+        )
+        g_ok = (
+            not gw.get("facts")
+            and gw.get("abstained") is True
+            and not gw.get("citations")
+        )
+        cases.append(
+            {
+                "id": "gateway_no_leak",
+                "ok": g_ok,
+                "detail": "" if g_ok else "gateway_leak",
+            }
+        )
+
+        v_ok = False
+        try:
+            await lg.verify_raw_integrity(src["source_id"], tenant_id=tenant_b)
+        except FactLedgerError:
+            v_ok = True
+        cases.append(
+            {
+                "id": "verify_raw_no_leak",
+                "ok": v_ok,
+                "detail": "" if v_ok else "verify_allowed_cross_tenant",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N09_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "cross_tenant_isolation",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n09_full_conformance": False,
+        "note": "FactLedger isolation probes only; not global zero-leak certification",
+    }
+
+
+def evaluate_cross_tenant_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N09 跨租户门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_cross_tenant_isolation_suite`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n09_full_conformance") is True:
+        # 为什么：套件误标认证仍拒绝
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "cross_tenant_isolation",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n09_full_conformance": False,
+        "note": "FactLedger suite deepen; not platform-wide zero-leak certified",
+    }
 
 
 _ledger_singleton: Optional[FactLedger] = None

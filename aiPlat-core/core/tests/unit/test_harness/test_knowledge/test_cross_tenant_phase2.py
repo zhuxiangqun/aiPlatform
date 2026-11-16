@@ -1,0 +1,43 @@
+"""E3：N09 跨租户 0 泄漏加深（FactLedger 四探针；certified 恒 false）。"""
+from __future__ import annotations
+
+import pytest
+
+from core.harness.knowledge_pipeline.fact_ledger import (
+    evaluate_cross_tenant_gate,
+    run_cross_tenant_isolation_suite,
+)
+
+
+@pytest.mark.asyncio
+async def test_suite_passes_and_honesty():
+    suite = await run_cross_tenant_isolation_suite()
+    assert suite["ok"] is True
+    assert suite["passed"] == 4
+    assert suite["certified"] is False
+    assert suite["n09_full_conformance"] is False
+    ids = {c["id"] for c in suite["cases"]}
+    assert ids == {
+        "query_facts_no_leak",
+        "get_source_no_leak",
+        "gateway_no_leak",
+        "verify_raw_no_leak",
+    }
+    assert all(c["ok"] for c in suite["cases"])
+
+    gate = evaluate_cross_tenant_gate(suite)
+    assert gate["ok"] is True
+    assert gate["certified"] is False
+
+    forged = dict(suite)
+    forged["certified"] = True
+    bad = evaluate_cross_tenant_gate(forged)
+    assert bad["ok"] is False
+    assert "honesty_certified_flag_forbidden" in bad["issues"]
+    assert bad["certified"] is False
+
+
+def test_empty_suite_gate_fails():
+    gate = evaluate_cross_tenant_gate({})
+    assert gate["ok"] is False
+    assert gate["certified"] is False
