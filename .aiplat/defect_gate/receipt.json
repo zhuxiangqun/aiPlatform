@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T07:06:18+08:00",
+  "reviewed_at": "2026-11-18T07:09:54+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "7cb75d8b6cff9f3271cbde24705a96d35304dad7f6954a18bd22cc41717f942e",
-  "head_sha": "bbcec6af0795c4e9bbb203217c716defaa554025",
+  "diff_sha256": "b6ac4b4710b20af5e5d7c9d4ea5e4a3f42ec25a14abb2fa3f621e5763ddd7124",
+  "head_sha": "feb18226f05a1ce2676753714a7a4d96f66b84cf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K27 builtin_handlers 11x GraphIndex via _graph_tenant(params)/_resolve_graph_tenant. Residual: FDE service bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K28 FDE service (k_wave_reason/abox/pillars/rapid_insight/governance/clarify) GraphIndex via _resolve_graph_tenant/_ri_graph_tenant. Residual: core_facade/system/eval/infra bare loads. certified stays false. Local lock only; CI needs non-author Approve."
 }
