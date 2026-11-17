@@ -235,10 +235,12 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-ontology-package-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-fact-revision-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-claim-revision-evidence.md
       - docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_fact_revision_phase2.py
-    note: Package 版本/哈希 + Fact revision 归档/抬号最小切片；非 Claim/回滚 UI/统一审计总线/非 N24 certified
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_claim_revision_phase2.py
+    note: Package + Fact/Claim revision 归档/抬号；非 Source/回滚 UI/统一审计总线/非 N24 certified
 
 # §9.4 认证证据包槽位（路径或 explicit missing）
 certification_slots:

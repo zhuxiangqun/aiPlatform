@@ -9,7 +9,7 @@
   - 完整 ObjectSet/SDK、Wiki 只读化、Scenario Package（后续 Phase）
   - 替代现有 DataSourceRegistry 外部连接器（本模块是附录 A/D 契约层）
   - 宣称附录 N 全量认证（写入硬门加深仍为 partial）
-  - 统一全域 Fact Revision 账本 / diff UI / 一键回滚工作流（N24 仅最小切片）
+  - 统一全域 Fact/Claim Revision 账本 / diff UI / 一键回滚工作流（N24 仅最小切片）
 """
 from __future__ import annotations
 
@@ -228,6 +228,28 @@ class FactLedger:
                 """
                 CREATE INDEX IF NOT EXISTS idx_fact_revisions_fact
                 ON fact_revisions(tenant_id, fact_id, revision)
+                """
+            )
+            # 为什么：N24 Claim 与 Fact 对称 — 变更前快照进 append-only 修订表
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS claim_revisions (
+                    revision_row_id TEXT PRIMARY KEY,
+                    claim_id TEXT NOT NULL,
+                    tenant_id TEXT NOT NULL,
+                    revision INTEGER NOT NULL,
+                    snapshot_json TEXT NOT NULL,
+                    actor TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL,
+                    UNIQUE(claim_id, revision)
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_claim_revisions_claim
+                ON claim_revisions(tenant_id, claim_id, revision)
                 """
             )
             await db.commit()
@@ -734,6 +756,8 @@ class FactLedger:
         conflict_key: str = "",
         enforce_write_gates: bool = False,
         source_policy_db_path: Optional[str] = None,
+        revision_actor: str = "",
+        revision_reason: str = "",
     ) -> Dict[str, Any]:
         """写入 Claim；published 必须有 evidence；同 conflict_key 不同主张记冲突。
 
@@ -754,12 +778,14 @@ class FactLedger:
             conflict_key: 冲突键；空则不自动扫冲突。
             enforce_write_gates: True 时要求 source_policy 已登记。
             source_policy_db_path: 策略库路径。
+            revision_actor: 修订归档 actor（可选；默认 put_claim）。
+            revision_reason: 修订归档理由（可选；默认 supersede）。
 
         Returns:
             Claim 记录（可能含 ``conflict_id`` 若触发冲突记录）。
 
         Raises:
-            FactLedgerError: 无证据 published / 未知 source / 策略未登记。
+            FactLedgerError: 无证据 published / 未知 source / 策略未登记 / 无记录覆盖。
         """
         import aiosqlite
 
@@ -786,6 +812,9 @@ class FactLedger:
                 raise FactLedgerError(f"unknown source_policy: {pol_id}")
 
         cid = claim_id or f"cl-{uuid.uuid4().hex[:12]}"
+        existing: Optional[Dict[str, Any]] = None
+        if claim_id:
+            existing = await self.get_claim(cid, tenant_id=tenant_id)
         ckey = (conflict_key or "").strip()
         recorded_at = _utc_now()
         vf = valid_from or recorded_at
@@ -807,6 +836,21 @@ class FactLedger:
             "status": status,
             "conflict_key": ckey,
         }
+        if existing is not None:
+            # 为什么：内容不变视为幂等，避免无意义 revision 膨胀
+            if self._claim_content_equal(existing, record):
+                return existing
+            # 为什么：N24 — Claim 内容变更必须抬 revision，旧快照进 claim_revisions
+            if int(revision) <= int(existing.get("revision") or 1):
+                raise FactLedgerError(
+                    "claim content change requires revision bump "
+                    f"(existing={existing.get('revision')}, got={revision})"
+                )
+            await self._archive_claim_revision(
+                existing,
+                actor=(revision_actor or "put_claim").strip() or "put_claim",
+                reason=(revision_reason or "supersede").strip() or "supersede",
+            )
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("PRAGMA busy_timeout=5000")
             await db.execute(
@@ -911,6 +955,258 @@ class FactLedger:
             )
             row = await cur.fetchone()
         return self._row_to_claim(row) if row else None
+
+    _CLAIM_CONTENT_KEYS = (
+        "text",
+        "evidence",
+        "source_policy",
+        "extractor_version",
+        "review_status",
+        "confidence",
+        "valid_from",
+        "valid_to",
+        "status",
+        "conflict_key",
+    )
+
+    def _claim_content_equal(
+        self, left: Dict[str, Any], right: Dict[str, Any]
+    ) -> bool:
+        """比较 Claim 业务内容（忽略 revision / recorded_at / id）。
+
+        Args:
+            left: 已有 Claim。
+            right: 待写入 Claim。
+
+        Returns:
+            True 表示内容等价（可幂等返回）。
+        """
+        for key in self._CLAIM_CONTENT_KEYS:
+            lv = left.get(key)
+            rv = right.get(key)
+            if key == "evidence":
+                lv = json.dumps(lv or [], ensure_ascii=False, sort_keys=True)
+                rv = json.dumps(rv or [], ensure_ascii=False, sort_keys=True)
+            elif key == "confidence":
+                lv = float(lv or 0.0)
+                rv = float(rv or 0.0)
+            else:
+                lv = "" if lv is None else lv
+                rv = "" if rv is None else rv
+            if lv != rv:
+                return False
+        return True
+
+    async def _archive_claim_revision(
+        self,
+        claim: Dict[str, Any],
+        *,
+        actor: str,
+        reason: str,
+    ) -> Dict[str, Any]:
+        """将即将被覆盖的 Claim 快照写入 claim_revisions。
+
+        Args:
+            claim: 当前头版本快照。
+            actor: 操作者。
+            reason: 归档理由。
+
+        Returns:
+            修订行摘要。
+        """
+        import aiosqlite
+
+        row_id = f"crev-{uuid.uuid4().hex[:12]}"
+        recorded_at = _utc_now()
+        snap = {k: v for k, v in claim.items() if k != "conflict_id"}
+        entry = {
+            "revision_row_id": row_id,
+            "claim_id": claim["claim_id"],
+            "tenant_id": claim["tenant_id"],
+            "revision": int(claim.get("revision") or 1),
+            "snapshot": snap,
+            "actor": actor,
+            "reason": reason,
+            "recorded_at": recorded_at,
+            "is_head": False,
+        }
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA busy_timeout=5000")
+            await db.execute(
+                """
+                INSERT INTO claim_revisions (
+                    revision_row_id, claim_id, tenant_id, revision,
+                    snapshot_json, actor, reason, recorded_at
+                ) VALUES (?,?,?,?,?,?,?,?)
+                """,
+                (
+                    row_id,
+                    claim["claim_id"],
+                    claim["tenant_id"],
+                    int(claim.get("revision") or 1),
+                    json.dumps(snap, ensure_ascii=False),
+                    actor,
+                    reason,
+                    recorded_at,
+                ),
+            )
+            await db.commit()
+        return entry
+
+    async def list_claim_revisions(
+        self,
+        claim_id: str,
+        *,
+        tenant_id: str,
+    ) -> List[Dict[str, Any]]:
+        """列出 Claim 修订历史（归档 + 当前头）。
+
+        Args:
+            claim_id: Claim ID。
+            tenant_id: 调用方租户。
+
+        Returns:
+            按 revision 升序的条目（含 snapshot）。
+        """
+        import aiosqlite
+
+        if not tenant_id:
+            raise FactLedgerError("tenant_id required")
+        out: List[Dict[str, Any]] = []
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                """
+                SELECT * FROM claim_revisions
+                WHERE claim_id=? AND tenant_id=?
+                ORDER BY revision ASC
+                """,
+                (claim_id, tenant_id),
+            )
+            rows = await cur.fetchall()
+        for row in rows:
+            out.append(
+                {
+                    "revision_row_id": row["revision_row_id"],
+                    "claim_id": row["claim_id"],
+                    "tenant_id": row["tenant_id"],
+                    "revision": int(row["revision"]),
+                    "snapshot": json.loads(row["snapshot_json"] or "{}"),
+                    "actor": row["actor"],
+                    "reason": row["reason"],
+                    "recorded_at": row["recorded_at"],
+                    "is_head": False,
+                }
+            )
+        head = await self.get_claim(claim_id, tenant_id=tenant_id)
+        if head is not None:
+            out.append(
+                {
+                    "revision_row_id": "",
+                    "claim_id": claim_id,
+                    "tenant_id": tenant_id,
+                    "revision": int(head.get("revision") or 1),
+                    "snapshot": head,
+                    "actor": "head",
+                    "reason": "current",
+                    "recorded_at": head.get("recorded_at") or "",
+                    "is_head": True,
+                }
+            )
+        return out
+
+    async def get_claim_at_revision(
+        self,
+        claim_id: str,
+        *,
+        tenant_id: str,
+        revision: int,
+    ) -> Optional[Dict[str, Any]]:
+        """按 revision 读取 Claim 快照（头或归档）。
+
+        Args:
+            claim_id: Claim ID。
+            tenant_id: 调用方租户。
+            revision: 目标修订号。
+
+        Returns:
+            快照 dict；不存在则 None。
+        """
+        import aiosqlite
+
+        head = await self.get_claim(claim_id, tenant_id=tenant_id)
+        if head is not None and int(head.get("revision") or 1) == int(revision):
+            return head
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                """
+                SELECT snapshot_json FROM claim_revisions
+                WHERE claim_id=? AND tenant_id=? AND revision=?
+                """,
+                (claim_id, tenant_id, int(revision)),
+            )
+            row = await cur.fetchone()
+        if row is None:
+            return None
+        return json.loads(row["snapshot_json"] or "{}")
+
+    async def diff_claim_revisions(
+        self,
+        claim_id: str,
+        *,
+        tenant_id: str,
+        from_revision: int,
+        to_revision: int,
+    ) -> Dict[str, Any]:
+        """比较两个 Claim revision 的内容字段差。
+
+        Args:
+            claim_id: Claim ID。
+            tenant_id: 调用方租户。
+            from_revision: 旧修订。
+            to_revision: 新修订。
+
+        Returns:
+            diff 回执（changed 字段映射）。
+
+        Raises:
+            FactLedgerError: 任一 revision 缺失。
+        """
+        left = await self.get_claim_at_revision(
+            claim_id, tenant_id=tenant_id, revision=int(from_revision)
+        )
+        right = await self.get_claim_at_revision(
+            claim_id, tenant_id=tenant_id, revision=int(to_revision)
+        )
+        if left is None or right is None:
+            raise FactLedgerError(
+                f"claim revision not found: from={from_revision} to={to_revision}"
+            )
+        changed: Dict[str, Any] = {}
+        for key in self._CLAIM_CONTENT_KEYS:
+            lv = left.get(key)
+            rv = right.get(key)
+            if key == "evidence":
+                same = json.dumps(lv or [], ensure_ascii=False, sort_keys=True) == json.dumps(
+                    rv or [], ensure_ascii=False, sort_keys=True
+                )
+            elif key == "confidence":
+                same = float(lv or 0.0) == float(rv or 0.0)
+            else:
+                same = ("" if lv is None else lv) == ("" if rv is None else rv)
+            if not same:
+                changed[key] = {"from": lv, "to": rv}
+        return {
+            "claim_id": claim_id,
+            "tenant_id": tenant_id,
+            "from_revision": int(from_revision),
+            "to_revision": int(to_revision),
+            "changed": changed,
+            "unchanged": [k for k in self._CLAIM_CONTENT_KEYS if k not in changed],
+        }
 
     async def list_claims_by_conflict_key(
         self,
@@ -2588,6 +2884,219 @@ def evaluate_fact_revision_gate(
         "certified": False,
         "n24_full_conformance": False,
         "note": "Fact revision harden; not N24 certified",
+    }
+
+
+_N24_CLAIM_REVISION_CASES = (
+    "overwrite_without_revision_bump_rejected",
+    "revision_archived_on_update",
+    "get_claim_at_revision_roundtrip",
+    "diff_claim_revisions_ok",
+)
+
+
+async def run_claim_revision_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n24-claim-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N24 Claim Revision 最小加深套件（禁止无记录覆盖）。
+
+    Args:
+        ledger: 可选账本；默认临时目录新建。
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入；harness 不默认业务域名）。
+
+    Returns:
+        套件汇总；``certified`` / ``n24_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n24-claim-revision-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            kind="file",
+            uri="file://n24/claim-revision.txt",
+            content=b"n24-claim-revision",
+            connector="n24",
+            domain_id=domain_id,
+        )
+        evidence = [
+            {
+                "source_id": src["source_id"],
+                "locator": "extract",
+                "quote": "n24",
+                "fetched_at": src["fetched_at"],
+            }
+        ]
+        claim = await lg.put_claim(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            text="door is locked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="published",
+            confidence=0.8,
+            domain_id=domain_id,
+            revision=1,
+        )
+        cid = claim["claim_id"]
+
+        rejected = False
+        try:
+            await lg.put_claim(
+                tenant_id=tenant_id,
+                collection_id="n24-kb",
+                text="door is unlocked",
+                evidence=evidence,
+                source_policy="n24_policy",
+                extractor_version="n24",
+                review_status="published",
+                confidence=0.8,
+                domain_id=domain_id,
+                claim_id=cid,
+                revision=1,
+            )
+        except FactLedgerError:
+            rejected = True
+        cases.append(
+            {
+                "id": "overwrite_without_revision_bump_rejected",
+                "ok": rejected,
+                "detail": "" if rejected else "silent_overwrite",
+            }
+        )
+
+        updated = await lg.put_claim(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            text="door is unlocked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="published",
+            confidence=0.8,
+            domain_id=domain_id,
+            claim_id=cid,
+            revision=2,
+            revision_actor="n24-suite",
+            revision_reason="text_change",
+        )
+        hist = await lg.list_claim_revisions(cid, tenant_id=tenant_id)
+        archived = [h for h in hist if not h.get("is_head")]
+        arch_ok = (
+            int(updated.get("revision") or 0) == 2
+            and len(archived) >= 1
+            and int(archived[0].get("revision") or 0) == 1
+            and (archived[0].get("snapshot") or {}).get("text") == "door is locked"
+        )
+        cases.append(
+            {
+                "id": "revision_archived_on_update",
+                "ok": arch_ok,
+                "detail": "" if arch_ok else "archive_missing",
+            }
+        )
+
+        old = await lg.get_claim_at_revision(cid, tenant_id=tenant_id, revision=1)
+        new = await lg.get_claim_at_revision(cid, tenant_id=tenant_id, revision=2)
+        rt_ok = (
+            old is not None
+            and new is not None
+            and old.get("text") == "door is locked"
+            and new.get("text") == "door is unlocked"
+        )
+        cases.append(
+            {
+                "id": "get_claim_at_revision_roundtrip",
+                "ok": rt_ok,
+                "detail": "" if rt_ok else "revision_read_failed",
+            }
+        )
+
+        diff = await lg.diff_claim_revisions(
+            cid, tenant_id=tenant_id, from_revision=1, to_revision=2
+        )
+        diff_ok = "text" in (diff.get("changed") or {})
+        cases.append(
+            {
+                "id": "diff_claim_revisions_ok",
+                "ok": diff_ok,
+                "detail": "" if diff_ok else "diff_missing_text",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N24_CLAIM_REVISION_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "claim_revision",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Claim revision archive + bump; not full N24 certification",
+    }
+
+
+def evaluate_claim_revision_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N24 Claim Revision 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_claim_revision_suite`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n24_full_conformance") is True:
+        # 为什么：套件误标认证仍拒绝
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "claim_revision",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Claim revision harden; not N24 certified",
     }
 
 
