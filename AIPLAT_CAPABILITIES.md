@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3702
+total_capabilities: 3706
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1208,6 +1208,7 @@ scan_hash: 8f9548ec24f4
 | **Claim Revision 账本（v4.3.1 N24 H1）** | `list_claim_revisions` / `get_claim_at_revision` / `diff_claim_revisions` / `run_claim_revision_suite` / `evaluate_claim_revision_gate` + Facade list/get/diff/suite/gate | ✅ | put_claim 内容变更强制 revision bump + 归档；门槛门 certified 恒 false。证据 `phase2-claim-revision-evidence.md`。**未宣称** Source/回滚 UI/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Source Revision 账本（v4.3.1 N24 H2）** | `list_source_revisions` / `get_source_at_revision` / `diff_source_revisions` / `run_source_revision_suite` / `evaluate_source_revision_gate` + Facade list/get/diff/suite/gate | ✅ | register_source 内容变更强制 revision bump + 归档；旧 Raw 保留；门槛门 certified 恒 false。证据 `phase2-source-revision-evidence.md`。**未宣称** 回滚 UI/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Revision Restore（v4.3.1 N24 I1）** | `restore_fact_at_revision` / `restore_claim_at_revision` / `restore_source_at_revision` / `run_revision_restore_suite` / `evaluate_revision_restore_gate` + Facade restore/suite/gate | ✅ | 按目标 revision 恢复内容为新头（抬号归档；保留当前审核态）；门槛门 certified 恒 false。证据 `phase2-revision-restore-evidence.md`。**未宣称** 回滚 UI/审批式 revert/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Revision Audit（v4.3.1 N24 I2）** | `list_revision_audit` / `run_revision_audit_suite` / `evaluate_revision_audit_gate` + Facade list/suite/gate | ✅ | archive/restore 写入 append-only `revision_audit`；租户前置过滤；门槛门 certified 恒 false。证据 `phase2-revision-audit-evidence.md`。**未宣称** 回滚 UI/Package+Action 统一总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户隔离加深（v4.3.1 N09 partial）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | query/get_source/gateway/verify 四探针；门槛门 certified 恒 false。证据 `phase2-cross-tenant-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
@@ -1347,6 +1348,9 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_fact_revision_audit_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fact_ledger_run_revision_audit_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fact_ledger_list_revision_audit | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_fact_revision_restore_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_run_revision_restore_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_restore_source_at_revision | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4602,9 +4606,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 669 | 1 | 670 |
+| Harness 执行引擎 | 670 | 1 | 671 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 556 | 9 | 565 |
+| 知识引擎（本体） | 559 | 9 | 568 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4647,7 +4651,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3691** | **11** | **3702** |
+| **总计** | **3695** | **11** | **3706** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

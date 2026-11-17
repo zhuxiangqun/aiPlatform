@@ -15765,6 +15765,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     evaluate_claim_revision_gate,
     evaluate_source_revision_gate,
     evaluate_revision_restore_gate,
+    evaluate_revision_audit_gate,
     evaluate_cross_tenant_gate,
     evaluate_datasource_raw_gate,
     evaluate_fact_revision_gate,
@@ -15778,6 +15779,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_claim_revision_suite,
     run_source_revision_suite,
     run_revision_restore_suite,
+    run_revision_audit_suite,
     run_cross_tenant_isolation_suite,
     run_datasource_raw_suite,
     run_fact_revision_suite,
@@ -16446,6 +16448,66 @@ def evaluate_fact_revision_restore_gate(suite: dict | None = None) -> dict:
         gate 结果。
     """
     return evaluate_revision_restore_gate(suite)
+
+
+async def fact_ledger_list_revision_audit(
+    *,
+    tenant_id: str,
+    entity_type: str = "",
+    entity_id: str = "",
+    event_type: str = "",
+    limit: int = 100,
+) -> list:
+    """CoreFacade：列出 revision_audit 事件（N24；账本内，非统一总线）。
+
+    Args:
+        tenant_id: 调用方租户。
+        entity_type: 可选实体类型。
+        entity_id: 可选实体 ID。
+        event_type: 可选事件类型。
+        limit: 最大条数。
+
+    Returns:
+        审计事件列表。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.list_revision_audit(
+        tenant_id=tenant_id,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        event_type=event_type,
+        limit=limit,
+    )
+
+
+async def fact_ledger_run_revision_audit_suite(
+    *,
+    tenant_id: str = "n24-audit-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N24 Revision Audit 加深套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_revision_audit_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_revision_audit_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N24 Revision Audit 门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_revision_audit_gate(suite)
 
 
 async def fact_ledger_project_to_graph(

@@ -9,7 +9,7 @@
   - 完整 ObjectSet/SDK、Wiki 只读化、Scenario Package（后续 Phase）
   - 替代现有 DataSourceRegistry 外部连接器（本模块是附录 A/D 契约层）
   - 宣称附录 N 全量认证（写入硬门加深仍为 partial）
-  - 统一全域 Revision 账本 / 回滚 UI / 审批式 revert / 统一审计总线（N24 仅抬号+归档+程序化 restore）
+  - 回滚 UI / 审批式 revert / Package+Action 统一审计总线（N24 仅抬号+归档+restore+ledger 内 revision_audit）
 """
 from __future__ import annotations
 
@@ -272,6 +272,30 @@ class FactLedger:
                 """
                 CREATE INDEX IF NOT EXISTS idx_source_revisions_source
                 ON source_revisions(tenant_id, source_id, revision)
+                """
+            )
+            # 为什么：N24 — Fact/Claim/Source 修订事件统一落入 append-only audit（非 Package/Action 总线）
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS revision_audit (
+                    audit_id TEXT PRIMARY KEY,
+                    tenant_id TEXT NOT NULL,
+                    entity_type TEXT NOT NULL,
+                    entity_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    revision INTEGER NOT NULL,
+                    to_revision INTEGER,
+                    actor TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    detail_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_revision_audit_entity
+                ON revision_audit(tenant_id, entity_type, entity_id, recorded_at)
                 """
             )
             await db.commit()
@@ -576,6 +600,17 @@ class FactLedger:
                 ),
             )
             await db.commit()
+        # 为什么：归档必须可审计；与 Package/Action 总线解耦，仅账本内事件
+        await self._emit_revision_audit(
+            tenant_id=str(source["tenant_id"]),
+            entity_type="source",
+            entity_id=str(source["source_id"]),
+            event_type="archive",
+            revision=int(source.get("revision") or 1),
+            actor=actor,
+            reason=reason,
+            detail={"revision_row_id": row_id},
+        )
         return entry
 
     async def list_source_revisions(
@@ -1378,6 +1413,16 @@ class FactLedger:
                 ),
             )
             await db.commit()
+        await self._emit_revision_audit(
+            tenant_id=str(claim["tenant_id"]),
+            entity_type="claim",
+            entity_id=str(claim["claim_id"]),
+            event_type="archive",
+            revision=int(claim.get("revision") or 1),
+            actor=actor,
+            reason=reason,
+            detail={"revision_row_id": row_id},
+        )
         return entry
 
     async def list_claim_revisions(
@@ -1797,6 +1842,16 @@ class FactLedger:
                 ),
             )
             await db.commit()
+        await self._emit_revision_audit(
+            tenant_id=str(fact["tenant_id"]),
+            entity_type="fact",
+            entity_id=str(fact["fact_id"]),
+            event_type="archive",
+            revision=int(fact.get("revision") or 1),
+            actor=actor,
+            reason=reason,
+            detail={"revision_row_id": row_id},
+        )
         return entry
 
     async def list_fact_revisions(
@@ -2037,6 +2092,18 @@ class FactLedger:
             revision_actor=who,
             revision_reason=why,
         )
+        to_rev = int(updated.get("revision") or (from_rev + 1))
+        await self._emit_revision_audit(
+            tenant_id=tenant_id,
+            entity_type="fact",
+            entity_id=fact_id,
+            event_type="restore",
+            revision=int(target_revision),
+            to_revision=to_rev,
+            actor=who,
+            reason=why,
+            detail={"from_revision": from_rev},
+        )
         return {
             "restored": True,
             "idempotent": False,
@@ -2044,7 +2111,7 @@ class FactLedger:
             "tenant_id": tenant_id,
             "target_revision": int(target_revision),
             "from_revision": from_rev,
-            "to_revision": int(updated.get("revision") or (from_rev + 1)),
+            "to_revision": to_rev,
             "fact": updated,
             "actor": who,
             "reason": why,
@@ -2128,6 +2195,18 @@ class FactLedger:
             revision_actor=who,
             revision_reason=why,
         )
+        to_rev = int(updated.get("revision") or (from_rev + 1))
+        await self._emit_revision_audit(
+            tenant_id=tenant_id,
+            entity_type="claim",
+            entity_id=claim_id,
+            event_type="restore",
+            revision=int(target_revision),
+            to_revision=to_rev,
+            actor=who,
+            reason=why,
+            detail={"from_revision": from_rev},
+        )
         return {
             "restored": True,
             "idempotent": False,
@@ -2135,7 +2214,7 @@ class FactLedger:
             "tenant_id": tenant_id,
             "target_revision": int(target_revision),
             "from_revision": from_rev,
-            "to_revision": int(updated.get("revision") or (from_rev + 1)),
+            "to_revision": to_rev,
             "claim": updated,
             "actor": who,
             "reason": why,
@@ -2233,6 +2312,18 @@ class FactLedger:
             revision_actor=who,
             revision_reason=why,
         )
+        to_rev = int(updated.get("revision") or (from_rev + 1))
+        await self._emit_revision_audit(
+            tenant_id=tenant_id,
+            entity_type="source",
+            entity_id=source_id,
+            event_type="restore",
+            revision=int(target_revision),
+            to_revision=to_rev,
+            actor=who,
+            reason=why,
+            detail={"from_revision": from_rev},
+        )
         return {
             "restored": True,
             "idempotent": False,
@@ -2240,11 +2331,178 @@ class FactLedger:
             "tenant_id": tenant_id,
             "target_revision": int(target_revision),
             "from_revision": from_rev,
-            "to_revision": int(updated.get("revision") or (from_rev + 1)),
+            "to_revision": to_rev,
             "source": updated,
             "actor": who,
             "reason": why,
         }
+
+    async def _emit_revision_audit(
+        self,
+        *,
+        tenant_id: str,
+        entity_type: str,
+        entity_id: str,
+        event_type: str,
+        revision: int,
+        actor: str,
+        reason: str,
+        to_revision: Optional[int] = None,
+        detail: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """写入一条 append-only revision_audit 事件。
+
+        Args:
+            tenant_id: 租户。
+            entity_type: ``fact`` / ``claim`` / ``source``。
+            entity_id: 实体 ID。
+            event_type: ``archive`` / ``restore``。
+            revision: 归档修订号，或 restore 的目标修订号。
+            actor: 操作者。
+            reason: 理由。
+            to_revision: restore 后新头修订号（可选）。
+            detail: 附加详情。
+
+        Returns:
+            审计事件摘要。
+
+        Raises:
+            FactLedgerError: 参数非法。
+        """
+        import aiosqlite
+
+        et = (entity_type or "").strip()
+        eid = (entity_id or "").strip()
+        ev = (event_type or "").strip()
+        who = (actor or "").strip()
+        why = (reason or "").strip()
+        if not tenant_id or not et or not eid or not ev or not who or not why:
+            raise FactLedgerError("revision_audit requires tenant/entity/event/actor/reason")
+        if et not in ("fact", "claim", "source"):
+            raise FactLedgerError(f"unsupported entity_type: {et}")
+        if ev not in ("archive", "restore"):
+            raise FactLedgerError(f"unsupported event_type: {ev}")
+        audit_id = f"raud-{uuid.uuid4().hex[:12]}"
+        recorded_at = _utc_now()
+        detail_obj = dict(detail or {})
+        entry = {
+            "audit_id": audit_id,
+            "tenant_id": tenant_id,
+            "entity_type": et,
+            "entity_id": eid,
+            "event_type": ev,
+            "revision": int(revision),
+            "to_revision": None if to_revision is None else int(to_revision),
+            "actor": who,
+            "reason": why,
+            "detail": detail_obj,
+            "recorded_at": recorded_at,
+        }
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA busy_timeout=5000")
+            await db.execute(
+                """
+                INSERT INTO revision_audit (
+                    audit_id, tenant_id, entity_type, entity_id, event_type,
+                    revision, to_revision, actor, reason, detail_json, recorded_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    audit_id,
+                    tenant_id,
+                    et,
+                    eid,
+                    ev,
+                    int(revision),
+                    None if to_revision is None else int(to_revision),
+                    who,
+                    why,
+                    json.dumps(detail_obj, ensure_ascii=False),
+                    recorded_at,
+                ),
+            )
+            await db.commit()
+        return entry
+
+    async def list_revision_audit(
+        self,
+        *,
+        tenant_id: str,
+        entity_type: str = "",
+        entity_id: str = "",
+        event_type: str = "",
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """按租户列出 revision_audit 事件（可选实体/事件过滤）。
+
+        Args:
+            tenant_id: 调用方租户（必填；召回前过滤）。
+            entity_type: 可选 ``fact`` / ``claim`` / ``source``。
+            entity_id: 可选实体 ID。
+            event_type: 可选 ``archive`` / ``restore``。
+            limit: 最大返回条数（1–500）。
+
+        Returns:
+            按 recorded_at 升序的事件列表。
+
+        Raises:
+            FactLedgerError: tenant_id 为空。
+        """
+        import aiosqlite
+
+        if not tenant_id:
+            raise FactLedgerError("tenant_id required")
+        lim = max(1, min(int(limit or 100), 500))
+        clauses = ["tenant_id=?"]
+        params: List[Any] = [tenant_id]
+        et = (entity_type or "").strip()
+        eid = (entity_id or "").strip()
+        ev = (event_type or "").strip()
+        if et:
+            clauses.append("entity_type=?")
+            params.append(et)
+        if eid:
+            clauses.append("entity_id=?")
+            params.append(eid)
+        if ev:
+            clauses.append("event_type=?")
+            params.append(ev)
+        where = " AND ".join(clauses)
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                f"""
+                SELECT * FROM revision_audit
+                WHERE {where}
+                ORDER BY recorded_at ASC, audit_id ASC
+                LIMIT ?
+                """,
+                (*params, lim),
+            )
+            rows = await cur.fetchall()
+        out: List[Dict[str, Any]] = []
+        for row in rows:
+            out.append(
+                {
+                    "audit_id": row["audit_id"],
+                    "tenant_id": row["tenant_id"],
+                    "entity_type": row["entity_type"],
+                    "entity_id": row["entity_id"],
+                    "event_type": row["event_type"],
+                    "revision": int(row["revision"]),
+                    "to_revision": (
+                        None
+                        if row["to_revision"] is None
+                        else int(row["to_revision"])
+                    ),
+                    "actor": row["actor"],
+                    "reason": row["reason"],
+                    "detail": json.loads(row["detail_json"] or "{}"),
+                    "recorded_at": row["recorded_at"],
+                }
+            )
+        return out
 
     def _row_to_fact(self, row: Any) -> Dict[str, Any]:
         """将 facts 表行转为 Fact dict。
@@ -4214,6 +4472,221 @@ def evaluate_revision_restore_gate(
         "certified": False,
         "n24_full_conformance": False,
         "note": "Revision restore harden; not N24 certified",
+    }
+
+
+_N24_REVISION_AUDIT_CASES = (
+    "archive_emits_audit",
+    "restore_emits_audit",
+    "list_filters_by_entity",
+    "cross_tenant_audit_empty",
+)
+
+
+async def run_revision_audit_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n24-audit-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N24 Revision Audit 最小加深套件（账本内 append-only；非统一总线）。
+
+    Args:
+        ledger: 可选账本；默认临时目录新建。
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+
+    Returns:
+        套件汇总；``certified`` / ``n24_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n24-revision-audit-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            kind="file",
+            uri="file://n24/audit-v1.txt",
+            content=b"n24-audit-v1",
+            connector="n24",
+            domain_id=domain_id,
+            source_id="src-n24-audit",
+            revision=1,
+        )
+        evidence = [
+            {
+                "source_id": src["source_id"],
+                "locator": "x",
+                "quote": "a",
+                "fetched_at": src["fetched_at"],
+            }
+        ]
+        fact = await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            subject="door",
+            predicate="state",
+            object="locked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="draft",
+            confidence=0.5,
+            domain_id=domain_id,
+            revision=1,
+            enforce_write_gates=False,
+        )
+        fid = fact["fact_id"]
+        await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            subject="door",
+            predicate="state",
+            object="unlocked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="draft",
+            confidence=0.5,
+            domain_id=domain_id,
+            fact_id=fid,
+            revision=2,
+            enforce_write_gates=False,
+            revision_actor="n24-suite",
+            revision_reason="mutate",
+        )
+        archives = await lg.list_revision_audit(
+            tenant_id=tenant_id,
+            entity_type="fact",
+            entity_id=fid,
+            event_type="archive",
+        )
+        arch_ok = len(archives) >= 1 and archives[0].get("revision") == 1
+        cases.append(
+            {
+                "id": "archive_emits_audit",
+                "ok": arch_ok,
+                "detail": "" if arch_ok else "archive_audit_missing",
+            }
+        )
+
+        await lg.restore_fact_at_revision(
+            fid,
+            tenant_id=tenant_id,
+            target_revision=1,
+            actor="n24-suite",
+            reason="restore_for_audit",
+            enforce_write_gates=False,
+        )
+        restores = await lg.list_revision_audit(
+            tenant_id=tenant_id,
+            entity_type="fact",
+            entity_id=fid,
+            event_type="restore",
+        )
+        rest_ok = (
+            len(restores) >= 1
+            and int(restores[-1].get("revision") or 0) == 1
+            and int(restores[-1].get("to_revision") or 0) == 3
+        )
+        cases.append(
+            {
+                "id": "restore_emits_audit",
+                "ok": rest_ok,
+                "detail": "" if rest_ok else "restore_audit_missing",
+            }
+        )
+
+        all_fact = await lg.list_revision_audit(
+            tenant_id=tenant_id, entity_type="fact", entity_id=fid
+        )
+        filt_ok = all(e.get("entity_id") == fid for e in all_fact) and len(all_fact) >= 2
+        cases.append(
+            {
+                "id": "list_filters_by_entity",
+                "ok": filt_ok,
+                "detail": "" if filt_ok else "filter_failed",
+            }
+        )
+
+        other = await lg.list_revision_audit(tenant_id="other-tenant", entity_id=fid)
+        xt_ok = len(other) == 0
+        cases.append(
+            {
+                "id": "cross_tenant_audit_empty",
+                "ok": xt_ok,
+                "detail": "" if xt_ok else "cross_tenant_leak",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N24_REVISION_AUDIT_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "revision_audit",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Revision audit ledger events; not Package/Action bus / not N24 certified",
+    }
+
+
+def evaluate_revision_audit_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N24 Revision Audit 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_revision_audit_suite`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n24_full_conformance") is True:
+        # 为什么：套件误标认证仍拒绝
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "revision_audit",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Revision audit harden; not N24 certified",
     }
 
 
