@@ -24,6 +24,13 @@ import asyncio
 router = APIRouter(tags=["wiki-ontology-engine"])
 
 
+def _graph_tenant() -> str:
+    """Resolve tenant for GraphIndex loads in this router (N09 K25)."""
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    return _resolve_graph_tenant()
+
+
+
 
 @router.post("/engine/process", response_model=Dict[str, Any])
 
@@ -177,7 +184,7 @@ async def cleanup_cross_domain_nodes(domain_id: str):
 
 
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
 
 
@@ -1914,7 +1921,7 @@ async def get_graph_stats(domain_id: str):
 
     from core.api.core_facade import GraphIndex, attach_ontology_api, ontology_api_from_graph_health
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     base = graph.stats()
 
@@ -2224,7 +2231,7 @@ async def graph_traverse(req: dict):
 
 
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     if len(graph) == 0:
 
@@ -2494,7 +2501,7 @@ async def run_knowledge_synthesis(req: dict):
 
 
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     if len(graph) == 0:
 
@@ -2531,7 +2538,7 @@ async def create_graph_snapshot(domain_id: str, label: str = ""):
 
     from core.api.core_facade import GraphIndex
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     if len(graph) == 0:
 
@@ -2556,7 +2563,7 @@ async def list_graph_snapshots(domain_id: str):
     """
     from core.api.core_facade import GraphIndex
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     return {"domain_id": domain_id, "snapshots": graph.list_snapshots()}
 
@@ -2582,7 +2589,7 @@ async def restore_graph_snapshot(domain_id: str, req: dict):
 
     from core.api.core_facade import GraphIndex
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     result = graph.restore_snapshot(snapshot_id)
 
@@ -2750,7 +2757,7 @@ async def run_graph_inference(req: dict):
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     domain = load_ontology_from_yaml(str(ont_path))
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
     if len(graph) == 0:
         raise HTTPException(status_code=404, detail=f"Graph for '{domain_id}' is empty")
 
@@ -2924,7 +2931,7 @@ async def sync_search_index(domain_id: str):
     """
     try:
         from core.api.core_facade import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
         node_count = len(graph._nodes)
         class_count = len(graph.get_entity_classes())
         if node_count == 0:
@@ -2979,7 +2986,7 @@ async def sync_search_index_all():
             domain_id = _os.path.splitext(_os.path.basename(db_file))[0]
             try:
                 from core.api.core_facade import GraphIndex
-                graph = GraphIndex.load(domain_id)
+                graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
                 node_count = len(graph._nodes)
                 if node_count == 0:
                     continue

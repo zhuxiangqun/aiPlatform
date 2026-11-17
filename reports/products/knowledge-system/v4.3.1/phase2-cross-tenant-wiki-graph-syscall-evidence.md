@@ -40,5 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- wiki_ontology_engine / ontology_engine.engine / builtin_handlers / FDE service bare GraphIndex.load
+- wiki_ontology_engine → 见 Batch K25；ontology_engine.engine / FDE service bare load 仍残余
 - N09 / 附录 N 全量认证
