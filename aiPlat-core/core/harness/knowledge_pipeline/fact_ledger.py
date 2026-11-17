@@ -3856,6 +3856,8 @@ _N09_CASES = (
     "verify_raw_no_leak",
     "object_set_no_leak",
     "unified_audit_no_leak",
+    "kb_retrieve_no_leak",
+    "wiki_retrieve_no_leak",
 )
 
 
@@ -3866,7 +3868,7 @@ async def run_cross_tenant_isolation_suite(
     tenant_b: str = "n09-tenant-b",
     domain_id: str = "",
 ) -> Dict[str, Any]:
-    """N09 跨租户 0 泄漏加深套件（FactLedger 四探针 + ObjectSet + Unified Audit）。
+    """N09 跨租户 0 泄漏加深套件（FactLedger + ObjectSet + UnifiedAudit + Wiki/KB）。
 
     Args:
         ledger: 可选账本；默认临时目录新建（不污染单例）。
@@ -3877,6 +3879,7 @@ async def run_cross_tenant_isolation_suite(
     Returns:
         套件汇总；``certified`` / ``n09_full_conformance`` 恒 false。
     """
+    import os
     import tempfile
 
     own = ledger is None
@@ -3895,6 +3898,7 @@ async def run_cross_tenant_isolation_suite(
         await lg.initialize()
 
     cases: List[Dict[str, Any]] = []
+    prev_kb_tenants = os.environ.get("AIPLAT_KB_TENANTS_DIR")
     try:
         src = await lg.register_source(
             tenant_id=tenant_a,
@@ -4094,7 +4098,96 @@ async def run_cross_tenant_isolation_suite(
                 "detail": "" if ua_ok else "unified_audit_leak_or_miss",
             }
         )
+
+        # K2：KB 入口跨租户（per-tenant sqlite 路径隔离）
+        import sqlite3 as _sqlite3
+
+        from core.harness.syscalls.retrieval import sys_kb_retrieve
+
+        kb_root = root or Path(tempfile.mkdtemp(prefix="n09-kb-"))
+        kb_tenants = kb_root / "kb_tenants"
+        os.environ["AIPLAT_KB_TENANTS_DIR"] = str(kb_tenants)
+        tenant_a_dir = kb_tenants / tenant_a
+        tenant_a_dir.mkdir(parents=True, exist_ok=True)
+        kb_db = tenant_a_dir / "kb.sqlite3"
+        with _sqlite3.connect(str(kb_db)) as kb_conn:
+            kb_conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS kb_elements (
+                    element_id TEXT PRIMARY KEY, doc_id TEXT, type TEXT,
+                    page_idx INTEGER, text TEXT, cells_json TEXT,
+                    meta_json TEXT, tenant_id TEXT);
+                """
+            )
+            kb_conn.execute(
+                "INSERT OR REPLACE INTO kb_elements"
+                "(element_id, doc_id, type, page_idx, text, cells_json, "
+                "meta_json, tenant_id) VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    "n09-secret-el",
+                    "n09-secret-doc",
+                    "paragraph",
+                    0,
+                    "n09-secret-payload",
+                    None,
+                    "{}",
+                    tenant_a,
+                ),
+            )
+            kb_conn.commit()
+        kb_a = sys_kb_retrieve(
+            "n09-secret-payload",
+            [],
+            tenant_id=tenant_a,
+            top_k=5,
+        )
+        kb_b = sys_kb_retrieve(
+            "n09-secret-payload",
+            [],
+            tenant_id=tenant_b,
+            top_k=5,
+        )
+        secret_hit = any(
+            "n09-secret-payload" in str(r.get("text") or "") for r in (kb_a or [])
+        )
+        kb_ok = secret_hit and not (kb_b or [])
+        cases.append(
+            {
+                "id": "kb_retrieve_no_leak",
+                "ok": kb_ok,
+                "detail": "" if kb_ok else "kb_retrieve_leak_or_miss",
+            }
+        )
+
+        # K2：Wiki 入口跨租户（retriever/query tenant_id mismatch 硬门）
+        # 为什么：Wiki 页按 collection 存；现网硬隔离点是 mismatch→空，非全域 collection ACL
+        from core.harness.knowledge.types import KnowledgeQuery
+        from core.harness.knowledge.wiki_retriever import WikiPageRetriever
+
+        wiki_ret = WikiPageRetriever(
+            wiki_titles=["N09 Secret"],
+            collection_ids=["n09-wiki-probe"],
+            tenant_id=tenant_a,
+        )
+        wiki_leak = await wiki_ret.retrieve(
+            KnowledgeQuery(query="n09-secret", limit=5, tenant_id=tenant_b)
+        )
+        wiki_same = await wiki_ret.retrieve(
+            KnowledgeQuery(query="n09-secret", limit=5, tenant_id=tenant_a)
+        )
+        wiki_ok = wiki_leak == [] and isinstance(wiki_same, list)
+        cases.append(
+            {
+                "id": "wiki_retrieve_no_leak",
+                "ok": wiki_ok,
+                "detail": "" if wiki_ok else "wiki_retrieve_leak_or_miss",
+            }
+        )
     finally:
+        if prev_kb_tenants is None:
+            os.environ.pop("AIPLAT_KB_TENANTS_DIR", None)
+        else:
+            os.environ["AIPLAT_KB_TENANTS_DIR"] = prev_kb_tenants
         if tmp is not None:
             tmp.cleanup()
 
@@ -4113,7 +4206,7 @@ async def run_cross_tenant_isolation_suite(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit probes; "
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB probes; "
             "not global zero-leak certification"
         ),
     }
@@ -4151,7 +4244,7 @@ def evaluate_cross_tenant_gate(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit deepen; "
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB deepen; "
             "not platform-wide zero-leak certified"
         ),
     }
