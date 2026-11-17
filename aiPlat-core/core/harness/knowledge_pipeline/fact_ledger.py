@@ -9,7 +9,7 @@
   - 完整 ObjectSet/SDK、Wiki 只读化、Scenario Package（后续 Phase）
   - 替代现有 DataSourceRegistry 外部连接器（本模块是附录 A/D 契约层）
   - 宣称附录 N 全量认证（写入硬门加深仍为 partial）
-  - 回滚 UI / Package+Action 统一审计总线（N24 含抬号+归档+restore+audit+ledger 内审批式 restore）
+  - 回滚 UI / 全量 Package+Action 总线合并（N24 含抬号+归档+restore+audit+审批式 restore+ActionExecution 桥接）
 """
 from __future__ import annotations
 
@@ -79,15 +79,19 @@ class FactLedger:
         self,
         db_path: Optional[str] = None,
         raw_dir: Optional[Path] = None,
+        action_execution_db_path: Optional[str] = None,
     ) -> None:
         """初始化账本。
 
         Args:
             db_path: SQLite 路径；默认 ``default_fact_ledger_db_path()``。
             raw_dir: Raw 快照根目录；默认 ``default_raw_snapshot_dir()``。
+            action_execution_db_path: 可选 ActionExecution 库（revision 桥接）；
+                空则用 ActionExecution 默认路径。
         """
         self.db_path = db_path or default_fact_ledger_db_path()
         self.raw_dir = Path(raw_dir) if raw_dir else default_raw_snapshot_dir()
+        self.action_execution_db_path = action_execution_db_path
 
     async def initialize(self) -> None:
         """创建表结构（幂等）。"""
@@ -322,6 +326,29 @@ class FactLedger:
                 """
                 CREATE INDEX IF NOT EXISTS idx_revision_restore_req
                 ON revision_restore_requests(tenant_id, entity_type, entity_id, status)
+                """
+            )
+            # 为什么：N24 — revision_audit 决策事件桥接到 ActionExecution（非全量总线合并）
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS revision_action_bridge (
+                    bridge_id TEXT PRIMARY KEY,
+                    tenant_id TEXT NOT NULL,
+                    audit_id TEXT NOT NULL,
+                    execution_id TEXT NOT NULL,
+                    entity_type TEXT NOT NULL,
+                    entity_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    action_id TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL,
+                    UNIQUE(tenant_id, audit_id)
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_revision_action_bridge_entity
+                ON revision_action_bridge(tenant_id, entity_type, entity_id)
                 """
             )
             await db.commit()
@@ -2828,7 +2855,7 @@ class FactLedger:
                 ),
             )
             await db.commit()
-        await self._emit_revision_audit(
+        audit = await self._emit_revision_audit(
             tenant_id=tenant_id,
             entity_type=et,
             entity_id=eid,
@@ -2839,6 +2866,10 @@ class FactLedger:
             reason=why,
             detail={"request_id": request_id, "restored": receipt.get("restored")},
         )
+        bridge = await self.bridge_revision_audit_to_action(
+            audit_event=audit,
+            action_id="knowledge_revision:restore_approve",
+        )
         req.update(
             {
                 "status": "approved",
@@ -2846,6 +2877,7 @@ class FactLedger:
                 "decision_reason": why,
                 "restore_receipt": receipt,
                 "decided_at": decided_at,
+                "action_bridge": bridge,
             }
         )
         return req
@@ -2911,7 +2943,7 @@ class FactLedger:
                 (who, why, decided_at, request_id, tenant_id),
             )
             await db.commit()
-        await self._emit_revision_audit(
+        audit = await self._emit_revision_audit(
             tenant_id=tenant_id,
             entity_type=str(req["entity_type"]),
             entity_id=str(req["entity_id"]),
@@ -2921,15 +2953,206 @@ class FactLedger:
             reason=why,
             detail={"request_id": request_id},
         )
+        bridge = await self.bridge_revision_audit_to_action(
+            audit_event=audit,
+            action_id="knowledge_revision:restore_reject",
+        )
         req.update(
             {
                 "status": "rejected",
                 "approver": who,
                 "decision_reason": why,
                 "decided_at": decided_at,
+                "action_bridge": bridge,
             }
         )
         return req
+
+    async def bridge_revision_audit_to_action(
+        self,
+        *,
+        audit_event: Dict[str, Any],
+        action_id: str,
+    ) -> Dict[str, Any]:
+        """将 revision_audit 事件桥接到 ActionExecution（幂等）。
+
+        Args:
+            audit_event: ``_emit_revision_audit`` 回执。
+            action_id: ActionExecution.action_id（如 ``knowledge_revision:restore_approve``）。
+
+        Returns:
+            bridge 摘要（含 execution_id）。
+
+        Raises:
+            FactLedgerError: 审计事件缺字段。
+        """
+        import aiosqlite
+        import time as _time
+
+        from core.harness.infrastructure.action_execution import persist_execution
+
+        tenant_id = str(audit_event.get("tenant_id") or "").strip()
+        audit_id = str(audit_event.get("audit_id") or "").strip()
+        et = str(audit_event.get("entity_type") or "").strip()
+        eid = str(audit_event.get("entity_id") or "").strip()
+        ev = str(audit_event.get("event_type") or "").strip()
+        aid = (action_id or "").strip()
+        if not tenant_id or not audit_id or not et or not eid or not ev or not aid:
+            raise FactLedgerError("bridge requires audit_event fields and action_id")
+        # 为什么：同 audit_id 幂等，避免批准重试双写 ActionExecution
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                """
+                SELECT * FROM revision_action_bridge
+                WHERE tenant_id=? AND audit_id=?
+                """,
+                (tenant_id, audit_id),
+            )
+            existing = await cur.fetchone()
+        if existing is not None:
+            return {
+                "bridge_id": existing["bridge_id"],
+                "tenant_id": existing["tenant_id"],
+                "audit_id": existing["audit_id"],
+                "execution_id": existing["execution_id"],
+                "entity_type": existing["entity_type"],
+                "entity_id": existing["entity_id"],
+                "event_type": existing["event_type"],
+                "action_id": existing["action_id"],
+                "recorded_at": existing["recorded_at"],
+                "idempotent": True,
+            }
+        idem = f"rev-bridge:{audit_id}"
+        now = _time.time()
+        exec_rec = persist_execution(
+            {
+                "tenant_id": tenant_id,
+                "idempotency_key": idem,
+                "action_id": aid,
+                "actor": str(audit_event.get("actor") or ""),
+                "target": f"{et}:{eid}",
+                "status": "succeeded",
+                "policy_decision": "allow",
+                "before_snapshot": {
+                    "revision": audit_event.get("revision"),
+                    "event_type": ev,
+                },
+                "after_snapshot": {
+                    "to_revision": audit_event.get("to_revision"),
+                    "detail": audit_event.get("detail") or {},
+                },
+                "result": {
+                    "audit_id": audit_id,
+                    "bridged": True,
+                },
+                "evidence_ref": audit_id,
+                "started_at": now,
+                "completed_at": now,
+            },
+            db_path=self.action_execution_db_path,
+        )
+        bridge_id = f"rabr-{uuid.uuid4().hex[:12]}"
+        recorded_at = _utc_now()
+        execution_id = str(exec_rec.get("execution_id") or "")
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA busy_timeout=5000")
+            await db.execute(
+                """
+                INSERT INTO revision_action_bridge (
+                    bridge_id, tenant_id, audit_id, execution_id,
+                    entity_type, entity_id, event_type, action_id, recorded_at
+                ) VALUES (?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    bridge_id,
+                    tenant_id,
+                    audit_id,
+                    execution_id,
+                    et,
+                    eid,
+                    ev,
+                    aid,
+                    recorded_at,
+                ),
+            )
+            await db.commit()
+        return {
+            "bridge_id": bridge_id,
+            "tenant_id": tenant_id,
+            "audit_id": audit_id,
+            "execution_id": execution_id,
+            "entity_type": et,
+            "entity_id": eid,
+            "event_type": ev,
+            "action_id": aid,
+            "recorded_at": recorded_at,
+            "idempotent": False,
+        }
+
+    async def list_revision_action_bridges(
+        self,
+        *,
+        tenant_id: str,
+        entity_type: str = "",
+        entity_id: str = "",
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """列出 revision→ActionExecution 桥接行。
+
+        Args:
+            tenant_id: 租户（必填）。
+            entity_type: 可选实体类型。
+            entity_id: 可选实体 ID。
+            limit: 最大条数。
+
+        Returns:
+            桥接列表。
+        """
+        import aiosqlite
+
+        if not tenant_id:
+            raise FactLedgerError("tenant_id required")
+        lim = max(1, min(int(limit or 100), 500))
+        clauses = ["tenant_id=?"]
+        params: List[Any] = [tenant_id]
+        et = (entity_type or "").strip()
+        eid = (entity_id or "").strip()
+        if et:
+            clauses.append("entity_type=?")
+            params.append(et)
+        if eid:
+            clauses.append("entity_id=?")
+            params.append(eid)
+        where = " AND ".join(clauses)
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                f"""
+                SELECT * FROM revision_action_bridge
+                WHERE {where}
+                ORDER BY recorded_at ASC, bridge_id ASC
+                LIMIT ?
+                """,
+                (*params, lim),
+            )
+            rows = await cur.fetchall()
+        return [
+            {
+                "bridge_id": r["bridge_id"],
+                "tenant_id": r["tenant_id"],
+                "audit_id": r["audit_id"],
+                "execution_id": r["execution_id"],
+                "entity_type": r["entity_type"],
+                "entity_id": r["entity_id"],
+                "event_type": r["event_type"],
+                "action_id": r["action_id"],
+                "recorded_at": r["recorded_at"],
+            }
+            for r in rows
+        ]
 
     def _row_to_fact(self, row: Any) -> Dict[str, Any]:
         """将 facts 表行转为 Fact dict。
@@ -5372,6 +5595,242 @@ def evaluate_restore_approval_gate(
         "certified": False,
         "n24_full_conformance": False,
         "note": "Restore approval harden; not N24 certified",
+    }
+
+
+_N24_REVISION_ACTION_BRIDGE_CASES = (
+    "approve_creates_bridge",
+    "execution_lookup_ok",
+    "bridge_idempotent",
+    "cross_tenant_bridge_empty",
+)
+
+
+async def run_revision_action_bridge_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n24-rev-action-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N24 Revision→ActionExecution 桥接最小套件（非全量总线）。
+
+    Args:
+        ledger: 可选账本；默认临时目录新建（含独立 ActionExecution DB）。
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总；``certified`` / ``n24_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    from core.harness.infrastructure.action_execution import lookup_execution
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n24-rev-action-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+            action_execution_db_path=str(root / "action_execution.sqlite3"),
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            kind="file",
+            uri="file://n24/bridge-v1.txt",
+            content=b"n24-bridge-v1",
+            connector="n24",
+            domain_id=domain_id,
+            revision=1,
+        )
+        evidence = [
+            {
+                "source_id": src["source_id"],
+                "locator": "x",
+                "quote": "a",
+                "fetched_at": src["fetched_at"],
+            }
+        ]
+        fact = await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            subject="door",
+            predicate="state",
+            object="locked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="draft",
+            confidence=0.5,
+            domain_id=domain_id,
+            revision=1,
+            enforce_write_gates=False,
+        )
+        fid = fact["fact_id"]
+        await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            subject="door",
+            predicate="state",
+            object="unlocked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="draft",
+            confidence=0.5,
+            domain_id=domain_id,
+            fact_id=fid,
+            revision=2,
+            enforce_write_gates=False,
+            revision_actor="n24-suite",
+            revision_reason="mutate",
+        )
+        req = await lg.request_revision_restore(
+            tenant_id=tenant_id,
+            entity_type="fact",
+            entity_id=fid,
+            target_revision=1,
+            requester="alice",
+            reason="bridge",
+        )
+        approved = await lg.approve_revision_restore(
+            req["request_id"],
+            tenant_id=tenant_id,
+            approver="bob",
+            reason="ok",
+        )
+        bridge = approved.get("action_bridge") or {}
+        bridges = await lg.list_revision_action_bridges(
+            tenant_id=tenant_id, entity_type="fact", entity_id=fid
+        )
+        create_ok = (
+            bridge.get("execution_id")
+            and len(bridges) >= 1
+            and bridges[-1].get("event_type") == "restore_approve"
+        )
+        cases.append(
+            {
+                "id": "approve_creates_bridge",
+                "ok": create_ok,
+                "detail": "" if create_ok else "bridge_missing",
+            }
+        )
+
+        exec_row = lookup_execution(
+            tenant_id,
+            f"rev-bridge:{bridge.get('audit_id')}",
+            db_path=lg.action_execution_db_path,
+        )
+        lookup_ok = (
+            exec_row is not None
+            and exec_row.get("execution_id") == bridge.get("execution_id")
+            and str(exec_row.get("action_id") or "").startswith("knowledge_revision:")
+        )
+        cases.append(
+            {
+                "id": "execution_lookup_ok",
+                "ok": lookup_ok,
+                "detail": "" if lookup_ok else "execution_missing",
+            }
+        )
+
+        again = await lg.bridge_revision_audit_to_action(
+            audit_event={
+                "tenant_id": tenant_id,
+                "audit_id": bridge.get("audit_id"),
+                "entity_type": "fact",
+                "entity_id": fid,
+                "event_type": "restore_approve",
+                "revision": 1,
+                "actor": "bob",
+                "reason": "ok",
+            },
+            action_id="knowledge_revision:restore_approve",
+        )
+        idem_ok = again.get("idempotent") is True and again.get(
+            "execution_id"
+        ) == bridge.get("execution_id")
+        cases.append(
+            {
+                "id": "bridge_idempotent",
+                "ok": idem_ok,
+                "detail": "" if idem_ok else "not_idempotent",
+            }
+        )
+
+        other = await lg.list_revision_action_bridges(tenant_id="other-tenant")
+        xt_ok = len(other) == 0
+        cases.append(
+            {
+                "id": "cross_tenant_bridge_empty",
+                "ok": xt_ok,
+                "detail": "" if xt_ok else "cross_tenant_leak",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N24_REVISION_ACTION_BRIDGE_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "revision_action_bridge",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Revision→ActionExecution bridge; not full bus merge / not N24 certified",
+    }
+
+
+def evaluate_revision_action_bridge_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N24 Revision→Action 桥接门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_revision_action_bridge_suite`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n24_full_conformance") is True:
+        # 为什么：套件误标认证仍拒绝
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "revision_action_bridge",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Revision action bridge harden; not N24 certified",
     }
 
 

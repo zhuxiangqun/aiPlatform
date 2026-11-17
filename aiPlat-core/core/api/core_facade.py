@@ -15767,6 +15767,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     evaluate_revision_restore_gate,
     evaluate_revision_audit_gate,
     evaluate_restore_approval_gate,
+    evaluate_revision_action_bridge_gate,
     evaluate_cross_tenant_gate,
     evaluate_datasource_raw_gate,
     evaluate_fact_revision_gate,
@@ -15782,6 +15783,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_revision_restore_suite,
     run_revision_audit_suite,
     run_restore_approval_suite,
+    run_revision_action_bridge_suite,
     run_cross_tenant_isolation_suite,
     run_datasource_raw_suite,
     run_fact_revision_suite,
@@ -16660,6 +16662,65 @@ def evaluate_fact_restore_approval_gate(suite: dict | None = None) -> dict:
         gate 结果。
     """
     return evaluate_restore_approval_gate(suite)
+
+
+async def fact_ledger_list_revision_action_bridges(
+    *,
+    tenant_id: str,
+    entity_type: str = "",
+    entity_id: str = "",
+    limit: int = 100,
+) -> list:
+    """CoreFacade：列出 revision→ActionExecution 桥接（N24；非全量总线）。
+
+    Args:
+        tenant_id: 租户。
+        entity_type: 可选实体类型。
+        entity_id: 可选实体 ID。
+        limit: 最大条数。
+
+    Returns:
+        桥接列表。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.list_revision_action_bridges(
+        tenant_id=tenant_id,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        limit=limit,
+    )
+
+
+async def fact_ledger_run_revision_action_bridge_suite(
+    *,
+    tenant_id: str = "n24-rev-action-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N24 Revision→Action 桥接套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_revision_action_bridge_suite(
+        tenant_id=tenant_id, domain_id=domain_id
+    )
+
+
+def evaluate_fact_revision_action_bridge_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N24 Revision→Action 桥接门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_revision_action_bridge_gate(suite)
 
 
 async def fact_ledger_project_to_graph(
