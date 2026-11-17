@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2898
+total_capabilities: 2905
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 433
+    caps_count: 440
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3162,6 +3162,34 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "evaluate_fact_claim_revision_gate(suite)→gate (certified=false)"
+      - symbol: "run_source_revision_suite"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "run_source_revision_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_source_revision_gate"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "evaluate_source_revision_gate(suite)→gate (certified=false)"
+      - symbol: "fact_ledger_list_source_revisions"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_list_source_revisions(source_id,tenant_id)→revision list"
+      - symbol: "fact_ledger_get_source_at_revision"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_get_source_at_revision(source_id,tenant_id,revision)→snapshot|None"
+      - symbol: "fact_ledger_diff_source_revisions"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_diff_source_revisions(source_id,tenant_id,from,to)→diff"
+      - symbol: "fact_ledger_run_source_revision_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_run_source_revision_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_fact_source_revision_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_source_revision_gate(suite)→gate (certified=false)"
       - symbol: "fact_ledger_query_gateway"
         module: core/api/core_facade.py
         type: function

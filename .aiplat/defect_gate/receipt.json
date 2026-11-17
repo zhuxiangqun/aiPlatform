@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T09:33:54+08:00",
+  "reviewed_at": "2026-11-17T10:00:21+08:00",
   "base_ref": "origin/main",
-  "merge_base": "8093fd19bf0400844c8113659476dfd0ad6d9a71",
-  "diff_sha256": "426a2d6d2749cd94f99e868fb4d31cf4bbdda74dc9602eace97b12c26fdd1442",
-  "head_sha": "47d82955f9c7f0ece51cc5c43f374fcc4d125a71",
+  "merge_base": "f841aabb363e36e30859b5e8cfeb7f43161b7cd5",
+  "diff_sha256": "3abb4c7c4c36c58ceae4e425d20292ffeb465a04c6861b51e1af0f3d3925f177",
+  "head_sha": "b7eab47e2e73f4bfdc0b0267a62b1d1213ffaf35",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Batch H1 N24 Claim Revision + AUTO-STATS sync. Residual: Source revision/rollback UI; certified false."
+  "note": "H2 Source revision: same-content idempotent; content change requires bump; gate forbids certified. Residual: no rollback UI / N24 still partial. Local lock only; CI unlock is non-author Approve."
 }

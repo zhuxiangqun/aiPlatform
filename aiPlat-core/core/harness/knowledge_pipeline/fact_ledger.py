@@ -9,7 +9,7 @@
   - 完整 ObjectSet/SDK、Wiki 只读化、Scenario Package（后续 Phase）
   - 替代现有 DataSourceRegistry 外部连接器（本模块是附录 A/D 契约层）
   - 宣称附录 N 全量认证（写入硬门加深仍为 partial）
-  - 统一全域 Fact/Claim Revision 账本 / diff UI / 一键回滚工作流（N24 仅最小切片）
+  - 统一全域 Revision 账本 / diff UI / 一键回滚工作流（N24 仅 Fact/Claim/Source 最小切片）
 """
 from __future__ import annotations
 
@@ -252,6 +252,28 @@ class FactLedger:
                 ON claim_revisions(tenant_id, claim_id, revision)
                 """
             )
+            # 为什么：N24 Source 与 Fact/Claim 对称 — 内容抬号前归档元数据；旧快照文件永不删
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS source_revisions (
+                    revision_row_id TEXT PRIMARY KEY,
+                    source_id TEXT NOT NULL,
+                    tenant_id TEXT NOT NULL,
+                    revision INTEGER NOT NULL,
+                    snapshot_json TEXT NOT NULL,
+                    actor TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL,
+                    UNIQUE(source_id, revision)
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_source_revisions_source
+                ON source_revisions(tenant_id, source_id, revision)
+                """
+            )
             await db.commit()
 
     async def register_source(
@@ -268,6 +290,8 @@ class FactLedger:
         license: str = "company-internal",
         source_id: Optional[str] = None,
         revision: int = 1,
+        revision_actor: str = "",
+        revision_reason: str = "",
     ) -> Dict[str, Any]:
         """登记不可变 Raw：写快照文件 + Source 行。
 
@@ -283,12 +307,14 @@ class FactLedger:
             license: 许可标记。
             source_id: 可选显式 ID。
             revision: 修订号。
+            revision_actor: 内容抬号归档 actor（可选）。
+            revision_reason: 内容抬号归档理由（可选）。
 
         Returns:
             附录 A 形状的 source 记录。
 
         Raises:
-            FactLedgerError: 参数非法。
+            FactLedgerError: 参数非法 / 同号内容覆盖 / 快照冲突。
         """
         import aiosqlite
 
@@ -302,8 +328,88 @@ class FactLedger:
         if not _SHA256_RE.match(digest):
             raise FactLedgerError("sha256 computation failed")
 
+        existing: Optional[Dict[str, Any]] = None
+        if source_id:
+            existing = await self.get_source(sid, tenant_id=tenant_id)
+
         tenant_dir = self.raw_dir / tenant_id
         tenant_dir.mkdir(parents=True, exist_ok=True)
+
+        if existing is not None:
+            # 为什么：同内容幂等返回，避免无意义抬号
+            if str(existing.get("sha256") or "") == digest:
+                return existing
+            # 为什么：N01 禁 silent 覆写；N24 仅允许 revision 抬号后新快照文件
+            if int(revision) <= int(existing.get("revision") or 1):
+                raise FactLedgerError(
+                    "snapshot already exists: content change requires revision bump "
+                    f"(existing={existing.get('revision')}, got={revision})"
+                )
+            await self._archive_source_revision(
+                existing,
+                actor=(revision_actor or "register_source").strip()
+                or "register_source",
+                reason=(revision_reason or "supersede").strip() or "supersede",
+            )
+            snap_path = tenant_dir / f"{sid}.r{int(revision)}.bin"
+            if snap_path.exists():
+                raise FactLedgerError(f"snapshot already exists: {snap_path}")
+            snap_path.write_bytes(content)
+            try:
+                snap_path.chmod(0o444)
+            except OSError as e:
+                logger.debug("chmod snapshot skipped: %s", e)
+            fetched_at = _utc_now()
+            acl_list = list(acl or existing.get("acl") or [f"tenant:{tenant_id}"])
+            record = {
+                "source_id": sid,
+                "tenant_id": tenant_id,
+                "collection_id": collection_id,
+                "kind": kind,
+                "uri": uri,
+                "snapshot_uri": str(snap_path),
+                "sha256": digest,
+                "fetched_at": fetched_at,
+                "revision": int(revision),
+                "license": license,
+                "acl": acl_list,
+                "connector": connector,
+                "status": "active",
+                "immutable": True,
+                "domain_id": domain_id,
+            }
+            async with aiosqlite.connect(self.db_path) as db:
+                await db.execute("PRAGMA busy_timeout=5000")
+                await db.execute(
+                    """
+                    UPDATE sources SET
+                        collection_id=?, kind=?, uri=?, snapshot_uri=?,
+                        sha256=?, fetched_at=?, revision=?, license=?,
+                        acl_json=?, connector=?, status=?, immutable=?,
+                        domain_id=?
+                    WHERE source_id=? AND tenant_id=?
+                    """,
+                    (
+                        collection_id,
+                        kind,
+                        uri,
+                        record["snapshot_uri"],
+                        digest,
+                        fetched_at,
+                        int(revision),
+                        license,
+                        json.dumps(acl_list, ensure_ascii=False),
+                        connector,
+                        "active",
+                        1,
+                        domain_id,
+                        sid,
+                        tenant_id,
+                    ),
+                )
+                await db.commit()
+            return record
+
         snap_path = tenant_dir / f"{sid}.bin"
         if snap_path.exists():
             raise FactLedgerError(f"snapshot already exists: {snap_path}")
@@ -403,6 +509,227 @@ class FactLedger:
             await self.verify_raw_integrity(source_id, tenant_id=tenant_id)
             record["integrity_ok"] = True
         return record
+
+    _SOURCE_CONTENT_KEYS = (
+        "collection_id",
+        "kind",
+        "uri",
+        "snapshot_uri",
+        "sha256",
+        "license",
+        "acl",
+        "connector",
+        "status",
+        "domain_id",
+    )
+
+    async def _archive_source_revision(
+        self,
+        source: Dict[str, Any],
+        *,
+        actor: str,
+        reason: str,
+    ) -> Dict[str, Any]:
+        """将即将被抬号覆盖的 Source 元数据写入 source_revisions。
+
+        Args:
+            source: 当前头版本快照（含 snapshot_uri；旧文件保留）。
+            actor: 操作者。
+            reason: 归档理由。
+
+        Returns:
+            修订行摘要。
+        """
+        import aiosqlite
+
+        row_id = f"srev-{uuid.uuid4().hex[:12]}"
+        recorded_at = _utc_now()
+        entry = {
+            "revision_row_id": row_id,
+            "source_id": source["source_id"],
+            "tenant_id": source["tenant_id"],
+            "revision": int(source.get("revision") or 1),
+            "snapshot": dict(source),
+            "actor": actor,
+            "reason": reason,
+            "recorded_at": recorded_at,
+            "is_head": False,
+        }
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA busy_timeout=5000")
+            await db.execute(
+                """
+                INSERT INTO source_revisions (
+                    revision_row_id, source_id, tenant_id, revision,
+                    snapshot_json, actor, reason, recorded_at
+                ) VALUES (?,?,?,?,?,?,?,?)
+                """,
+                (
+                    row_id,
+                    source["source_id"],
+                    source["tenant_id"],
+                    int(source.get("revision") or 1),
+                    json.dumps(source, ensure_ascii=False),
+                    actor,
+                    reason,
+                    recorded_at,
+                ),
+            )
+            await db.commit()
+        return entry
+
+    async def list_source_revisions(
+        self,
+        source_id: str,
+        *,
+        tenant_id: str,
+    ) -> List[Dict[str, Any]]:
+        """列出 Source 修订历史（归档 + 当前头）。
+
+        Args:
+            source_id: Source ID。
+            tenant_id: 调用方租户。
+
+        Returns:
+            按 revision 升序的条目（含 snapshot）。
+        """
+        import aiosqlite
+
+        if not tenant_id:
+            raise FactLedgerError("tenant_id required")
+        out: List[Dict[str, Any]] = []
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                """
+                SELECT * FROM source_revisions
+                WHERE source_id=? AND tenant_id=?
+                ORDER BY revision ASC
+                """,
+                (source_id, tenant_id),
+            )
+            rows = await cur.fetchall()
+        for row in rows:
+            out.append(
+                {
+                    "revision_row_id": row["revision_row_id"],
+                    "source_id": row["source_id"],
+                    "tenant_id": row["tenant_id"],
+                    "revision": int(row["revision"]),
+                    "snapshot": json.loads(row["snapshot_json"] or "{}"),
+                    "actor": row["actor"],
+                    "reason": row["reason"],
+                    "recorded_at": row["recorded_at"],
+                    "is_head": False,
+                }
+            )
+        head = await self.get_source(source_id, tenant_id=tenant_id)
+        if head is not None:
+            out.append(
+                {
+                    "revision_row_id": "",
+                    "source_id": source_id,
+                    "tenant_id": tenant_id,
+                    "revision": int(head.get("revision") or 1),
+                    "snapshot": head,
+                    "actor": "head",
+                    "reason": "current",
+                    "recorded_at": head.get("fetched_at") or "",
+                    "is_head": True,
+                }
+            )
+        return out
+
+    async def get_source_at_revision(
+        self,
+        source_id: str,
+        *,
+        tenant_id: str,
+        revision: int,
+    ) -> Optional[Dict[str, Any]]:
+        """按 revision 读取 Source 元数据快照（头或归档）。
+
+        Args:
+            source_id: Source ID。
+            tenant_id: 调用方租户。
+            revision: 目标修订号。
+
+        Returns:
+            快照 dict；不存在则 None。
+        """
+        import aiosqlite
+
+        head = await self.get_source(source_id, tenant_id=tenant_id)
+        if head is not None and int(head.get("revision") or 1) == int(revision):
+            return head
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                """
+                SELECT snapshot_json FROM source_revisions
+                WHERE source_id=? AND tenant_id=? AND revision=?
+                """,
+                (source_id, tenant_id, int(revision)),
+            )
+            row = await cur.fetchone()
+        if row is None:
+            return None
+        return json.loads(row["snapshot_json"] or "{}")
+
+    async def diff_source_revisions(
+        self,
+        source_id: str,
+        *,
+        tenant_id: str,
+        from_revision: int,
+        to_revision: int,
+    ) -> Dict[str, Any]:
+        """比较两个 Source revision 的元数据字段差。
+
+        Args:
+            source_id: Source ID。
+            tenant_id: 调用方租户。
+            from_revision: 旧修订。
+            to_revision: 新修订。
+
+        Returns:
+            diff 回执。
+
+        Raises:
+            FactLedgerError: 任一 revision 缺失。
+        """
+        left = await self.get_source_at_revision(
+            source_id, tenant_id=tenant_id, revision=int(from_revision)
+        )
+        right = await self.get_source_at_revision(
+            source_id, tenant_id=tenant_id, revision=int(to_revision)
+        )
+        if left is None or right is None:
+            raise FactLedgerError(
+                f"source revision not found: from={from_revision} to={to_revision}"
+            )
+        changed: Dict[str, Any] = {}
+        for key in self._SOURCE_CONTENT_KEYS:
+            lv = left.get(key)
+            rv = right.get(key)
+            if key == "acl":
+                same = json.dumps(lv or [], ensure_ascii=False, sort_keys=True) == json.dumps(
+                    rv or [], ensure_ascii=False, sort_keys=True
+                )
+            else:
+                same = ("" if lv is None else lv) == ("" if rv is None else rv)
+            if not same:
+                changed[key] = {"from": lv, "to": rv}
+        return {
+            "source_id": source_id,
+            "tenant_id": tenant_id,
+            "from_revision": int(from_revision),
+            "to_revision": int(to_revision),
+            "changed": changed,
+            "unchanged": [k for k in self._SOURCE_CONTENT_KEYS if k not in changed],
+        }
 
     async def verify_raw_integrity(
         self, source_id: str, *, tenant_id: str
@@ -3097,6 +3424,199 @@ def evaluate_claim_revision_gate(
         "certified": False,
         "n24_full_conformance": False,
         "note": "Claim revision harden; not N24 certified",
+    }
+
+
+_N24_SOURCE_REVISION_CASES = (
+    "overwrite_without_revision_bump_rejected",
+    "revision_archived_on_update",
+    "get_source_at_revision_roundtrip",
+    "diff_source_revisions_ok",
+)
+
+
+async def run_source_revision_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n24-source-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N24 Source Revision 最小加深套件（禁止无记录内容覆盖）。
+
+    Args:
+        ledger: 可选账本；默认临时目录新建。
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入；harness 不默认业务域名）。
+
+    Returns:
+        套件汇总；``certified`` / ``n24_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n24-source-revision-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            kind="file",
+            uri="file://n24/source-revision-v1.txt",
+            content=b"n24-source-v1",
+            connector="n24",
+            domain_id=domain_id,
+            source_id="src-n24-source-rev",
+            revision=1,
+        )
+        sid = src["source_id"]
+
+        rejected = False
+        try:
+            await lg.register_source(
+                tenant_id=tenant_id,
+                collection_id="n24-kb",
+                kind="file",
+                uri="file://n24/source-revision-v2.txt",
+                content=b"n24-source-v2",
+                connector="n24",
+                domain_id=domain_id,
+                source_id=sid,
+                revision=1,
+            )
+        except FactLedgerError:
+            rejected = True
+        cases.append(
+            {
+                "id": "overwrite_without_revision_bump_rejected",
+                "ok": rejected,
+                "detail": "" if rejected else "silent_overwrite",
+            }
+        )
+
+        updated = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            kind="file",
+            uri="file://n24/source-revision-v2.txt",
+            content=b"n24-source-v2",
+            connector="n24",
+            domain_id=domain_id,
+            source_id=sid,
+            revision=2,
+            revision_actor="n24-suite",
+            revision_reason="content_change",
+        )
+        hist = await lg.list_source_revisions(sid, tenant_id=tenant_id)
+        archived = [h for h in hist if not h.get("is_head")]
+        arch_ok = (
+            int(updated.get("revision") or 0) == 2
+            and len(archived) >= 1
+            and int(archived[0].get("revision") or 0) == 1
+            and (archived[0].get("snapshot") or {}).get("sha256") == src.get("sha256")
+        )
+        cases.append(
+            {
+                "id": "revision_archived_on_update",
+                "ok": arch_ok,
+                "detail": "" if arch_ok else "archive_missing",
+            }
+        )
+
+        old = await lg.get_source_at_revision(sid, tenant_id=tenant_id, revision=1)
+        new = await lg.get_source_at_revision(sid, tenant_id=tenant_id, revision=2)
+        rt_ok = (
+            old is not None
+            and new is not None
+            and old.get("sha256") == src.get("sha256")
+            and new.get("sha256") == updated.get("sha256")
+            and old.get("sha256") != new.get("sha256")
+        )
+        cases.append(
+            {
+                "id": "get_source_at_revision_roundtrip",
+                "ok": rt_ok,
+                "detail": "" if rt_ok else "revision_read_failed",
+            }
+        )
+
+        diff = await lg.diff_source_revisions(
+            sid, tenant_id=tenant_id, from_revision=1, to_revision=2
+        )
+        changed = diff.get("changed") or {}
+        diff_ok = "sha256" in changed and "uri" in changed
+        cases.append(
+            {
+                "id": "diff_source_revisions_ok",
+                "ok": diff_ok,
+                "detail": "" if diff_ok else "diff_missing_fields",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N24_SOURCE_REVISION_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "source_revision",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Source revision archive + bump; not full N24 certification",
+    }
+
+
+def evaluate_source_revision_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N24 Source Revision 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_source_revision_suite`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n24_full_conformance") is True:
+        # 为什么：套件误标认证仍拒绝
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "source_revision",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Source revision harden; not N24 certified",
     }
 
 
