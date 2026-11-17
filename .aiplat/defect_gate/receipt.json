@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T15:56:44+08:00",
+  "reviewed_at": "2026-11-17T15:58:13+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "aa04cbfd1aa896616aaf575af2130fe6be2374b7ed7852f1565dff7cd2c6b351",
-  "head_sha": "c93e3b2b162d358f2b01b8156aa7ca185d56e475",
+  "diff_sha256": "68981cac75f086d6780b0bc51e3853c3094ee9c4d25b279f9d4b87013eea5234",
+  "head_sha": "8b1f5c92c35b1f1837142549a9f6a7896675f364",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J2 UI + registry caps_count/matrix sync; gate certified false; no Package+Action write bus."
+  "note": "J3 rebased on J2 registry fix; read-only unified audit; certified false."
 }
