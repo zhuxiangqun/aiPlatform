@@ -246,10 +246,13 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-view-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-bus-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-hotpath-evidence.md
       - docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/harness/knowledge_pipeline/unified_audit_view.py
       - aiPlat-core/core/harness/knowledge_pipeline/unified_audit_bus.py
+      - aiPlat-core/core/harness/knowledge_pipeline/ontology_package.py
+      - aiPlat-core/core/harness/infrastructure/action_execution.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_fact_revision_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_claim_revision_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_source_revision_phase2.py
@@ -265,7 +268,7 @@ items:
       - aiPlat-platform/apps/fde/api/unified_audit_routes.py
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/RevisionRestorePanel.tsx
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/UnifiedAuditPanel.tsx
-    note: Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线；非 ActionStore 合并/非 N24 certified
+    note: Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径；非 ActionStore 合并/非 N24 certified
 
 # §9.4 认证证据包槽位（路径或 explicit missing）
 certification_slots:
