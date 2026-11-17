@@ -15766,6 +15766,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     evaluate_source_revision_gate,
     evaluate_revision_restore_gate,
     evaluate_revision_audit_gate,
+    evaluate_restore_approval_gate,
     evaluate_cross_tenant_gate,
     evaluate_datasource_raw_gate,
     evaluate_fact_revision_gate,
@@ -15780,6 +15781,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_source_revision_suite,
     run_revision_restore_suite,
     run_revision_audit_suite,
+    run_restore_approval_suite,
     run_cross_tenant_isolation_suite,
     run_datasource_raw_suite,
     run_fact_revision_suite,
@@ -16508,6 +16510,156 @@ def evaluate_fact_revision_audit_gate(suite: dict | None = None) -> dict:
         gate 结果。
     """
     return evaluate_revision_audit_gate(suite)
+
+
+async def fact_ledger_request_revision_restore(
+    *,
+    tenant_id: str,
+    entity_type: str,
+    entity_id: str,
+    target_revision: int,
+    requester: str,
+    reason: str,
+) -> dict:
+    """CoreFacade：提交审批式 restore 请求（N24；非 UI）。
+
+    Args:
+        tenant_id: 租户。
+        entity_type: fact/claim/source。
+        entity_id: 实体 ID。
+        target_revision: 目标修订。
+        requester: 请求人。
+        reason: 理由。
+
+    Returns:
+        pending 请求。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.request_revision_restore(
+        tenant_id=tenant_id,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        target_revision=target_revision,
+        requester=requester,
+        reason=reason,
+    )
+
+
+async def fact_ledger_list_revision_restore_requests(
+    *,
+    tenant_id: str,
+    status: str = "",
+    entity_type: str = "",
+    entity_id: str = "",
+    limit: int = 100,
+) -> list:
+    """CoreFacade：列出审批式 restore 请求。
+
+    Args:
+        tenant_id: 租户。
+        status: 可选状态过滤。
+        entity_type: 可选实体类型。
+        entity_id: 可选实体 ID。
+        limit: 最大条数。
+
+    Returns:
+        请求列表。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.list_revision_restore_requests(
+        tenant_id=tenant_id,
+        status=status,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        limit=limit,
+    )
+
+
+async def fact_ledger_approve_revision_restore(
+    *,
+    request_id: str,
+    tenant_id: str,
+    approver: str,
+    reason: str,
+) -> dict:
+    """CoreFacade：批准并执行 restore（审批人 ≠ 请求人）。
+
+    Args:
+        request_id: 请求 ID。
+        tenant_id: 租户。
+        approver: 审批人。
+        reason: 理由。
+
+    Returns:
+        批准后请求（含 restore 回执）。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.approve_revision_restore(
+        request_id,
+        tenant_id=tenant_id,
+        approver=approver,
+        reason=reason,
+    )
+
+
+async def fact_ledger_reject_revision_restore(
+    *,
+    request_id: str,
+    tenant_id: str,
+    rejector: str,
+    reason: str,
+) -> dict:
+    """CoreFacade：拒绝 pending restore 请求。
+
+    Args:
+        request_id: 请求 ID。
+        tenant_id: 租户。
+        rejector: 拒绝人。
+        reason: 理由。
+
+    Returns:
+        拒绝后请求。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.reject_revision_restore(
+        request_id,
+        tenant_id=tenant_id,
+        rejector=rejector,
+        reason=reason,
+    )
+
+
+async def fact_ledger_run_restore_approval_suite(
+    *,
+    tenant_id: str = "n24-restore-appr-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N24 审批式 Restore 加深套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_restore_approval_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_restore_approval_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N24 审批式 Restore 门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_restore_approval_gate(suite)
 
 
 async def fact_ledger_project_to_graph(

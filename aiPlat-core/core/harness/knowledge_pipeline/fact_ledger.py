@@ -9,7 +9,7 @@
   - 完整 ObjectSet/SDK、Wiki 只读化、Scenario Package（后续 Phase）
   - 替代现有 DataSourceRegistry 外部连接器（本模块是附录 A/D 契约层）
   - 宣称附录 N 全量认证（写入硬门加深仍为 partial）
-  - 回滚 UI / 审批式 revert / Package+Action 统一审计总线（N24 仅抬号+归档+restore+ledger 内 revision_audit）
+  - 回滚 UI / Package+Action 统一审计总线（N24 含抬号+归档+restore+audit+ledger 内审批式 restore）
 """
 from __future__ import annotations
 
@@ -296,6 +296,32 @@ class FactLedger:
                 """
                 CREATE INDEX IF NOT EXISTS idx_revision_audit_entity
                 ON revision_audit(tenant_id, entity_type, entity_id, recorded_at)
+                """
+            )
+            # 为什么：N24 审批式 restore — 请求与批准分离；非管理端 UI / 非 Action 总线
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS revision_restore_requests (
+                    request_id TEXT PRIMARY KEY,
+                    tenant_id TEXT NOT NULL,
+                    entity_type TEXT NOT NULL,
+                    entity_id TEXT NOT NULL,
+                    target_revision INTEGER NOT NULL,
+                    requester TEXT NOT NULL,
+                    request_reason TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    approver TEXT,
+                    decision_reason TEXT,
+                    restore_receipt_json TEXT,
+                    created_at TEXT NOT NULL,
+                    decided_at TEXT
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_revision_restore_req
+                ON revision_restore_requests(tenant_id, entity_type, entity_id, status)
                 """
             )
             await db.commit()
@@ -2356,7 +2382,8 @@ class FactLedger:
             tenant_id: 租户。
             entity_type: ``fact`` / ``claim`` / ``source``。
             entity_id: 实体 ID。
-            event_type: ``archive`` / ``restore``。
+            event_type: ``archive`` / ``restore`` / ``restore_request`` /
+                ``restore_approve`` / ``restore_reject``。
             revision: 归档修订号，或 restore 的目标修订号。
             actor: 操作者。
             reason: 理由。
@@ -2380,7 +2407,13 @@ class FactLedger:
             raise FactLedgerError("revision_audit requires tenant/entity/event/actor/reason")
         if et not in ("fact", "claim", "source"):
             raise FactLedgerError(f"unsupported entity_type: {et}")
-        if ev not in ("archive", "restore"):
+        if ev not in (
+            "archive",
+            "restore",
+            "restore_request",
+            "restore_approve",
+            "restore_reject",
+        ):
             raise FactLedgerError(f"unsupported event_type: {ev}")
         audit_id = f"raud-{uuid.uuid4().hex[:12]}"
         recorded_at = _utc_now()
@@ -2503,6 +2536,400 @@ class FactLedger:
                 }
             )
         return out
+
+    async def request_revision_restore(
+        self,
+        *,
+        tenant_id: str,
+        entity_type: str,
+        entity_id: str,
+        target_revision: int,
+        requester: str,
+        reason: str,
+    ) -> Dict[str, Any]:
+        """提交审批式 restore 请求（不立即写回头）。
+
+        Args:
+            tenant_id: 租户。
+            entity_type: ``fact`` / ``claim`` / ``source``。
+            entity_id: 实体 ID。
+            target_revision: 目标修订号。
+            requester: 请求人（必填）。
+            reason: 请求理由（必填）。
+
+        Returns:
+            pending 请求摘要。
+
+        Raises:
+            FactLedgerError: 参数非法、目标缺失、已有 pending。
+        """
+        import aiosqlite
+
+        who = (requester or "").strip()
+        why = (reason or "").strip()
+        et = (entity_type or "").strip()
+        eid = (entity_id or "").strip()
+        if not tenant_id or not who or not why or not et or not eid:
+            raise FactLedgerError("restore request requires tenant/entity/requester/reason")
+        if et not in ("fact", "claim", "source"):
+            raise FactLedgerError(f"unsupported entity_type: {et}")
+        # 为什么：请求前确认目标 revision 可读，避免空批
+        if et == "fact":
+            snap = await self.get_fact_at_revision(
+                eid, tenant_id=tenant_id, revision=int(target_revision)
+            )
+        elif et == "claim":
+            snap = await self.get_claim_at_revision(
+                eid, tenant_id=tenant_id, revision=int(target_revision)
+            )
+        else:
+            snap = await self.get_source_at_revision(
+                eid, tenant_id=tenant_id, revision=int(target_revision)
+            )
+        if snap is None:
+            raise FactLedgerError(f"{et} revision not found: {target_revision}")
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                """
+                SELECT request_id FROM revision_restore_requests
+                WHERE tenant_id=? AND entity_type=? AND entity_id=? AND status='pending'
+                """,
+                (tenant_id, et, eid),
+            )
+            if await cur.fetchone() is not None:
+                raise FactLedgerError(
+                    f"pending restore request already exists for {et}:{eid}"
+                )
+            request_id = f"rrq-{uuid.uuid4().hex[:12]}"
+            created_at = _utc_now()
+            await db.execute(
+                """
+                INSERT INTO revision_restore_requests (
+                    request_id, tenant_id, entity_type, entity_id, target_revision,
+                    requester, request_reason, status, created_at
+                ) VALUES (?,?,?,?,?,?,?,'pending',?)
+                """,
+                (
+                    request_id,
+                    tenant_id,
+                    et,
+                    eid,
+                    int(target_revision),
+                    who,
+                    why,
+                    created_at,
+                ),
+            )
+            await db.commit()
+        await self._emit_revision_audit(
+            tenant_id=tenant_id,
+            entity_type=et,
+            entity_id=eid,
+            event_type="restore_request",
+            revision=int(target_revision),
+            actor=who,
+            reason=why,
+            detail={"request_id": request_id},
+        )
+        return {
+            "request_id": request_id,
+            "tenant_id": tenant_id,
+            "entity_type": et,
+            "entity_id": eid,
+            "target_revision": int(target_revision),
+            "requester": who,
+            "request_reason": why,
+            "status": "pending",
+            "created_at": created_at,
+        }
+
+    async def list_revision_restore_requests(
+        self,
+        *,
+        tenant_id: str,
+        status: str = "",
+        entity_type: str = "",
+        entity_id: str = "",
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """列出审批式 restore 请求。
+
+        Args:
+            tenant_id: 租户（必填）。
+            status: 可选 ``pending`` / ``approved`` / ``rejected``。
+            entity_type: 可选实体类型。
+            entity_id: 可选实体 ID。
+            limit: 最大条数。
+
+        Returns:
+            请求列表（created_at 升序）。
+        """
+        import aiosqlite
+
+        if not tenant_id:
+            raise FactLedgerError("tenant_id required")
+        lim = max(1, min(int(limit or 100), 500))
+        clauses = ["tenant_id=?"]
+        params: List[Any] = [tenant_id]
+        st = (status or "").strip()
+        et = (entity_type or "").strip()
+        eid = (entity_id or "").strip()
+        if st:
+            clauses.append("status=?")
+            params.append(st)
+        if et:
+            clauses.append("entity_type=?")
+            params.append(et)
+        if eid:
+            clauses.append("entity_id=?")
+            params.append(eid)
+        where = " AND ".join(clauses)
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                f"""
+                SELECT * FROM revision_restore_requests
+                WHERE {where}
+                ORDER BY created_at ASC, request_id ASC
+                LIMIT ?
+                """,
+                (*params, lim),
+            )
+            rows = await cur.fetchall()
+        return [self._row_to_restore_request(r) for r in rows]
+
+    def _row_to_restore_request(self, row: Any) -> Dict[str, Any]:
+        """将 revision_restore_requests 行转为 dict。
+
+        Args:
+            row: aiosqlite.Row。
+        """
+        receipt = None
+        raw = row["restore_receipt_json"]
+        if raw:
+            receipt = json.loads(raw)
+        return {
+            "request_id": row["request_id"],
+            "tenant_id": row["tenant_id"],
+            "entity_type": row["entity_type"],
+            "entity_id": row["entity_id"],
+            "target_revision": int(row["target_revision"]),
+            "requester": row["requester"],
+            "request_reason": row["request_reason"],
+            "status": row["status"],
+            "approver": row["approver"],
+            "decision_reason": row["decision_reason"],
+            "restore_receipt": receipt,
+            "created_at": row["created_at"],
+            "decided_at": row["decided_at"],
+        }
+
+    async def approve_revision_restore(
+        self,
+        request_id: str,
+        *,
+        tenant_id: str,
+        approver: str,
+        reason: str,
+    ) -> Dict[str, Any]:
+        """批准并执行 restore；审批人不得与请求人相同。
+
+        Args:
+            request_id: 请求 ID。
+            tenant_id: 租户。
+            approver: 审批人（必填，且 ≠ requester）。
+            reason: 批准理由（必填）。
+
+        Returns:
+            含 restore 回执的请求摘要。
+
+        Raises:
+            FactLedgerError: 缺失/非 pending/自批/执行失败。
+        """
+        import aiosqlite
+
+        who = (approver or "").strip()
+        why = (reason or "").strip()
+        if not tenant_id or not who or not why:
+            raise FactLedgerError("approve requires tenant/approver/reason")
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                """
+                SELECT * FROM revision_restore_requests
+                WHERE request_id=? AND tenant_id=?
+                """,
+                (request_id, tenant_id),
+            )
+            row = await cur.fetchone()
+        if row is None:
+            raise FactLedgerError(f"restore request not found: {request_id}")
+        req = self._row_to_restore_request(row)
+        if req["status"] != "pending":
+            raise FactLedgerError(
+                f"restore request not pending: {req['status']}"
+            )
+        if who == str(req["requester"] or "").strip():
+            # 为什么：审批式硬门 — 禁止自批
+            raise FactLedgerError("approver must differ from requester")
+        et = req["entity_type"]
+        eid = req["entity_id"]
+        target = int(req["target_revision"])
+        if et == "fact":
+            receipt = await self.restore_fact_at_revision(
+                eid,
+                tenant_id=tenant_id,
+                target_revision=target,
+                actor=who,
+                reason=why,
+                enforce_write_gates=False,
+            )
+        elif et == "claim":
+            receipt = await self.restore_claim_at_revision(
+                eid,
+                tenant_id=tenant_id,
+                target_revision=target,
+                actor=who,
+                reason=why,
+                enforce_write_gates=False,
+            )
+        else:
+            receipt = await self.restore_source_at_revision(
+                eid,
+                tenant_id=tenant_id,
+                target_revision=target,
+                actor=who,
+                reason=why,
+            )
+        decided_at = _utc_now()
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA busy_timeout=5000")
+            await db.execute(
+                """
+                UPDATE revision_restore_requests SET
+                    status='approved',
+                    approver=?,
+                    decision_reason=?,
+                    restore_receipt_json=?,
+                    decided_at=?
+                WHERE request_id=? AND tenant_id=? AND status='pending'
+                """,
+                (
+                    who,
+                    why,
+                    json.dumps(receipt, ensure_ascii=False),
+                    decided_at,
+                    request_id,
+                    tenant_id,
+                ),
+            )
+            await db.commit()
+        await self._emit_revision_audit(
+            tenant_id=tenant_id,
+            entity_type=et,
+            entity_id=eid,
+            event_type="restore_approve",
+            revision=target,
+            to_revision=receipt.get("to_revision"),
+            actor=who,
+            reason=why,
+            detail={"request_id": request_id, "restored": receipt.get("restored")},
+        )
+        req.update(
+            {
+                "status": "approved",
+                "approver": who,
+                "decision_reason": why,
+                "restore_receipt": receipt,
+                "decided_at": decided_at,
+            }
+        )
+        return req
+
+    async def reject_revision_restore(
+        self,
+        request_id: str,
+        *,
+        tenant_id: str,
+        rejector: str,
+        reason: str,
+    ) -> Dict[str, Any]:
+        """拒绝 pending restore 请求（不写回头）。
+
+        Args:
+            request_id: 请求 ID。
+            tenant_id: 租户。
+            rejector: 拒绝人（必填）。
+            reason: 拒绝理由（必填）。
+
+        Returns:
+            拒绝后的请求摘要。
+
+        Raises:
+            FactLedgerError: 缺失/非 pending。
+        """
+        import aiosqlite
+
+        who = (rejector or "").strip()
+        why = (reason or "").strip()
+        if not tenant_id or not who or not why:
+            raise FactLedgerError("reject requires tenant/rejector/reason")
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("PRAGMA busy_timeout=5000")
+            cur = await db.execute(
+                """
+                SELECT * FROM revision_restore_requests
+                WHERE request_id=? AND tenant_id=?
+                """,
+                (request_id, tenant_id),
+            )
+            row = await cur.fetchone()
+        if row is None:
+            raise FactLedgerError(f"restore request not found: {request_id}")
+        req = self._row_to_restore_request(row)
+        if req["status"] != "pending":
+            raise FactLedgerError(
+                f"restore request not pending: {req['status']}"
+            )
+        decided_at = _utc_now()
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA busy_timeout=5000")
+            await db.execute(
+                """
+                UPDATE revision_restore_requests SET
+                    status='rejected',
+                    approver=?,
+                    decision_reason=?,
+                    decided_at=?
+                WHERE request_id=? AND tenant_id=? AND status='pending'
+                """,
+                (who, why, decided_at, request_id, tenant_id),
+            )
+            await db.commit()
+        await self._emit_revision_audit(
+            tenant_id=tenant_id,
+            entity_type=str(req["entity_type"]),
+            entity_id=str(req["entity_id"]),
+            event_type="restore_reject",
+            revision=int(req["target_revision"]),
+            actor=who,
+            reason=why,
+            detail={"request_id": request_id},
+        )
+        req.update(
+            {
+                "status": "rejected",
+                "approver": who,
+                "decision_reason": why,
+                "decided_at": decided_at,
+            }
+        )
+        return req
 
     def _row_to_fact(self, row: Any) -> Dict[str, Any]:
         """将 facts 表行转为 Fact dict。
@@ -4687,6 +5114,264 @@ def evaluate_revision_audit_gate(
         "certified": False,
         "n24_full_conformance": False,
         "note": "Revision audit harden; not N24 certified",
+    }
+
+
+_N24_RESTORE_APPROVAL_CASES = (
+    "request_creates_pending",
+    "self_approve_rejected",
+    "approve_applies_restore",
+    "reject_leaves_head",
+)
+
+
+async def run_restore_approval_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n24-restore-appr-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N24 审批式 Restore 最小加深套件（非 UI）。
+
+    Args:
+        ledger: 可选账本；默认临时目录新建。
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总；``certified`` / ``n24_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n24-restore-appr-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            kind="file",
+            uri="file://n24/appr-v1.txt",
+            content=b"n24-appr-v1",
+            connector="n24",
+            domain_id=domain_id,
+            revision=1,
+        )
+        evidence = [
+            {
+                "source_id": src["source_id"],
+                "locator": "x",
+                "quote": "a",
+                "fetched_at": src["fetched_at"],
+            }
+        ]
+        fact = await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            subject="door",
+            predicate="state",
+            object="locked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="draft",
+            confidence=0.5,
+            domain_id=domain_id,
+            revision=1,
+            enforce_write_gates=False,
+        )
+        fid = fact["fact_id"]
+        await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            subject="door",
+            predicate="state",
+            object="unlocked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="draft",
+            confidence=0.5,
+            domain_id=domain_id,
+            fact_id=fid,
+            revision=2,
+            enforce_write_gates=False,
+            revision_actor="n24-suite",
+            revision_reason="mutate",
+        )
+
+        req = await lg.request_revision_restore(
+            tenant_id=tenant_id,
+            entity_type="fact",
+            entity_id=fid,
+            target_revision=1,
+            requester="alice",
+            reason="need_old",
+        )
+        pending = await lg.list_revision_restore_requests(
+            tenant_id=tenant_id, status="pending", entity_id=fid
+        )
+        req_ok = req.get("status") == "pending" and len(pending) == 1
+        cases.append(
+            {
+                "id": "request_creates_pending",
+                "ok": req_ok,
+                "detail": "" if req_ok else "pending_missing",
+            }
+        )
+
+        self_rej = False
+        try:
+            await lg.approve_revision_restore(
+                req["request_id"],
+                tenant_id=tenant_id,
+                approver="alice",
+                reason="self",
+            )
+        except FactLedgerError:
+            self_rej = True
+        cases.append(
+            {
+                "id": "self_approve_rejected",
+                "ok": self_rej,
+                "detail": "" if self_rej else "self_approve_ok",
+            }
+        )
+
+        approved = await lg.approve_revision_restore(
+            req["request_id"],
+            tenant_id=tenant_id,
+            approver="bob",
+            reason="ok",
+        )
+        head = await lg.get_fact(fid, tenant_id=tenant_id)
+        appr_ok = (
+            approved.get("status") == "approved"
+            and head is not None
+            and head.get("object") == "locked"
+            and int(head.get("revision") or 0) == 3
+        )
+        cases.append(
+            {
+                "id": "approve_applies_restore",
+                "ok": appr_ok,
+                "detail": "" if appr_ok else "approve_failed",
+            }
+        )
+
+        # 再抬号后请求并拒绝，头应保持
+        await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            subject="door",
+            predicate="state",
+            object="ajar",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="draft",
+            confidence=0.5,
+            domain_id=domain_id,
+            fact_id=fid,
+            revision=4,
+            enforce_write_gates=False,
+            revision_actor="n24-suite",
+            revision_reason="mutate2",
+        )
+        req2 = await lg.request_revision_restore(
+            tenant_id=tenant_id,
+            entity_type="fact",
+            entity_id=fid,
+            target_revision=1,
+            requester="alice",
+            reason="again",
+        )
+        rejected = await lg.reject_revision_restore(
+            req2["request_id"],
+            tenant_id=tenant_id,
+            rejector="bob",
+            reason="no",
+        )
+        head2 = await lg.get_fact(fid, tenant_id=tenant_id)
+        rej_ok = (
+            rejected.get("status") == "rejected"
+            and head2 is not None
+            and head2.get("object") == "ajar"
+            and int(head2.get("revision") or 0) == 4
+        )
+        cases.append(
+            {
+                "id": "reject_leaves_head",
+                "ok": rej_ok,
+                "detail": "" if rej_ok else "reject_changed_head",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N24_RESTORE_APPROVAL_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "restore_approval",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Approval-gated restore; not rollback UI / not N24 certified",
+    }
+
+
+def evaluate_restore_approval_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N24 审批式 Restore 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_restore_approval_suite`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n24_full_conformance") is True:
+        # 为什么：套件误标认证仍拒绝
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "restore_approval",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Restore approval harden; not N24 certified",
     }
 
 
