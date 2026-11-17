@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T21:44:31+08:00",
+  "reviewed_at": "2026-11-17T21:51:16+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "b798f6da5a00870f50c9e0841dc680ed36766f9e826e92461e13990bd2d8411d",
-  "head_sha": "1410f8cb8e914e7534d87c81eeba52ad891715a7",
+  "diff_sha256": "8a86c814a14e995b9212542ae1a830ae18d5f95b5ccc9488178b2cec2b8f5b19",
+  "head_sha": "bf8ddfba516af24c5679fce3b52e52b0765a130b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K2 adds kb_retrieve_no_leak + wiki_retrieve_no_leak (8 probes). Wiki collection ACL / GraphRAG remain intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K3 hardens GraphRAG _vector_search(tenant_id) against default/wiki fallback and adds graphrag_no_leak (9 probes). GraphIndex tenant + CRAG/governance tenant passthrough remain intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
 }
