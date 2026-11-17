@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T20:27:00+08:00",
+  "reviewed_at": "2026-11-17T20:41:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "6bda57c393da62875e46ca293aff374b11a150608907d2c6b8a45ac4c2f739fa",
-  "head_sha": "edb3fd15777d1a18794ce2c6d7362a82dc6db8eb",
+  "diff_sha256": "0afb910549460e2485738e7c2dd2e978bc398779971040889e6d101770145d99",
+  "head_sha": "d9e32bcdc31c81e88e70713844a4055865b5eb9f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J8 ActionStore physical tenant_id + list_audit pre-recall filter; legacy empty column falls back to params. Residual: no forced historical backfill; N24 not certified."
+  "note": "J9 ActionStore.backfill_tenant_id from params; initialize wires idempotent. Residual: rows without params.tenant_id stay empty; N24 not certified."
 }
