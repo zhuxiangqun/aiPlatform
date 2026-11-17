@@ -44,4 +44,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做
 
 - N24 / 附录 N 全量认证
-- 全量历史行强制回填（仅召回时兼容空列）
+
+> 存量空列强制回填见 Batch J9：`phase2-unified-audit-action-store-tenant-backfill-evidence.md`。

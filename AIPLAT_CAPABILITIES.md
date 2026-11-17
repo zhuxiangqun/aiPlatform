@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3756
+total_capabilities: 3757
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1219,6 +1219,7 @@ scan_hash: 8f9548ec24f4
 | **Unified Audit Hotpath（v4.3.1 N24 J6）** | `publish_package` / `persist_execution` best-effort → bus；suite 增 package/action hotpath | ✅ | Package/Action 热路径写总线；与 materialize 幂等共存；门槛门 certified 恒 false。证据 `phase2-unified-audit-hotpath-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（生产写路径） | 本批 |
 | **Unified Audit ActionStore（v4.3.1 N24 J7）** | `ActionStore.insert_audit` → bus；view/materialize 含 `action_store` 流 | ✅ | ActionStore.action_audit 汇入统一审计；租户经 params.tenant_id 过滤；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（生产写路径） | 本批 |
 | **ActionStore tenant_id（v4.3.1 N24 J8）** | `action_audit.tenant_id` 物理列 + `list_audit(tenant_id=)` 召回前过滤 | ✅ | CREATE/ALTER 迁移；insert 写列；view 用物理过滤（空列回退 params）；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-tenant-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（生产写/读路径） | 本批 |
+| **ActionStore tenant backfill（v4.3.1 N24 J9）** | `ActionStore.backfill_tenant_id` + `initialize` 幂等接线 | ✅ | 空物理列从 `params.tenant_id` 回填；无 params 租户不猜测；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-tenant-backfill-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（initialize） | 本批 |
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户隔离加深（v4.3.1 N09 partial）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | query/get_source/gateway/verify 四探针；门槛门 certified 恒 false。证据 `phase2-cross-tenant-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
@@ -4657,7 +4658,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 679 | 1 | 680 |
+| Harness 执行引擎 | 680 | 1 | 681 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 600 | 9 | 609 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4702,7 +4703,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3745** | **11** | **3756** |
+| **总计** | **3746** | **11** | **3757** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
