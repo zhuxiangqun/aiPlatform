@@ -37,6 +37,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- FDE service（rapid_insight / abox / clarify / governance_deepen 等）bare GraphIndex.load
-- core_facade / wiki_ontology_domains / evaluation constraint_validator 等残余
+- FDE service → 见 Batch K28；core_facade / system / eval / infra bare load 仍残余
 - N09 / 附录 N 全量认证

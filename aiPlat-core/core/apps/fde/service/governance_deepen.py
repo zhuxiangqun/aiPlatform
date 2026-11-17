@@ -128,8 +128,10 @@ def locate_via_ontology(
     hits: List[Dict[str, Any]] = []
     try:
         from core.api.core_facade import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        g = GraphIndex.load(did)
+        # 为什么：N09 K28 — governance 定位读租户图
+        g = GraphIndex.load(did, tenant_id=_resolve_graph_tenant())
         nodes = list((getattr(g, "_nodes", None) or {}).values())
         scored: List[tuple] = []
         for node in nodes:

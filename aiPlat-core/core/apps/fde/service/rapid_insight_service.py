@@ -41,6 +41,13 @@ class RapidSession:
 # Q1: Industry Consensus
 # ═══════════════════════════════════════════════════════════
 
+
+def _ri_graph_tenant() -> str:
+    """Resolve tenant for rapid_insight GraphIndex loads (N09 K28)."""
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    return _resolve_graph_tenant()
+
+
 def extract_industry_consensus(
     domain_id: str,
     aligned_domains: List[str],
@@ -105,7 +112,7 @@ def extract_industry_consensus(
     entities = []
     for d in aligned_domains[:3]:
         try:
-            g = GraphIndex.load(d)
+            g = GraphIndex.load(d, tenant_id=_ri_graph_tenant())
             classes = g.get_entity_classes()
             entities.extend(classes[:5])
         except Exception:
@@ -139,7 +146,7 @@ def detect_industry_controversies(
 
     for d in [domain_id] + aligned_domains:
         try:
-            g = GraphIndex.load(d)
+            g = GraphIndex.load(d, tenant_id=_ri_graph_tenant())
         except Exception:
             continue
         if not g._nodes:
@@ -159,7 +166,7 @@ def detect_industry_controversies(
     # Also check competition domain for explicit competitor data
     if "bell-competition" in aligned_domains:
         try:
-            g_comp = GraphIndex.load("bell-competition")
+            g_comp = GraphIndex.load("bell-competition", tenant_id=_ri_graph_tenant())
             competitors = g_comp.get_entities_by_class("Competitor")
             competitor_names = [n.entity_name for n in competitors]
             if competitor_names:
@@ -209,7 +216,7 @@ def generate_penetrating_questions(
 
     for d in [domain_id] + aligned_domains:
         try:
-            g = GraphIndex.load(d)
+            g = GraphIndex.load(d, tenant_id=_ri_graph_tenant())
         except Exception:
             continue
         for nid, node in g._nodes.items():
@@ -243,7 +250,7 @@ def generate_penetrating_questions(
     g_first = None
     for d in [domain_id] + aligned_domains:
         try:
-            g_first = GraphIndex.load(d)
+            g_first = GraphIndex.load(d, tenant_id=_ri_graph_tenant())
             if g_first._nodes:
                 break
         except Exception:

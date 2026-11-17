@@ -250,7 +250,9 @@ async def _extract_pending_questions(session_id: str = "", report_text: str = ""
     if not questions and session_id:
         try:
             from core.api.core_facade import GraphIndex
-            fd = GraphIndex.load("fde-delivery")
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            # 为什么：N09 K28 — 澄清会话读租户图；域名硬编码仍为存量债务
+            fd = GraphIndex.load("fde-delivery", tenant_id=_resolve_graph_tenant())
             for _nid, node in list(fd._nodes.items()):
                 if getattr(node, "class_name", "") == "SessionMeta" and getattr(node, "entity_id", "") == session_id:
                     try:
