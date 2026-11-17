@@ -40,6 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- builtin_handlers 全量 GraphIndex.load
-- FDE service（rapid_insight / abox / clarify 等）bare load
+- builtin_handlers → 见 Batch K27；FDE service bare load 仍残余
 - N09 / 附录 N 全量认证

@@ -12,6 +12,24 @@ from typing import Any, Dict
 logger = logging.getLogger(__name__)
 
 
+def _graph_tenant(params: Dict[str, Any] | None = None) -> str:
+    """Resolve tenant for handler GraphIndex loads (N09 K27).
+
+    Prefers ``params["tenant_id"]``, then ActiveRequestContext.
+
+    Args:
+        params: 可选 handler params。
+    """
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    if isinstance(params, dict):
+        tid = str(params.get("tenant_id") or "").strip()
+        if tid:
+            return tid
+    return _resolve_graph_tenant()
+
+
+
+
 # ═══════════════════════════════════════════════════════════
 # Business-domain handlers
 # ═══════════════════════════════════════════════════════════
@@ -30,7 +48,7 @@ async def approve_diagnosis(entity: Dict[str, Any], params: Dict[str, Any], acto
     domain_id = entity.get("domain_id") or params.get("domain_id", "")
     if not domain_id:
         raise ValueError("domain_id is required — pass via entity['domain_id'] or params['domain_id']")
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))
 
     # Update entity state
     g.update_entity_property(entity_id, "state", "in_progress")
@@ -60,7 +78,7 @@ async def accept_order(entity: Dict[str, Any], params: Dict[str, Any], actor: st
     domain_id = entity.get("domain_id") or entity.get("domain") or params.get("domain_id", "")
     if not domain_id:
         raise ValueError("domain_id is required — pass via entity['domain_id'] or params['domain_id']")
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))
 
     technician = (
         params.get("assigned_technician")
@@ -103,7 +121,7 @@ async def assign_work_order(entity: Dict[str, Any], params: Dict[str, Any], acto
     domain_id = entity.get("domain_id") or entity.get("domain") or params.get("domain_id", "")
     if not domain_id:
         raise ValueError("domain_id is required")
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))
     technician = params.get("assigned_technician") or params.get("technician_id") or ""
     new_state = params.get("target_state") or "已指派"
     g.update_entity_property(entity_id, "state", new_state)
@@ -134,7 +152,7 @@ async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor
     new_state = params.get("new_state") or params.get("target_state") or ""
     if not new_state:
         raise ValueError("new_state or target_state is required")
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))
     g.update_entity_property(entity_id, "state", new_state)
     # Dual-write status for TBox required_fields that still say "status"
     g.update_entity_property(entity_id, "status", new_state)
@@ -267,7 +285,7 @@ async def assert_inferred_edge(
     if not source_id or not target_id or not relation_name:
         raise ValueError("source_id, target_id, relation_name are required")
 
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))
     if source_id not in g._nodes or target_id not in g._nodes:
         raise ValueError(f"endpoints missing: {source_id}→{target_id}")
 
@@ -320,7 +338,7 @@ async def assert_inferred_edges(
     if not isinstance(raw_edges, list) or not raw_edges:
         raise ValueError("edges list required")
 
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))
     inf = InferenceResult()
     for raw in raw_edges:
         if not isinstance(raw, dict):
@@ -406,13 +424,13 @@ async def deploy_ai_agent(entity: Dict[str, Any], params: Dict[str, Any], actor:
     target_domain = params.get("cross_domain_id") or params.get("target_domain_id", "")
 
     # Update source entity status
-    g_consulting = GraphIndex.load(source_domain) if source_domain else None
+    g_consulting = GraphIndex.load(source_domain, tenant_id=_graph_tenant(params)) if source_domain else None
     if g_consulting:
         g_consulting.update_entity_property(entity_id, "state", "deployed")
         g_consulting.update_entity_property(entity_id, "last_agent_deployed", agent_name)
 
     # Create AI_Agent entity in target domain
-    g_cloud = GraphIndex.load(target_domain) if target_domain else None
+    g_cloud = GraphIndex.load(target_domain, tenant_id=_graph_tenant(params)) if target_domain else None
     if g_cloud:
         agent_entity_id = f"AIAG-{entity_id.replace('GENAI-', '').replace('-', '')}"
         node = g_cloud.add_entity(agent_entity_id, agent_name, "AI_Agent")
@@ -457,7 +475,7 @@ async def trigger_emergency_response(entity: Dict[str, Any], params: Dict[str, A
     domain_id = entity.get("domain_id") or params.get("domain_id", "")
     if not domain_id:
         raise ValueError("domain_id is required")
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))
     em_id = f"EM-{entity_id.replace('TRIAL-','')}-{_dt.datetime.now().strftime('%H%M%S')}"
 
     # Create EmergencyReception entity
@@ -504,7 +522,7 @@ async def complete_bpr_delivery(entity: Dict[str, Any], params: Dict[str, Any], 
     domain_id = entity.get("domain_id") or params.get("domain_id", "")
     if not domain_id:
         raise ValueError("domain_id is required")
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))
     g.update_entity_property(entity_id, "state", "completed")
     g.update_entity_property(entity_id, "efficiency_improvement_rate", efficiency_rate)
     g.update_entity_property(entity_id, "man_hours_saved", man_hours_saved)
@@ -543,7 +561,7 @@ async def sync_overseas_status(entity: Dict[str, Any], params: Dict[str, Any], a
     domain_id = entity.get("domain_id") or params.get("domain_id", "")
     if not domain_id:
         raise ValueError("domain_id is required")
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))
     g.update_entity_property(entity_id, "consolidation_status", new_status)
     if employee_update:
         g.update_entity_property(entity_id, "employees", employee_update)

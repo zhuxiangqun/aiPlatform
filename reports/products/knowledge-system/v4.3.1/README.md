@@ -85,5 +85,6 @@ authority: supporting
 | [phase2-cross-tenant-wiki-graph-syscall-evidence.md](./phase2-cross-tenant-wiki-graph-syscall-evidence.md) | Batch K24 N09 wiki/graph syscall GraphIndex 租户（非 certified） |
 | [phase2-cross-tenant-wiki-ontology-engine-evidence.md](./phase2-cross-tenant-wiki-ontology-engine-evidence.md) | Batch K25 N09 wiki_ontology_engine GraphIndex 租户（非 certified） |
 | [phase2-cross-tenant-ontology-engine-evidence.md](./phase2-cross-tenant-ontology-engine-evidence.md) | Batch K26 N09 ontology_engine GraphIndex 租户（非 certified） |
+| [phase2-cross-tenant-builtin-handlers-evidence.md](./phase2-cross-tenant-builtin-handlers-evidence.md) | Batch K27 N09 builtin_handlers GraphIndex 租户（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
