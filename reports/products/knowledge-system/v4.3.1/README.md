@@ -89,5 +89,6 @@ authority: supporting
 | [phase2-cross-tenant-fde-service-evidence.md](./phase2-cross-tenant-fde-service-evidence.md) | Batch K28 N09 FDE service GraphIndex 租户（非 certified） |
 | [phase2-cross-tenant-facade-system-infra-evidence.md](./phase2-cross-tenant-facade-system-infra-evidence.md) | Batch K29 N09 facade/system/eval/infra GraphIndex 租户（非 certified） |
 | [phase2-cross-tenant-skills-pipeline-router-evidence.md](./phase2-cross-tenant-skills-pipeline-router-evidence.md) | Batch K30 N09 skills/pipeline/router GraphIndex 租户（非 certified） |
+| [phase2-cross-tenant-platform-fde-api-evidence.md](./phase2-cross-tenant-platform-fde-api-evidence.md) | Batch K31 N09 platform FDE API wave1 GraphIndex 租户（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

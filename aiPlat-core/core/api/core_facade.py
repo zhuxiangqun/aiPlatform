@@ -459,6 +459,19 @@ def get_context_bus() -> Any:
     return assemble_field_assessment
 
 
+def resolve_graph_tenant(params: Any = None) -> str:
+    """Resolve tenant for GraphIndex loads (CoreFacade canonical; N09 K31).
+
+    Args:
+        params: 可选 skill/上下文参数。
+
+    Returns:
+        非空租户 id。
+    """
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    return _resolve_graph_tenant(params)
+
+
 def get_skill_marketplace(db_path: str = "") -> Any:
     """Get SkillMarketplace (P1-A5 agentskills.io 对接, CoreFacade canonical 入口).
 

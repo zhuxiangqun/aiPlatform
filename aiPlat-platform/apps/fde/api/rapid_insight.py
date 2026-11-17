@@ -9,6 +9,7 @@ POST /re-patch        — 回补修正后重新三问
 """
 from __future__ import annotations
 
+from apps.fde.api.graph_tenant import fde_graph_tenant
 import logging
 import os
 import uuid
@@ -227,7 +228,7 @@ async def rapid_insight_answer(body: Dict[str, Any]):
 
         for d in [domain_id] + aligned:
             try:
-                g = GraphIndex.load(d)
+                g = GraphIndex.load(d, tenant_id=fde_graph_tenant())
                 if g._nodes:
                     for e in expected:
                         if e.lower() not in answer_lower:

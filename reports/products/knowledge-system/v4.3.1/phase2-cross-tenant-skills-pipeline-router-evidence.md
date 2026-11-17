@@ -38,5 +38,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- `graph_traversal.py` 模块 docstring 示例中的 `GraphIndex.load("ai-knowledge")`（非执行代码）
+- `graph_traversal.py` 模块 docstring 示例（非执行代码）
+- platform FDE API bare load → 见 Batch K31（wave1）及后续波次
 - N09 / 附录 N 全量认证（全域 0 泄漏仍未宣称）

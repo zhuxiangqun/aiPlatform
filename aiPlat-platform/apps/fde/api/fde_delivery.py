@@ -1,6 +1,7 @@
 """FDE Delivery — delivery feedback state transitions via GraphIndex (split from fde.py lines 2104-2233)."""
 from __future__ import annotations
 
+from apps.fde.api.graph_tenant import fde_graph_tenant
 from typing import Any
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
@@ -39,7 +40,7 @@ async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
         from core.api.core_facade import GraphIndex, DomainRouter
 
         tracking = DomainRouter().tracking_domain()
-        fd = GraphIndex.load(tracking)
+        fd = GraphIndex.load(tracking, tenant_id=fde_graph_tenant())
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
         if not session_node:
             for nid, node in list(fd._nodes.items()):

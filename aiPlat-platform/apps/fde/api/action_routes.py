@@ -5,6 +5,7 @@ Mounted at: /api/platform/apps/fde/actions
 """
 from __future__ import annotations
 
+from apps.fde.api.graph_tenant import fde_graph_tenant
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -146,7 +147,7 @@ async def list_graph_entities(
             header_role=x_aiplat_actor_role,
             scopes_header=x_aiplat_scopes,
         )
-        g = GraphIndex.load(domain)
+        g = GraphIndex.load(domain, tenant_id=fde_graph_tenant())
         nodes = g.get_entities_by_class(class_name) if class_name else list(g._nodes.values())
         out = []
         for n in nodes:
@@ -210,7 +211,7 @@ async def create_graph_entity(body: Dict[str, Any]):
             # Path C needs fault-diagnosis it-ops.yaml (not knowledge「基础设施」版)
             ensure_it_ops_fault_ontology()
             GraphIndex._loaded_instances.clear()
-            g = GraphIndex.load(domain_id)
+            g = GraphIndex.load(domain_id, tenant_id=fde_graph_tenant())
             meta = seed_it_ops_demo_graph(
                 g,
                 profile=seed_profile,
@@ -249,7 +250,7 @@ async def create_graph_entity(body: Dict[str, Any]):
 
             ensure_data_gov_ontology()
             GraphIndex._loaded_instances.clear()
-            g = GraphIndex.load(domain_id)
+            g = GraphIndex.load(domain_id, tenant_id=fde_graph_tenant())
             meta = seed_data_gov_demo_graph(g, ensure_ontology=False, seed_acl=True)
             g.save()
             return {
@@ -283,7 +284,7 @@ async def create_graph_entity(body: Dict[str, Any]):
     try:
         from core.api.core_facade import GraphIndex
         GraphIndex._loaded_instances.clear()
-        g = GraphIndex.load(domain_id)
+        g = GraphIndex.load(domain_id, tenant_id=fde_graph_tenant())
         tech_id = str(body.get("technician_id") or "TECH-DEMO-001")
         if with_tech:
             g.add_entity(tech_id, "演示安装师傅", "安装师傅", source_doc_id="ui-demo")
@@ -331,7 +332,7 @@ async def import_graph_payload(body: Dict[str, Any]):
             else:
                 ensure_connector_config(domain_id)
             GraphIndex._loaded_instances.clear()
-            g = GraphIndex.load(domain_id)
+            g = GraphIndex.load(domain_id, tenant_id=fde_graph_tenant())
             rows = body.get("rows") if isinstance(body.get("rows"), list) else None
             relation_rows = (
                 body.get("relation_rows")
@@ -376,7 +377,7 @@ async def import_graph_payload(body: Dict[str, Any]):
 
             ensure_it_ops_fault_ontology()
             GraphIndex._loaded_instances.clear()
-            g = GraphIndex.load(domain_id)
+            g = GraphIndex.load(domain_id, tenant_id=fde_graph_tenant())
             meta = import_it_ops_alert_payload(
                 g,
                 payload,
@@ -393,7 +394,7 @@ async def import_graph_payload(body: Dict[str, Any]):
                     detail=f"domain {domain_id} has empty allowed_classes in connector.json",
                 )
             GraphIndex._loaded_instances.clear()
-            g = GraphIndex.load(domain_id)
+            g = GraphIndex.load(domain_id, tenant_id=fde_graph_tenant())
             meta = import_abox_payload(
                 g,
                 payload,
