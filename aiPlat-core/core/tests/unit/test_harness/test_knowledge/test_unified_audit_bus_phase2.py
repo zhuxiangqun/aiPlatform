@@ -232,6 +232,87 @@ async def test_action_store_physical_tenant_column(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_action_store_tenant_backfill(tmp_path):
+    """J9：存量空物理列从 params 回填；幂等；无 params 租户保持空；跨租户空。"""
+    import aiosqlite
+    import json
+
+    from core.harness.infrastructure.action_store import ActionStore
+
+    store_db = str(tmp_path / "action_store_backfill.sqlite3")
+    store = ActionStore(store_db)
+    await store.initialize()
+    # 模拟 J8 前遗留行：物理列空，仅 params 有 tenant
+    async with aiosqlite.connect(store_db) as db:
+        await db.execute(
+            """
+            INSERT INTO action_audit (
+                audit_id, action_id, entity_id, domain_id, tenant_id,
+                params, result_status, actor
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "aud_legacy_t1",
+                "knowledge_revision:legacy",
+                "e_legacy",
+                "d1",
+                "",
+                json.dumps({"tenant_id": "t_legacy"}, ensure_ascii=False),
+                "executed",
+                "sys",
+            ),
+        )
+        await db.execute(
+            """
+            INSERT INTO action_audit (
+                audit_id, action_id, entity_id, domain_id, tenant_id,
+                params, result_status, actor
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "aud_legacy_empty",
+                "knowledge_revision:orphan",
+                "e_orphan",
+                "d1",
+                "",
+                json.dumps({"note": "no-tenant"}, ensure_ascii=False),
+                "executed",
+                "sys",
+            ),
+        )
+        await db.commit()
+
+    first = await store.backfill_tenant_id()
+    assert first["updated"] == 1
+    rows = await store.list_audit(tenant_id="t_legacy", limit=50)
+    assert len(rows) == 1
+    assert rows[0].get("tenant_id") == "t_legacy"
+    assert rows[0].get("audit_id") == "aud_legacy_t1"
+    # 无 params.tenant_id 的行不猜测默认租户
+    empty = await store.list_audit(entity_id="e_orphan", limit=50)
+    assert len(empty) == 1
+    assert (empty[0].get("tenant_id") or "") == ""
+    second = await store.backfill_tenant_id()
+    assert second["updated"] == 0
+    assert second["remaining_empty"] >= 1
+    view = await list_unified_audit_events(
+        tenant_id="t_legacy",
+        streams=["action_store"],
+        action_store_db_path=store_db,
+        limit=50,
+    )
+    assert view["certified"] is False
+    assert len(view["events"]) == 1
+    other = await list_unified_audit_events(
+        tenant_id="other",
+        streams=["action_store"],
+        action_store_db_path=store_db,
+        limit=50,
+    )
+    assert other["count"] == 0
+
+
+@pytest.mark.asyncio
 async def test_materialize_and_view_bus_stream(harness):
     """materialize 三流进 bus；view streams=bus 可见（热路径后幂等 skip 亦可）。"""
     ledger, pkg_db, act_db, bus_db = harness

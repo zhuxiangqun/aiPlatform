@@ -145,6 +145,54 @@ class ActionStore:
                 )
             """)
             await db.commit()
+        # 为什么：N24 J9 — initialize 后幂等回填物理 tenant_id（生产 caller）
+        await self.backfill_tenant_id()
+
+    async def backfill_tenant_id(self, *, batch_limit: int = 5000) -> Dict[str, Any]:
+        """将空物理 ``tenant_id`` 从 ``params.tenant_id`` 回填（幂等；不改写 params）。
+
+        Args:
+            batch_limit: 单次最多更新行数（防巨型库一次锁太久）。
+
+        Returns:
+            ``updated`` / ``remaining_empty`` / ``batch_limit`` 统计；无 params 租户的行保持空列。
+        """
+        import aiosqlite
+
+        lim = max(1, min(int(batch_limit or 5000), 100_000))
+        updated = 0
+        remaining_empty = 0
+        async with aiosqlite.connect(self.db_path) as db:
+            # 为什么：仅回填「物理列空且 params 有非空 tenant_id」；不猜测默认租户
+            cur = await db.execute(
+                """
+                UPDATE action_audit
+                SET tenant_id = trim(json_extract(params, '$.tenant_id'))
+                WHERE audit_id IN (
+                    SELECT audit_id FROM action_audit
+                    WHERE COALESCE(tenant_id, '') = ''
+                      AND json_extract(params, '$.tenant_id') IS NOT NULL
+                      AND trim(COALESCE(json_extract(params, '$.tenant_id'), '')) != ''
+                    LIMIT ?
+                )
+                """,
+                (lim,),
+            )
+            updated = int(cur.rowcount or 0)
+            await db.commit()
+            async with db.execute(
+                """
+                SELECT COUNT(*) FROM action_audit
+                WHERE COALESCE(tenant_id, '') = ''
+                """
+            ) as c2:
+                row = await c2.fetchone()
+                remaining_empty = int((row[0] if row else 0) or 0)
+        return {
+            "updated": updated,
+            "remaining_empty": remaining_empty,
+            "batch_limit": lim,
+        }
 
     # ═══════════════════════════════════════════════════════
     # Audit

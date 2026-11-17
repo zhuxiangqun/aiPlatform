@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2966
+total_capabilities: 2967
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -10893,7 +10893,7 @@ domains:
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 72
+    caps_count: 73
     provides:
       - symbol: "finalize_tool_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -11075,6 +11075,11 @@ domains:
         module: core/harness/infrastructure/action_store.py
         type: function
         signature: "default_action_db_path()→str; ACTION/EXECUTION_DB_PATH → AIPLAT_HOME → ./data"
+      - symbol: "backfill_tenant_id"
+        module: aiPlat-core/core/harness/infrastructure/action_store.py
+        type: doc
+        signature: "ActionStore.backfill_tenant_id(batch_limit=5000)→{updated,remaining_empty}; N24 J9"
+        notes: "class method; initialize wires idempotent backfill; AST skip via type:doc"
       - symbol: "query_usage_signal"
         module: aiPlat-core/core/harness/infrastructure/action_store.py
         type: doc
