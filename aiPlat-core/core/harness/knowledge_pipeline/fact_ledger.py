@@ -3861,6 +3861,7 @@ _N09_CASES = (
     "graphrag_no_leak",
     "graphrag_caller_passthrough",
     "graphindex_no_leak",
+    "graph_write_tenant",
 )
 
 
@@ -4339,6 +4340,48 @@ async def run_cross_tenant_isolation_suite(
                 "detail": "" if gi_ok else "graphindex_leak_or_miss",
             }
         )
+
+        # K6：图写入路径强制 tenant（缺省拒绝；写入落到对应租户库）
+        from core.harness.knowledge_pipeline.extractor import (
+            write_extraction_to_graph_index,
+        )
+
+        GraphIndex._loaded_instances.clear()
+        denied = write_extraction_to_graph_index(
+            probe_domain,
+            [{"name": "N09WriteDenied", "class_type": "概念"}],
+            [],
+            source_doc_id="n09-k6-denied",
+            tenant_id="",
+        )
+        write_name = "N09WriteSecret"
+        wrote = write_extraction_to_graph_index(
+            probe_domain,
+            [{"name": write_name, "class_type": "概念"}],
+            [],
+            source_doc_id="n09-k6-write",
+            tenant_id=tenant_a,
+        )
+        GraphIndex._loaded_instances.clear()
+        wrote_a = gr._find_node(write_name, probe_domain, tenant_id=tenant_a)
+        wrote_b = gr._find_node(write_name, probe_domain, tenant_id=tenant_b)
+        # 为什么：created_entities 是 entity_id slug；跨租户断言以 _find_node 为准
+        gw_ok = (
+            denied.get("error") == "tenant_id_required"
+            and denied.get("ok") is False
+            and wrote.get("ok") is True
+            and wrote.get("tenant_id") == tenant_a
+            and wrote_a is not None
+            and wrote_a.get("name") == write_name
+            and wrote_b is None
+        )
+        cases.append(
+            {
+                "id": "graph_write_tenant",
+                "ok": gw_ok,
+                "detail": "" if gw_ok else "graph_write_tenant_miss",
+            }
+        )
         GraphIndex._loaded_instances.clear()
     finally:
         if prev_kb_tenants is None:
@@ -4372,7 +4415,7 @@ async def run_cross_tenant_isolation_suite(
         "n09_full_conformance": False,
         "note": (
             "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
-            "GraphIndex probes; not global zero-leak certification"
+            "GraphIndex+graph_write probes; not global zero-leak certification"
         ),
     }
 
@@ -4410,7 +4453,7 @@ def evaluate_cross_tenant_gate(
         "n09_full_conformance": False,
         "note": (
             "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
-            "GraphIndex deepen; not platform-wide zero-leak certified"
+            "GraphIndex+graph_write deepen; not platform-wide zero-leak certified"
         ),
     }
 

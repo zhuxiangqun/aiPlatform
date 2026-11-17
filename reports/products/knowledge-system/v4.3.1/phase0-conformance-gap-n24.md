@@ -26,7 +26,7 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | 6 | Gateway 查询契约 | partial | F.1 契约+confidence_factors（`phase2-gateway-contract-evidence.md`）；非统一入口/certified | 有实现无证据 | W6 |
 | 7 | 权限召回前过滤 | partial | ObjectSet + link.traverse 召回前 ACL | 有查询无权限 | W6/W8 |
 | 8 | 动作 Policy/Approval/Audit | partial | L1+幂等；裸 bypass 拒绝（仅 approve 重入） | 有动作无门禁 | W5/W7 |
-| 9 | 跨租户 0 泄漏 | partial | FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ caller 透传（K4）+ GraphIndex（K5；`phase2-cross-tenant-graphindex-evidence.md`）；未认证全域 0 | 有实现无证据 | W8 |
+| 9 | 跨租户 0 泄漏 | partial | FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ caller 透传（K4）+ GraphIndex（K5）+ 图写入强制（K6；`phase2-cross-tenant-graph-write-evidence.md`）；未认证全域 0 | 有实现无证据 | W8 |
 | 10 | 评测定义/数据集/门槛 | partial | Confidence Calibration 附录 O | 有实现无证据 | W10 |
 | 11 | 迁移/回滚方案 | partial | Migration 双写/对账/回滚演练；切写未授权 | 有实现无证据 | W10 |
 | 12 | Fact 状态机 | partial | 写入硬门 + transition 审计（`phase2-fact-state-evidence.md`） | 有实现无证据 | W3 |

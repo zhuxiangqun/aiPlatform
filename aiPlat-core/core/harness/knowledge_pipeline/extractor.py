@@ -728,6 +728,7 @@ def write_extraction_to_graph_index(
     relations: List[Any],
     *,
     source_doc_id: str = "extract-confirm",
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """Path B (doc confirm): write extracted entities/relations into GraphIndex.
 
@@ -736,11 +737,28 @@ def write_extraction_to_graph_index(
         entities: entities 参数。
         relations: relations 参数。
         source_doc_id: source_doc 标识。
+        tenant_id: 租户（必填）；写入对应租户 GraphIndex，禁止静默落到 default。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
+    tid = (tenant_id or "").strip()
+    # 为什么：N09 K6 — 图写入必须显式租户，避免 ABox 落到 default 库造成跨租户污染
+    if not tid:
+        return {
+            "ok": False,
+            "error": "tenant_id_required",
+            "domain_id": domain_id,
+            "created_entities": [],
+            "relations": [],
+            "skipped": [{"id": "?", "reason": "tenant_id_required"}],
+            "primary_entity_id": "",
+            "source_doc_id": source_doc_id,
+            "tenant_id": "",
+        }
+
     GraphIndex._loaded_instances.clear()
-    g = GraphIndex.load(domain_id) if domain_id else GraphIndex.load("default")
+    did = (domain_id or "").strip() or "default"
+    g = GraphIndex.load(did, tenant_id=tid)
 
     created: List[str] = []
     skipped: List[Dict[str, str]] = []
@@ -792,7 +810,9 @@ def write_extraction_to_graph_index(
     GraphIndex._loaded_instances.clear()
     primary = created[0] if created else ""
     return {
-        "domain_id": domain_id,
+        "ok": True,
+        "domain_id": did,
+        "tenant_id": tid,
         "created_entities": sorted(set(created)),
         "relations": relations_ok,
         "skipped": skipped,
@@ -988,11 +1008,14 @@ class PendingExtractionStore:
 
         if write_graph and entities:
             try:
+                # 为什么：pending 行可能无 tenant 列；缺省 default 仍显式传入，禁止省略
+                write_tenant = str(row_d.get("tenant_id") or "default").strip() or "default"
                 receipt["graph_write"] = write_extraction_to_graph_index(
                     domain_id,
                     entities,
                     relations,
                     source_doc_id=f"extract:{extraction_id}",
+                    tenant_id=write_tenant,
                 )
             except Exception:
                 logger.warning(

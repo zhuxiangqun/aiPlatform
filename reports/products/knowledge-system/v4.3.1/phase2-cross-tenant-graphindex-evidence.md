@@ -39,5 +39,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- 全量图写入/投影路径强制 tenant 校验
+- 全量图写入/投影路径强制 tenant 校验（extract→GraphIndex 写路径见 Batch K6：`phase2-cross-tenant-graph-write-evidence.md`）
 - N09 / 附录 N 全量认证

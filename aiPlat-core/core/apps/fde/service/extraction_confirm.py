@@ -80,13 +80,20 @@ async def run_confirm_extraction(
             ents = _parse_list(row.get("entities_json"))
             rels = _parse_list(row.get("relations_json"))
             domain_id = str(row.get("domain_id") or receipt.get("domain_id") or "default")
+            tenant_id = str(
+                row.get("tenant_id")
+                or receipt.get("tenant_id")
+                or "default"
+            ).strip() or "default"
             if ents:
                 try:
+                    # 为什么：N09 K6 — confirm 写图必须带租户，与 Fact 投影一致
                     graph_write = write_extraction_to_graph_index(
                         domain_id,
                         ents,
                         rels,
                         source_doc_id=f"extract:{eid}",
+                        tenant_id=tenant_id,
                     )
                 except Exception:
                     logger.warning(
@@ -100,11 +107,6 @@ async def run_confirm_extraction(
             )
             if _ot_seed.is_file():
                 try:
-                    tenant_id = str(
-                        row.get("tenant_id")
-                        or receipt.get("tenant_id")
-                        or "default"
-                    )
                     summary = f"confirmed extraction {eid} ({len(ents)} entities)"
                     fact_ledger = await record_extraction_as_claim(
                         tenant_id=tenant_id,
