@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T20:41:00+08:00",
+  "reviewed_at": "2026-11-17T21:14:41+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "0afb910549460e2485738e7c2dd2e978bc398779971040889e6d101770145d99",
-  "head_sha": "d9e32bcdc31c81e88e70713844a4055865b5eb9f",
+  "diff_sha256": "44b5523c1ae8dbf6c9e9550fe60a6f7d665aa1c0113a0c4d97032ecc84c87544",
+  "head_sha": "b8459b5ac783fae349386c738a1ba35b6d20b98a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J9 ActionStore.backfill_tenant_id from params; initialize wires idempotent. Residual: rows without params.tenant_id stay empty; N24 not certified."
+  "note": "K1 extends N09 suite to 6 probes; Wiki/KB cross-tenant remains intentional out-of-scope. certified/n09_full_conformance stay false. Local lock only; CI needs non-author Approve."
 }
