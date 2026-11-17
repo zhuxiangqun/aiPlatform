@@ -41,7 +41,7 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | 21 | 防假绿 | partial | OCS/校准诚实锁 | 有实现无证据 | W6/W10 |
 | 22 | 实例/字段级 ACL | partial | ObjectSet + link.traverse ABox ACL | 有查询无权限 | W8 |
 | 23 | OCS 完整度 | partial | §13.4 覆盖计分 + gate | 有实现无证据 | W10 |
-| 24 | 版本/变更/审计 | partial | Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + Action 桥接 + HTTP 薄路由；非回滚 UI/certified | 有实现无证据 | W2–W3 |
+| 24 | 版本/变更/审计 | partial | Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + Action 桥接 + HTTP + 管理端薄 UI；非全量总线/certified | 有实现无证据 | W2–W3 |
 
 ## 汇总（相对 2026-11-15 基线）
 

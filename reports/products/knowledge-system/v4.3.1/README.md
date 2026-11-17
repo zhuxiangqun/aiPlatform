@@ -50,5 +50,6 @@ authority: supporting
 | [phase2-restore-approval-evidence.md](./phase2-restore-approval-evidence.md) | Batch I3 N24 审批式 Restore（非回滚 UI/非 certified） |
 | [phase2-revision-action-bridge-evidence.md](./phase2-revision-action-bridge-evidence.md) | Batch I4 N24 Revision→ActionExecution 桥接（非全量总线/非 certified） |
 | [phase2-revision-restore-http-evidence.md](./phase2-revision-restore-http-evidence.md) | Batch J1 N24 Revision Restore HTTP 薄路由（非管理端 UI/非 certified） |
+| [phase2-revision-restore-ui-evidence.md](./phase2-revision-restore-ui-evidence.md) | Batch J2 N24 Revision Restore 管理端薄 UI（非全量总线/非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

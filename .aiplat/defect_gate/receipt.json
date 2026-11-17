@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T15:24:01+08:00",
+  "reviewed_at": "2026-11-17T15:56:44+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "4ec74e833ebb45e85b80bb46a69b51de12eb0ed3e2f94278879c6155f3ea69d8",
-  "head_sha": "7ca0cddd16f548359acdf1a8f4460bb48f737d8e",
+  "diff_sha256": "aa04cbfd1aa896616aaf575af2130fe6be2374b7ed7852f1565dff7cd2c6b351",
+  "head_sha": "c93e3b2b162d358f2b01b8156aa7ca185d56e475",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J1 HTTP routes + AUTO-STATS/whitepaper sync only; gate certified false; no rollback UI."
+  "note": "J2 UI + registry caps_count/matrix sync; gate certified false; no Package+Action write bus."
 }

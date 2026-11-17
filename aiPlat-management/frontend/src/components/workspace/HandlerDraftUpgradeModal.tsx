@@ -1,7 +1,7 @@
 /** §5.4 升格页：草稿做什么 / 权限（可改）/ SOP 差异 / 可选试跑 → 确认启用或丢弃。 */
 import React, { useEffect, useState } from 'react';
-import { Button, Input, Modal, toast } from '../ui';
-import { toastGateError, workspaceSkillApi, type Skill } from '../../services';
+import { Button, Input, Modal, toast, toastGateError } from '../ui';
+import { workspaceSkillApi, type Skill } from '../../services';
 
 type Preview = {
   ok?: boolean;
