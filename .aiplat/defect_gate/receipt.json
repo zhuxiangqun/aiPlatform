@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:24:01+08:00",
+  "reviewed_at": "2026-11-18T02:30:33+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "b709bd390b34701a2507607822671eec4389c34a539c750973bc188669e08b0f",
-  "head_sha": "739b379c8412e2109805d4f4ae271ae9c2ae5ea5",
+  "diff_sha256": "ba3bd4dd1c91c17bcd242845a95261ae5c9300f7b7f1ccaec3864a453bf6a5c6",
+  "head_sha": "f8060455f631a430fca6f7e1b47cb5a52c250eed",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K20 threads tenant_id through OCS C5 / OntologyAuditor / validate_domain GraphIndex.load; diagnostics ontology-audit binds actor_from_http. Residual: context_bus/evolver/SECI/orchestrated_retrieval bare loads; system_health audit_all_domains may still default. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K21 context_bus uses _resolve_graph_tenant(params|ActiveRequestContext); system_health aggregates audit/gap via list_kb_tenant_ids. Residual: evolver/SECI/orchestrated_retrieval/path_planner/candidate_pool bare loads. certified stays false. Local lock only; CI needs non-author Approve."
 }
