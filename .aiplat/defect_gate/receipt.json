@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T21:59:28+08:00",
+  "reviewed_at": "2026-11-17T22:10:03+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "8969cd9cd116596a92ca53ca8a3e5e354dd2dc879b0db910fb9249dc2c40118f",
-  "head_sha": "e5fcea494c27aaf1495c62c5ccd15d29fcc8ce38",
+  "diff_sha256": "cbff4f407e554e54fa0a1cfb5e5b80fa9eb451e5bb8901a84ea73fb81fa84990",
+  "head_sha": "e473ab8c7746354dc0ca4df3a3033599a1d53779",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K4 wires CRAG/governance/HTTP locate tenant_id into GraphRAGRetriever and adds graphrag_caller_passthrough (10 probes). GraphIndex node-level tenant remains intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K5 threads tenant_id through GraphRAG graph layer into GraphIndex.load and adds graphindex_no_leak (11 probes). Full graph write-path tenant enforcement remains intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
 }
