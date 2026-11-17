@@ -15789,6 +15789,11 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_fact_revision_suite,
     validate_gateway_response,
 )
+from core.harness.knowledge_pipeline.unified_audit_view import (  # noqa: boundary
+    evaluate_unified_audit_view_gate,
+    list_unified_audit_events,
+    run_unified_audit_view_suite,
+)
 from core.harness.knowledge_pipeline.fact_projector import project_facts_to_graph  # noqa: boundary
 from core.harness.knowledge_pipeline.object_set import ObjectSetRequest  # noqa: boundary
 from core.harness.knowledge_pipeline.link_traverse import LinkTraverseRequest  # noqa: boundary
@@ -16721,6 +16726,72 @@ def evaluate_fact_revision_action_bridge_gate(suite: dict | None = None) -> dict
         gate 结果。
     """
     return evaluate_revision_action_bridge_gate(suite)
+
+
+async def list_fact_unified_audit_events(
+    *,
+    tenant_id: str,
+    streams: str = "",
+    package_id: str = "",
+    action_id_prefix: str = "",
+    entity_type: str = "",
+    entity_id: str = "",
+    limit: int = 100,
+) -> dict:
+    """CoreFacade：N24 Package+Action+revision_audit 只读汇合视图（非全量总线）。
+
+    Args:
+        tenant_id: 租户。
+        streams: 逗号分隔流名；空则默认三流。
+        package_id: Package 流可选过滤。
+        action_id_prefix: Action 流可选前缀。
+        entity_type: revision 流可选实体类型。
+        entity_id: revision 流可选实体 ID。
+        limit: 最大条数。
+
+    Returns:
+        汇合事件字典（certified 恒 false）。
+    """
+    stream_list = [p.strip() for p in (streams or "").split(",") if p.strip()] or None
+    return await list_unified_audit_events(
+        tenant_id=tenant_id,
+        streams=stream_list,
+        package_id=package_id,
+        action_id_prefix=action_id_prefix,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        limit=limit,
+        fact_ledger=get_fact_ledger(),
+    )
+
+
+async def run_fact_unified_audit_view_suite(
+    *,
+    tenant_id: str = "n24-unified-audit-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N24 统一审计视图套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_unified_audit_view_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_unified_audit_view_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N24 统一审计视图门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_unified_audit_view_gate(suite)
 
 
 async def fact_ledger_project_to_graph(

@@ -288,6 +288,53 @@ def publish_package(
         conn.close()
 
 
+def list_package_versions(
+    *,
+    tenant_id: str,
+    package_id: str = "",
+    limit: int = 100,
+    db_path: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """按租户列出 Ontology Package 版本行（只读；跨租户空）。
+
+    Args:
+        tenant_id: 租户（必填）。
+        package_id: 可选包 id 过滤。
+        limit: 最大条数（1–500）。
+        db_path: 可选库路径。
+    """
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return []
+    lim = max(1, min(int(limit or 100), 500))
+    pid = (package_id or "").strip()
+    conn = _connect(db_path)
+    try:
+        if pid:
+            rows = conn.execute(
+                """
+                SELECT * FROM ontology_packages
+                WHERE tenant_id=? AND package_id=?
+                ORDER BY published_at ASC, version ASC
+                LIMIT ?
+                """,
+                (tid, pid, lim),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM ontology_packages
+                WHERE tenant_id=?
+                ORDER BY published_at ASC, package_id ASC, version ASC
+                LIMIT ?
+                """,
+                (tid, lim),
+            ).fetchall()
+        return [_row_to_dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
 def get_package(
     package_id: str,
     *,
