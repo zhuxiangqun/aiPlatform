@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T07:21:32+08:00",
+  "reviewed_at": "2026-11-17T09:01:58+08:00",
   "base_ref": "origin/main",
   "merge_base": "be2f2c7b77835db2a68797e23fae74d5ebf49dd7",
-  "diff_sha256": "ca2808fe2a3495ec3bb04655f3067a82f90214abbc7f5da1fb08444afe4ebc1d",
-  "head_sha": "8a89b634146177199eb1e9faf021ff99cd618431",
+  "diff_sha256": "68945a1cbca37a0d04d3cbb982f7c61e2e01198fa728904a49b06659e5ef6942",
+  "head_sha": "28c5a4e2f222a850b2755214bdf6bc343d355fc4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Batch G2 N24 Fact Revision: bump+archive on put_fact; suite/gate honesty locks; Facade wired. Residual: Claim/Source revision and rollback UI still open; certified false."
+  "note": "Batch G2 N24 + source_policy revision bump. Residual: Claim/Source unified revision and rollback UI open; certified false."
 }
