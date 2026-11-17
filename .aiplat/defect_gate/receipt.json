@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:04:14+08:00",
+  "reviewed_at": "2026-11-18T02:12:04+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "848a715c55bad1c896b99f5fa380da78e62472d3b740fd56d5294999036f7893",
-  "head_sha": "01d6bd66f5b6870c5efde872dbd331e084078345",
+  "diff_sha256": "f090105c2d2b1fd2cee0a565edb8f1f7f1ac33db678109f8bcaca4f0efd6144c",
+  "head_sha": "4f0d59858c3eaa1747332232e556d588721957d9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K17 binds drift-status/rebuild tenant via actor_from_http; query tenant_id removed. Residual: metric/scoring/scenario/governance CRUD tenant. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K18 binds metric/scoring/scenario/governance CRUD to resolve_request_tenant; metric SQL filters tenant_id; scoring GraphIndex.load(..., tenant_id=). Residual: governance run_cycle/maturity internal GraphIndex full thread. certified stays false. Local lock only; CI needs non-author Approve."
 }
