@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T15:58:13+08:00",
+  "reviewed_at": "2026-11-17T16:07:04+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "68981cac75f086d6780b0bc51e3853c3094ee9c4d25b279f9d4b87013eea5234",
-  "head_sha": "8b1f5c92c35b1f1837142549a9f6a7896675f364",
+  "diff_sha256": "c962308a026f76dbec028bb646583b643b83aaf6c2f44abd9da75fba49dbe63c",
+  "head_sha": "a2cf07eee5ed01b9aa57c148f81c7123a9a935e4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J3 rebased on J2 registry fix; read-only unified audit; certified false."
+  "note": "J4 UI-only: UnifiedAuditPanel→J3 HTTP; honesty locks on list/suite/gate; no write bus. Local lock only."
 }
