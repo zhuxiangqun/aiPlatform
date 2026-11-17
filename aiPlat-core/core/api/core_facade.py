@@ -7662,46 +7662,58 @@ def get_bottlenecks(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
     return _gb(domain_id, limit)
 
 
-def get_state_distribution(domain_id: str) -> List[Dict[str, Any]]:
+def get_state_distribution(
+    domain_id: str, *, tenant_id: str = "default"
+) -> List[Dict[str, Any]]:
     """Count instances per class per state.
 
     Args:
         domain_id: domain 标识。
+        tenant_id: 租户；透传 process_monitor（N09 K11）。
     """
     from core.harness.knowledge.process_monitor import state_distribution as _sd
-    return _sd(domain_id)
+    return _sd(domain_id, tenant_id=tenant_id)
 
 
-def get_bottleneck_analysis(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+def get_bottleneck_analysis(
+    domain_id: str, limit: int = 10, *, tenant_id: str = "default"
+) -> List[Dict[str, Any]]:
     """Find entities stuck in their current state longest.
 
     Args:
         domain_id: domain 标识。
         limit: 返回条数上限。
+        tenant_id: 租户；透传 process_monitor（N09 K11）。
     """
     from core.harness.knowledge.process_monitor import bottleneck_analysis as _ba
-    return _ba(domain_id, limit)
+    return _ba(domain_id, limit, tenant_id=tenant_id)
 
 
-def get_sla_violations(domain_id: str) -> List[Dict[str, Any]]:
+def get_sla_violations(
+    domain_id: str, *, tenant_id: str = "default"
+) -> List[Dict[str, Any]]:
     """Get SLA violations triggered by time_elapsed transitions.
 
     Args:
         domain_id: domain 标识。
+        tenant_id: 租户；透传 process_monitor（N09 K11）。
     """
     from core.harness.knowledge.process_monitor import sla_violations as _sv
-    return _sv(domain_id)
+    return _sv(domain_id, tenant_id=tenant_id)
 
 
-def get_trend_data(domain_id: str, days: int = 7) -> List[Dict[str, Any]]:
+def get_trend_data(
+    domain_id: str, days: int = 7, *, tenant_id: str = "default"
+) -> List[Dict[str, Any]]:
     """Daily state transition trend data.
 
     Args:
         domain_id: domain 标识。
         days: days 参数。
+        tenant_id: 租户；透传 process_monitor（N09 K11）。
     """
     from core.harness.knowledge.process_monitor import trend_data as _td
-    return _td(domain_id, days)
+    return _td(domain_id, days, tenant_id=tenant_id)
 
 
 # ── Internal helpers ──

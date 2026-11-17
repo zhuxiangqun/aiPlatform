@@ -41,6 +41,6 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- process_monitor / `state_changes.db` 缺 `tenant_id` 列（跨租户读隔离未做）
+- process_monitor / `state_changes` 物理 tenant（见 Batch K11：`phase2-cross-tenant-process-monitor-evidence.md`）
 - metric/scoring/scenario/governance 旁路 CRUD
 - N09 / 附录 N 全量认证

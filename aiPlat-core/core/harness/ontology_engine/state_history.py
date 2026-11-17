@@ -2,7 +2,7 @@
 State History Persistence — SQLite-based storage for state machine transitions.
 
 Schema:
-  state_changes(id, domain_id, entity_name, class_name,
+  state_changes(id, domain_id, tenant_id, entity_name, class_name,
                 from_state, to_state, trigger_type, transition_desc,
                 doc_id, chunk_id, timestamp, tags)
 
@@ -41,6 +41,7 @@ def _ensure_schema(conn) -> None:
         CREATE TABLE IF NOT EXISTS state_changes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             domain_id TEXT NOT NULL,
+            tenant_id TEXT NOT NULL DEFAULT 'default',
             entity_name TEXT NOT NULL,
             class_name TEXT NOT NULL,
             from_state TEXT NOT NULL,
@@ -53,8 +54,21 @@ def _ensure_schema(conn) -> None:
             tags TEXT DEFAULT '[]'
         )
     """)
+    # 为什么：N09 K11 — 存量库补物理 tenant_id，空值视为 default
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(state_changes)").fetchall()}
+    if "tenant_id" not in cols:
+        conn.execute(
+            "ALTER TABLE state_changes ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'"
+        )
+    conn.execute(
+        "UPDATE state_changes SET tenant_id = 'default' "
+        "WHERE tenant_id IS NULL OR trim(tenant_id) = ''"
+    )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_domain_entity ON state_changes(domain_id, entity_name)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_domain_ts ON state_changes(domain_id, timestamp)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tenant_domain ON state_changes(tenant_id, domain_id)"
+    )
     # Feedback table for L5 satisfaction scoring
     conn.execute("""
         CREATE TABLE IF NOT EXISTS feedback (
@@ -98,6 +112,7 @@ def record_transition(
     to_state: str,
     trigger_type: str,
     *,
+    tenant_id: str = "default",
     transition_desc: str = "",
     doc_id: str = "",
     chunk_id: str = "",
@@ -112,19 +127,21 @@ def record_transition(
         from_state: from_state 参数。
         to_state: to_state 参数。
         trigger_type: trigger_type 参数。
+        tenant_id: 租户；写入 state_changes 物理列（N09 K11）。
         transition_desc: transition_desc 参数。
         doc_id: doc 标识。
         chunk_id: chunk 标识。
         tags: tags 参数。
     """
+    tid = (tenant_id or "").strip() or "default"
     with _lock:
         get_conn().execute(
             """INSERT INTO state_changes
-               (domain_id, entity_name, class_name, from_state, to_state,
+               (domain_id, tenant_id, entity_name, class_name, from_state, to_state,
                 trigger_type, transition_desc, doc_id, chunk_id, timestamp, tags)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                domain_id, entity_name, class_name, from_state, to_state,
+                domain_id, tid, entity_name, class_name, from_state, to_state,
                 trigger_type, transition_desc, doc_id, chunk_id,
                 _time.time(), _json.dumps(tags or [], ensure_ascii=False),
             ),
@@ -132,41 +149,49 @@ def record_transition(
         get_conn().commit()
 
 
-def get_entity_history(domain_id: str, entity_name: str) -> List[Dict[str, Any]]:
+def get_entity_history(
+    domain_id: str, entity_name: str, *, tenant_id: str = "default"
+) -> List[Dict[str, Any]]:
     """Get all state changes for a specific entity in a domain.
 
     Args:
         domain_id: domain 标识。
         entity_name: entity_name 参数。
+        tenant_id: 租户；召回前过滤（N09 K11）。
     """
+    tid = (tenant_id or "").strip() or "default"
     with _lock:
         rows = get_conn().execute(
             """SELECT id, entity_name, class_name, from_state, to_state,
                       trigger_type, transition_desc, doc_id, chunk_id, timestamp, tags
                FROM state_changes
-               WHERE domain_id = ? AND entity_name = ?
+               WHERE domain_id = ? AND tenant_id = ? AND entity_name = ?
                ORDER BY timestamp""",
-            (domain_id, entity_name),
+            (domain_id, tid, entity_name),
         ).fetchall()
         return [_row_to_dict(r) for r in rows]
 
 
-def get_domain_history(domain_id: str, limit: int = 200) -> List[Dict[str, Any]]:
+def get_domain_history(
+    domain_id: str, limit: int = 200, *, tenant_id: str = "default"
+) -> List[Dict[str, Any]]:
     """Get recent state changes for a domain.
 
     Args:
         domain_id: domain 标识。
         limit: 返回条数上限。
+        tenant_id: 租户；召回前过滤（N09 K11）。
     """
+    tid = (tenant_id or "").strip() or "default"
     with _lock:
         rows = get_conn().execute(
             """SELECT id, entity_name, class_name, from_state, to_state,
                       trigger_type, transition_desc, doc_id, chunk_id, timestamp, tags
                FROM state_changes
-               WHERE domain_id = ?
+               WHERE domain_id = ? AND tenant_id = ?
                ORDER BY timestamp DESC
                LIMIT ?""",
-            (domain_id, limit),
+            (domain_id, tid, limit),
         ).fetchall()
         return [_row_to_dict(r) for r in rows]
 
