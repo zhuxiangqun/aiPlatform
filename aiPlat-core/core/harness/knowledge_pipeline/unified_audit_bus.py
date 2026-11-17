@@ -1,7 +1,7 @@
-"""N24 Unified Audit Bus（Batch J5）— append-only 写总线最小切片。
+"""N24 Unified Audit Bus（Batch J5–J7）— append-only 写总线。
 
 职责：租户隔离的统一审计事件落盘；幂等 append；从只读汇合 materialize；suite/gate 诚实锁。
-非目标：不合并 ActionStore.action_audit；不强制 Package/Action 热路径写 bus；不宣称 N24 certified。
+非目标：不宣称 N24 certified；不改写 ActionStore 历史行。
 """
 from __future__ import annotations
 
@@ -18,7 +18,8 @@ _N24_UNIFIED_AUDIT_BUS_CASES = (
     "revision_emit_to_bus",
     "package_hotpath_to_bus",
     "action_hotpath_to_bus",
-    "materialize_three_streams",
+    "action_store_hotpath_to_bus",
+    "materialize_source_streams",
     "cross_tenant_empty",
 )
 
@@ -258,24 +259,28 @@ async def materialize_unified_audit_from_view(
     action_id_prefix: str = "",
     entity_type: str = "",
     entity_id: str = "",
+    domain_id: str = "",
     limit: int = 100,
     package_db_path: Optional[str] = None,
     action_execution_db_path: Optional[str] = None,
+    action_store_db_path: Optional[str] = None,
     bus_db_path: Optional[str] = None,
     fact_ledger: Any = None,
 ) -> Dict[str, Any]:
-    """将只读三流汇合写入总线（不写 ActionStore；certified 恒 false）。
+    """将只读源流水合写入总线（certified 恒 false）。
 
     Args:
         tenant_id: 租户。
-        streams: 源流水线；默认 package/action/revision（不含 bus，避免自循环）。
+        streams: 源流水线；默认含 package/action/revision/action_store（不含 bus）。
         package_id: Package 可选过滤。
         action_id_prefix: Action 可选前缀。
         entity_type: revision 可选实体类型。
         entity_id: revision 可选实体 ID。
+        domain_id: ActionStore 可选域过滤。
         limit: 源侧最大条数。
         package_db_path: Package DB。
         action_execution_db_path: ActionExecution DB。
+        action_store_db_path: ActionStore DB。
         bus_db_path: 总线 DB。
         fact_ledger: 可选 FactLedger。
 
@@ -286,10 +291,15 @@ async def materialize_unified_audit_from_view(
         list_unified_audit_events,
     )
 
-    # 为什么：materialize 只吃源三流，禁止把 bus 再写回 bus
+    # 为什么：materialize 只吃源流水，禁止把 bus 再写回 bus
     src_streams = [str(s).strip() for s in (streams or ()) if str(s).strip()]
     if not src_streams:
-        src_streams = ["package", "action_execution", "revision_audit"]
+        src_streams = [
+            "package",
+            "action_execution",
+            "revision_audit",
+            "action_store",
+        ]
     src_streams = [s for s in src_streams if s != "bus"]
     if not src_streams:
         raise ValueError("streams must include at least one source stream")
@@ -301,9 +311,11 @@ async def materialize_unified_audit_from_view(
         action_id_prefix=action_id_prefix,
         entity_type=entity_type,
         entity_id=entity_id,
+        domain_id=domain_id,
         limit=limit,
         package_db_path=package_db_path,
         action_execution_db_path=action_execution_db_path,
+        action_store_db_path=action_store_db_path,
         fact_ledger=fact_ledger,
     )
     written = 0
@@ -519,10 +531,39 @@ async def run_unified_audit_bus_suite(
             }
         )
 
+        from core.harness.infrastructure.action_store import ActionStore
+
+        store_db = str(root / "action_store.sqlite3")
+        store = ActionStore(store_db)
+        await store.initialize()
+        store_aid = await store.insert_audit(
+            {
+                "action_id": "knowledge_revision:store_probe",
+                "entity_id": "ent-1",
+                "domain_id": domain_id or "n24-domain",
+                "actor": "suite",
+                "result_status": "executed",
+                "tenant_id": tenant_id,
+                "params": {"tenant_id": tenant_id},
+            }
+        )
+        store_rows = list_unified_audit_bus_events(
+            tenant_id=tenant_id, stream="action_store", limit=50, db_path=bus_db
+        )
+        store_ok = any(e.get("event_id") == str(store_aid) for e in store_rows)
+        cases.append(
+            {
+                "id": "action_store_hotpath_to_bus",
+                "ok": store_ok,
+                "detail": "" if store_ok else "action_store_hotpath_missing",
+            }
+        )
+
         mat = await materialize_unified_audit_from_view(
             tenant_id=tenant_id,
             package_db_path=pkg_db,
             action_execution_db_path=act_db,
+            action_store_db_path=store_db,
             bus_db_path=bus_db,
             fact_ledger=lg,
             limit=200,
@@ -531,16 +572,17 @@ async def run_unified_audit_bus_suite(
             tenant_id=tenant_id, limit=200, db_path=bus_db
         )
         tags = {e.get("stream") for e in all_bus}
-        # 热路径已写入时 materialize 多为幂等 skip；三流标签仍须齐全
+        # 热路径已写入时 materialize 多为幂等 skip；源标签仍须齐全
         mat_ok = (
             int(mat.get("written") or 0) + int(mat.get("skipped") or 0) >= 1
             and "package" in tags
             and "action_execution" in tags
             and "revision_audit" in tags
+            and "action_store" in tags
         )
         cases.append(
             {
-                "id": "materialize_three_streams",
+                "id": "materialize_source_streams",
                 "ok": mat_ok,
                 "detail": "" if mat_ok else f"tags={sorted(tags)} written={mat.get('written')}",
             }
@@ -575,7 +617,7 @@ async def run_unified_audit_bus_suite(
         "cases": cases,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "append-only bus + Package/Action/revision hot-path; not ActionStore merge / not N24 certified",
+        "note": "append-only bus + Package/Action/revision/ActionStore hot-path; not N24 certified",
     }
 
 

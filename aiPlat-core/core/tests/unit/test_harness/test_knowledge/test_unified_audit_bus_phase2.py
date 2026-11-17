@@ -150,6 +150,35 @@ async def test_package_and_action_hotpath_to_bus(harness):
 
 
 @pytest.mark.asyncio
+async def test_action_store_hotpath_to_bus(harness, tmp_path):
+    """J7：ActionStore.insert_audit 热路径直接入 bus。"""
+    _ledger, _pkg, _act, bus_db = harness
+    from core.harness.infrastructure.action_store import ActionStore
+
+    store = ActionStore(str(tmp_path / "action_store.sqlite3"))
+    await store.initialize()
+    aid = await store.insert_audit(
+        {
+            "action_id": "knowledge_revision:store",
+            "entity_id": "e1",
+            "domain_id": "d1",
+            "actor": "a",
+            "result_status": "executed",
+            "tenant_id": "t1",
+            "params": {"tenant_id": "t1"},
+        }
+    )
+    rows = list_unified_audit_bus_events(
+        tenant_id="t1", stream="action_store", db_path=bus_db
+    )
+    assert any(e.get("event_id") == str(aid) for e in rows)
+    other = list_unified_audit_bus_events(
+        tenant_id="t2", stream="action_store", db_path=bus_db
+    )
+    assert other == []
+
+
+@pytest.mark.asyncio
 async def test_materialize_and_view_bus_stream(harness):
     """materialize 三流进 bus；view streams=bus 可见（热路径后幂等 skip 亦可）。"""
     ledger, pkg_db, act_db, bus_db = harness
