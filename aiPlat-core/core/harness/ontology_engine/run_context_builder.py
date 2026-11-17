@@ -12,17 +12,23 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 
-def build_run_context_from_graph(question: str, domain_id: str) -> Optional[dict]:
+def build_run_context_from_graph(
+    question: str, domain_id: str, *, tenant_id: str = ""
+) -> Optional[dict]:
     """Scan question for entity names → GraphIndex traversal → partial RunContext.
 
     Args:
         question: question 参数。
         domain_id: domain 标识。
+        tenant_id: 租户；空则解析 ActiveRequestContext（N09 K26）。
     """
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex, GraphNode
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        graph = GraphIndex.load(domain_id)
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+        # 为什么：N09 K26 — RunContext 构建须读租户图
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         if not graph or not graph._nodes:
             return None
 

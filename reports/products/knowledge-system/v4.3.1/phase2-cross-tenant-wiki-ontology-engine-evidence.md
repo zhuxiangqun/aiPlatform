@@ -36,6 +36,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- ontology_engine.engine / sharded_graph / builtin_handlers / FDE service bare GraphIndex.load
+- ontology_engine → 见 Batch K26；builtin_handlers / FDE service bare load 仍残余
 - sync-all 端点按全局 graph 目录枚举的多租户物理隔离深化
 - N09 / 附录 N 全量认证

@@ -632,7 +632,9 @@ class AsyncActionRegistry:
     async def _get_entity(self, domain_id: str, entity_id: str) -> Optional[Dict]:
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            g = GraphIndex.load(domain_id)
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            # 为什么：N09 K26 — Action 实体读取须按租户
+            g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
             node = g.get_node(entity_id)
             if node is None:
                 return None

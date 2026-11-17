@@ -1217,7 +1217,7 @@ class OntologyEngine:
 
             try:
 
-                graph = GraphIndex.load(self._domain.id)
+                graph = GraphIndex.load(self._domain.id, tenant_id=self._tenant_id)  # N09 K26
 
                 # Register all instances as graph nodes
 
@@ -1839,25 +1839,31 @@ _MAX_GRAPH_CACHE = 5  # keep at most 5 domain graphs in memory
 
 
 
-def get_graph(domain_id: str = "ai-knowledge") -> GraphIndex:
+def get_graph(domain_id: str = "ai-knowledge", *, tenant_id: str = "") -> GraphIndex:
 
     """Get or load the graph for a domain. Thread-safe via dict cache.
 
     Args:
         domain_id: domain 标识。
+        tenant_id: 租户；空则解析 ActiveRequestContext（N09 K26）。
     """
 
     global _graph_cache_order
 
-    if domain_id not in _graph_cache:
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+    cache_key = f"{tid}::{domain_id}"
 
-        _graph_cache[domain_id] = GraphIndex.load(domain_id)
+    if cache_key not in _graph_cache:
+
+        # 为什么：N09 K26 — 图缓存键含租户，禁止跨租户复用
+        _graph_cache[cache_key] = GraphIndex.load(domain_id, tenant_id=tid)
 
     else:
 
-        _graph_cache_order.remove(domain_id)
+        _graph_cache_order.remove(cache_key)
 
-    _graph_cache_order.append(domain_id)
+    _graph_cache_order.append(cache_key)
 
     # Evict oldest if exceeding cap
 
@@ -1869,11 +1875,7 @@ def get_graph(domain_id: str = "ai-knowledge") -> GraphIndex:
 
             del _graph_cache[old]
 
-    return _graph_cache[domain_id]
-
-
-
-
+    return _graph_cache[cache_key]
 
 # ── Sharded Graph singleton ─────────────────────────────────────────
 
