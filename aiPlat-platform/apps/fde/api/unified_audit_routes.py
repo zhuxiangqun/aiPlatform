@@ -58,9 +58,10 @@ async def list_unified_audit_route(
     action_id_prefix: str = Query("", description="optional action_id prefix"),
     entity_type: str = Query("", description="optional revision entity type"),
     entity_id: str = Query("", description="optional revision entity id"),
+    domain_id: str = Query("", description="optional ActionStore domain filter"),
     limit: int = Query(100, ge=1, le=500),
 ):
-    """汇合 Package / ActionExecution / revision_audit / bus。
+    """汇合 Package / ActionExecution / revision_audit / ActionStore / bus。
 
     Args:
         tenant_id: 租户。
@@ -69,6 +70,7 @@ async def list_unified_audit_route(
         action_id_prefix: 可选 action 前缀。
         entity_type: 可选实体类型。
         entity_id: 可选实体 ID。
+        domain_id: 可选 ActionStore 域过滤。
         limit: 最大条数。
     """
     from core.api.core_facade import list_fact_unified_audit_events
@@ -81,6 +83,7 @@ async def list_unified_audit_route(
             action_id_prefix=action_id_prefix,
             entity_type=entity_type,
             entity_id=entity_id,
+            domain_id=domain_id,
             limit=limit,
         )
     except ValueError as exc:

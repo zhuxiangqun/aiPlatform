@@ -154,6 +154,12 @@ class ActionStore:
         if record.get("result_status") == "not_found" and not effect.strip():
             effect = "[ENTITY_MISSING]"
 
+        params_obj = record.get("params", {})
+        if not isinstance(params_obj, dict):
+            try:
+                params_obj = json.loads(params_obj or "{}")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                params_obj = {}
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 INSERT INTO action_audit (
@@ -171,7 +177,7 @@ class ActionStore:
                 record.get("to_state", ""),
                 record.get("actor", "system"),
                 record.get("role", ""),
-                json.dumps(record.get("params", {}), ensure_ascii=False),
+                json.dumps(params_obj, ensure_ascii=False),
                 record.get("result_status", "executed"),
                 record.get("constraint_type", ""),
                 effect,
@@ -179,6 +185,41 @@ class ActionStore:
                 snapshot_json,
             ))
             await db.commit()
+        # 为什么：N24 J7 — ActionStore.action_audit 热路径 best-effort 写入统一审计总线
+        tid = str(record.get("tenant_id") or params_obj.get("tenant_id") or "").strip()
+        if tid:
+            try:
+                from core.harness.knowledge_pipeline.unified_audit_bus import (
+                    append_unified_audit_event,
+                )
+
+                append_unified_audit_event(
+                    tenant_id=tid,
+                    event_id=str(audit_id),
+                    stream="action_store",
+                    event_type=str(record.get("result_status") or "executed"),
+                    occurred_at=time.time(),
+                    actor=str(record.get("actor") or "system"),
+                    subject=str(record.get("action_id") or ""),
+                    refs={
+                        "entity_id": record.get("entity_id") or "",
+                        "domain_id": record.get("domain_id") or "",
+                    },
+                    payload={
+                        "audit_id": audit_id,
+                        "action_id": record.get("action_id", ""),
+                        "entity_id": record.get("entity_id", ""),
+                        "domain_id": record.get("domain_id", ""),
+                        "result_status": record.get("result_status", "executed"),
+                        "params": params_obj,
+                    },
+                )
+            except Exception:
+                logger.warning(
+                    "unified_audit_bus append failed for action_store %s",
+                    audit_id,
+                    exc_info=True,
+                )
         return audit_id
 
     async def list_audit(self, entity_id: str = "", domain_id: str = "",

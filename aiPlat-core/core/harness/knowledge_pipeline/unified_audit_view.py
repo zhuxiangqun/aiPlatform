@@ -1,26 +1,35 @@
-"""N24 Unified Audit View（Batch J3/J5）— Package + Action + revision + bus 汇合。
+"""N24 Unified Audit View（Batch J3/J5/J7）— Package + Action + revision + bus + ActionStore。
 
-职责：按租户 fan-in 源三流与写总线为统一列表；suite/gate 诚实锁。
-非目标：不合并 ActionStore.action_audit；不宣称 N24 certified。
+职责：按租户 fan-in 多源审计为统一列表；suite/gate 诚实锁。
+非目标：不宣称 N24 certified；不改写 ActionStore 历史。
 """
 from __future__ import annotations
 
+import json
 import os
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-_DEFAULT_STREAMS = ("package", "action_execution", "revision_audit", "bus")
+_DEFAULT_STREAMS = (
+    "package",
+    "action_execution",
+    "revision_audit",
+    "action_store",
+    "bus",
+)
 _N24_UNIFIED_AUDIT_CASES = (
     "package_stream_present",
     "action_stream_present",
     "revision_stream_present",
+    "action_store_stream_present",
     "cross_tenant_empty",
 )
 
 
 def _resolve_streams(streams: Optional[Sequence[str]]) -> List[str]:
-    """解析流集合（参数 > 环境变量 > 默认四流含 bus）。
+    """解析流集合（参数 > 环境变量 > 默认五流含 action_store/bus）。
 
     Args:
         streams: 显式流名；空则读 env / 默认。
@@ -222,6 +231,84 @@ def _bus_events(
     return events
 
 
+def _parse_created_at(value: Any) -> float:
+    """解析 ActionStore created_at（RFC3339 / sqlite datetime / epoch）。
+
+    Args:
+        value: 原始时间字段。
+    """
+    if value is None or value == "":
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        # 为什么：非数字时间串继续走 ISO 解析，不静默吞掉
+        text = str(value).strip().replace("Z", "+00:00")
+        try:
+            return datetime.fromisoformat(text).timestamp()
+        except ValueError:
+            return 0.0
+
+
+async def _action_store_events(
+    *,
+    tenant_id: str,
+    domain_id: str,
+    limit: int,
+    db_path: Optional[str],
+) -> List[Dict[str, Any]]:
+    """ActionStore.action_audit → 统一事件（按 params.tenant_id 过滤）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域过滤。
+        limit: 上限。
+        db_path: ActionStore DB。
+    """
+    from core.harness.infrastructure.action_store import ActionStore
+
+    store = ActionStore(db_path) if db_path else ActionStore()
+    await store.initialize()
+    # 多取后按租户过滤，避免跨租户泄漏
+    rows = await store.list_audit(
+        entity_id="",
+        domain_id=(domain_id or "").strip(),
+        limit=max(limit * 5, limit),
+    )
+    events: List[Dict[str, Any]] = []
+    for row in rows:
+        params: Any = row.get("params") or {}
+        if isinstance(params, str):
+            try:
+                params = json.loads(params or "{}")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                params = {}
+        if not isinstance(params, dict):
+            params = {}
+        row_tid = str(row.get("tenant_id") or params.get("tenant_id") or "").strip()
+        if row_tid != tenant_id:
+            continue
+        events.append(
+            {
+                "stream": "action_store",
+                "tenant_id": tenant_id,
+                "event_id": str(row.get("audit_id") or ""),
+                "event_type": str(row.get("result_status") or "executed"),
+                "occurred_at": _parse_created_at(row.get("created_at")),
+                "actor": str(row.get("actor") or ""),
+                "subject": str(row.get("action_id") or ""),
+                "refs": {
+                    "entity_id": row.get("entity_id") or "",
+                    "domain_id": row.get("domain_id") or "",
+                },
+                "payload": row,
+            }
+        )
+        if len(events) >= limit:
+            break
+    return events
+
+
 async def list_unified_audit_events(
     *,
     tenant_id: str,
@@ -230,24 +317,28 @@ async def list_unified_audit_events(
     action_id_prefix: str = "",
     entity_type: str = "",
     entity_id: str = "",
+    domain_id: str = "",
     limit: int = 100,
     package_db_path: Optional[str] = None,
     action_execution_db_path: Optional[str] = None,
+    action_store_db_path: Optional[str] = None,
     bus_db_path: Optional[str] = None,
     fact_ledger: Any = None,
 ) -> Dict[str, Any]:
-    """汇合 Package / ActionExecution / revision_audit / bus（写总线切片）。
+    """汇合 Package / ActionExecution / revision_audit / ActionStore / bus。
 
     Args:
         tenant_id: 租户（必填）。
-        streams: 可选流过滤；默认四流或 ``AIPLAT_UNIFIED_AUDIT_STREAMS``。
+        streams: 可选流过滤；默认五流或 ``AIPLAT_UNIFIED_AUDIT_STREAMS``。
         package_id: Package 流可选过滤。
         action_id_prefix: Action 流可选前缀。
         entity_type: revision 流可选实体类型。
         entity_id: revision 流可选实体 ID。
+        domain_id: ActionStore 流可选域过滤。
         limit: 汇合后最大条数（1–500）。
         package_db_path: 可选 Package DB。
         action_execution_db_path: 可选 ActionExecution DB。
+        action_store_db_path: 可选 ActionStore DB。
         bus_db_path: 可选统一审计总线 DB。
         fact_ledger: 可选 FactLedger；默认单例。
 
@@ -298,6 +389,15 @@ async def list_unified_audit_events(
                 fact_ledger=lg,
             )
         )
+    if "action_store" in active:
+        events.extend(
+            await _action_store_events(
+                tenant_id=tid,
+                domain_id=domain_id,
+                limit=per,
+                db_path=action_store_db_path,
+            )
+        )
     if "bus" in active:
         events.extend(
             _bus_events(tenant_id=tid, limit=per, db_path=bus_db_path)
@@ -312,7 +412,7 @@ async def list_unified_audit_events(
         "tenant_id": tid,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "Package+Action+revision+bus merge; not ActionStore merge / not N24 certified",
+        "note": "Package+Action+revision+ActionStore+bus merge; not N24 certified",
     }
 
 
@@ -331,6 +431,7 @@ async def run_unified_audit_view_suite(
         套件汇总。
     """
     from core.harness.infrastructure.action_execution import persist_execution
+    from core.harness.infrastructure.action_store import ActionStore
     from core.harness.knowledge_pipeline.fact_ledger import FactLedger
     from core.harness.knowledge_pipeline.ontology_package import publish_package
 
@@ -340,6 +441,9 @@ async def run_unified_audit_view_suite(
         root = Path(tmp.name)
         pkg_db = str(root / "ontology_package.sqlite3")
         act_db = str(root / "action_execution.sqlite3")
+        store_db = str(root / "action_store.sqlite3")
+        bus_db = str(root / "unified_audit_bus.sqlite3")
+        os.environ["AIPLAT_UNIFIED_AUDIT_BUS_DB"] = bus_db
         lg = FactLedger(
             db_path=str(root / "fact_ledger.sqlite3"),
             raw_dir=root / "raw",
@@ -365,6 +469,19 @@ async def run_unified_audit_view_suite(
                 "completed_at": 2.0,
             },
             db_path=act_db,
+        )
+        store = ActionStore(store_db)
+        await store.initialize()
+        await store.insert_audit(
+            {
+                "action_id": "knowledge_revision:store_probe",
+                "entity_id": "ent-1",
+                "domain_id": domain_id or "n24-domain",
+                "actor": "suite",
+                "result_status": "executed",
+                "tenant_id": tenant_id,
+                "params": {"tenant_id": tenant_id},
+            }
         )
         src = await lg.register_source(
             tenant_id=tenant_id,
@@ -422,6 +539,8 @@ async def run_unified_audit_view_suite(
             tenant_id=tenant_id,
             package_db_path=pkg_db,
             action_execution_db_path=act_db,
+            action_store_db_path=store_db,
+            bus_db_path=bus_db,
             fact_ledger=lg,
             limit=200,
         )
@@ -450,11 +569,21 @@ async def run_unified_audit_view_suite(
                 "detail": "" if rev_ok else "revision_missing",
             }
         )
+        store_ok = "action_store" in tags
+        cases.append(
+            {
+                "id": "action_store_stream_present",
+                "ok": store_ok,
+                "detail": "" if store_ok else "action_store_missing",
+            }
+        )
 
         other = await list_unified_audit_events(
             tenant_id="other-tenant",
             package_db_path=pkg_db,
             action_execution_db_path=act_db,
+            action_store_db_path=store_db,
+            bus_db_path=bus_db,
             fact_ledger=lg,
             limit=50,
         )
@@ -467,6 +596,7 @@ async def run_unified_audit_view_suite(
             }
         )
     finally:
+        os.environ.pop("AIPLAT_UNIFIED_AUDIT_BUS_DB", None)
         tmp.cleanup()
 
     passed = sum(1 for c in cases if c.get("ok") is True)
@@ -483,7 +613,7 @@ async def run_unified_audit_view_suite(
         "cases": cases,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "Package+Action+revision merge (+bus stream); not ActionStore merge / not N24 certified",
+        "note": "Package+Action+revision+ActionStore+bus merge; not N24 certified",
     }
 
 

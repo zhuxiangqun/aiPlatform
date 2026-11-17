@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T16:53:34+08:00",
+  "reviewed_at": "2026-11-17T17:13:39+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "e83ff7ad1766c763b06c7fdbffd71c1a1a1c4f4777e6636c320f720d2009b9c2",
-  "head_sha": "871de0464943d277d166d156edbd4f8408d96d2b",
+  "diff_sha256": "40a48741a97e561e3865dae18c77fd69849a04e14a3f4faff751a7feb86440fa",
+  "head_sha": "bf3758e8baea21f127655d5309cd436554b5df84",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J6 rebased onto J5 stats sync; Package/Action hotpath bus append. Residual: ActionStore merge out of scope."
+  "note": "J7 ActionStore.action_audit into unified bus/view; tenant via params.tenant_id. Residual: no physical tenant_id column; N24 not certified."
 }

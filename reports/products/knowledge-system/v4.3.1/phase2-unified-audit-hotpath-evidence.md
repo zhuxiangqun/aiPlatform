@@ -42,5 +42,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- 合并 ActionStore `action_audit` 为同一流
 - N24 / 附录 N 全量认证
+
+> ActionStore `action_audit` 合流见 Batch J7：`phase2-unified-audit-action-store-evidence.md`。

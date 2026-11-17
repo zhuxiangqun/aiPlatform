@@ -16743,17 +16743,19 @@ async def list_fact_unified_audit_events(
     action_id_prefix: str = "",
     entity_type: str = "",
     entity_id: str = "",
+    domain_id: str = "",
     limit: int = 100,
 ) -> dict:
-    """CoreFacade：N24 Package+Action+revision_audit 只读汇合视图（非全量总线）。
+    """CoreFacade：N24 多源统一审计汇合视图（含 ActionStore；非 certified）。
 
     Args:
         tenant_id: 租户。
-        streams: 逗号分隔流名；空则默认三流。
+        streams: 逗号分隔流名；空则默认多流。
         package_id: Package 流可选过滤。
         action_id_prefix: Action 流可选前缀。
         entity_type: revision 流可选实体类型。
         entity_id: revision 流可选实体 ID。
+        domain_id: ActionStore 流可选域过滤。
         limit: 最大条数。
 
     Returns:
@@ -16767,6 +16769,7 @@ async def list_fact_unified_audit_events(
         action_id_prefix=action_id_prefix,
         entity_type=entity_type,
         entity_id=entity_id,
+        domain_id=domain_id,
         limit=limit,
         fact_ledger=get_fact_ledger(),
     )
