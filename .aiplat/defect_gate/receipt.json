@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T21:14:41+08:00",
+  "reviewed_at": "2026-11-17T21:44:31+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "44b5523c1ae8dbf6c9e9550fe60a6f7d665aa1c0113a0c4d97032ecc84c87544",
-  "head_sha": "b8459b5ac783fae349386c738a1ba35b6d20b98a",
+  "diff_sha256": "b798f6da5a00870f50c9e0841dc680ed36766f9e826e92461e13990bd2d8411d",
+  "head_sha": "1410f8cb8e914e7534d87c81eeba52ad891715a7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K1 extends N09 suite to 6 probes; Wiki/KB cross-tenant remains intentional out-of-scope. certified/n09_full_conformance stay false. Local lock only; CI needs non-author Approve."
+  "note": "K2 adds kb_retrieve_no_leak + wiki_retrieve_no_leak (8 probes). Wiki collection ACL / GraphRAG remain intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
 }
