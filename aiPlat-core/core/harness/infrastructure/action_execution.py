@@ -339,6 +339,35 @@ def persist_execution(
             raise
     finally:
         conn.close()
+    # 为什么：N24 J6 — ActionExecution 热路径 best-effort 写入统一审计总线（非 ActionStore 合并）
+    try:
+        from core.harness.knowledge_pipeline.unified_audit_bus import (
+            append_unified_audit_event,
+        )
+
+        occurred = float(
+            payload.get("completed_at") or payload.get("started_at") or time.time()
+        )
+        append_unified_audit_event(
+            tenant_id=tenant_id,
+            event_id=str(execution_id),
+            stream="action_execution",
+            event_type=str(payload.get("status") or "executed"),
+            occurred_at=occurred,
+            actor=str(payload.get("actor") or ""),
+            subject=str(payload.get("action_id") or ""),
+            refs={
+                "idempotency_key": key,
+                "audit_hash": str(payload.get("audit_hash") or ""),
+            },
+            payload=payload,
+        )
+    except Exception:
+        logger.warning(
+            "unified_audit_bus append failed for action_execution %s",
+            execution_id,
+            exc_info=True,
+        )
     return payload
 
 

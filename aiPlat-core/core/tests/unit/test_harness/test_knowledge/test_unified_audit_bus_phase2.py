@@ -115,8 +115,43 @@ async def test_revision_emit_to_bus(harness):
 
 
 @pytest.mark.asyncio
+async def test_package_and_action_hotpath_to_bus(harness):
+    """J6：publish_package / persist_execution 热路径直接入 bus。"""
+    _ledger, pkg_db, act_db, bus_db = harness
+    pub = publish_package(
+        tenant_id="t1",
+        package_id="p1",
+        version="1.0.0",
+        schema=["X"],
+        db_path=pkg_db,
+    )
+    assert pub["status"] == "published"
+    pkg_rows = list_unified_audit_bus_events(
+        tenant_id="t1", stream="package", db_path=bus_db
+    )
+    assert any(e.get("event_id") == "pkg:p1:1.0.0" for e in pkg_rows)
+
+    act = persist_execution(
+        {
+            "tenant_id": "t1",
+            "idempotency_key": "k-hot",
+            "action_id": "knowledge_revision:hot",
+            "actor": "a",
+            "status": "succeeded",
+            "started_at": 1.0,
+            "completed_at": 2.0,
+        },
+        db_path=act_db,
+    )
+    act_rows = list_unified_audit_bus_events(
+        tenant_id="t1", stream="action_execution", db_path=bus_db
+    )
+    assert any(e.get("event_id") == act["execution_id"] for e in act_rows)
+
+
+@pytest.mark.asyncio
 async def test_materialize_and_view_bus_stream(harness):
-    """materialize 三流进 bus；view streams=bus 可见。"""
+    """materialize 三流进 bus；view streams=bus 可见（热路径后幂等 skip 亦可）。"""
     ledger, pkg_db, act_db, bus_db = harness
     publish_package(
         tenant_id="t1",
@@ -146,7 +181,7 @@ async def test_materialize_and_view_bus_stream(harness):
         limit=50,
     )
     assert mat["certified"] is False
-    assert int(mat["written"]) >= 1
+    assert int(mat["written"]) + int(mat["skipped"]) >= 1
     view = await list_unified_audit_events(
         tenant_id="t1",
         streams=["bus"],

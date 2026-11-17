@@ -276,14 +276,40 @@ def publish_package(
             (tid, pid, ver, now),
         )
         conn.commit()
-        return {
+        out = {
             "status": "published",
             "package_id": pid,
             "version": ver,
             "content_hash": content_hash,
             "active": True,
             "payload": payload,
+            "published_at": now,
         }
+        # 为什么：N24 J6 — Package 热路径 best-effort 写入统一审计总线（非 ActionStore 合并）
+        try:
+            from core.harness.knowledge_pipeline.unified_audit_bus import (
+                append_unified_audit_event,
+            )
+
+            append_unified_audit_event(
+                tenant_id=tid,
+                event_id=f"pkg:{pid}:{ver}",
+                stream="package",
+                event_type="published",
+                occurred_at=float(now),
+                actor="",
+                subject=f"{pid}@{ver}",
+                refs={"content_hash": content_hash},
+                payload=out,
+            )
+        except Exception:
+            logger.warning(
+                "unified_audit_bus append failed for package %s@%s",
+                pid,
+                ver,
+                exc_info=True,
+            )
+        return out
     finally:
         conn.close()
 
@@ -595,12 +621,38 @@ def rollback_package(
             (target, now, tid, pid),
         )
         conn.commit()
-        return {
+        out = {
             "status": "rolled_back",
             "package_id": pid,
             "from_version": current,
             "to_version": target,
             "active_version": target,
+            "rolled_back_at": now,
         }
+        # 为什么：N24 J6 — Package 回滚热路径 best-effort 写入统一审计总线
+        try:
+            from core.harness.knowledge_pipeline.unified_audit_bus import (
+                append_unified_audit_event,
+            )
+
+            append_unified_audit_event(
+                tenant_id=tid,
+                event_id=f"pkg:{pid}:{current}:rolled_back",
+                stream="package",
+                event_type="rolled_back",
+                occurred_at=float(now),
+                actor="",
+                subject=f"{pid}@{current}",
+                refs={"to_version": target},
+                payload=out,
+            )
+        except Exception:
+            logger.warning(
+                "unified_audit_bus append failed for package rollback %s@%s",
+                pid,
+                current,
+                exc_info=True,
+            )
+        return out
     finally:
         conn.close()

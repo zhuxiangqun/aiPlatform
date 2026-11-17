@@ -16,6 +16,8 @@ from typing import Any, Dict, List, Optional, Sequence
 _N24_UNIFIED_AUDIT_BUS_CASES = (
     "append_idempotent",
     "revision_emit_to_bus",
+    "package_hotpath_to_bus",
+    "action_hotpath_to_bus",
     "materialize_three_streams",
     "cross_tenant_empty",
 )
@@ -471,14 +473,28 @@ async def run_unified_audit_bus_suite(
             }
         )
 
-        publish_package(
+        pub = publish_package(
             tenant_id=tenant_id,
             package_id="n24-pkg",
             version="1.0.0",
             schema=["InstallOrder"],
             db_path=pkg_db,
         )
-        persist_execution(
+        pkg_rows = list_unified_audit_bus_events(
+            tenant_id=tenant_id, stream="package", limit=50, db_path=bus_db
+        )
+        pkg_ok = pub.get("status") == "published" and any(
+            e.get("event_id") == "pkg:n24-pkg:1.0.0" for e in pkg_rows
+        )
+        cases.append(
+            {
+                "id": "package_hotpath_to_bus",
+                "ok": pkg_ok,
+                "detail": "" if pkg_ok else "package_hotpath_missing",
+            }
+        )
+
+        act = persist_execution(
             {
                 "tenant_id": tenant_id,
                 "idempotency_key": "n24-uab-act-1",
@@ -490,6 +506,19 @@ async def run_unified_audit_bus_suite(
             },
             db_path=act_db,
         )
+        act_rows = list_unified_audit_bus_events(
+            tenant_id=tenant_id, stream="action_execution", limit=50, db_path=bus_db
+        )
+        act_eid = str(act.get("execution_id") or "")
+        act_ok = bool(act_eid) and any(e.get("event_id") == act_eid for e in act_rows)
+        cases.append(
+            {
+                "id": "action_hotpath_to_bus",
+                "ok": act_ok,
+                "detail": "" if act_ok else "action_hotpath_missing",
+            }
+        )
+
         mat = await materialize_unified_audit_from_view(
             tenant_id=tenant_id,
             package_db_path=pkg_db,
@@ -502,8 +531,9 @@ async def run_unified_audit_bus_suite(
             tenant_id=tenant_id, limit=200, db_path=bus_db
         )
         tags = {e.get("stream") for e in all_bus}
+        # 热路径已写入时 materialize 多为幂等 skip；三流标签仍须齐全
         mat_ok = (
-            int(mat.get("written") or 0) >= 1
+            int(mat.get("written") or 0) + int(mat.get("skipped") or 0) >= 1
             and "package" in tags
             and "action_execution" in tags
             and "revision_audit" in tags
@@ -512,7 +542,7 @@ async def run_unified_audit_bus_suite(
             {
                 "id": "materialize_three_streams",
                 "ok": mat_ok,
-                "detail": "" if mat_ok else f"tags={sorted(tags)}",
+                "detail": "" if mat_ok else f"tags={sorted(tags)} written={mat.get('written')}",
             }
         )
 
@@ -545,7 +575,7 @@ async def run_unified_audit_bus_suite(
         "cases": cases,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "append-only unified audit bus; not ActionStore merge / not N24 certified",
+        "note": "append-only bus + Package/Action/revision hot-path; not ActionStore merge / not N24 certified",
     }
 
 

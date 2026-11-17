@@ -45,5 +45,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做
 
 - 合并 ActionStore `action_audit` 为同一流
-- 强制 Package / ActionExecution 每次写同步进 bus
 - N24 / 附录 N 全量认证
+
+> Package/Action 热路径见 Batch J6：`phase2-unified-audit-hotpath-evidence.md`。
