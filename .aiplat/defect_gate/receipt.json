@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T12:18:43+08:00",
+  "reviewed_at": "2026-11-17T14:32:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "09ef49e17ead8806ecc4e6e851c2f963e53fd2c2",
-  "diff_sha256": "7840686f163b62124752f3a000a26ca03ff3f021299a7e1fbcd90ce394874049",
-  "head_sha": "e35e2f625927c484b7855dee360c1f3fee00a1e1",
+  "merge_base": "d812383f2f2a9c63f5f5caf86dd6f76a0c0031d8",
+  "diff_sha256": "d50a2603dfc7e3686160d931cb78a1e501a27498a25de8ee76b368c942ab7d59",
+  "head_sha": "72eeecc0cc66b80e642adec63ea9a68d738a7117",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "I3 restore approval: self-approve banned; approve applies restore; reject leaves head; gate forbids certified. Residual: no rollback UI / Package+Action bus. Local lock only; CI unlock is non-author Approve."
+  "note": "I4: approve/reject only bridge to ActionExecution; direct restore_* unchanged; suite/gate certified=false. Residual: no rollback UI; not full audit bus; N24 not certified. Local lock only."
 }
