@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / governance·maturity tenant（Batch K19）证据
 
 > 实施权威：附录 N N09 partial 加深（K18 HTTP 回显之上：run_cycle/maturity 透传）。  
-> **未宣称** ontology_completeness/context_bus 等其它 GraphIndex 调用面 / N09 certified。
+> **未宣称** context_bus/evolver 等其它 GraphIndex 调用面 / N09 certified（completeness/audit 见 K20）。
 
 ## 检查表
 
@@ -41,5 +41,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- ontology_completeness / context_bus / system_evolver 等其它默认 GraphIndex.load
+- ontology completeness/audit/validator → **K20 已加深**；context_bus/evolver 仍残留
 - N09 / 附录 N 全量认证

@@ -147,17 +147,20 @@ def _class_key(cls: Any) -> str:
     return str(getattr(cls, "label", None) or getattr(cls, "name", None) or "").strip()
 
 
-def _score_c5(domain_id: str, domain: Any = None) -> float:
+def _score_c5(domain_id: str, domain: Any = None, *, tenant_id: str = "default") -> float:
     """事实层：声明类的实例覆盖 + 声明关系的边覆盖（禁止节点数档位）。
 
     Args:
         domain_id: 域 id。
         domain: 可选已加载本体；缺省时仅按图统计会退化为 0。
+        tenant_id: 租户；加载 GraphIndex 分库（N09 K20）。
     """
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
 
-        g = GraphIndex.load(domain_id)
+        tid = (tenant_id or "").strip() or "default"
+        # 为什么：N09 K20 — OCS C5 须读租户图，禁止默认 GraphIndex
+        g = GraphIndex.load(domain_id, tenant_id=tid)
         classes = list(getattr(domain, "classes", None) or [])
         # 为什么：edge 档是脚手架/投影类，不算业务纵深分母（v4.3.1 事实层=经营闭环覆盖）
         logic_classes = [
@@ -274,12 +277,14 @@ def compute_domain_ocs(
     domain_id: str,
     *,
     credit_test_evidence: bool = True,
+    tenant_id: str = "default",
 ) -> Dict[str, Any]:
     """计算单域 OCS 分解（v4.3.1 权重）。
 
     Args:
         domain_id: 域标识。
         credit_test_evidence: 是否给 C6 测试证据加分（兼容存量 ratchet）。
+        tenant_id: 租户；透传 C5 GraphIndex（N09 K20）。
     """
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
 
@@ -303,7 +308,7 @@ def compute_domain_ocs(
         "C2": round(_score_c2(domain), 1),
         "C3": round(_score_c3(domain), 1),
         "C4": round(_score_c4(domain_id), 1),
-        "C5": round(_score_c5(domain_id, domain), 1),
+        "C5": round(_score_c5(domain_id, domain, tenant_id=tenant_id), 1),
         "C6": round(_score_c6(domain_id, credit_test_evidence=credit_test_evidence), 1),
     }
     total = 0.0
@@ -320,6 +325,7 @@ def compute_domain_ocs(
         level = "seeding"
     return {
         "domain_id": domain_id,
+        "tenant_id": (tenant_id or "").strip() or "default",
         "ocs": total,
         "level": level,
         "threshold": threshold,
@@ -341,6 +347,7 @@ def evaluate_ocs_gate(
     *,
     threshold: Optional[float] = None,
     credit_test_evidence: bool = False,
+    tenant_id: str = "default",
 ) -> Dict[str, Any]:
     """OCS 门槛门：达标才 pass；默认不给测试证据加分。
 
@@ -348,9 +355,10 @@ def evaluate_ocs_gate(
         domain_id: 域 id。
         threshold: 可选覆盖门槛（不得低于域配置/默认 80）。
         credit_test_evidence: 是否计入 C6 测试加分。
+        tenant_id: 租户；透传 compute_domain_ocs（N09 K20）。
     """
     report = compute_domain_ocs(
-        domain_id, credit_test_evidence=credit_test_evidence
+        domain_id, credit_test_evidence=credit_test_evidence, tenant_id=tenant_id
     )
     if report.get("error"):
         return {
@@ -382,13 +390,18 @@ def evaluate_ocs_gate(
     }
 
 
-def compute_all_ocs(*, domain_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+def compute_all_ocs(
+    *,
+    domain_ids: Optional[List[str]] = None,
+    tenant_id: str = "default",
+) -> List[Dict[str, Any]]:
     """compute_all_ocs。
 
     Args:
         domain_ids: domain_ids 参数。
+        tenant_id: 租户；透传 compute_domain_ocs（N09 K20）。
     """
     from core.harness.knowledge.ontology_loader import list_domain_files
 
     ids = domain_ids or list_domain_files(str(_home()))
-    return [compute_domain_ocs(d) for d in ids]
+    return [compute_domain_ocs(d, tenant_id=tenant_id) for d in ids]

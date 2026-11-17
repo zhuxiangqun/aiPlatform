@@ -3456,34 +3456,59 @@ def get_adoption_metrics():
     }
 
 @router.get("/diagnostics/ontology-audit", response_model=Dict[str, Any])
-def get_ontology_audit(domain_id: str = "ai-knowledge"):
+def get_ontology_audit(request: Request, domain_id: str = "ai-knowledge"):
     """Ontology domain audit: class coverage, relation density, state machine activity.
 
     Args:
+        request: FastAPI Request；租户经 ``actor_from_http``（N09 K20）。
         domain_id: domain 标识。
     """
     from core.harness.knowledge.ontology_audit import OntologyAuditor
+    # 为什么：N09 K20 — 审计 GraphIndex 须跟身份租户，禁止默认分库
+    actor0 = actor_from_http(request, None)
+    tid = str(actor0.get("tenant_id") or "").strip() or "default"
     auditor = OntologyAuditor()
     if domain_id == "all":
-        reports = auditor.audit_all_domains()
-        return {"status": "completed", "domains": {r.domain_id: r.to_dict() for r in reports}}
-    report = auditor.audit_domain(domain_id)
-    return {"status": "completed", "domain": domain_id, "report": report.to_dict()}
+        reports = auditor.audit_all_domains(tenant_id=tid)
+        return {
+            "status": "completed",
+            "tenant_id": tid,
+            "domains": {r.domain_id: r.to_dict() for r in reports},
+        }
+    report = auditor.audit_domain(domain_id, tenant_id=tid)
+    return {
+        "status": "completed",
+        "tenant_id": tid,
+        "domain": domain_id,
+        "report": report.to_dict(),
+    }
 
 
 @router.get("/diagnostics/ontology-audit/summary", response_model=Dict[str, Any])
-def get_ontology_audit_summary():
-    """Quick summary: top orphan classes, worst relation coverage across all domains."""
+def get_ontology_audit_summary(request: Request):
+    """Quick summary: top orphan classes, worst relation coverage across all domains.
+
+    Args:
+        request: FastAPI Request；租户经 ``actor_from_http``（N09 K20）。
+    """
     from core.harness.knowledge.ontology_audit import OntologyAuditor
+    actor0 = actor_from_http(request, None)
+    tid = str(actor0.get("tenant_id") or "").strip() or "default"
     auditor = OntologyAuditor()
-    reports = auditor.audit_all_domains()
+    reports = auditor.audit_all_domains(tenant_id=tid)
     total_orphans = sum(len(r.orphan_classes) for r in reports)
     total_entities = sum(r.total_entities for r in reports)
     worst = [{"domain": r.domain_id, "entities": r.total_entities, "orphans": len(r.orphan_classes),
               "edge_count": r.total_edges, "warnings": r.warnings[:2]} for r in reports if r.orphan_classes or r.warnings]
     worst.sort(key=lambda x: x["orphans"], reverse=True)
-    return {"status": "completed", "total_entities": total_entities, "total_orphans": total_orphans,
-            "domains_scanned": len(reports), "worst_domains": worst[:10]}
+    return {
+        "status": "completed",
+        "tenant_id": tid,
+        "total_entities": total_entities,
+        "total_orphans": total_orphans,
+        "domains_scanned": len(reports),
+        "worst_domains": worst[:10],
+    }
 
 
 # ── Phase 20: Audit trail API ──
