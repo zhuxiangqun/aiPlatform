@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T14:32:00+08:00",
+  "reviewed_at": "2026-11-17T15:02:19+08:00",
   "base_ref": "origin/main",
-  "merge_base": "d812383f2f2a9c63f5f5caf86dd6f76a0c0031d8",
-  "diff_sha256": "d50a2603dfc7e3686160d931cb78a1e501a27498a25de8ee76b368c942ab7d59",
-  "head_sha": "72eeecc0cc66b80e642adec63ea9a68d738a7117",
+  "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
+  "diff_sha256": "a4ec587ccf08bc8deea546737d161658f7d54d84ba3a8bb3fea3b37fb7fdfb76",
+  "head_sha": "6659c3db2de613370502a6833b16cb6cacec06ac",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "I4: approve/reject only bridge to ActionExecution; direct restore_* unchanged; suite/gate certified=false. Residual: no rollback UI; not full audit bus; N24 not certified. Local lock only."
+  "note": "J1 HTTP thin routes only via Facade; ValueError→400; gate certified false. No rollback UI."
 }
