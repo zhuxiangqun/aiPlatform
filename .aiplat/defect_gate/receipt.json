@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T09:33:12+08:00",
+  "reviewed_at": "2026-11-17T09:33:54+08:00",
   "base_ref": "origin/main",
   "merge_base": "8093fd19bf0400844c8113659476dfd0ad6d9a71",
-  "diff_sha256": "5f65f42092fcac2cae1b4c829e2bb17410bffd4cc63aab82dd0eaabbce4889e2",
-  "head_sha": "8540b79da862c94b601588700439d395cb51a596",
+  "diff_sha256": "426a2d6d2749cd94f99e868fb4d31cf4bbdda74dc9602eace97b12c26fdd1442",
+  "head_sha": "47d82955f9c7f0ece51cc5c43f374fcc4d125a71",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Batch H1 N24 Claim Revision: bump+archive on put_claim; suite/gate honesty; Facade wired. Residual: Source revision/rollback UI/unified audit bus; certified false."
+  "note": "Batch H1 N24 Claim Revision + AUTO-STATS sync. Residual: Source revision/rollback UI; certified false."
 }
