@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3739
+total_capabilities: 3753
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1215,6 +1215,7 @@ scan_hash: 8f9548ec24f4
 | **Revision Restore UI（v4.3.1 N24 J2）** | 知识工厂 `RevisionRestorePanel` → J1 HTTP（requests/approve/reject/audit/suite/gate） | ✅ | 管理端审批式 restore 薄面板；UI 禁自批；门槛门 certified 恒 false。证据 `phase2-revision-restore-ui-evidence.md`。**未宣称** Package+Action 全量总线 / N24 certified。生成物适用：已接线（管理端展示） | 本批 |
 | **Unified Audit View（v4.3.1 N24 J3）** | `list_unified_audit_events` / suite / gate + Facade + FDE `/unified-audit*` | ✅ | Package+ActionExecution+revision_audit 只读汇合；门槛门 certified 恒 false。证据 `phase2-unified-audit-view-evidence.md`。**未宣称** 写总线表 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Unified Audit UI（v4.3.1 N24 J4）** | 知识工厂 `UnifiedAuditPanel` → J3 HTTP（list/filter/suite/gate） | ✅ | 管理端只读统一审计薄面板；UI 诚实锁；门槛门 certified 恒 false。证据 `phase2-unified-audit-ui-evidence.md`。**未宣称** 写总线表 / N24 certified。生成物适用：已接线（管理端展示） | 本批 |
+| **Unified Audit Bus（v4.3.1 N24 J5）** | `append_unified_audit_event` / materialize / suite / gate + Facade + FDE `/unified-audit/append|bus|materialize` | ✅ | append-only 写总线；revision_audit 热路径；门槛门 certified 恒 false。证据 `phase2-unified-audit-bus-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户隔离加深（v4.3.1 N09 partial）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | query/get_source/gateway/verify 四探针；门槛门 certified 恒 false。证据 `phase2-cross-tenant-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
@@ -1354,6 +1355,20 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_unified_audit_bus_gate_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| run_unified_audit_bus_suite_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| materialize_unified_audit_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| append_unified_audit_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_unified_audit_bus_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_fact_unified_audit_bus_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| run_fact_unified_audit_bus_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| materialize_fact_unified_audit_bus | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_fact_unified_audit_bus_events | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| append_fact_unified_audit_event | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_unified_audit_bus_gate | `core/harness/knowledge_pipeline/unified_audit_bus.py` | ✅ | 自动同步 | 已合入 |
+| run_unified_audit_bus_suite | `core/harness/knowledge_pipeline/unified_audit_bus.py` | ✅ | 自动同步 | 已合入 |
+| materialize_unified_audit_from_view | `core/harness/knowledge_pipeline/unified_audit_bus.py` | ✅ | 自动同步 | 已合入 |
+| list_unified_audit_bus_events | `core/harness/knowledge_pipeline/unified_audit_bus.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_unified_audit_gate_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
 | run_unified_audit_suite_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
 | list_unified_audit_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
@@ -4641,7 +4656,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 676 | 1 | 677 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 586 | 9 | 595 |
+| 知识引擎（本体） | 600 | 9 | 609 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4684,7 +4699,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3728** | **11** | **3739** |
+| **总计** | **3742** | **11** | **3753** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

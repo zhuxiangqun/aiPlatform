@@ -53,5 +53,6 @@ authority: supporting
 | [phase2-revision-restore-ui-evidence.md](./phase2-revision-restore-ui-evidence.md) | Batch J2 N24 Revision Restore 管理端薄 UI（非全量总线/非 certified） |
 | [phase2-unified-audit-view-evidence.md](./phase2-unified-audit-view-evidence.md) | Batch J3 N24 Package+Action+revision 只读统一视图（非写总线/非 certified） |
 | [phase2-unified-audit-ui-evidence.md](./phase2-unified-audit-ui-evidence.md) | Batch J4 N24 Unified Audit 管理端薄 UI（非写总线/非 certified） |
+| [phase2-unified-audit-bus-evidence.md](./phase2-unified-audit-bus-evidence.md) | Batch J5 N24 Unified Audit 写总线（非 ActionStore 合并/非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

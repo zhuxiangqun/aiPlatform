@@ -2482,6 +2482,42 @@ class FactLedger:
                 ),
             )
             await db.commit()
+        # 为什么：N24 J5 — revision_audit 热路径 best-effort 写入统一审计总线（非 ActionStore 合并）
+        try:
+            from core.harness.knowledge_pipeline.unified_audit_bus import (
+                append_unified_audit_event,
+            )
+
+            occ = 0.0
+            try:
+                from datetime import datetime
+
+                occ = datetime.fromisoformat(
+                    str(recorded_at).replace("Z", "+00:00")
+                ).timestamp()
+            except (TypeError, ValueError, AttributeError):
+                occ = 0.0
+            append_unified_audit_event(
+                tenant_id=tenant_id,
+                event_id=audit_id,
+                stream="revision_audit",
+                event_type=ev,
+                occurred_at=occ,
+                actor=who,
+                subject=f"{et}:{eid}",
+                refs={
+                    "revision": int(revision),
+                    "to_revision": None if to_revision is None else int(to_revision),
+                    "reason": why,
+                },
+                payload=entry,
+            )
+        except Exception:
+            logger.warning(
+                "unified_audit_bus append failed for revision_audit %s",
+                audit_id,
+                exc_info=True,
+            )
         return entry
 
     async def list_revision_audit(

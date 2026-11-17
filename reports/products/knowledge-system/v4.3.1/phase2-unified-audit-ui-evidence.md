@@ -39,6 +39,8 @@ cd aiPlat-management/frontend && npx tsc --noEmit && npm run build
 
 ## 明确未做
 
-- 写入统一审计总线表 / 强制全量事件进 ActionExecution
+- 强制全量事件进 ActionExecution / Package·Action 热路径全量写 bus
 - 合并 ActionStore `action_audit` 为同一流
 - N24 / 附录 N 全量认证
+
+> 写总线见 Batch J5：`phase2-unified-audit-bus-evidence.md`。

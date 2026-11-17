@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2951
+total_capabilities: 2966
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 486
+    caps_count: 501
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -3374,6 +3374,66 @@ domains:
         module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
         type: function
         signature: "POST /fde/unified-audit/gate via Facade"
+      - symbol: "append_unified_audit_event"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "append_unified_audit_event(...)→idempotent bus row (certified=false)"
+      - symbol: "list_unified_audit_bus_events"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "list_unified_audit_bus_events(tenant_id,...)→bus rows"
+      - symbol: "materialize_unified_audit_from_view"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "materialize_unified_audit_from_view(...)→written/skipped (certified=false)"
+      - symbol: "run_unified_audit_bus_suite"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "run_unified_audit_bus_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_unified_audit_bus_gate"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "evaluate_unified_audit_bus_gate(suite)→gate (certified=false)"
+      - symbol: "append_fact_unified_audit_event"
+        module: core/api/core_facade.py
+        type: function
+        signature: "append_fact_unified_audit_event(...)→bus row via Facade"
+      - symbol: "list_fact_unified_audit_bus_events"
+        module: core/api/core_facade.py
+        type: function
+        signature: "list_fact_unified_audit_bus_events(...)→bus rows via Facade"
+      - symbol: "materialize_fact_unified_audit_bus"
+        module: core/api/core_facade.py
+        type: function
+        signature: "materialize_fact_unified_audit_bus(...)→materialize via Facade"
+      - symbol: "run_fact_unified_audit_bus_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "run_fact_unified_audit_bus_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_fact_unified_audit_bus_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_unified_audit_bus_gate(suite)→gate (certified=false)"
+      - symbol: "list_unified_audit_bus_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "GET /fde/unified-audit/bus via Facade"
+      - symbol: "append_unified_audit_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/append via Facade"
+      - symbol: "materialize_unified_audit_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/materialize via Facade"
+      - symbol: "run_unified_audit_bus_suite_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/bus/suite via Facade"
+      - symbol: "evaluate_unified_audit_bus_gate_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/bus/gate via Facade"
       - symbol: "fact_ledger_query_gateway"
         module: core/api/core_facade.py
         type: function

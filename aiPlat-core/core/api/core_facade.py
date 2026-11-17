@@ -15794,6 +15794,13 @@ from core.harness.knowledge_pipeline.unified_audit_view import (  # noqa: bounda
     list_unified_audit_events,
     run_unified_audit_view_suite,
 )
+from core.harness.knowledge_pipeline.unified_audit_bus import (  # noqa: boundary
+    append_unified_audit_event,
+    evaluate_unified_audit_bus_gate,
+    list_unified_audit_bus_events,
+    materialize_unified_audit_from_view,
+    run_unified_audit_bus_suite,
+)
 from core.harness.knowledge_pipeline.fact_projector import project_facts_to_graph  # noqa: boundary
 from core.harness.knowledge_pipeline.object_set import ObjectSetRequest  # noqa: boundary
 from core.harness.knowledge_pipeline.link_traverse import LinkTraverseRequest  # noqa: boundary
@@ -16792,6 +16799,139 @@ def evaluate_fact_unified_audit_view_gate(suite: dict | None = None) -> dict:
         gate 结果。
     """
     return evaluate_unified_audit_view_gate(suite)
+
+
+def append_fact_unified_audit_event(
+    *,
+    tenant_id: str,
+    event_id: str,
+    stream: str,
+    event_type: str,
+    occurred_at: float = 0.0,
+    actor: str = "",
+    subject: str = "",
+    refs: dict | None = None,
+    payload: dict | None = None,
+) -> dict:
+    """CoreFacade：追加统一审计总线事件（幂等；非 ActionStore 合并）。
+
+    Args:
+        tenant_id: 租户。
+        event_id: 事件主键。
+        stream: 源流水线名。
+        event_type: 事件类型。
+        occurred_at: 发生时间。
+        actor: 操作者。
+        subject: 主体。
+        refs: 引用。
+        payload: 载荷。
+
+    Returns:
+        事件字典（certified 无关；幂等命中带 idempotent_hit）。
+    """
+    return append_unified_audit_event(
+        tenant_id=tenant_id,
+        event_id=event_id,
+        stream=stream,
+        event_type=event_type,
+        occurred_at=occurred_at,
+        actor=actor,
+        subject=subject,
+        refs=refs,
+        payload=payload,
+    )
+
+
+def list_fact_unified_audit_bus_events(
+    *,
+    tenant_id: str,
+    stream: str = "",
+    event_type: str = "",
+    limit: int = 100,
+) -> list:
+    """CoreFacade：列出统一审计总线事件（租户隔离）。
+
+    Args:
+        tenant_id: 租户。
+        stream: 可选源流水线过滤。
+        event_type: 可选事件类型。
+        limit: 最大条数。
+
+    Returns:
+        事件列表。
+    """
+    return list_unified_audit_bus_events(
+        tenant_id=tenant_id,
+        stream=stream,
+        event_type=event_type,
+        limit=limit,
+    )
+
+
+async def materialize_fact_unified_audit_bus(
+    *,
+    tenant_id: str,
+    streams: str = "",
+    package_id: str = "",
+    action_id_prefix: str = "",
+    entity_type: str = "",
+    entity_id: str = "",
+    limit: int = 100,
+) -> dict:
+    """CoreFacade：将源三流汇合 materialize 进写总线。
+
+    Args:
+        tenant_id: 租户。
+        streams: 逗号分隔源流水线；空则三流。
+        package_id: Package 可选过滤。
+        action_id_prefix: Action 可选前缀。
+        entity_type: revision 可选实体类型。
+        entity_id: revision 可选实体 ID。
+        limit: 源侧上限。
+
+    Returns:
+        materialize 回执（certified 恒 false）。
+    """
+    stream_list = [p.strip() for p in (streams or "").split(",") if p.strip()] or None
+    return await materialize_unified_audit_from_view(
+        tenant_id=tenant_id,
+        streams=stream_list,
+        package_id=package_id,
+        action_id_prefix=action_id_prefix,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        limit=limit,
+        fact_ledger=get_fact_ledger(),
+    )
+
+
+async def run_fact_unified_audit_bus_suite(
+    *,
+    tenant_id: str = "n24-unified-audit-bus-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N24 统一审计写总线套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_unified_audit_bus_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_unified_audit_bus_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N24 统一审计写总线门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_unified_audit_bus_gate(suite)
 
 
 async def fact_ledger_project_to_graph(
