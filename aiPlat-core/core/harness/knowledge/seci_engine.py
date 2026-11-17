@@ -24,18 +24,24 @@ logger = logging.getLogger(__name__)
 class SECIEngine:
     """Knowledge creation bus. Single instance per process; idempotent writes."""
 
-    def __init__(self):
+    def __init__(self, *, tenant_id: str = ""):
         """初始化。
+
+        Args:
+            tenant_id: 可选租户；空则从 ActiveRequestContext 解析（N09 K22）。
         """
         self._graph = None
         self._initialized = False
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        self._tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
 
     def _ensure_graph(self):
         if self._initialized:
             return
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            self._graph = GraphIndex.load("knowledge-atom")
+            # 为什么：N09 K22 — SECI 原子图须按租户分库
+            self._graph = GraphIndex.load("knowledge-atom", tenant_id=self._tenant_id)
             self._initialized = True
         except Exception as e:
             logger.debug("SECIEngine: graph load failed: %s", str(e))
@@ -522,7 +528,7 @@ def register_seci_hook() -> bool:
                 from core.harness.ontology_engine.graph_index import GraphIndex
                 import json as _json_qs, time as _time_qs
 
-                kg = GraphIndex.load("knowledge-atom")
+                kg = GraphIndex.load("knowledge-atom", tenant_id=engine._tenant_id)
                 atom_count = engine.get_atom_count()
                 link_count = engine.get_link_count()
                 qs_id = f"qs_{int(_time_qs.time())}"

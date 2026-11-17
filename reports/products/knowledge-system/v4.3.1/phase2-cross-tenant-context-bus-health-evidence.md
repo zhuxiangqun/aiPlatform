@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / context_bus · system_health tenant（Batch K21）证据
 
 > 实施权威：附录 N N09 partial 加深（上下文注入 + 健康分审计）。  
-> **未宣称** evolver/SECI/orchestrated_retrieval 等其它 GraphIndex 调用面 / N09 certified。
+> **未宣称** N09 certified（evolver/SECI/retrieval 见 K22）。
 
 ## 检查表
 
@@ -39,5 +39,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- system_evolver / SECI / orchestrated_retrieval / path_planner / candidate_pool 默认 GraphIndex.load
+- system_evolver / SECI / orchestrated_retrieval / path_planner / candidate_pool → **K22 已加深**（本文件保留 K21 范围陈述）
 - N09 / 附录 N 全量认证
