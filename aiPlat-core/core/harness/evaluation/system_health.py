@@ -124,7 +124,11 @@ class SystemHealthCalculator:
 
             auditor = OntologyAuditor()
 
-            audit_reports = auditor.audit_all_domains()
+            # 为什么：N09 K21 — 健康分本体审计聚合全租户分库，禁止只扫 default
+            from core.harness.knowledge.staleness_monitor import list_kb_tenant_ids
+            audit_reports = []
+            for _tid in list_kb_tenant_ids():
+                audit_reports.extend(auditor.audit_all_domains(tenant_id=_tid))
 
             total_orphans = sum(len(r.orphan_classes) for r in audit_reports)
 
@@ -496,7 +500,12 @@ class SystemHealthCalculator:
 
                 from core.harness.knowledge.ontology_audit import OntologyAuditor
 
-                reports = OntologyAuditor().audit_all_domains()
+                # 为什么：N09 K21 — incremental 审计事件同样聚合全租户
+                from core.harness.knowledge.staleness_monitor import list_kb_tenant_ids
+                _aud = OntologyAuditor()
+                reports = []
+                for _tid in list_kb_tenant_ids():
+                    reports.extend(_aud.audit_all_domains(tenant_id=_tid))
 
                 total_orphans = sum(len(r.orphan_classes) for r in reports)
 
@@ -600,17 +609,19 @@ class SystemHealthCalculator:
 
                     data = _y.safe_load(yf.read_text(encoding="utf-8")) or {}
 
-                    g = GraphIndex.load(yf.stem)
-
-                    if len(g) == 0: unknown.append(f"{yf.stem}: 0 entities")
-
-                    for cn, cd in data.get("classes",{}).items():
-
-                        lb = cd.get("label", cn)
-
-                        if sum(1 for n in g._nodes.values() if n.class_name in (cn, lb)) == 0:
-
-                            r["confidence_gap_count"] += 1
+                    # 为什么：N09 K21 — 置信度缺口按租户枚举图，禁止只读 default
+                    from core.harness.knowledge.staleness_monitor import list_kb_tenant_ids
+                    empty_all = True
+                    for _tid in list_kb_tenant_ids():
+                        g = GraphIndex.load(yf.stem, tenant_id=_tid)
+                        if len(g) != 0:
+                            empty_all = False
+                        for cn, cd in data.get("classes", {}).items():
+                            lb = cd.get("label", cn)
+                            if sum(1 for n in g._nodes.values() if n.class_name in (cn, lb)) == 0:
+                                r["confidence_gap_count"] += 1
+                    if empty_all:
+                        unknown.append(f"{yf.stem}: 0 entities")
 
                 except Exception:
 

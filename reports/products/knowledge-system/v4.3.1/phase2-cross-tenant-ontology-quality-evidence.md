@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / ontology completeness·audit·validator tenant（Batch K20）证据
 
 > 实施权威：附录 N N09 partial 加深（质量审计面 GraphIndex）。  
-> **未宣称** context_bus / evolver / SECI 等其它 GraphIndex 调用面 / N09 certified。
+> **未宣称** evolver/SECI 等其它 GraphIndex 调用面 / N09 certified（context_bus/health 见 K21）。
 
 ## 检查表
 
@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- context_bus / system_evolver / SECI / orchestrated_retrieval 默认 GraphIndex.load
-- system_health 内 `audit_all_domains()` 仍可能 default tenant
+- context_bus / system_health → **K21 已加深**（本文件保留 K20 范围陈述）
+- system_evolver / SECI / orchestrated_retrieval 默认 GraphIndex.load
 - N09 / 附录 N 全量认证
