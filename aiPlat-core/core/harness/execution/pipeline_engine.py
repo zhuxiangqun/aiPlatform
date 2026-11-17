@@ -6554,10 +6554,12 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             try:
 
                 from core.harness.ontology_engine.graph_index import GraphIndex
+                from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
                 import json as _json_pt
 
-                kg = GraphIndex.load("knowledge-atom")
+                # 为什么：N09 K30 — pipeline 阶段快照写租户原子图
+                kg = GraphIndex.load("knowledge-atom", tenant_id=_resolve_graph_tenant())
 
                 pt_id = f"pt_{stage.id}_{int(time.time())}"
 

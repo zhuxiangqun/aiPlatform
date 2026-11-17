@@ -87,8 +87,10 @@ def weekly_kpi_report(
     # Graph-level MTTA attempt (state timestamps if present)
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        g = GraphIndex.load(domain_id)
+        # 为什么：N09 K30 — org KPI MTTA 读租户图
+        g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
         entity_class = str((goal or {}).get("entity_class") or "").strip()
         for node in (getattr(g, "_nodes", {}) or {}).values():
             if entity_class and getattr(node, "class_name", "") != entity_class:

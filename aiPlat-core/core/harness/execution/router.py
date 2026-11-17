@@ -81,8 +81,10 @@ def _ontology_routing_hint(query: str, domain_id: str = "ai-knowledge") -> Optio
 
 
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K30 — execution router 实体路由读租户图
+        graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
 
         if not graph or len(graph) == 0:
 

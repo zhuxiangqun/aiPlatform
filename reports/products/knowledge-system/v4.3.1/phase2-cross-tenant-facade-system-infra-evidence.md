@@ -40,5 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- skills/registry / org_kpi / pipeline_engine / execution router / graph_traversal 文档示例
+- skills/registry / org_kpi / pipeline_engine / execution router → 见 Batch K30
 - N09 / 附录 N 全量认证
