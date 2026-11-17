@@ -3125,21 +3125,23 @@ def _build_markdown_report(data: dict, collection: str, days: int = 30) -> str:
 
 @router.get("/diagnostics/drift-status", response_model=Dict[str, Any])
 def get_drift_status(
+    request: Request,
     collection: str = "",
     refresh: bool = False,
-    tenant_id: str = "default",
 ):
     """Knowledge drift scanner — reports which Wiki pages have stale source documents.
 
     Args:
+        request: FastAPI Request；租户经 ``actor_from_http`` 身份门（N09 K17）。
         collection: collection 参数。
         refresh: refresh 参数。
-        tenant_id: 租户；选择 KB 分库（N09 K14）。
     """
     import time as _time
     from core.harness.knowledge.staleness_monitor import StalenessMonitor
 
-    tid = (tenant_id or "").strip() or "default"
+    # 为什么：N09 K17 — 禁止 query/body 伪造 tenant_id；只信 gated identity headers
+    actor0 = actor_from_http(request, None)
+    tid = str(actor0.get("tenant_id") or "").strip() or "default"
     # Simple cache (5 min TTL) — key includes tenant
     cache_key = f"drift:{tid}:{collection}"
     cached = _drift_cache.get("by_tenant", {}).get(cache_key)
@@ -3210,17 +3212,19 @@ def get_drift_status(
 
 
 @router.post("/diagnostics/drift-rebuild", response_model=Dict[str, Any])
-async def trigger_drift_rebuild(max_pages: int = 10, tenant_id: str = "default"):
+async def trigger_drift_rebuild(request: Request, max_pages: int = 10):
     """Auto-rebuild stale pages by re-running the ontology engine on drifted sources.
 
     Args:
+        request: FastAPI Request；租户经 ``actor_from_http`` 身份门（N09 K17）。
         max_pages: max_pages 参数。
-        tenant_id: 租户；选择 KB 分库并透传 pipeline（N09 K14）。
     """
     from core.harness.knowledge.staleness_monitor import StalenessMonitor, kb_sqlite_path_for_tenant
     from core.api.core_facade import read_page
 
-    tid = (tenant_id or "").strip() or "default"
+    # 为什么：N09 K17 — rebuild 租户同 drift-status，禁止 query 旁路
+    actor0 = actor_from_http(request, None)
+    tid = str(actor0.get("tenant_id") or "").strip() or "default"
     # 为什么：N09 K14 — rebuild 与扫描共用租户分库
     monitor = StalenessMonitor(tenant_id=tid)
     reports = monitor.scan_all_collections()

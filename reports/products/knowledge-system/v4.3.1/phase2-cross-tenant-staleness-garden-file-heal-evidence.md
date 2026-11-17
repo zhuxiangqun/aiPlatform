@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / garden + sys_file + self_heal tenant（Batch K16）证据
 
 > 实施权威：附录 N N09 partial 加深（K15 cron/health 之上：残留调用面）。  
-> **未宣称** metric/scoring 旁路 / diagnostics 身份绑定 / N09 certified。
+> **未宣称** metric/scoring 旁路 / N09 certified（diagnostics 身份绑定见 K17）。
 
 ## 检查表
 
@@ -40,5 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做
 
 - metric/scoring/scenario/governance 旁路 CRUD tenant
-- diagnostics drift HTTP 仍为 query-param tenant（非身份绑定）
+- diagnostics drift HTTP 身份绑定 → **K17 已加深**（本文件保留 K16 范围陈述）
 - N09 / 附录 N 全量认证
