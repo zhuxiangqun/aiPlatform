@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / diagnostics drift identity（Batch K17）证据
 
 > 实施权威：附录 N N09 partial 加深（K14 分库路径之上：drift HTTP 身份门）。  
-> **未宣称** metric/scoring 旁路 CRUD / N09 certified。
+> **未宣称** N09 certified（metric/scoring CRUD 见 K18）。
 
 ## 检查表
 
@@ -39,5 +39,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- metric/scoring/scenario/governance 旁路 CRUD tenant
+- metric/scoring/scenario/governance 旁路 CRUD → **K18 已加深**（本文件保留 K17 范围陈述）
 - N09 / 附录 N 全量认证

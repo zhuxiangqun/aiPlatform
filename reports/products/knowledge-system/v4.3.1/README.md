@@ -76,5 +76,6 @@ authority: supporting
 | [phase2-cross-tenant-staleness-cron-evidence.md](./phase2-cross-tenant-staleness-cron-evidence.md) | Batch K15 N09 staleness cron/health 全租户枚举（非 garden·file·self_heal/非 certified） |
 | [phase2-cross-tenant-staleness-garden-file-heal-evidence.md](./phase2-cross-tenant-staleness-garden-file-heal-evidence.md) | Batch K16 N09 garden/file/self_heal 租户扫描（非 metric 旁路/非 certified） |
 | [phase2-cross-tenant-diagnostics-drift-identity-evidence.md](./phase2-cross-tenant-diagnostics-drift-identity-evidence.md) | Batch K17 N09 diagnostics drift 身份绑定（非 metric 旁路/非 certified） |
+| [phase2-cross-tenant-metric-scoring-crud-evidence.md](./phase2-cross-tenant-metric-scoring-crud-evidence.md) | Batch K18 N09 metric/scoring/scenario/governance CRUD 租户（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
