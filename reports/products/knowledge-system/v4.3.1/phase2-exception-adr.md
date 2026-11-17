@@ -24,7 +24,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 | N04/N12 | 写入硬门+transition；非 reviewer RBAC | 开放 | source_policy + fact_state_machine |
 | N07/N22 | ObjectSet + link.traverse ACL；非 Wiki/KB 全入口 | 开放 | ABox ACL 切片 |
 | N11/N14 | 本地双写对账；切写未授权 | 开放 | migration 演练 |
-| N24 | Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接；非回滚 UI/全量总线合并 | 至 N24 全量加深 | 见 revision 系列 + `phase2-revision-action-bridge-evidence.md` |
+| N24 | Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP 薄路由；非回滚 UI/全量总线合并 | 至 N24 全量加深 | 见 revision 系列 + `phase2-revision-restore-http-evidence.md` |
 | SLO | 目标已登记；生产遥测未接线 | 开放 | 本 ADR + `phase2-slo-target-evidence.md` |
 
 权威条目 note 以 [`n24-conformance-catalog.yaml`](./n24-conformance-catalog.yaml) 为准；本表为人读汇总。

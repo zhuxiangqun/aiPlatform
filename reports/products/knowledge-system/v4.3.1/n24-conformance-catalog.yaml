@@ -241,6 +241,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-revision-audit-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-restore-approval-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-revision-action-bridge-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-revision-restore-http-evidence.md
       - docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_fact_revision_phase2.py
@@ -250,7 +251,9 @@ items:
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_revision_audit_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_restore_approval_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_revision_action_bridge_phase2.py
-    note: Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接；非回滚 UI/全量总线合并/非 N24 certified
+      - aiPlat-platform/tests/test_revision_restore_http_phase2.py
+      - aiPlat-platform/apps/fde/api/revision_restore_routes.py
+    note: Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP 薄路由；非回滚 UI/全量总线合并/非 N24 certified
 
 # §9.4 认证证据包槽位（路径或 explicit missing）
 certification_slots:

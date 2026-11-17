@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3717
+total_capabilities: 3718
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1211,6 +1211,7 @@ scan_hash: 8f9548ec24f4
 | **Revision Audit（v4.3.1 N24 I2）** | `list_revision_audit` / `run_revision_audit_suite` / `evaluate_revision_audit_gate` + Facade list/suite/gate | ✅ | archive/restore 写入 append-only `revision_audit`；租户前置过滤；门槛门 certified 恒 false。证据 `phase2-revision-audit-evidence.md`。**未宣称** 回滚 UI/Package+Action 统一总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Restore Approval（v4.3.1 N24 I3）** | `request_revision_restore` / `approve_revision_restore` / `reject_revision_restore` / `run_restore_approval_suite` / `evaluate_restore_approval_gate` + Facade | ✅ | 审批人≠请求人；批准才执行 restore；门槛门 certified 恒 false。证据 `phase2-restore-approval-evidence.md`。**未宣称** 回滚 UI/Package+Action 统一总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Revision→Action Bridge（v4.3.1 N24 I4）** | `bridge_revision_audit_to_action` / `list_revision_action_bridges` / `run_revision_action_bridge_suite` / `evaluate_revision_action_bridge_gate` + Facade | ✅ | 审批式 restore 决策幂等桥接 ActionExecution；门槛门 certified 恒 false。证据 `phase2-revision-action-bridge-evidence.md`。**未宣称** 回滚 UI/全量总线合并 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Revision Restore HTTP（v4.3.1 N24 J1）** | FDE `/revision-restore/*` 薄路由 → CoreFacade（requests/approve/reject/audit/bridges/suite/gate） | ✅ | 平台 HTTP 暴露审批式 restore 与审计/桥接查询；门槛门 certified 恒 false。证据 `phase2-revision-restore-http-evidence.md`。**未宣称** 管理端回滚 UI / 全量总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户隔离加深（v4.3.1 N09 partial）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | query/get_source/gateway/verify 四探针；门槛门 certified 恒 false。证据 `phase2-cross-tenant-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
@@ -1350,6 +1351,14 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_restore_approval_gate_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| run_restore_approval_suite_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_revision_action_bridges_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_revision_audit_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| reject_revision_restore_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| approve_revision_restore_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| request_revision_restore_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_revision_restore_requests_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_fact_revision_action_bridge_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_run_revision_action_bridge_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_list_revision_action_bridges | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4617,7 +4626,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 672 | 1 | 673 |
+| Harness 执行引擎 | 673 | 1 | 674 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 568 | 9 | 577 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4662,7 +4671,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3706** | **11** | **3717** |
+| **总计** | **3707** | **11** | **3718** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
