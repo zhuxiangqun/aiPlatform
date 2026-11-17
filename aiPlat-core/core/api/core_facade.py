@@ -15764,6 +15764,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     evaluate_claim_evidence_gate,
     evaluate_claim_revision_gate,
     evaluate_source_revision_gate,
+    evaluate_revision_restore_gate,
     evaluate_cross_tenant_gate,
     evaluate_datasource_raw_gate,
     evaluate_fact_revision_gate,
@@ -15776,6 +15777,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_claim_evidence_suite,
     run_claim_revision_suite,
     run_source_revision_suite,
+    run_revision_restore_suite,
     run_cross_tenant_isolation_suite,
     run_datasource_raw_suite,
     run_fact_revision_suite,
@@ -16320,6 +16322,130 @@ def evaluate_fact_source_revision_gate(suite: dict | None = None) -> dict:
         gate 结果。
     """
     return evaluate_source_revision_gate(suite)
+
+
+async def fact_ledger_restore_fact_at_revision(
+    *,
+    fact_id: str,
+    tenant_id: str,
+    target_revision: int,
+    actor: str,
+    reason: str,
+) -> dict:
+    """CoreFacade：按 revision 恢复 Fact 内容为新头（N24；非 UI）。
+
+    Args:
+        fact_id: Fact ID。
+        tenant_id: 调用方租户。
+        target_revision: 目标修订号。
+        actor: 操作者。
+        reason: 理由。
+
+    Returns:
+        restore 回执。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.restore_fact_at_revision(
+        fact_id,
+        tenant_id=tenant_id,
+        target_revision=target_revision,
+        actor=actor,
+        reason=reason,
+        enforce_write_gates=False,
+    )
+
+
+async def fact_ledger_restore_claim_at_revision(
+    *,
+    claim_id: str,
+    tenant_id: str,
+    target_revision: int,
+    actor: str,
+    reason: str,
+) -> dict:
+    """CoreFacade：按 revision 恢复 Claim 内容为新头（N24；非 UI）。
+
+    Args:
+        claim_id: Claim ID。
+        tenant_id: 调用方租户。
+        target_revision: 目标修订号。
+        actor: 操作者。
+        reason: 理由。
+
+    Returns:
+        restore 回执。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.restore_claim_at_revision(
+        claim_id,
+        tenant_id=tenant_id,
+        target_revision=target_revision,
+        actor=actor,
+        reason=reason,
+        enforce_write_gates=False,
+    )
+
+
+async def fact_ledger_restore_source_at_revision(
+    *,
+    source_id: str,
+    tenant_id: str,
+    target_revision: int,
+    actor: str,
+    reason: str,
+) -> dict:
+    """CoreFacade：按 revision 恢复 Source 为新头（N24；非 UI）。
+
+    Args:
+        source_id: Source ID。
+        tenant_id: 调用方租户。
+        target_revision: 目标修订号。
+        actor: 操作者。
+        reason: 理由。
+
+    Returns:
+        restore 回执。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.restore_source_at_revision(
+        source_id,
+        tenant_id=tenant_id,
+        target_revision=target_revision,
+        actor=actor,
+        reason=reason,
+    )
+
+
+async def fact_ledger_run_revision_restore_suite(
+    *,
+    tenant_id: str = "n24-restore-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N24 Revision Restore 加深套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_revision_restore_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_revision_restore_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N24 Revision Restore 门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_revision_restore_gate(suite)
 
 
 async def fact_ledger_project_to_graph(
