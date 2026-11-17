@@ -44,4 +44,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做
 
 - N24 / 附录 N 全量认证
-- ActionStore 表增加物理 `tenant_id` 列（本批经 params/tenant_id 字段过滤）
+
+> 物理 `tenant_id` 列见 Batch J8：`phase2-unified-audit-action-store-tenant-evidence.md`。
