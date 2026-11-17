@@ -3322,6 +3322,10 @@ domains:
         module: aiPlat-platform/apps/fde/api/revision_restore_routes.py
         type: function
         signature: "POST /fde/revision-restore/gate via Facade"
+      - symbol: "RevisionRestorePanel"
+        module: aiPlat-management/frontend/src/pages/KnowledgeFactory/RevisionRestorePanel.tsx
+        type: component
+        signature: "KnowledgeFactory revision-restore UI → J1 HTTP (certified=false)"
       - symbol: "fact_ledger_query_gateway"
         module: core/api/core_facade.py
         type: function
