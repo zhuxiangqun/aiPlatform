@@ -4,7 +4,7 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-17T07:31:15Z"
+generated_at: "2026-11-17T07:56:20Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-17T07:31:15Z` |
+| 生成时间 (UTC) | `2026-11-17T07:56:20Z` |
 | CAPABILITIES sha256 | `f8dd8df386df…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -1490,7 +1490,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 2938 capabilities (caps_count) | 2938 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2939 capabilities (caps_count) | 2939 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1570,7 +1570,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 473 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 474 | FDE 能力自描述 |
 
 ##### aiPlat-platform/apps/fde/api/fde_pipeline.py
 
