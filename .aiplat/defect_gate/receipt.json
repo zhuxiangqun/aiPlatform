@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T22:58:40+08:00",
+  "reviewed_at": "2026-11-18T00:16:42+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "ff7cd24524375c7c0bace0730a5bbbe99a09089fa77d4317ccf8cb40c0ebad9c",
-  "head_sha": "cb6cd0cb61e6c703e08ce05cc11297800b5a39e8",
+  "diff_sha256": "34e0f13584ee5cccbaa5ba4cd32940fe9084410fdaea01bdfa4a4c2a4d4d4c6b",
+  "head_sha": "7939ca1ac768e673bf95cdbcd6ff7dfbaa5c3958",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K8 injects resolve_request_tenant (via _resolve_identity, not spoofable X-AIPLAT-TENANT-ID) into ontology_editor publish + list_rule_versions. Remaining ontology_editor CRUD tenant coverage is intentional out-of-scope (K9). certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K9 wires resolve_request_tenant into ontology_editor rollback + class upsert/delete; _invalidate_domain_caches loads GraphIndex with tenant_id. StatusResponse import via apps.common_schemas avoids api/__init__ circular import. view/monitor/metric CRUD remain intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
 }
