@@ -7640,26 +7640,32 @@ def resolve_prompt(prompt_id: str, **variables) -> str:
 # ── Process Monitor Facade (v2.6) ──
 
 
-def get_process_status(domain_id: str, process_name: str = "") -> List[Dict[str, Any]]:
+def get_process_status(
+    domain_id: str, process_name: str = "", *, tenant_id: str = "default"
+) -> List[Dict[str, Any]]:
     """Get running process instance status.
 
     Args:
         domain_id: domain 标识。
         process_name: process_name 参数。
+        tenant_id: 租户；透传 process_orchestrator（N09 K12）。
     """
     from core.harness.knowledge.process_orchestrator import get_process_status as _gps
-    return _gps(domain_id, process_name)
+    return _gps(domain_id, process_name, tenant_id=tenant_id)
 
 
-def get_bottlenecks(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+def get_bottlenecks(
+    domain_id: str, limit: int = 10, *, tenant_id: str = "default"
+) -> List[Dict[str, Any]]:
     """Get process bottlenecks — instances stuck at same step longest.
 
     Args:
         domain_id: domain 标识。
         limit: 返回条数上限。
+        tenant_id: 租户；透传 process_orchestrator（N09 K12）。
     """
     from core.harness.knowledge.process_orchestrator import get_bottlenecks as _gb
-    return _gb(domain_id, limit)
+    return _gb(domain_id, limit, tenant_id=tenant_id)
 
 
 def get_state_distribution(

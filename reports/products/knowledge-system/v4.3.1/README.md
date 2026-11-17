@@ -70,4 +70,6 @@ authority: supporting
 | [phase2-cross-tenant-ontology-editor-side-crud-evidence.md](./phase2-cross-tenant-ontology-editor-side-crud-evidence.md) | Batch K10 N09 ontology_editor view/meta tenant + 按租户清缓存（非 monitor 物理 tenant/非 certified） |
 | [phase2-cross-tenant-process-monitor-evidence.md](./phase2-cross-tenant-process-monitor-evidence.md) | Batch K11 N09 state_changes/process_monitor 物理 tenant（非 process_instances/非 certified） |
 
+| [phase2-cross-tenant-process-instances-evidence.md](./phase2-cross-tenant-process-instances-evidence.md) | Batch K12 N09 process_instances + OntologyEngine tenant（非 auto_pipeline 强制/非 certified） |
+
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

@@ -152,7 +152,7 @@ async def process_status(
     try:
         from core.api.core_facade import get_process_status
         tenant_id = resolve_request_tenant(request)
-        data = get_process_status(domain_id, process_name or "")
+        data = get_process_status(domain_id, process_name or "", tenant_id=tenant_id)
         return {
             "domain_id": domain_id,
             "tenant_id": tenant_id,
@@ -183,7 +183,7 @@ async def process_bottlenecks(domain_id: str, request: Request, limit: int = Que
     try:
         from core.api.core_facade import get_bottlenecks
         tenant_id = resolve_request_tenant(request)
-        data = get_bottlenecks(domain_id, limit)
+        data = get_bottlenecks(domain_id, limit, tenant_id=tenant_id)
         return {
             "domain_id": domain_id,
             "tenant_id": tenant_id,

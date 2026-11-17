@@ -43,7 +43,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- `process_instances` / process_orchestrator 物理 tenant 列
-- OntologyEngine `record_transition` 从运行时上下文强制注入非 default tenant
+- `process_instances` / OntologyEngine tenant（见 Batch K12：`phase2-cross-tenant-process-instances-evidence.md`）
+- auto_ontology_pipeline 强制非 default tenant
 - metric/scoring/scenario/governance 旁路
 - N09 / 附录 N 全量认证
