@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:00:30+08:00",
+  "reviewed_at": "2026-11-18T02:04:14+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "7c2ce8f41b328cdd94f53b55ff8d1cd93628125b7422754d23f08831c476e79c",
-  "head_sha": "40afb8ad1605d282a0bca7b3aef06b82bd7ffc67",
+  "diff_sha256": "848a715c55bad1c896b99f5fa380da78e62472d3b740fd56d5294999036f7893",
+  "head_sha": "01d6bd66f5b6870c5efde872dbd331e084078345",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K16 wires AutoGarden / sys_file_write / SelfHeal stale_mark through list_kb_tenant_ids or explicit tenant_id. Residual: metric/scoring CRUD tenant and diagnostics identity binding (query-param). certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K17 binds drift-status/rebuild tenant via actor_from_http; query tenant_id removed. Residual: metric/scoring/scenario/governance CRUD tenant. certified stays false. Local lock only; CI needs non-author Approve."
 }
