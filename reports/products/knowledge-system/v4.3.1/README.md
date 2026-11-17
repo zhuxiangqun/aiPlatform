@@ -87,5 +87,6 @@ authority: supporting
 | [phase2-cross-tenant-ontology-engine-evidence.md](./phase2-cross-tenant-ontology-engine-evidence.md) | Batch K26 N09 ontology_engine GraphIndex 租户（非 certified） |
 | [phase2-cross-tenant-builtin-handlers-evidence.md](./phase2-cross-tenant-builtin-handlers-evidence.md) | Batch K27 N09 builtin_handlers GraphIndex 租户（非 certified） |
 | [phase2-cross-tenant-fde-service-evidence.md](./phase2-cross-tenant-fde-service-evidence.md) | Batch K28 N09 FDE service GraphIndex 租户（非 certified） |
+| [phase2-cross-tenant-facade-system-infra-evidence.md](./phase2-cross-tenant-facade-system-infra-evidence.md) | Batch K29 N09 facade/system/eval/infra GraphIndex 租户（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

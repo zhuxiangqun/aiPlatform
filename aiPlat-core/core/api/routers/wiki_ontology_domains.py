@@ -598,8 +598,10 @@ async def verify_ontology_domain(domain_id: str, collection: str = ""):
     graph_nodes = graph_edges = 0
 
     try:
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K29 — ontology domain 校验读租户图
+        graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
 
         graph_nodes = len(graph._nodes)
 

@@ -144,7 +144,9 @@ class SemanticGate:
         """Check that all named entities exist in GraphIndex."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            graph = GraphIndex.load(domain_id)
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            # 为什么：N09 K29 — semantic gate 实体校验读租户图
+            graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
         except Exception:
             return []  # graph not available → skip
 

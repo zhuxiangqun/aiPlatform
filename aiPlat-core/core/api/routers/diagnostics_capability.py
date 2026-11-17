@@ -140,7 +140,9 @@ async def _get_wiki_entity_count(domain_id: str) -> int:
 async def _get_graph_stats_sync(domain_id: str) -> dict:
     try:
         from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
-        g = GraphIndex.load(domain_id)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        # 为什么：N09 K29 — diagnostics 图统计读租户图
+        g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
         edge_count = sum(len(n.out_edges) for n in g._nodes.values())
         return {
             "edge_count": edge_count,

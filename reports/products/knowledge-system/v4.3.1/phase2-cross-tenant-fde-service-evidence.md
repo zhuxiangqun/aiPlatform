@@ -38,6 +38,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- core_facade 残余 bare / system.py / wiki_ontology_domains / constraint_validator / dynamic_mapper / rule_validator / semantic_gate
+- core_facade/system/eval/infra → 见 Batch K29；skills/registry/pipeline_engine bare load 仍残余
 - clarify 中 `fde-delivery` 域名硬编码（仅补 tenant）
 - N09 / 附录 N 全量认证

@@ -2195,8 +2195,10 @@ def get_graph_health(domain: str = "") -> Dict[str, Any]:
         domain: domain 参数。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
     try:
-        g = GraphIndex.load(domain) if domain else None
+        # 为什么：N09 K29 — facade 域图加载须按租户
+        g = GraphIndex.load(domain, tenant_id=_resolve_graph_tenant()) if domain else None
         if g:
             return {"domain": domain, "node_count": g.stats().get("node_count", 0),
                     "exists": True}
@@ -4008,9 +4010,11 @@ def import_abox_table_map(
     """
     from core.apps.fde.service.abox_connector import import_table_map_payload
     from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
     GraphIndex._loaded_instances.clear()
-    g = GraphIndex.load(domain_id)
+    # 为什么：N09 K29 — table map 导入写租户图
+    g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
     meta = import_table_map_payload(
         g,
         domain_id=domain_id,
