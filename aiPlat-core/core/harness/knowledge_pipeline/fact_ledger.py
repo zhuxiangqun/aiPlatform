@@ -9,7 +9,7 @@
   - 完整 ObjectSet/SDK、Wiki 只读化、Scenario Package（后续 Phase）
   - 替代现有 DataSourceRegistry 外部连接器（本模块是附录 A/D 契约层）
   - 宣称附录 N 全量认证（写入硬门加深仍为 partial）
-  - 统一全域 Revision 账本 / diff UI / 一键回滚工作流（N24 仅 Fact/Claim/Source 最小切片）
+  - 统一全域 Revision 账本 / 回滚 UI / 审批式 revert / 统一审计总线（N24 仅抬号+归档+程序化 restore）
 """
 from __future__ import annotations
 
@@ -1956,6 +1956,296 @@ class FactLedger:
             "unchanged": [k for k in self._FACT_CONTENT_KEYS if k not in changed],
         }
 
+    async def restore_fact_at_revision(
+        self,
+        fact_id: str,
+        *,
+        tenant_id: str,
+        target_revision: int,
+        actor: str,
+        reason: str,
+        enforce_write_gates: bool = False,
+        source_policy_db_path: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """按目标 revision 恢复 Fact 内容为新头（抬号；保留当前审核/生命周期态）。
+
+        Args:
+            fact_id: Fact ID。
+            tenant_id: 调用方租户。
+            target_revision: 要恢复的归档/历史修订号。
+            actor: 操作者（必填）。
+            reason: 理由（必填）。
+            enforce_write_gates: 透传 put_fact 硬门（默认关，与 revision suite 一致）。
+            source_policy_db_path: 策略库路径。
+
+        Returns:
+            restore 回执（含 ``restored`` / ``idempotent`` / ``fact``）。
+
+        Raises:
+            FactLedgerError: 缺 actor/reason、头或目标 revision 缺失。
+        """
+        who = (actor or "").strip()
+        why = (reason or "").strip()
+        if not who or not why:
+            raise FactLedgerError("restore requires actor and reason")
+        head = await self.get_fact(fact_id, tenant_id=tenant_id)
+        if head is None:
+            raise FactLedgerError(f"fact not found: {fact_id}")
+        snap = await self.get_fact_at_revision(
+            fact_id, tenant_id=tenant_id, revision=int(target_revision)
+        )
+        if snap is None:
+            raise FactLedgerError(f"fact revision not found: {target_revision}")
+        # 为什么：恢复内容字段，但审核/生命周期态保留当前头，避免绕过 transition
+        effective = dict(snap)
+        effective["review_status"] = head.get("review_status")
+        effective["status"] = head.get("status")
+        from_rev = int(head.get("revision") or 1)
+        if self._fact_content_equal(head, effective):
+            return {
+                "restored": False,
+                "idempotent": True,
+                "fact_id": fact_id,
+                "tenant_id": tenant_id,
+                "target_revision": int(target_revision),
+                "from_revision": from_rev,
+                "to_revision": from_rev,
+                "fact": head,
+                "actor": who,
+                "reason": why,
+            }
+        updated = await self.put_fact(
+            tenant_id=tenant_id,
+            collection_id=str(snap.get("collection_id") or head.get("collection_id") or ""),
+            subject=str(snap.get("subject") or ""),
+            predicate=str(snap.get("predicate") or ""),
+            object=str(snap.get("object") or ""),
+            evidence=list(snap.get("evidence") or []),
+            source_policy=str(snap.get("source_policy") or ""),
+            extractor_version=str(snap.get("extractor_version") or ""),
+            review_status=str(head.get("review_status") or "draft"),
+            confidence=float(snap.get("confidence") or 0.0),
+            domain_id=str(snap.get("domain_id") or head.get("domain_id") or ""),
+            fact_id=fact_id,
+            status=str(head.get("status") or "active"),
+            inferred=bool(snap.get("inferred")),
+            valid_from=snap.get("valid_from"),
+            valid_to=snap.get("valid_to"),
+            revision=from_rev + 1,
+            enforce_write_gates=enforce_write_gates,
+            source_policy_db_path=source_policy_db_path,
+            revision_actor=who,
+            revision_reason=why,
+        )
+        return {
+            "restored": True,
+            "idempotent": False,
+            "fact_id": fact_id,
+            "tenant_id": tenant_id,
+            "target_revision": int(target_revision),
+            "from_revision": from_rev,
+            "to_revision": int(updated.get("revision") or (from_rev + 1)),
+            "fact": updated,
+            "actor": who,
+            "reason": why,
+        }
+
+    async def restore_claim_at_revision(
+        self,
+        claim_id: str,
+        *,
+        tenant_id: str,
+        target_revision: int,
+        actor: str,
+        reason: str,
+        enforce_write_gates: bool = False,
+        source_policy_db_path: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """按目标 revision 恢复 Claim 内容为新头（抬号；保留当前审核/状态）。
+
+        Args:
+            claim_id: Claim ID。
+            tenant_id: 调用方租户。
+            target_revision: 目标修订号。
+            actor: 操作者（必填）。
+            reason: 理由（必填）。
+            enforce_write_gates: 透传 put_claim 硬门。
+            source_policy_db_path: 策略库路径。
+
+        Returns:
+            restore 回执。
+
+        Raises:
+            FactLedgerError: 缺 actor/reason、头或目标 revision 缺失。
+        """
+        who = (actor or "").strip()
+        why = (reason or "").strip()
+        if not who or not why:
+            raise FactLedgerError("restore requires actor and reason")
+        head = await self.get_claim(claim_id, tenant_id=tenant_id)
+        if head is None:
+            raise FactLedgerError(f"claim not found: {claim_id}")
+        snap = await self.get_claim_at_revision(
+            claim_id, tenant_id=tenant_id, revision=int(target_revision)
+        )
+        if snap is None:
+            raise FactLedgerError(f"claim revision not found: {target_revision}")
+        effective = dict(snap)
+        effective["review_status"] = head.get("review_status")
+        effective["status"] = head.get("status")
+        from_rev = int(head.get("revision") or 1)
+        if self._claim_content_equal(head, effective):
+            return {
+                "restored": False,
+                "idempotent": True,
+                "claim_id": claim_id,
+                "tenant_id": tenant_id,
+                "target_revision": int(target_revision),
+                "from_revision": from_rev,
+                "to_revision": from_rev,
+                "claim": head,
+                "actor": who,
+                "reason": why,
+            }
+        updated = await self.put_claim(
+            tenant_id=tenant_id,
+            collection_id=str(snap.get("collection_id") or head.get("collection_id") or ""),
+            text=str(snap.get("text") or ""),
+            evidence=list(snap.get("evidence") or []),
+            source_policy=str(snap.get("source_policy") or ""),
+            extractor_version=str(snap.get("extractor_version") or ""),
+            review_status=str(head.get("review_status") or "draft"),
+            confidence=float(snap.get("confidence") or 0.0),
+            domain_id=str(snap.get("domain_id") or head.get("domain_id") or ""),
+            claim_id=claim_id,
+            status=str(head.get("status") or "accepted"),
+            valid_from=snap.get("valid_from"),
+            valid_to=snap.get("valid_to"),
+            revision=from_rev + 1,
+            conflict_key=str(snap.get("conflict_key") or ""),
+            enforce_write_gates=enforce_write_gates,
+            source_policy_db_path=source_policy_db_path,
+            revision_actor=who,
+            revision_reason=why,
+        )
+        return {
+            "restored": True,
+            "idempotent": False,
+            "claim_id": claim_id,
+            "tenant_id": tenant_id,
+            "target_revision": int(target_revision),
+            "from_revision": from_rev,
+            "to_revision": int(updated.get("revision") or (from_rev + 1)),
+            "claim": updated,
+            "actor": who,
+            "reason": why,
+        }
+
+    async def restore_source_at_revision(
+        self,
+        source_id: str,
+        *,
+        tenant_id: str,
+        target_revision: int,
+        actor: str,
+        reason: str,
+    ) -> Dict[str, Any]:
+        """按目标 revision 恢复 Source 元数据+Raw 为新头（抬号；旧文件保留）。
+
+        Args:
+            source_id: Source ID。
+            tenant_id: 调用方租户。
+            target_revision: 目标修订号。
+            actor: 操作者（必填）。
+            reason: 理由（必填）。
+
+        Returns:
+            restore 回执。
+
+        Raises:
+            FactLedgerError: 缺 actor/reason、头/目标缺失、归档快照文件不可读。
+        """
+        who = (actor or "").strip()
+        why = (reason or "").strip()
+        if not who or not why:
+            raise FactLedgerError("restore requires actor and reason")
+        head = await self.get_source(source_id, tenant_id=tenant_id)
+        if head is None:
+            raise FactLedgerError(f"source not found: {source_id}")
+        snap = await self.get_source_at_revision(
+            source_id, tenant_id=tenant_id, revision=int(target_revision)
+        )
+        if snap is None:
+            raise FactLedgerError(f"source revision not found: {target_revision}")
+        effective = dict(snap)
+        effective["status"] = head.get("status")
+        from_rev = int(head.get("revision") or 1)
+        # 为什么：Source 幂等以 sha256/内容键为准；status 取当前头
+        content_same = True
+        for key in self._SOURCE_CONTENT_KEYS:
+            if key == "status":
+                continue
+            lv = head.get(key)
+            rv = effective.get(key)
+            if key == "acl":
+                same = json.dumps(lv or [], ensure_ascii=False, sort_keys=True) == json.dumps(
+                    rv or [], ensure_ascii=False, sort_keys=True
+                )
+            else:
+                same = ("" if lv is None else lv) == ("" if rv is None else rv)
+            if not same:
+                content_same = False
+                break
+        if content_same:
+            return {
+                "restored": False,
+                "idempotent": True,
+                "source_id": source_id,
+                "tenant_id": tenant_id,
+                "target_revision": int(target_revision),
+                "from_revision": from_rev,
+                "to_revision": from_rev,
+                "source": head,
+                "actor": who,
+                "reason": why,
+            }
+        snap_path = Path(str(snap.get("snapshot_uri") or ""))
+        if not snap_path.is_file():
+            raise FactLedgerError(f"archived snapshot missing: {snap_path}")
+        content = snap_path.read_bytes()
+        digest = _sha256_bytes(content)
+        if digest != str(snap.get("sha256") or ""):
+            raise FactLedgerError(
+                f"archived snapshot hash mismatch: file={digest} meta={snap.get('sha256')}"
+            )
+        updated = await self.register_source(
+            tenant_id=tenant_id,
+            collection_id=str(snap.get("collection_id") or head.get("collection_id") or ""),
+            kind=str(snap.get("kind") or "file"),
+            uri=str(snap.get("uri") or ""),
+            content=content,
+            connector=str(snap.get("connector") or ""),
+            acl=list(snap.get("acl") or head.get("acl") or []),
+            domain_id=str(snap.get("domain_id") or head.get("domain_id") or ""),
+            license=str(snap.get("license") or "company-internal"),
+            source_id=source_id,
+            revision=from_rev + 1,
+            revision_actor=who,
+            revision_reason=why,
+        )
+        return {
+            "restored": True,
+            "idempotent": False,
+            "source_id": source_id,
+            "tenant_id": tenant_id,
+            "target_revision": int(target_revision),
+            "from_revision": from_rev,
+            "to_revision": int(updated.get("revision") or (from_rev + 1)),
+            "source": updated,
+            "actor": who,
+            "reason": why,
+        }
+
     def _row_to_fact(self, row: Any) -> Dict[str, Any]:
         """将 facts 表行转为 Fact dict。
 
@@ -3617,6 +3907,313 @@ def evaluate_source_revision_gate(
         "certified": False,
         "n24_full_conformance": False,
         "note": "Source revision harden; not N24 certified",
+    }
+
+
+_N24_REVISION_RESTORE_CASES = (
+    "restore_requires_actor_reason",
+    "restore_missing_revision_rejected",
+    "restore_fact_bumps_and_archives",
+    "restore_claim_and_source_ok",
+    "restore_idempotent_when_same_content",
+)
+
+
+async def run_revision_restore_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n24-restore-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N24 Revision Restore 最小加深套件（程序化恢复；非 UI）。
+
+    Args:
+        ledger: 可选账本；默认临时目录新建。
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+
+    Returns:
+        套件汇总；``certified`` / ``n24_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n24-revision-restore-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src_v1 = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            kind="file",
+            uri="file://n24/restore-v1.txt",
+            content=b"n24-restore-v1",
+            connector="n24",
+            domain_id=domain_id,
+            source_id="src-n24-restore",
+            revision=1,
+        )
+        sid = src_v1["source_id"]
+        evidence = [
+            {
+                "source_id": sid,
+                "locator": "extract",
+                "quote": "n24",
+                "fetched_at": src_v1["fetched_at"],
+            }
+        ]
+        fact = await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            subject="door",
+            predicate="state",
+            object="locked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="draft",
+            confidence=0.7,
+            domain_id=domain_id,
+            revision=1,
+            enforce_write_gates=False,
+        )
+        fid = fact["fact_id"]
+        await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            subject="door",
+            predicate="state",
+            object="unlocked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="draft",
+            confidence=0.7,
+            domain_id=domain_id,
+            fact_id=fid,
+            revision=2,
+            enforce_write_gates=False,
+            revision_actor="n24-suite",
+            revision_reason="mutate",
+        )
+        claim = await lg.put_claim(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            text="door is locked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="published",
+            confidence=0.8,
+            domain_id=domain_id,
+            revision=1,
+        )
+        cid = claim["claim_id"]
+        await lg.put_claim(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            text="door is unlocked",
+            evidence=evidence,
+            source_policy="n24_policy",
+            extractor_version="n24",
+            review_status="published",
+            confidence=0.8,
+            domain_id=domain_id,
+            claim_id=cid,
+            revision=2,
+            revision_actor="n24-suite",
+            revision_reason="mutate",
+        )
+        await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n24-kb",
+            kind="file",
+            uri="file://n24/restore-v2.txt",
+            content=b"n24-restore-v2",
+            connector="n24",
+            domain_id=domain_id,
+            source_id=sid,
+            revision=2,
+            revision_actor="n24-suite",
+            revision_reason="mutate",
+        )
+
+        rejected_actor = False
+        try:
+            await lg.restore_fact_at_revision(
+                fid, tenant_id=tenant_id, target_revision=1, actor="", reason="x"
+            )
+        except FactLedgerError:
+            rejected_actor = True
+        cases.append(
+            {
+                "id": "restore_requires_actor_reason",
+                "ok": rejected_actor,
+                "detail": "" if rejected_actor else "empty_actor_accepted",
+            }
+        )
+
+        rejected_missing = False
+        try:
+            await lg.restore_fact_at_revision(
+                fid,
+                tenant_id=tenant_id,
+                target_revision=99,
+                actor="n24-suite",
+                reason="missing",
+            )
+        except FactLedgerError:
+            rejected_missing = True
+        cases.append(
+            {
+                "id": "restore_missing_revision_rejected",
+                "ok": rejected_missing,
+                "detail": "" if rejected_missing else "missing_accepted",
+            }
+        )
+
+        fact_rcpt = await lg.restore_fact_at_revision(
+            fid,
+            tenant_id=tenant_id,
+            target_revision=1,
+            actor="n24-suite",
+            reason="restore_fact_r1",
+            enforce_write_gates=False,
+        )
+        fact_head = fact_rcpt.get("fact") or {}
+        hist = await lg.list_fact_revisions(fid, tenant_id=tenant_id)
+        archived = [h for h in hist if not h.get("is_head")]
+        fact_ok = (
+            fact_rcpt.get("restored") is True
+            and int(fact_head.get("revision") or 0) == 3
+            and fact_head.get("object") == "locked"
+            and len(archived) >= 2
+        )
+        cases.append(
+            {
+                "id": "restore_fact_bumps_and_archives",
+                "ok": fact_ok,
+                "detail": "" if fact_ok else "fact_restore_failed",
+            }
+        )
+
+        claim_rcpt = await lg.restore_claim_at_revision(
+            cid,
+            tenant_id=tenant_id,
+            target_revision=1,
+            actor="n24-suite",
+            reason="restore_claim_r1",
+        )
+        src_rcpt = await lg.restore_source_at_revision(
+            sid,
+            tenant_id=tenant_id,
+            target_revision=1,
+            actor="n24-suite",
+            reason="restore_source_r1",
+        )
+        claim_head = claim_rcpt.get("claim") or {}
+        src_head = src_rcpt.get("source") or {}
+        cs_ok = (
+            claim_rcpt.get("restored") is True
+            and claim_head.get("text") == "door is locked"
+            and int(claim_head.get("revision") or 0) == 3
+            and src_rcpt.get("restored") is True
+            and src_head.get("sha256") == src_v1.get("sha256")
+            and int(src_head.get("revision") or 0) == 3
+        )
+        cases.append(
+            {
+                "id": "restore_claim_and_source_ok",
+                "ok": cs_ok,
+                "detail": "" if cs_ok else "claim_or_source_restore_failed",
+            }
+        )
+
+        idem = await lg.restore_fact_at_revision(
+            fid,
+            tenant_id=tenant_id,
+            target_revision=1,
+            actor="n24-suite",
+            reason="restore_again",
+            enforce_write_gates=False,
+        )
+        idem_ok = (
+            idem.get("idempotent") is True
+            and idem.get("restored") is False
+            and int((idem.get("fact") or {}).get("revision") or 0) == 3
+        )
+        cases.append(
+            {
+                "id": "restore_idempotent_when_same_content",
+                "ok": idem_ok,
+                "detail": "" if idem_ok else "not_idempotent",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N24_REVISION_RESTORE_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "revision_restore",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Revision restore API; not rollback UI / not N24 certified",
+    }
+
+
+def evaluate_revision_restore_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N24 Revision Restore 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_revision_restore_suite`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n24_full_conformance") is True:
+        # 为什么：套件误标认证仍拒绝
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "revision_restore",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n24_full_conformance": False,
+        "note": "Revision restore harden; not N24 certified",
     }
 
 
