@@ -836,7 +836,9 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
     try:
         from core.api.core_facade import GraphIndex
         from core.harness.ontology_engine.engine import _persist_reviews
-        graph = GraphIndex.load("ai-knowledge")
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        # 为什么：N09 K24 — wiki 版本同步读租户图
+        graph = GraphIndex.load("ai-knowledge", tenant_id=_resolve_graph_tenant())
         node = graph.find_by_name(body.title)
         if node and len(graph) > 0:
             inverse_rels = graph.get_inverse_relations(node.entity_id)
@@ -2865,8 +2867,10 @@ async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
             from core.api.core_facade import GraphIndex
             from core.harness.ontology_engine.state_machine import StateMachine, EvalContext
             from core.harness.ontology_engine.state_history import record_state_change
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-            graph = GraphIndex.load(domain_id)
+            # 为什么：N09 K24 — 状态机重评估读租户图
+            graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
             sm = StateMachine(new_domain)
 
             # Build label→class_name mapping (class_name is YAML key, label is human-readable)
@@ -2948,7 +2952,9 @@ async def delete_ontology_domain(domain_id: str):
     # Auto-snapshot before destructive delete (best-effort, non-blocking)
     try:
         from core.api.core_facade import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        # 为什么：N09 K24 — 域删除快照读租户图
+        graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
         graph.snapshot(f"pre-delete-{domain_id}")
     except Exception:
         logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
@@ -3048,7 +3054,9 @@ async def update_ontology_class(domain_id: str, class_name: str, req: OntologyCl
     impact = {"graph_nodes_affected": 0}
     try:
         from core.api.core_facade import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        # 为什么：N09 K24 — 类更新影响面读租户图
+        graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
         affected = graph.get_entities_by_class(class_name)
         impact["graph_nodes_affected"] = len(affected)
     except Exception:
@@ -3132,7 +3140,9 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
     orphan_pages = 0
     try:
         from core.api.core_facade import GraphIndex
-        g = GraphIndex.load(domain_id)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        # 为什么：N09 K24 — 删类孤儿检测读租户图
+        g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
         orphan_nodes = sum(1 for n in g._nodes.values() if n.class_name == class_name)
     except Exception as e:
         logging.warning(str(e), exc_info=True)
@@ -3151,7 +3161,9 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
     if orphan_nodes > 0:
         try:
             from core.api.core_facade import GraphIndex
-            g = GraphIndex.load(domain_id)
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            # 为什么：N09 K24 — 删类级联清理写租户图
+            g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
             to_remove = [n.entity_id for n in g._nodes.values() if n.class_name == class_name]
             for eid in to_remove:
                 g.remove_entity(eid)
@@ -3216,7 +3228,9 @@ async def migrate_classify(domain_id: str, req: MigrateClassifyRequest):
     if req.migrate_graph:
         try:
             from core.api.core_facade import GraphIndex
-            graph = GraphIndex.load(domain_id)
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            # 为什么：N09 K24 — 类重命名迁移写租户图
+            graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
             graph_migrated = graph.migrate_class_nodes(req.old_class_name, req.new_class_name)
             graph.save()
         except Exception as e:

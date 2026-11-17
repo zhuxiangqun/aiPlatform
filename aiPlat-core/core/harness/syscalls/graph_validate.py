@@ -81,6 +81,7 @@ async def sys_graph_validate(
     *,
     operation: str = "consistency",
     target_entity: str = "",
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """Validate graph consistency for a ReconSubgraph or persistent domain.
 
@@ -88,6 +89,7 @@ async def sys_graph_validate(
         domain_id: Graph domain to validate (e.g., "_recon_abc" or "supply-chain")
         operation: "consistency" | "contradiction" | "completeness"
         target_entity: Optional entity_id to scope validation to a single node
+        tenant_id: 租户；空则解析 ActiveRequestContext（N09 K24）。
 
     Returns:
         {valid, violations, suggestions, health_score, operation, status,
@@ -100,7 +102,10 @@ async def sys_graph_validate(
 
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+        # 为什么：N09 K24 — 图校验须按租户
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
     except Exception as e:
         return _finalize(
             operation=operation,

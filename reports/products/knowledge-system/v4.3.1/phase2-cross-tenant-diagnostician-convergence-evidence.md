@@ -44,5 +44,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- wiki / wiki_ontology_engine / syscalls/graph / ontology_engine.engine 等其它 bare GraphIndex.load
+- wiki / syscalls/graph → 见 Batch K24；wiki_ontology_engine / ontology_engine.engine 等仍残余
 - N09 / 附录 N 全量认证
