@@ -154,11 +154,10 @@ class SystemHealthCalculator:
 
         try:
 
-            from core.harness.knowledge.staleness_monitor import StalenessMonitor
+            from core.harness.knowledge.staleness_monitor import aggregate_stale_summary
 
-            monitor = StalenessMonitor()
-
-            summary = monitor.get_stale_summary()
+            # 为什么：N09 K15 — 健康分须聚合全租户 KB，禁止只读 default
+            summary = aggregate_stale_summary()
 
             drift_ratio = summary.get("drift_ratio", 0)
 
@@ -170,7 +169,9 @@ class SystemHealthCalculator:
 
                 detail={"drift_ratio": drift_ratio, "stale_pages": summary.get("total_stale", 0),
 
-                        "total_scanned": summary.get("total_scanned", 0)}
+                        "total_scanned": summary.get("total_scanned", 0),
+
+                        "tenant_ids": summary.get("tenant_ids") or []}
 
             )
 
@@ -430,9 +431,10 @@ class SystemHealthCalculator:
 
             if event_type == "staleness_changed":
 
-                from core.harness.knowledge.staleness_monitor import StalenessMonitor
+                from core.harness.knowledge.staleness_monitor import aggregate_stale_summary
 
-                s = StalenessMonitor().get_stale_summary()
+                # 为什么：N09 K15 — incremental 健康事件同样聚合全租户
+                s = aggregate_stale_summary()
 
                 dr = s.get("drift_ratio", 0)
 
@@ -440,7 +442,9 @@ class SystemHealthCalculator:
 
                     score=round((1 - dr) * 100), label="知识漂移",
 
-                    detail={"drift_ratio": dr, "stale_pages": s.get("total_stale", 0)})
+                    detail={"drift_ratio": dr, "stale_pages": s.get("total_stale", 0),
+
+                            "tenant_ids": s.get("tenant_ids") or []})
 
                 # Copy other sub-scores from existing
 

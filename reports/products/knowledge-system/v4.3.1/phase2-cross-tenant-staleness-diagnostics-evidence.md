@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / staleness + diagnostics tenant（Batch K14）证据
 
 > 实施权威：附录 N N09 partial 加深（K13 auto_pipeline 之上：漂移扫描/重建按租户分库）。  
-> **未宣称** metric/scoring 旁路 / cron 全租户枚举 / N09 certified。
+> **未宣称** metric/scoring 旁路 / N09 certified（cron 全租户见 K15）。
 
 ## 检查表
 
@@ -42,5 +42,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做
 
 - metric/scoring/scenario/governance 旁路 CRUD tenant
-- server cron / system_health 全租户枚举扫描
+- server cron / system_health 全租户枚举扫描 → **K15 已加深**（本文件保留 K14 范围陈述）
 - N09 / 附录 N 全量认证

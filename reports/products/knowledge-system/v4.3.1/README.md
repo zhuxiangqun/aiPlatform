@@ -73,5 +73,6 @@ authority: supporting
 | [phase2-cross-tenant-process-instances-evidence.md](./phase2-cross-tenant-process-instances-evidence.md) | Batch K12 N09 process_instances + OntologyEngine tenant（非 auto_pipeline 强制/非 certified） |
 | [phase2-cross-tenant-auto-ontology-pipeline-evidence.md](./phase2-cross-tenant-auto-ontology-pipeline-evidence.md) | Batch K13 N09 ingest→auto_ontology_pipeline tenant（非 staleness 多租户 KB/非 certified） |
 | [phase2-cross-tenant-staleness-diagnostics-evidence.md](./phase2-cross-tenant-staleness-diagnostics-evidence.md) | Batch K14 N09 staleness/diagnostics 租户 KB 路径（非 cron 全租户/非 certified） |
+| [phase2-cross-tenant-staleness-cron-evidence.md](./phase2-cross-tenant-staleness-cron-evidence.md) | Batch K15 N09 staleness cron/health 全租户枚举（非 garden·file·self_heal/非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

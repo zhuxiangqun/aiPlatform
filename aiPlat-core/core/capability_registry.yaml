@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2967
+total_capabilities: 2971
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 501
+    caps_count: 505
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -2930,6 +2930,22 @@ domains:
         module: core/harness/knowledge/doc_compressor.py
         type: function
         signature: "LLM 轻量摘要统一通道 (sys_llm_generate 单一入口 — §57 上下文组装合规)"
+      - symbol: "kb_sqlite_path_for_tenant"
+        module: core/harness/knowledge/staleness_monitor.py
+        type: function
+        signature: "Resolve {AIPLAT_HOME}/kb/tenants/{tenant}/kb.sqlite3 (N09 K14)"
+      - symbol: "list_kb_tenant_ids"
+        module: core/harness/knowledge/staleness_monitor.py
+        type: function
+        signature: "Enumerate tenant ids with kb.sqlite3 under AIPLAT_HOME (N09 K15)"
+      - symbol: "aggregate_stale_summary"
+        module: core/harness/knowledge/staleness_monitor.py
+        type: function
+        signature: "Cross-tenant stale summary for cron/system_health (N09 K15)"
+      - symbol: "auto_rebuild_stale_tenants"
+        module: core/harness/knowledge/staleness_monitor.py
+        type: function
+        signature: "Per-tenant auto-rebuild when drift_ratio>=0.3 (N09 K15)"
       - symbol: "DomainRouter"
         module: core/harness/knowledge/domain_router.py
         type: class

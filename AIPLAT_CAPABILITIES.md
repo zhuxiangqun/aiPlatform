@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3771
+total_capabilities: 3772
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1236,6 +1236,7 @@ scan_hash: 8f9548ec24f4
 | **跨租户 process_instances / OntologyEngine（v4.3.1 N09 K12）** | `process_instances.tenant_id` + orchestrator 过滤 + engine/`record_transition` tenant + process HTTP 透传 | ✅ | 证据 `phase2-cross-tenant-process-instances-evidence.md`。**未宣称** auto_pipeline 强制非 default / N09 certified。生成物适用：已接线（HTTP） | 本批 |
 | **跨租户 auto_ontology_pipeline（v4.3.1 N09 K13）** | ingest/watch `tenant_id` → `auto_ontology_pipeline_for_doc` → `load_engine`/`process_chunks` | ✅ | 证据 `phase2-cross-tenant-auto-ontology-pipeline-evidence.md`。**未宣称** staleness 多租户 KB 路径 / N09 certified。生成物适用：已接线（ingest） | 本批 |
 | **跨租户 staleness/diagnostics（v4.3.1 N09 K14）** | `kb_sqlite_path_for_tenant` + `StalenessMonitor(tenant_id=)` + drift HTTP `tenant_id` | ✅ | 证据 `phase2-cross-tenant-staleness-diagnostics-evidence.md`。**未宣称** cron 全租户枚举 / N09 certified。生成物适用：已接线（diagnostics） | 本批 |
+| **跨租户 staleness cron/health（v4.3.1 N09 K15）** | `list_kb_tenant_ids` + `aggregate_stale_summary` + `auto_rebuild_stale_tenants` → governance cron / system_health | ✅ | 证据 `phase2-cross-tenant-staleness-cron-evidence.md`。**未宣称** garden/file/self_heal / N09 certified。生成物适用：已接线（cron） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
 | **Claim 证据硬门+冲突（v4.3.1 N03 F2）** | `put_claim` / `record_claim_conflict` / `run_claim_evidence_suite` / `evaluate_claim_evidence_gate` + Facade `fact_ledger_run_claim_evidence_suite` | ✅ | published 无证据拒；同 conflict_key 不同主张记 open 冲突；门槛门 certified 恒 false。证据 `phase2-claim-evidence-evidence.md`。**未宣称** Claim 全量状态机 / N03 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -4672,7 +4673,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 694 | 1 | 695 |
+| Harness 执行引擎 | 695 | 1 | 696 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 600 | 9 | 609 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4717,7 +4718,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3760** | **11** | **3771** |
+| **总计** | **3761** | **11** | **3772** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

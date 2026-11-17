@@ -1704,18 +1704,32 @@ async def lifespan(app: FastAPI):
                     log.info("Governance cron completed: %d domains checked", len(results))
                     # v2.9: Knowledge drift monitoring + auto-rebuild
                     try:
-                        from core.harness.knowledge.staleness_monitor import StalenessMonitor
-                        monitor = StalenessMonitor()
-                        summary = await asyncio.to_thread(monitor.get_stale_summary)
+                        from core.harness.knowledge.staleness_monitor import (
+                            aggregate_stale_summary,
+                            auto_rebuild_stale_tenants,
+                        )
+                        # 为什么：N09 K15 — cron 枚举 kb/tenants/*/kb.sqlite3，禁止只扫 default
+                        summary = await asyncio.to_thread(aggregate_stale_summary)
                         if summary["total_stale"] > 0:
-                            log.warning("Knowledge drift: %d/%d pages flagged stale in %d collections",
-                                        summary["total_stale"], summary["total_scanned"], len(summary["collections"]))
-                            # Auto-rebuild if drift exceeds 30% threshold
+                            log.warning(
+                                "Knowledge drift: %d/%d pages flagged stale across %d tenants",
+                                summary["total_stale"],
+                                summary["total_scanned"],
+                                len(summary.get("tenant_ids") or []),
+                            )
                             if summary["drift_ratio"] >= 0.3:
-                                log.info("Drift ratio %.1f%% exceeds threshold, triggering auto-rebuild...",
-                                         summary["drift_ratio"] * 100)
-                                rebuild = await monitor.auto_rebuild_if_needed()
-                                log.info("Auto-rebuild: %d built, %d errors", rebuild.get("rebuilt", 0), rebuild.get("errors", 0))
+                                log.info(
+                                    "Aggregate drift ratio %.1f%% exceeds threshold, "
+                                    "triggering per-tenant auto-rebuild...",
+                                    summary["drift_ratio"] * 100,
+                                )
+                                rebuild = await auto_rebuild_stale_tenants()
+                                log.info(
+                                    "Auto-rebuild: %d built, %d errors (tenants=%s)",
+                                    rebuild.get("rebuilt", 0),
+                                    rebuild.get("errors", 0),
+                                    rebuild.get("tenants_checked"),
+                                )
                     except Exception:
                         logging.debug("Governance cron: staleness monitor failed", exc_info=True)
                     try:
