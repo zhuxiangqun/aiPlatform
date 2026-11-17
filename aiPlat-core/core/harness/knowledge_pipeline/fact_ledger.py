@@ -3862,6 +3862,7 @@ _N09_CASES = (
     "graphrag_caller_passthrough",
     "graphindex_no_leak",
     "graph_write_tenant",
+    "cross_domain_resolve_tenant",
 )
 
 
@@ -3872,7 +3873,7 @@ async def run_cross_tenant_isolation_suite(
     tenant_b: str = "n09-tenant-b",
     domain_id: str = "",
 ) -> Dict[str, Any]:
-    """N09 跨租户 0 泄漏加深套件（含 GraphIndex 图层租户）。
+    """N09 跨租户 0 泄漏加深套件（含跨域写边 / publish snapshot 租户）。
 
     Args:
         ledger: 可选账本；默认临时目录新建（不污染单例）。
@@ -4382,6 +4383,92 @@ async def run_cross_tenant_isolation_suite(
                 "detail": "" if gw_ok else "graph_write_tenant_miss",
             }
         )
+
+        # K7：跨域写边 + publish snapshot 按租户分库
+        from core.harness.knowledge_pipeline.resolver import CrossDomainResolver
+
+        left_dom = f"{probe_domain}-left"
+        right_dom = f"{probe_domain}-right"
+        GraphIndex._loaded_instances.clear()
+        g_la = GraphIndex(left_dom, tenant_id=tenant_a)
+        g_ra = GraphIndex(right_dom, tenant_id=tenant_a)
+        g_la.add_entity("n09-left", "N09Left", "概念")
+        g_ra.add_entity("n09-right", "N09Right", "概念")
+        GraphIndex._loaded_instances.clear()
+        denied_resolve = CrossDomainResolver.resolve(
+            "n09-view",
+            "n09-left",
+            "n09-right",
+            left_dom,
+            right_dom,
+            0.9,
+            tenant_id="",
+        )
+        ok_resolve = CrossDomainResolver.resolve(
+            "n09-view",
+            "n09-left",
+            "n09-right",
+            left_dom,
+            right_dom,
+            0.9,
+            tenant_id=tenant_a,
+        )
+        GraphIndex._loaded_instances.clear()
+        meta_a = (
+            GraphIndex.load(left_dom, tenant_id=tenant_a)
+            .get_node("n09-left")
+        )
+        meta_b = (
+            GraphIndex.load(left_dom, tenant_id=tenant_b)
+            .get_node("n09-left")
+        )
+        cross_a = (
+            isinstance(getattr(meta_a, "metadata", None), dict)
+            and isinstance(meta_a.metadata.get("_cross_domain"), dict)
+            and meta_a.metadata["_cross_domain"].get("tenant_id") == tenant_a
+        )
+        # publish snapshot：同租户分库落盘（无需真实 ontology YAML；直接测 GraphIndex 路径）
+        from core.api import core_facade as _facade
+
+        snap_ok = False
+        try:
+            GraphIndex._loaded_instances.clear()
+            g_pub = GraphIndex.load(left_dom, tenant_id=tenant_a)
+            snap = g_pub.snapshot("n09-k7-pre-publish")
+            snaps_a = g_pub.list_snapshots(limit=5)
+            GraphIndex._loaded_instances.clear()
+            snaps_b = GraphIndex.load(left_dom, tenant_id=tenant_b).list_snapshots(
+                limit=5
+            )
+            snap_ok = (
+                isinstance(snap, dict)
+                and any(
+                    "n09-k7-pre-publish" in str(s.get("label") or "")
+                    for s in (snaps_a or [])
+                )
+                and not any(
+                    "n09-k7-pre-publish" in str(s.get("label") or "")
+                    for s in (snaps_b or [])
+                )
+            )
+            # 覆盖 facade 透传签名（不依赖真实域 YAML）
+            _ = _facade.list_rule_versions(left_dom, tenant_id=tenant_a)
+        except Exception:
+            snap_ok = False
+        cd_ok = (
+            denied_resolve is False
+            and ok_resolve is True
+            and cross_a
+            and meta_b is None
+            and snap_ok
+        )
+        cases.append(
+            {
+                "id": "cross_domain_resolve_tenant",
+                "ok": cd_ok,
+                "detail": "" if cd_ok else "cross_domain_resolve_tenant_miss",
+            }
+        )
         GraphIndex._loaded_instances.clear()
     finally:
         if prev_kb_tenants is None:
@@ -4415,7 +4502,8 @@ async def run_cross_tenant_isolation_suite(
         "n09_full_conformance": False,
         "note": (
             "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
-            "GraphIndex+graph_write probes; not global zero-leak certification"
+            "GraphIndex+graph_write+cross_domain/snapshot probes; "
+            "not global zero-leak certification"
         ),
     }
 
@@ -4453,7 +4541,8 @@ def evaluate_cross_tenant_gate(
         "n09_full_conformance": False,
         "note": (
             "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
-            "GraphIndex+graph_write deepen; not platform-wide zero-leak certified"
+            "GraphIndex+graph_write+cross_domain/snapshot deepen; "
+            "not platform-wide zero-leak certified"
         ),
     }
 

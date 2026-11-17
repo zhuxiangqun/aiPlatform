@@ -1,4 +1,4 @@
-"""E3/K1–K6：N09 跨租户加深（含 GraphIndex 写路径 tenant 强制；certified 恒 false）。"""
+"""E3/K1–K7：N09 跨租户加深（含跨域写边/publish snapshot tenant；certified 恒 false）。"""
 from __future__ import annotations
 
 import pytest
@@ -13,7 +13,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (
 async def test_suite_passes_and_honesty():
     suite = await run_cross_tenant_isolation_suite()
     assert suite["ok"] is True
-    assert suite["passed"] == 12
+    assert suite["passed"] == 13
     assert suite["certified"] is False
     assert suite["n09_full_conformance"] is False
     ids = {c["id"] for c in suite["cases"]}
@@ -30,6 +30,7 @@ async def test_suite_passes_and_honesty():
         "graphrag_caller_passthrough",
         "graphindex_no_leak",
         "graph_write_tenant",
+        "cross_domain_resolve_tenant",
     }
     assert all(c["ok"] for c in suite["cases"])
 

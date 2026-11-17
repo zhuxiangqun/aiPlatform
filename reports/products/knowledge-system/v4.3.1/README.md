@@ -64,5 +64,6 @@ authority: supporting
 | [phase2-cross-tenant-graphrag-caller-evidence.md](./phase2-cross-tenant-graphrag-caller-evidence.md) | Batch K4 N09 CRAG/治理 GraphRAG tenant 透传（非 GraphIndex ACL/非 certified） |
 | [phase2-cross-tenant-graphindex-evidence.md](./phase2-cross-tenant-graphindex-evidence.md) | Batch K5 N09 GraphIndex 图层跨租户（非全写入强制/非 certified） |
 | [phase2-cross-tenant-graph-write-evidence.md](./phase2-cross-tenant-graph-write-evidence.md) | Batch K6 N09 extract→GraphIndex 写路径 tenant 强制（非 publish/snapshot/非 certified） |
+| [phase2-cross-tenant-cross-domain-snapshot-evidence.md](./phase2-cross-tenant-cross-domain-snapshot-evidence.md) | Batch K7 N09 跨域写边/publish snapshot 租户分库（非 HTTP JWT 强制/非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

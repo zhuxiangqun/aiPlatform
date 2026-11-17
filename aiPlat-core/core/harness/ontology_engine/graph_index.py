@@ -1506,6 +1506,17 @@ class GraphIndex:
             limit: 返回条数上限。
         """
         conn = self._get_conn()
+        # 为什么：snapshot() 才建表；新连接上 list 需幂等建表，避免 no such table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS graph_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                domain_id TEXT NOT NULL,
+                label TEXT NOT NULL DEFAULT '',
+                timestamp REAL NOT NULL,
+                data TEXT NOT NULL
+            )
+        """)
+        conn.commit()
         rows = conn.execute(
             "SELECT id, label, timestamp FROM graph_snapshots WHERE domain_id=? ORDER BY timestamp DESC LIMIT ?",
             (self.domain_id, limit),

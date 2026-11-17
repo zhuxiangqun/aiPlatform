@@ -40,5 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- ontology publish / snapshot / CrossDomainResolver 写边全量 tenant 强制
+- ontology publish / snapshot / CrossDomainResolver 写边全量 tenant 强制（见 Batch K7：`phase2-cross-tenant-cross-domain-snapshot-evidence.md`）
 - N09 / 附录 N 全量认证

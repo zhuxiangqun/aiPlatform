@@ -7391,11 +7391,14 @@ async def delete_ontology_class_async(domain_id: str, class_name: str) -> Dict[s
     }
 
 
-def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
+def publish_ontology_domain(
+    domain_id: str, *, tenant_id: str = "default"
+) -> Dict[str, Any]:
     """Validate and publish — write domain YAML + create graph snapshot.
 
     Args:
         domain_id: domain 标识。
+        tenant_id: 租户；snapshot 写入对应 GraphIndex 分库（N09 K7）。
     """
     base_dir = _resolve_ontologies_dir()
     file_path = f"{base_dir}/{domain_id}.yaml"
@@ -7405,62 +7408,85 @@ def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
     from core.harness.ontology_engine.graph_index import GraphIndex
 
+    tid = (tenant_id or "").strip() or "default"
     domain = load_ontology_from_yaml(file_path)
     try:
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K7 — publish 快照按租户分库，避免写到他租户 ABox
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         graph.snapshot(f"pre-publish-{domain.version}")
     except Exception:
         logging.getLogger(__name__).debug('publish_ontology_domain failed', exc_info=True)
 
     _invalidate_domain_caches(domain_id)
-    _save_rule_version(domain_id, file_path, domain)
+    _save_rule_version(domain_id, file_path, domain, tenant_id=tid)
     return {
         "domain_id": domain_id,
+        "tenant_id": tid,
         "version": domain.version,
         "class_count": len(domain.classes),
         "status": "published",
     }
 
 
-def list_rule_versions(domain_id: str) -> List[Dict[str, Any]]:
+def list_rule_versions(
+    domain_id: str, *, tenant_id: str = "default"
+) -> List[Dict[str, Any]]:
     """List all saved rule versions for a domain.
 
     Args:
         domain_id: domain 标识。
+        tenant_id: 租户；读取对应 GraphIndex 分库快照（N09 K7）。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
+    tid = (tenant_id or "").strip() or "default"
     try:
-        graph = GraphIndex.load(domain_id)
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         snaps = graph.list_snapshots(limit=50)
         return snaps
     except Exception:
         return []
 
 
-def rollback_rule_version(domain_id: str, version_id: str) -> Dict[str, Any]:
+def rollback_rule_version(
+    domain_id: str, version_id: str, *, tenant_id: str = "default"
+) -> Dict[str, Any]:
     """Restore rules to a previous version — restore snapshot + invalidate caches.
 
     Args:
         domain_id: domain 标识。
         version_id: version 标识。
+        tenant_id: 租户；恢复对应 GraphIndex 分库快照（N09 K7）。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
+    tid = (tenant_id or "").strip() or "default"
     try:
-        graph = GraphIndex.load(domain_id)
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         result = graph.restore_snapshot(int(version_id))
         _invalidate_domain_caches(domain_id)
-        return {"domain_id": domain_id, "version_id": version_id, "status": "rolled_back", "result": result}
+        return {
+            "domain_id": domain_id,
+            "tenant_id": tid,
+            "version_id": version_id,
+            "status": "rolled_back",
+            "result": result,
+        }
     except Exception as e:
         raise RuntimeError(f"Rollback failed: {e}")
 
 
-def _save_rule_version(domain_id: str, file_path: str, domain) -> None:
+def _save_rule_version(
+    domain_id: str, file_path: str, domain, *, tenant_id: str = "default"
+) -> None:
     u"""Save a version snapshot of the domain YAML after publish."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        tid = (tenant_id or "").strip() or "default"
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         yaml_text = Path(file_path).read_text(encoding="utf-8")
-        graph.snapshot(f"v{domain.version}-{__import__('time').strftime('%Y%m%dT%H%M%SZ', __import__('time').gmtime())}")
+        graph.snapshot(
+            f"v{domain.version}-"
+            f"{__import__('time').strftime('%Y%m%dT%H%M%SZ', __import__('time').gmtime())}"
+        )
     except Exception:
         logging.getLogger(__name__).debug('_save_rule_version failed', exc_info=True)
 
