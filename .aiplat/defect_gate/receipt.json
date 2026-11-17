@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T15:02:19+08:00",
+  "reviewed_at": "2026-11-17T15:24:01+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "a4ec587ccf08bc8deea546737d161658f7d54d84ba3a8bb3fea3b37fb7fdfb76",
-  "head_sha": "6659c3db2de613370502a6833b16cb6cacec06ac",
+  "diff_sha256": "4ec74e833ebb45e85b80bb46a69b51de12eb0ed3e2f94278879c6155f3ea69d8",
+  "head_sha": "7ca0cddd16f548359acdf1a8f4460bb48f737d8e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J1 HTTP thin routes only via Facade; ValueError→400; gate certified false. No rollback UI."
+  "note": "J1 HTTP routes + AUTO-STATS/whitepaper sync only; gate certified false; no rollback UI."
 }
