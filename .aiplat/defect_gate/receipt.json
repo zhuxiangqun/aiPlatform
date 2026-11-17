@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T22:34:50+08:00",
+  "reviewed_at": "2026-11-17T22:52:15+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "58db3e249546f7d9237f77ef7fcae645452551e8d64a9d8a4f302126fb4a1d7f",
-  "head_sha": "1682a4959f014ab969e7dbf385bdabd53271505d",
+  "diff_sha256": "49ebb5ee8ba778787284034fd24a171336decb3035a74e3ecd0023a37c808347",
+  "head_sha": "1cf8c90859c40320d6e8f2e14017b879b4b71f6a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K6 requires tenant_id on write_extraction_to_graph_index (empty→tenant_id_required) and adds graph_write_tenant (12 probes). Ontology publish/snapshot/cross-domain edge writes remain intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K7 requires tenant_id on CrossDomainResolver.resolve, threads tenant through publish/list/rollback snapshot APIs and k_wave apply, adds cross_domain_resolve_tenant (13 probes). ontology_editor HTTP JWT tenant injection remains intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
 }
