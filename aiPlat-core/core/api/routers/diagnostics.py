@@ -3124,22 +3124,31 @@ def _build_markdown_report(data: dict, collection: str, days: int = 30) -> str:
 # ── v2.9: Knowledge Drift Status API ──
 
 @router.get("/diagnostics/drift-status", response_model=Dict[str, Any])
-def get_drift_status(collection: str = "", refresh: bool = False):
+def get_drift_status(
+    collection: str = "",
+    refresh: bool = False,
+    tenant_id: str = "default",
+):
     """Knowledge drift scanner — reports which Wiki pages have stale source documents.
 
     Args:
         collection: collection 参数。
         refresh: refresh 参数。
+        tenant_id: 租户；选择 KB 分库（N09 K14）。
     """
     import time as _time
     from core.harness.knowledge.staleness_monitor import StalenessMonitor
 
-    # Simple cache (5 min TTL)
-    if not refresh and _drift_cache["data"] and _time.time() - _drift_cache["ts"] < 300:
-        return _drift_cache["data"]
+    tid = (tenant_id or "").strip() or "default"
+    # Simple cache (5 min TTL) — key includes tenant
+    cache_key = f"drift:{tid}:{collection}"
+    cached = _drift_cache.get("by_tenant", {}).get(cache_key)
+    if not refresh and cached and _time.time() - cached["ts"] < 300:
+        return cached["data"]
 
     try:
-        monitor = StalenessMonitor()
+        # 为什么：N09 K14 — 漂移扫描必须读对应租户 KB，禁止写死 default
+        monitor = StalenessMonitor(tenant_id=tid)
         if collection:
             reports = [monitor.scan_collection(collection)]
         else:
@@ -3192,22 +3201,28 @@ def get_drift_status(collection: str = "", refresh: bool = False):
         ] if total_stale > 0 else [],
         "checked_at": _time.time(),
     }
-    _drift_cache["data"] = result
-    _drift_cache["ts"] = _time.time()
+    result = {**result, "tenant_id": tid}
+    _drift_cache.setdefault("by_tenant", {})[cache_key] = {
+        "data": result,
+        "ts": _time.time(),
+    }
     return result
 
 
 @router.post("/diagnostics/drift-rebuild", response_model=Dict[str, Any])
-async def trigger_drift_rebuild(max_pages: int = 10):
+async def trigger_drift_rebuild(max_pages: int = 10, tenant_id: str = "default"):
     """Auto-rebuild stale pages by re-running the ontology engine on drifted sources.
 
     Args:
         max_pages: max_pages 参数。
+        tenant_id: 租户；选择 KB 分库并透传 pipeline（N09 K14）。
     """
-    from core.harness.knowledge.staleness_monitor import StalenessMonitor
+    from core.harness.knowledge.staleness_monitor import StalenessMonitor, kb_sqlite_path_for_tenant
     from core.api.core_facade import read_page
 
-    monitor = StalenessMonitor()
+    tid = (tenant_id or "").strip() or "default"
+    # 为什么：N09 K14 — rebuild 与扫描共用租户分库
+    monitor = StalenessMonitor(tenant_id=tid)
     reports = monitor.scan_all_collections()
 
     rebuilt = 0
@@ -3227,13 +3242,13 @@ async def trigger_drift_rebuild(max_pages: int = 10):
             for doc_id in doc_ids:
                 try:
                     import sqlite3 as _sq
-                    kb_db = get_aiplat_home() + "/kb/tenants/default/kb.sqlite3"
+                    kb_db = str(kb_sqlite_path_for_tenant(tid))
                     conn = _sq.connect(kb_db)
                     row = conn.execute("SELECT source_uri FROM documents WHERE doc_id=?", (doc_id,)).fetchone()
                     conn.close()
                     if row and row[0] and os.path.exists(row[0]):
                         from core.api.core_facade import auto_ontology_pipeline_for_doc
-                        r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid, tenant_id="default")
+                        r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid, tenant_id=tid)
                         if r["status"] == "completed":
                             rebuilt += 1
                         else:
@@ -3246,13 +3261,14 @@ async def trigger_drift_rebuild(max_pages: int = 10):
 
     return {
         "status": "completed",
+        "tenant_id": tid,
         "rebuilt": rebuilt,
         "errors": errors,
         "details": details[:20],
     }
 
 
-_drift_cache: Dict[str, Any] = {"data": None, "ts": 0}
+_drift_cache: Dict[str, Any] = {"data": None, "ts": 0, "by_tenant": {}}
 
 
 # ── v2.9: Config Drift Detection ──

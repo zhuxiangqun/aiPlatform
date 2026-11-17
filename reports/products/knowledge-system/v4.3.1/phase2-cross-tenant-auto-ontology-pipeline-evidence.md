@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- staleness_monitor / diagnostics 仍绑 default KB 路径（显式 `tenant_id="default"`）
+- staleness/diagnostics 租户 KB 路径（见 Batch K14：`phase2-cross-tenant-staleness-diagnostics-evidence.md`）
 - metric/scoring/scenario/governance 旁路
 - N09 / 附录 N 全量认证

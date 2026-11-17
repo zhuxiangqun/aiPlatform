@@ -79,6 +79,21 @@ class StalenessReport:
 
 
 
+
+def kb_sqlite_path_for_tenant(tenant_id: str = "default") -> Path:
+    """Resolve per-tenant KB sqlite path under AIPLAT_HOME.
+
+    Args:
+        tenant_id: 租户；空则 default。
+
+    Returns:
+        ``{AIPLAT_HOME}/kb/tenants/{tenant}/kb.sqlite3``。
+    """
+    tid = (tenant_id or "").strip() or "default"
+    # 为什么：N09 K14 — 禁止写死 tenants/default，漂移扫描须命中租户分库
+    return Path(get_aiplat_home()) / "kb" / "tenants" / tid / "kb.sqlite3"
+
+
 class StalenessMonitor:
 
     """Periodic monitor for knowledge drift detection.
@@ -95,11 +110,16 @@ class StalenessMonitor:
 
 
 
-    def __init__(self):
+    def __init__(self, *, tenant_id: str = "default"):
 
         """初始化。
+
+        Args:
+            tenant_id: 租户；选择 KB 分库路径（N09 K14）。
         """
-        self._kb_db_path = Path(get_aiplat_home()) / "kb" / "tenants" / "default" / "kb.sqlite3"
+        self._tenant_id = (tenant_id or "").strip() or "default"
+
+        self._kb_db_path = kb_sqlite_path_for_tenant(self._tenant_id)
 
 
 
@@ -401,7 +421,7 @@ class StalenessMonitor:
 
                             from core.api.core_facade import auto_ontology_pipeline_for_doc
 
-                            r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid, tenant_id="default")
+                            r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid, tenant_id=self._tenant_id)
 
                             if r["status"] == "completed":
 
