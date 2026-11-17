@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3759
+total_capabilities: 3760
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1224,6 +1224,7 @@ scan_hash: 8f9548ec24f4
 | **跨租户隔离加深（v4.3.1 N09 partial）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | query/get_source/gateway/verify 四探针；门槛门 certified 恒 false。证据 `phase2-cross-tenant-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户 ObjectSet/UnifiedAudit（v4.3.1 N09 K1）** | 同上套件增 `object_set_no_leak` / `unified_audit_no_leak` | ✅ | 临时 ObjectType + ActionStore→统一审计视图；六探针；certified 恒 false。证据 `phase2-cross-tenant-objectset-audit-evidence.md`。**未宣称** Wiki/KB 全入口 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户 Wiki/KB（v4.3.1 N09 K2）** | 同上套件增 `kb_retrieve_no_leak` / `wiki_retrieve_no_leak` | ✅ | KB per-tenant sqlite 路径 + Wiki retriever/query tenant mismatch 硬门；八探针；certified 恒 false。证据 `phase2-cross-tenant-wiki-kb-evidence.md`。**未宣称** GraphRAG/Wiki collection ACL / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **跨租户 GraphRAG（v4.3.1 N09 K3）** | `GraphRAGRetriever.retrieve/_vector_search(tenant_id=)` + 套件 `graphrag_no_leak` | ✅ | 显式 tenant 只查该租户 KB，禁 default/wiki 回退；九探针；certified 恒 false。证据 `phase2-cross-tenant-graphrag-evidence.md`。**未宣称** GraphIndex 租户/调用方全量透传 / N09 certified。生成物适用：已接线（经 Facade 套件） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
 | **Claim 证据硬门+冲突（v4.3.1 N03 F2）** | `put_claim` / `record_claim_conflict` / `run_claim_evidence_suite` / `evaluate_claim_evidence_gate` + Facade `fact_ledger_run_claim_evidence_suite` | ✅ | published 无证据拒；同 conflict_key 不同主张记 open 冲突；门槛门 certified 恒 false。证据 `phase2-claim-evidence-evidence.md`。**未宣称** Claim 全量状态机 / N03 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -4660,7 +4661,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 682 | 1 | 683 |
+| Harness 执行引擎 | 683 | 1 | 684 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 600 | 9 | 609 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4705,7 +4706,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3748** | **11** | **3759** |
+| **总计** | **3749** | **11** | **3760** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

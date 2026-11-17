@@ -29,8 +29,14 @@ class GraphRAGRetriever:
     # Layer 1: Entity Router
     # ═══════════════════════════════════════════════════════
 
-    async def retrieve(self, query: str, domain_id: str = "default",
-                       top_k: int = 10, run_id: str = "") -> Dict[str, Any]:
+    async def retrieve(
+        self,
+        query: str,
+        domain_id: str = "default",
+        top_k: int = 10,
+        run_id: str = "",
+        tenant_id: str = "",
+    ) -> Dict[str, Any]:
         """Full GraphRAG retrieval pipeline.
 
         Args:
@@ -38,6 +44,7 @@ class GraphRAGRetriever:
             domain_id: domain 标识。
             top_k: top_k 参数。
             run_id: 运行 ID。
+            tenant_id: 可选租户；非空时向量层只查该租户且不回退 wiki。
         """
         # ── Layer 1: Entity extraction from query ──
         entities = await self._extract_query_entities(query, domain_id)
@@ -53,7 +60,9 @@ class GraphRAGRetriever:
                 entity_nodes.append({**node, "query_class": ent.get("class_type")})
 
         if not entity_nodes:
-            chunks = await self._vector_search(query, domain_id, top_k)
+            chunks = await self._vector_search(
+                query, domain_id, top_k, tenant_id=tenant_id
+            )
             return {"mode": "vector_only", "chunks": chunks, "reasoning_paths": [],
                     "entities": entities, "note": "Entities found in query but not in graph"}
 
@@ -62,11 +71,15 @@ class GraphRAGRetriever:
 
         # ── Layer 3: Targeted vector retrieval ──
         doc_ids = self._get_doc_ids_from_subgraph(subgraph)
-        chunks = await self._vector_search(query, domain_id, top_k, filter_doc_ids=doc_ids)
+        chunks = await self._vector_search(
+            query, domain_id, top_k, filter_doc_ids=doc_ids, tenant_id=tenant_id
+        )
 
         # If targeted retrieval returns too few, fall back to untargeted
         if len(chunks) < 3:
-            chunks = await self._vector_search(query, domain_id, top_k)
+            chunks = await self._vector_search(
+                query, domain_id, top_k, tenant_id=tenant_id
+            )
 
         # ── Layer 4: Reasoning paths ──
         paths = self._extract_reasoning_paths(subgraph, entity_nodes, query)
@@ -269,21 +282,36 @@ class GraphRAGRetriever:
     # Vector search (delegated to existing infrastructure)
     # ═══════════════════════════════════════════════════════
 
-    async def _vector_search(self, query: str, domain_id: str, top_k: int,
-                             filter_doc_ids: Optional[Set[str]] = None) -> List[Dict[str, Any]]:
+    async def _vector_search(
+        self,
+        query: str,
+        domain_id: str,
+        top_k: int,
+        filter_doc_ids: Optional[Set[str]] = None,
+        tenant_id: str = "",
+    ) -> List[Dict[str, Any]]:
         """Search vector store for relevant chunks. Falls back to wiki search.
 
         P-补全: real semantic vector search against kb_embeddings first
         (SqliteEmbeddingRetriever, true similarity); wiki FTS remains the
-        fallback when the vector store is empty/unavailable. Tries the
-        domain tenant then "default" to match either extractor write path.
+        fallback when the vector store is empty/unavailable.
+
+        Args:
+            query: 查询文本。
+            domain_id: 域标识（无 tenant_id 时兼作历史租户候选）。
+            top_k: 返回上限。
+            filter_doc_ids: 可选文档过滤。
+            tenant_id: 非空时只查该租户 KB，且禁止 wiki/default 回退（防跨租户泄漏）。
         """
         # ── 1. True semantic vector search (kb_embeddings) ──
+        tid = (tenant_id or "").strip()
+        # 为什么：显式 tenant 时禁止 {domain,"default"} 多候选回退，否则会读到他租户库
+        tenants = [tid] if tid else list({domain_id, "default"})
         try:
             from core.harness.knowledge.sqlite_retriever import SqliteEmbeddingRetriever
             from core.harness.knowledge.types import KnowledgeQuery
             chunks = []
-            for tenant in {domain_id, "default"}:
+            for tenant in tenants:
                 try:
                     retriever = SqliteEmbeddingRetriever(tenant_id=tenant)
                     results = await retriever.retrieve(KnowledgeQuery(query=query, limit=top_k))
@@ -307,10 +335,15 @@ class GraphRAGRetriever:
                     break  # vectors found in this tenant
             if chunks:
                 return chunks[:top_k]
+            if tid:
+                # 为什么：租户已指定但向量未命中时不回退 wiki，避免 collection 跨读
+                return []
         except Exception:
             logger.debug("vector store search failed, falling back to wiki", exc_info=True)
+            if tid:
+                return []
 
-        # ── 2. Fallback: wiki FTS search (previous behaviour) ──
+        # ── 2. Fallback: wiki FTS search (previous behaviour; tenant 未指定时) ──
         try:
             from core.harness.knowledge.wiki_engine import search_pages
             pages = search_pages(query=query, limit=top_k, collection_id=domain_id)

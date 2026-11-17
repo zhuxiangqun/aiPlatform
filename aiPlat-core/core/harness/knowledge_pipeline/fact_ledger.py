@@ -3858,6 +3858,7 @@ _N09_CASES = (
     "unified_audit_no_leak",
     "kb_retrieve_no_leak",
     "wiki_retrieve_no_leak",
+    "graphrag_no_leak",
 )
 
 
@@ -3868,7 +3869,7 @@ async def run_cross_tenant_isolation_suite(
     tenant_b: str = "n09-tenant-b",
     domain_id: str = "",
 ) -> Dict[str, Any]:
-    """N09 跨租户 0 泄漏加深套件（FactLedger + ObjectSet + UnifiedAudit + Wiki/KB）。
+    """N09 跨租户 0 泄漏加深套件（FactLedger + ObjectSet + UnifiedAudit + Wiki/KB + GraphRAG）。
 
     Args:
         ledger: 可选账本；默认临时目录新建（不污染单例）。
@@ -3899,6 +3900,7 @@ async def run_cross_tenant_isolation_suite(
 
     cases: List[Dict[str, Any]] = []
     prev_kb_tenants = os.environ.get("AIPLAT_KB_TENANTS_DIR")
+    prev_embed_backend = os.environ.get("AIPLAT_EMBED_BACKEND")
     try:
         src = await lg.register_source(
             tenant_id=tenant_a,
@@ -4100,16 +4102,20 @@ async def run_cross_tenant_isolation_suite(
         )
 
         # K2：KB 入口跨租户（per-tenant sqlite 路径隔离）
+        import json as _json_kb
         import sqlite3 as _sqlite3
 
+        from core.harness.knowledge.embedder import hash_embed as _hash_embed
         from core.harness.syscalls.retrieval import sys_kb_retrieve
 
         kb_root = root or Path(tempfile.mkdtemp(prefix="n09-kb-"))
         kb_tenants = kb_root / "kb_tenants"
         os.environ["AIPLAT_KB_TENANTS_DIR"] = str(kb_tenants)
+        os.environ["AIPLAT_EMBED_BACKEND"] = "hash"
         tenant_a_dir = kb_tenants / tenant_a
         tenant_a_dir.mkdir(parents=True, exist_ok=True)
         kb_db = tenant_a_dir / "kb.sqlite3"
+        secret_text = "n09-secret-payload"
         with _sqlite3.connect(str(kb_db)) as kb_conn:
             kb_conn.executescript(
                 """
@@ -4117,6 +4123,8 @@ async def run_cross_tenant_isolation_suite(
                     element_id TEXT PRIMARY KEY, doc_id TEXT, type TEXT,
                     page_idx INTEGER, text TEXT, cells_json TEXT,
                     meta_json TEXT, tenant_id TEXT);
+                CREATE TABLE IF NOT EXISTS kb_embeddings (
+                    element_id TEXT PRIMARY KEY, vector_json TEXT, tenant_id TEXT);
                 """
             )
             kb_conn.execute(
@@ -4128,27 +4136,37 @@ async def run_cross_tenant_isolation_suite(
                     "n09-secret-doc",
                     "paragraph",
                     0,
-                    "n09-secret-payload",
+                    secret_text,
                     None,
                     "{}",
                     tenant_a,
                 ),
             )
+            # 为什么：K3 GraphRAG 向量层探针需要同库 embedding（hash，离线可复现）
+            kb_conn.execute(
+                "INSERT OR REPLACE INTO kb_embeddings"
+                "(element_id, vector_json, tenant_id) VALUES (?,?,?)",
+                (
+                    "n09-secret-el",
+                    _json_kb.dumps(_hash_embed(secret_text)),
+                    tenant_a,
+                ),
+            )
             kb_conn.commit()
         kb_a = sys_kb_retrieve(
-            "n09-secret-payload",
+            secret_text,
             [],
             tenant_id=tenant_a,
             top_k=5,
         )
         kb_b = sys_kb_retrieve(
-            "n09-secret-payload",
+            secret_text,
             [],
             tenant_id=tenant_b,
             top_k=5,
         )
         secret_hit = any(
-            "n09-secret-payload" in str(r.get("text") or "") for r in (kb_a or [])
+            secret_text in str(r.get("text") or "") for r in (kb_a or [])
         )
         kb_ok = secret_hit and not (kb_b or [])
         cases.append(
@@ -4183,11 +4201,36 @@ async def run_cross_tenant_isolation_suite(
                 "detail": "" if wiki_ok else "wiki_retrieve_leak_or_miss",
             }
         )
+
+        # K3：GraphRAG 向量层跨租户（显式 tenant_id 不回退 default/wiki）
+        from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever
+
+        gr = GraphRAGRetriever()
+        probe_domain = (domain_id or "n09-probe").strip() or "n09-probe"
+        gr_a = await gr._vector_search(
+            secret_text, probe_domain, 5, tenant_id=tenant_a
+        )
+        gr_b = await gr._vector_search(
+            secret_text, probe_domain, 5, tenant_id=tenant_b
+        )
+        gr_hit = any(secret_text in str(c.get("content") or "") for c in (gr_a or []))
+        gr_ok = gr_hit and not (gr_b or [])
+        cases.append(
+            {
+                "id": "graphrag_no_leak",
+                "ok": gr_ok,
+                "detail": "" if gr_ok else "graphrag_leak_or_miss",
+            }
+        )
     finally:
         if prev_kb_tenants is None:
             os.environ.pop("AIPLAT_KB_TENANTS_DIR", None)
         else:
             os.environ["AIPLAT_KB_TENANTS_DIR"] = prev_kb_tenants
+        if prev_embed_backend is None:
+            os.environ.pop("AIPLAT_EMBED_BACKEND", None)
+        else:
+            os.environ["AIPLAT_EMBED_BACKEND"] = prev_embed_backend
         if tmp is not None:
             tmp.cleanup()
 
@@ -4206,7 +4249,7 @@ async def run_cross_tenant_isolation_suite(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB probes; "
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG probes; "
             "not global zero-leak certification"
         ),
     }
@@ -4244,7 +4287,7 @@ def evaluate_cross_tenant_gate(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB deepen; "
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG deepen; "
             "not platform-wide zero-leak certified"
         ),
     }

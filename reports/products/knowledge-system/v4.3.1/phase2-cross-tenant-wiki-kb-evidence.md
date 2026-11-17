@@ -40,5 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- Wiki collection 级跨读 ACL / GraphRAG 全入口跨租户认证
+- Wiki collection 级跨读 ACL / GraphRAG 全入口跨租户认证（GraphRAG 向量层见 Batch K3：`phase2-cross-tenant-graphrag-evidence.md`）
 - N09 / 附录 N 全量认证

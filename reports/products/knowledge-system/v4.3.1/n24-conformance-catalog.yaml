@@ -102,8 +102,9 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-objectset-audit-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-wiki-kb-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-graphrag-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_cross_tenant_phase2.py
-    note: FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2 八探针）+门槛门；未宣称全域 0 泄漏/非 certified
+    note: FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG 向量层（K3 九探针）+门槛门；未宣称全域 0 泄漏/非 certified
   - id: N10
     title: 评测有定义/数据集/门槛
     status: partial
