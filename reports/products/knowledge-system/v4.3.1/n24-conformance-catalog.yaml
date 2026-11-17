@@ -107,8 +107,10 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-graphindex-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-graph-write-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-cross-domain-snapshot-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-ontology-editor-http-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_cross_tenant_phase2.py
-    note: FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ caller（K4）+ GraphIndex（K5）+ 图写入（K6）+ 跨域/snapshot（K7 十三探针）+门槛门；未宣称全域 0 泄漏/非 certified
+      - aiPlat-platform/tests/test_ontology_editor_tenant_k8.py
+    note: FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ caller（K4）+ GraphIndex（K5）+ 图写入（K6）+ 跨域/snapshot（K7）+ ontology_editor HTTP（K8）+门槛门；未宣称全域 0 泄漏/非 certified
   - id: N10
     title: 评测有定义/数据集/门槛
     status: partial

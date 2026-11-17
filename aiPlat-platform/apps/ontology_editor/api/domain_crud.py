@@ -15,8 +15,10 @@ Routes:
   GET    /domains/{id}/rule-versions — list rule version snapshots
   POST   /domains/{id}/publish     — write YAML + invalidate caches
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import Any, Dict, List
+
+from auth.request_identity import resolve_request_tenant
 
 router = APIRouter(tags=["ontology-editor"])
 
@@ -177,16 +179,24 @@ async def delete_class(domain_id: str, class_name: str):
 
 
 @router.get("/domains/{domain_id}/rule-versions", response_model=StatusResponse)
-async def list_rule_versions(domain_id: str):
+async def list_rule_versions(domain_id: str, request: Request):
     """List saved rule version snapshots for a domain.
 
     Args:
         domain_id: domain 标识。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         from core.api.core_facade import list_rule_versions
-        versions = list_rule_versions(domain_id)
-        return {"domain_id": domain_id, "versions": versions, "total": len(versions)}
+        # 为什么：N09 K8 — snapshot 按租户分库；HTTP 须注入解析后的 tenant
+        tenant_id = resolve_request_tenant(request)
+        versions = list_rule_versions(domain_id, tenant_id=tenant_id)
+        return {
+            "domain_id": domain_id,
+            "tenant_id": tenant_id,
+            "versions": versions,
+            "total": len(versions),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list rule versions: {e}")
 
@@ -268,15 +278,18 @@ async def audit_rules(domain_id: str):
 
 
 @router.post("/domains/{domain_id}/publish", response_model=StatusResponse)
-async def publish_domain(domain_id: str):
+async def publish_domain(domain_id: str, request: Request):
     """Validate and publish domain YAML — snapshot + cache invalidation.
 
     Args:
         domain_id: domain 标识。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         from core.api.core_facade import publish_ontology_domain
-        result = publish_ontology_domain(domain_id)
+        # 为什么：N09 K8 — publish snapshot 写入租户分库，禁止省略 tenant
+        tenant_id = resolve_request_tenant(request)
+        result = publish_ontology_domain(domain_id, tenant_id=tenant_id)
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")

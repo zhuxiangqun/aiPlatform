@@ -42,5 +42,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- ontology_editor HTTP 强制从 JWT 注入 tenant（仍默认 `default`）
+- ontology_editor HTTP 强制从 JWT 注入 tenant（见 Batch K8：`phase2-cross-tenant-ontology-editor-http-evidence.md`）
 - N09 / 附录 N 全量认证
