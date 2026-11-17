@@ -20,7 +20,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 | N01 | FactLedger 读时 hash + DataSourceConfig content_hash→Raw；非全连接器矩阵 | 至 N01 全量/试点签字 | 见 `phase2-raw-integrity-evidence.md` + `phase2-datasource-raw-evidence.md` |
 | N03 | Claim 证据硬门+冲突记录最小切片；非全量 Claim 状态机 | 至 N03 全量加深 | suite/gate；见 `phase2-claim-evidence-evidence.md` |
 | N06 | FactLedger F.1 契约；非统一 Query Gateway | 至 Gateway 统一入口 | confidence_factors + 契约门 |
-| N09 | FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ CRAG/治理透传（K4）；未宣称全域 0 泄漏 | 至 GraphIndex 图节点租户 | 跨租户套件门槛门 |
+| N09 | FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ caller 透传（K4）+ GraphIndex 图层（K5）；未宣称全域 0 泄漏 | 至全写入路径强制 tenant / certified | 跨租户套件门槛门 |
 | N04/N12 | 写入硬门+transition；非 reviewer RBAC | 开放 | source_policy + fact_state_machine |
 | N07/N22 | ObjectSet + link.traverse ACL；非 Wiki/KB 全入口 | 开放 | ABox ACL 切片 |
 | N11/N14 | 本地双写对账；切写未授权 | 开放 | migration 演练 |

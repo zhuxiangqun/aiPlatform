@@ -40,5 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- GraphIndex 图节点级租户隔离
+- GraphIndex 图节点级租户隔离（图层透传见 Batch K5：`phase2-cross-tenant-graphindex-evidence.md`）
 - N09 / 附录 N 全量认证

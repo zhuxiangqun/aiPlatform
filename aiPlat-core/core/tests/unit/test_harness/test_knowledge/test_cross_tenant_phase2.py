@@ -1,4 +1,4 @@
-"""E3/K1–K4：N09 跨租户加深（含 GraphRAG caller passthrough；certified 恒 false）。"""
+"""E3/K1–K5：N09 跨租户加深（含 GraphIndex 图层租户；certified 恒 false）。"""
 from __future__ import annotations
 
 import pytest
@@ -13,7 +13,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (
 async def test_suite_passes_and_honesty():
     suite = await run_cross_tenant_isolation_suite()
     assert suite["ok"] is True
-    assert suite["passed"] == 10
+    assert suite["passed"] == 11
     assert suite["certified"] is False
     assert suite["n09_full_conformance"] is False
     ids = {c["id"] for c in suite["cases"]}
@@ -28,6 +28,7 @@ async def test_suite_passes_and_honesty():
         "wiki_retrieve_no_leak",
         "graphrag_no_leak",
         "graphrag_caller_passthrough",
+        "graphindex_no_leak",
     }
     assert all(c["ok"] for c in suite["cases"])
 

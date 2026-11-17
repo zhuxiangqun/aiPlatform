@@ -3860,6 +3860,7 @@ _N09_CASES = (
     "wiki_retrieve_no_leak",
     "graphrag_no_leak",
     "graphrag_caller_passthrough",
+    "graphindex_no_leak",
 )
 
 
@@ -3870,7 +3871,7 @@ async def run_cross_tenant_isolation_suite(
     tenant_b: str = "n09-tenant-b",
     domain_id: str = "",
 ) -> Dict[str, Any]:
-    """N09 跨租户 0 泄漏加深套件（FactLedger + ObjectSet + UnifiedAudit + Wiki/KB + GraphRAG）。
+    """N09 跨租户 0 泄漏加深套件（含 GraphIndex 图层租户）。
 
     Args:
         ledger: 可选账本；默认临时目录新建（不污染单例）。
@@ -3902,6 +3903,7 @@ async def run_cross_tenant_isolation_suite(
     cases: List[Dict[str, Any]] = []
     prev_kb_tenants = os.environ.get("AIPLAT_KB_TENANTS_DIR")
     prev_embed_backend = os.environ.get("AIPLAT_EMBED_BACKEND")
+    prev_aiplat_home = os.environ.get("AIPLAT_HOME")
     try:
         src = await lg.register_source(
             tenant_id=tenant_a,
@@ -4307,6 +4309,37 @@ async def run_cross_tenant_isolation_suite(
                 ),
             }
         )
+
+        # K5：GraphIndex 图层跨租户（per-tenant db 前缀 + GraphRAG _find_node 透传）
+        from core.harness.ontology_engine.graph_index import GraphIndex
+
+        home_root = root or Path(tempfile.mkdtemp(prefix="n09-gi-home-"))
+        os.environ["AIPLAT_HOME"] = str(home_root)
+        GraphIndex._loaded_instances.clear()
+        secret_name = "N09SecretEntity"
+        gi_a = GraphIndex(probe_domain, tenant_id=tenant_a)
+        gi_a.add_entity("n09-secret-node", secret_name, "概念")
+        # 为什么：强制落盘并清缓存，确保 tenant_b load 不会命中内存脏图
+        GraphIndex._loaded_instances.clear()
+        found_a = gr._find_node(
+            secret_name, probe_domain, tenant_id=tenant_a
+        )
+        found_b = gr._find_node(
+            secret_name, probe_domain, tenant_id=tenant_b
+        )
+        gi_ok = (
+            found_a is not None
+            and found_a.get("name") == secret_name
+            and found_b is None
+        )
+        cases.append(
+            {
+                "id": "graphindex_no_leak",
+                "ok": gi_ok,
+                "detail": "" if gi_ok else "graphindex_leak_or_miss",
+            }
+        )
+        GraphIndex._loaded_instances.clear()
     finally:
         if prev_kb_tenants is None:
             os.environ.pop("AIPLAT_KB_TENANTS_DIR", None)
@@ -4316,6 +4349,10 @@ async def run_cross_tenant_isolation_suite(
             os.environ.pop("AIPLAT_EMBED_BACKEND", None)
         else:
             os.environ["AIPLAT_EMBED_BACKEND"] = prev_embed_backend
+        if prev_aiplat_home is None:
+            os.environ.pop("AIPLAT_HOME", None)
+        else:
+            os.environ["AIPLAT_HOME"] = prev_aiplat_home
         if tmp is not None:
             tmp.cleanup()
 
@@ -4334,8 +4371,8 @@ async def run_cross_tenant_isolation_suite(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller "
-            "passthrough probes; not global zero-leak certification"
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
+            "GraphIndex probes; not global zero-leak certification"
         ),
     }
 
@@ -4372,8 +4409,8 @@ def evaluate_cross_tenant_gate(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller "
-            "passthrough deepen; not platform-wide zero-leak certified"
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
+            "GraphIndex deepen; not platform-wide zero-leak certified"
         ),
     }
 

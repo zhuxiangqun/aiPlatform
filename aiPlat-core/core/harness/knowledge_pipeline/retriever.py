@@ -47,7 +47,9 @@ class GraphRAGRetriever:
             tenant_id: 可选租户；非空时向量层只查该租户且不回退 wiki。
         """
         # ── Layer 1: Entity extraction from query ──
-        entities = await self._extract_query_entities(query, domain_id)
+        entities = await self._extract_query_entities(
+            query, domain_id, tenant_id=tenant_id
+        )
         if not entities:
             return {"mode": "vector_only", "chunks": [], "reasoning_paths": [],
                     "entities": [], "note": "No entities extracted from query"}
@@ -55,7 +57,9 @@ class GraphRAGRetriever:
         # Locate entities in graph
         entity_nodes = []
         for ent in entities:
-            node = self._find_node(ent["name"], domain_id, ent.get("class_type"))
+            node = self._find_node(
+                ent["name"], domain_id, ent.get("class_type"), tenant_id=tenant_id
+            )
             if node:
                 entity_nodes.append({**node, "query_class": ent.get("class_type")})
 
@@ -67,7 +71,9 @@ class GraphRAGRetriever:
                     "entities": entities, "note": "Entities found in query but not in graph"}
 
         # ── Layer 2: Subgraph extraction (2-hop) ──
-        subgraph = self._extract_subgraph(entity_nodes, domain_id, hops=2, run_id=run_id)
+        subgraph = self._extract_subgraph(
+            entity_nodes, domain_id, hops=2, run_id=run_id, tenant_id=tenant_id
+        )
 
         # ── Layer 3: Targeted vector retrieval ──
         doc_ids = self._get_doc_ids_from_subgraph(subgraph)
@@ -96,10 +102,20 @@ class GraphRAGRetriever:
     # Entity extraction from query (LLM or keyword)
     # ═══════════════════════════════════════════════════════
 
-    async def _extract_query_entities(self, query: str, domain_id: str) -> List[Dict[str, str]]:
+    async def _extract_query_entities(
+        self,
+        query: str,
+        domain_id: str,
+        tenant_id: str = "",
+    ) -> List[Dict[str, str]]:
         """Extract named entities from user query.
 
         Uses LLM if available, falls back to graph index lookup (keyword match).
+
+        Args:
+            query: 查询文本。
+            domain_id: 域标识。
+            tenant_id: 可选租户；非空时只扫该租户 GraphIndex。
         """
         prompt = f"""从用户查询中提取实体名称和类型。
 输出 JSON 数组: [{{"name": "实体名", "class_type": "人物|组织|产品|地点|时间|事件|文档|概念|方法"}}]
@@ -121,9 +137,14 @@ class GraphRAGRetriever:
         entities = []
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            g = GraphIndex.load(domain_id)
+            # 为什么：N09 K5 — 关键字回退也必须按租户加载，避免扫到 default 图
+            g = GraphIndex.load(domain_id, tenant_id=(tenant_id or "default").strip() or "default")
             for node in g._nodes.values():
-                name = getattr(node, 'name', '') or getattr(node, 'entity_text', '')
+                name = (
+                    getattr(node, "entity_name", "")
+                    or getattr(node, "name", "")
+                    or getattr(node, "entity_text", "")
+                )
                 if name and name in query:
                     entities.append({"name": name, "class_type": getattr(node, 'class_name', '概念')})
         except Exception:
@@ -134,21 +155,43 @@ class GraphRAGRetriever:
     # Graph lookup
     # ═══════════════════════════════════════════════════════
 
-    def _find_node(self, name: str, domain_id: str, class_type: str = "") -> Optional[Dict]:
-        """Find an entity node in the graph by name."""
+    def _find_node(
+        self,
+        name: str,
+        domain_id: str,
+        class_type: str = "",
+        tenant_id: str = "",
+    ) -> Optional[Dict]:
+        """Find an entity node in the graph by name.
+
+        Args:
+            name: 实体名。
+            domain_id: 域标识。
+            class_type: 可选类过滤。
+            tenant_id: 可选租户；非空时只查该租户 GraphIndex（不回退 default）。
+        """
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            g = GraphIndex.load(domain_id)
+            tid = (tenant_id or "").strip() or "default"
+            g = GraphIndex.load(domain_id, tenant_id=tid)
             # Try exact match first
             for node_id, node in g._nodes.items():
-                node_name = getattr(node, 'name', '') or getattr(node, 'entity_text', '')
+                node_name = (
+                    getattr(node, "entity_name", "")
+                    or getattr(node, "name", "")
+                    or getattr(node, "entity_text", "")
+                )
                 if node_name == name:
                     cls = getattr(node, 'class_name', '')
                     if not class_type or cls == class_type or not class_type:
                         return {"id": node_id, "name": node_name, "class": cls}
             # Try contains match
             for node_id, node in g._nodes.items():
-                node_name = getattr(node, 'name', '') or getattr(node, 'entity_text', '')
+                node_name = (
+                    getattr(node, "entity_name", "")
+                    or getattr(node, "name", "")
+                    or getattr(node, "entity_text", "")
+                )
                 if name in node_name or node_name in name:
                     cls = getattr(node, 'class_name', '')
                     return {"id": node_id, "name": node_name, "class": cls}
@@ -160,12 +203,27 @@ class GraphRAGRetriever:
     # Layer 2: Subgraph Extraction (BFS)
     # ═══════════════════════════════════════════════════════
 
-    def _extract_subgraph(self, seed_nodes: List[Dict], domain_id: str,
-                          hops: int = 2, run_id: str = "") -> Dict[str, Any]:
-        """BFS from seed nodes up to `hops` hops, returning nodes + edges."""
+    def _extract_subgraph(
+        self,
+        seed_nodes: List[Dict],
+        domain_id: str,
+        hops: int = 2,
+        run_id: str = "",
+        tenant_id: str = "",
+    ) -> Dict[str, Any]:
+        """BFS from seed nodes up to `hops` hops, returning nodes + edges.
+
+        Args:
+            seed_nodes: 种子节点。
+            domain_id: 域标识。
+            hops: 跳数。
+            run_id: 运行 ID。
+            tenant_id: 可选租户；非空时只扩该租户 GraphIndex。
+        """
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            g = GraphIndex.load(domain_id)
+            tid = (tenant_id or "").strip() or "default"
+            g = GraphIndex.load(domain_id, tenant_id=tid)
         except Exception:
             return {"nodes": [], "edges": []}
 
