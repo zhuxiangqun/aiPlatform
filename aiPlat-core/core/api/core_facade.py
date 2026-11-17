@@ -7198,6 +7198,7 @@ def update_ontology_domain_meta(
     description: str = "",
     version: str = "",
     namespace: str = "",
+    tenant_id: str = "default",
 ) -> Dict[str, Any]:
     """Update domain metadata (name, description, version, namespace).
 
@@ -7207,6 +7208,7 @@ def update_ontology_domain_meta(
         description: description 参数。
         version: version 参数。
         namespace: namespace 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K10）。
     """
     import yaml
 
@@ -7234,8 +7236,10 @@ def update_ontology_domain_meta(
 
     if name:
         _register_domain_in_registry(domain_id, name, raw.get("description", ""))
-    _invalidate_domain_caches(domain_id)
-    return {"id": domain_id, "status": "updated"}
+    tid = (tenant_id or "").strip() or "default"
+    # 为什么：N09 K10 — domain meta 变更后须按租户清 GraphIndex 缓存
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
+    return {"id": domain_id, "tenant_id": tid, "status": "updated"}
 
 
 def delete_ontology_domain(domain_id: str) -> Dict[str, Any]:
@@ -7546,13 +7550,16 @@ def get_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
     return view
 
 
-def upsert_view_for_domain(domain_id: str, role: str, view_data: Dict[str, Any]) -> Dict[str, Any]:
+def upsert_view_for_domain(
+    domain_id: str, role: str, view_data: Dict[str, Any], *, tenant_id: str = "default"
+) -> Dict[str, Any]:
     """Create or update a role view in the domain YAML, writing back via yaml_serializer.
 
     Args:
         domain_id: domain 标识。
         role: role 参数。
         view_data: view_data 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K10）。
     """
     import yaml
     base_dir = _resolve_ontologies_dir()
@@ -7563,15 +7570,21 @@ def upsert_view_for_domain(domain_id: str, role: str, view_data: Dict[str, Any])
     raw["views"][role] = view_data
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
     Path(file_path).write_text(dict_to_yaml(raw), encoding="utf-8")
-    return {"domain_id": domain_id, "role": role, "status": "upserted"}
+    tid = (tenant_id or "").strip() or "default"
+    # 为什么：N09 K10 — view 变更影响角色投影，须清对应租户 GraphIndex 缓存
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
+    return {"domain_id": domain_id, "tenant_id": tid, "role": role, "status": "upserted"}
 
 
-def delete_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
+def delete_view_for_domain(
+    domain_id: str, role: str, *, tenant_id: str = "default"
+) -> Dict[str, Any]:
     """Delete a role view from the domain YAML.
 
     Args:
         domain_id: domain 标识。
         role: role 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K10）。
     """
     import yaml
     base_dir = _resolve_ontologies_dir()
@@ -7581,7 +7594,9 @@ def delete_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
     raw.get("views", {}).pop(role, None)
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
     Path(file_path).write_text(dict_to_yaml(raw), encoding="utf-8")
-    return {"domain_id": domain_id, "role": role, "status": "deleted"}
+    tid = (tenant_id or "").strip() or "default"
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
+    return {"domain_id": domain_id, "tenant_id": tid, "role": role, "status": "deleted"}
 
 
 def resolve_term_in_view(domain_id: str, role: str, term: str) -> Dict[str, Any]:

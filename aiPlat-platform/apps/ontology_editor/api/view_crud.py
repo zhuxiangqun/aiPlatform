@@ -1,15 +1,16 @@
-"""view_crud：模块接口。"""
-
-from api.schemas_response import StatusResponse
-u"""Ontology Editor — Role View CRUD endpoints (v2.6)."""
-from fastapi import APIRouter, HTTPException
+"""Ontology Editor — Role View CRUD endpoints (v2.6)."""
+from fastapi import APIRouter, HTTPException, Request
 from typing import Any, Dict
+
+# 为什么：走 apps.common_schemas，避免 `from api.*` 触发 api/__init__→routes→本模块环依赖
+from apps.common_schemas import StatusResponse
+from auth.request_identity import resolve_request_tenant
 
 router = APIRouter(tags=["ontology-editor-views"])
 
 
 def _cf():
-    u"""Lazy-import CoreFacade functions."""
+    """Lazy-import CoreFacade functions."""
     from core.api.core_facade import (
         list_views_for_domain, get_view_for_domain, upsert_view_for_domain,
         delete_view_for_domain, resolve_term_in_view,
@@ -76,12 +77,13 @@ async def validate_views(domain_id: str):
 
 
 @router.post("/domains/{domain_id}/views", response_model=StatusResponse)
-async def upsert_view(domain_id: str, data: Dict[str, Any]):
+async def upsert_view(domain_id: str, data: Dict[str, Any], request: Request):
     """Create or update a role view in a domain YAML.
 
     Args:
         domain_id: domain 标识。
         data: data 参数。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         role = data.get("role") or data.get("name", "")
@@ -91,7 +93,11 @@ async def upsert_view(domain_id: str, data: Dict[str, Any]):
         if not view_data:
             view_data = {k: v for k, v in data.items() if k not in ("role", "name")}
         (_, _, upsert_view_for_domain, *_) = _cf()
-        result = upsert_view_for_domain(domain_id, role, view_data)
+        # 为什么：N09 K10 — view 写后清租户 GraphIndex 缓存
+        tenant_id = resolve_request_tenant(request)
+        result = upsert_view_for_domain(
+            domain_id, role, view_data, tenant_id=tenant_id
+        )
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")
@@ -102,16 +108,19 @@ async def upsert_view(domain_id: str, data: Dict[str, Any]):
 
 
 @router.delete("/domains/{domain_id}/views/{role}", response_model=StatusResponse)
-async def delete_view(domain_id: str, role: str):
+async def delete_view(domain_id: str, role: str, request: Request):
     """Delete a role view from a domain YAML.
 
     Args:
         domain_id: domain 标识。
         role: role 参数。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         (_, _, _, delete_view_for_domain, *_) = _cf()
-        result = delete_view_for_domain(domain_id, role)
+        # 为什么：N09 K10 — view 删除后清租户 GraphIndex 缓存
+        tenant_id = resolve_request_tenant(request)
+        result = delete_view_for_domain(domain_id, role, tenant_id=tenant_id)
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")

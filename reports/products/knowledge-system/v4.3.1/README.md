@@ -67,5 +67,6 @@ authority: supporting
 | [phase2-cross-tenant-cross-domain-snapshot-evidence.md](./phase2-cross-tenant-cross-domain-snapshot-evidence.md) | Batch K7 N09 跨域写边/publish snapshot 租户分库（非 HTTP JWT 强制/非 certified） |
 | [phase2-cross-tenant-ontology-editor-http-evidence.md](./phase2-cross-tenant-ontology-editor-http-evidence.md) | Batch K8 N09 ontology_editor publish/list HTTP tenant 注入（非全 CRUD/非 certified） |
 | [phase2-cross-tenant-ontology-editor-crud-evidence.md](./phase2-cross-tenant-ontology-editor-crud-evidence.md) | Batch K9 N09 ontology_editor class/rollback tenant + 按租户清缓存（非 view/monitor/非 certified） |
+| [phase2-cross-tenant-ontology-editor-side-crud-evidence.md](./phase2-cross-tenant-ontology-editor-side-crud-evidence.md) | Batch K10 N09 ontology_editor view/meta tenant + 按租户清缓存（非 monitor 物理 tenant/非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

@@ -41,5 +41,5 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- view/monitor/metric/scoring/scenario/governance CRUD 的 GraphIndex/tenant 透传（多数不触分库）
-- N09 / 附录 N 全量认证
+- view/meta GraphIndex 缓存 tenant（见 Batch K10：`phase2-cross-tenant-ontology-editor-side-crud-evidence.md`）
+- process_monitor `state_changes` 物理 tenant / metric 旁路 / N09 certified

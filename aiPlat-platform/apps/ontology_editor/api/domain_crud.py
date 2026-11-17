@@ -89,21 +89,25 @@ async def create_domain(data: Dict[str, Any]):
 
 
 @router.put("/domains/{domain_id}", response_model=StatusResponse)
-async def update_domain_meta(domain_id: str, data: Dict[str, Any]):
+async def update_domain_meta(domain_id: str, data: Dict[str, Any], request: Request):
     """Update domain metadata (name, description, version, namespace).
 
     Args:
         domain_id: domain 标识。
         data: data 参数。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         from core.api.core_facade import update_ontology_domain_meta
+        # 为什么：N09 K10 — domain meta 变更后按租户清 GraphIndex 缓存
+        tenant_id = resolve_request_tenant(request)
         result = update_ontology_domain_meta(
             domain_id=domain_id,
             name=data.get("name", ""),
             description=data.get("description", ""),
             version=data.get("version", ""),
             namespace=data.get("namespace", ""),
+            tenant_id=tenant_id,
         )
         return result
     except FileNotFoundError:
