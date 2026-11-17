@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T15:32:33+08:00",
+  "reviewed_at": "2026-11-17T15:56:44+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "bcc6537f5a49ce95484bc91e127f6c22d3437ef171f660d8da7e61b95abbdd33",
-  "head_sha": "1d6b89a1ce67f1366cc1b8fd899ba1450bd07ce7",
+  "diff_sha256": "aa04cbfd1aa896616aaf575af2130fe6be2374b7ed7852f1565dff7cd2c6b351",
+  "head_sha": "c93e3b2b162d358f2b01b8156aa7ca185d56e475",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J2 UI only via J1 HTTP→Facade; UI self-approve blocked; gate certified false. No Package+Action bus merge. Includes toastGateError ui-import fix for build."
+  "note": "J2 UI + registry caps_count/matrix sync; gate certified false; no Package+Action write bus."
 }
