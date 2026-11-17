@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T16:33:22+08:00",
+  "reviewed_at": "2026-11-17T16:51:20+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "651078c83c3dde10f0e35301a6bd120b16b2b6173f579ba1425bd1390c182a38",
-  "head_sha": "28322b6ff953d3a06bd9328fce65f6fa8cde7508",
+  "diff_sha256": "41304fae031b3e31dfc87e57c6106905be0817f9b15891b84f72aaa9cd29b266",
+  "head_sha": "1d5eb806de2d3844920257bf674de3849cd04a08",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J5 unified audit bus: revision hot-path best-effort append; materialize excludes bus self-loop; certified honesty locks. Residual: Package/Action not hot-path synced; ActionStore merge out of scope."
+  "note": "J5 CAPABILITIES AUTO-STATS sync after bus symbols; residual unchanged from J5 bus slice."
 }
