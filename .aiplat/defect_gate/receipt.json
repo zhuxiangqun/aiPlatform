@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T01:54:46+08:00",
+  "reviewed_at": "2026-11-18T02:00:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "83b149da262eb2416caab23b00588a77faa1ef64e79356d7e04b778660ad54bf",
-  "head_sha": "79ce3b7a19197537c75a21a8a352e6802bba0406",
+  "diff_sha256": "7c2ce8f41b328cdd94f53b55ff8d1cd93628125b7422754d23f08831c476e79c",
+  "head_sha": "40afb8ad1605d282a0bca7b3aef06b82bd7ffc67",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K15 adds list_kb_tenant_ids / aggregate_stale_summary / auto_rebuild_stale_tenants; governance cron + system_health use aggregate. Residual: auto_garden / sys_file / self_heal still StalenessMonitor()→default (next deepen). certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K16 wires AutoGarden / sys_file_write / SelfHeal stale_mark through list_kb_tenant_ids or explicit tenant_id. Residual: metric/scoring CRUD tenant and diagnostics identity binding (query-param). certified stays false. Local lock only; CI needs non-author Approve."
 }
