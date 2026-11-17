@@ -39,13 +39,22 @@ def test_k31_wave_sources_wire_tenant():
 def test_fde_graph_tenant_prefers_request(monkeypatch):
     from apps.fde.api import graph_tenant as gt
 
+    helper = Path("aiPlat-platform/apps/fde/api/graph_tenant.py").read_text(
+        encoding="utf-8"
+    )
+    # 为什么：身份失败必须可观测，禁止静默吞错回归
+    assert "logger.debug(" in helper
+    assert "exc_info=True" in helper
+    assert "from core.api.core_facade import resolve_graph_tenant" in helper
+    assert "from core.harness" not in helper
+
     monkeypatch.setattr(
         "auth.request_identity.resolve_request_tenant",
         lambda request: "n09-t31-req",
     )
     monkeypatch.setattr(
-        "core.harness.knowledge.context_bus._resolve_graph_tenant",
-        lambda params=None: "ctx-default",
+        "core.api.core_facade.resolve_graph_tenant",
+        lambda params=None: "n09-t31-ctx",
     )
     assert gt.fde_graph_tenant(object()) == "n09-t31-req"
-    assert gt.fde_graph_tenant(None) == "ctx-default"
+    assert gt.fde_graph_tenant(None) == "n09-t31-ctx"
