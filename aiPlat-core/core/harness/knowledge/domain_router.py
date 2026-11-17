@@ -447,18 +447,23 @@ class DomainRouter:
                 for d in self.list_domains()
             ]
 
-    def refresh_domain_maturity(self, domain_id: str = "") -> Dict[str, Any]:
+    def refresh_domain_maturity(
+        self, domain_id: str = "", *, tenant_id: str = "default"
+    ) -> Dict[str, Any]:
         """Refresh maturity scores for one or all domains, writing back to registry.
 
         Args:
             domain_id: domain 标识。
+            tenant_id: 租户；透传 compute_domain_maturity（N09 K19）。
         """
         import json as _json
         registry = self._load_registry()
+        tid = (tenant_id or "").strip() or "default"
 
         if domain_id:
             from core.harness.knowledge.domain_maturity import compute_domain_maturity
-            maturity = compute_domain_maturity(domain_id)
+            # 为什么：N09 K19 — registry 成熟度刷新须按租户 GraphIndex
+            maturity = compute_domain_maturity(domain_id, tenant_id=tid)
             if domain_id in registry.get("domains", {}):
                 registry["domains"][domain_id]["maturity"] = maturity["level"]
                 registry["domains"][domain_id]["maturity_score"] = maturity["maturity_score"]
@@ -467,7 +472,7 @@ class DomainRouter:
         else:
             from core.harness.knowledge.domain_maturity import compute_domain_maturity
             for did in list(registry.get("domains", {}).keys()):
-                maturity = compute_domain_maturity(did)
+                maturity = compute_domain_maturity(did, tenant_id=tid)
                 registry["domains"].setdefault(did, {})
                 registry["domains"][did]["maturity"] = maturity["level"]
                 registry["domains"][did]["maturity_score"] = maturity["maturity_score"]

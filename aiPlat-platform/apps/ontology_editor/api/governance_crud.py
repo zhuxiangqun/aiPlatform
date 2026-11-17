@@ -94,7 +94,10 @@ async def run_cycle(data: Dict[str, Any], request: Request):
         from core.api.core_facade import run_cycle as _run
         steps = data.get("steps")
         auto_publish = data.get("auto_publish", False)
-        result = await _run(domain_id, steps=steps, auto_publish=auto_publish)
+        # 为什么：N09 K19 — run_cycle 须透传身份租户至 maturity/GraphIndex
+        result = await _run(
+            domain_id, steps=steps, auto_publish=auto_publish, tenant_id=tenant_id
+        )
         return {
             "cycle_id": result.cycle_id, "domain_id": result.domain_id,
             "tenant_id": tenant_id,
@@ -120,7 +123,8 @@ async def run_all_cycles(request: Request):
     try:
         tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import run_all_domains
-        results = await run_all_domains()
+        # 为什么：N09 K19 — 全域治理循环同样按身份租户扫图
+        results = await run_all_domains(tenant_id=tenant_id)
         return {
             "cycles": [{"domain_id": r.domain_id, "health": r.overall_health,
                          "level": r.health_level} for r in results],

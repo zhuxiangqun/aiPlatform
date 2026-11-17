@@ -21,7 +21,7 @@ async def compare_domains(request: Request):
         tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import compare_domains
 
-        results = compare_domains()
+        results = compare_domains(tenant_id=tenant_id)
         return {"domains": results, "total": len(results), "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -51,7 +51,7 @@ async def recommend_scenarios(
         else:
             from core.api.core_facade import compare_domains
 
-            results = compare_domains()
+            results = compare_domains(tenant_id=tenant_id)
             results = [
                 {
                     "domain_id": r["domain_id"],
@@ -165,7 +165,8 @@ async def refresh_maturity(domain_id: str, request: Request):
         from core.api.core_facade import DomainRouter
 
         router_obj = DomainRouter()
-        result = router_obj.refresh_domain_maturity(domain_id)
+        # 为什么：N09 K19 — 成熟度刷新须按身份租户加载 GraphIndex
+        result = router_obj.refresh_domain_maturity(domain_id, tenant_id=tenant_id)
         if isinstance(result, dict):
             return {**result, "tenant_id": tenant_id}
         return {"domain_id": domain_id, "tenant_id": tenant_id, "result": result}

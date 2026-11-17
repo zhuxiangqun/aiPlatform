@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / metric·scoring·scenario·governance tenant（Batch K18）证据
 
 > 实施权威：附录 N N09 partial 加深（ontology_editor 旁路 CRUD）。  
-> **未宣称** governance 管线内部 GraphIndex 全透传 / N09 certified。
+> **未宣称** N09 certified（governance/maturity 透传见 K19）。
 
 ## 检查表
 
@@ -40,5 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- governance `run_cycle` / maturity / registry 内部 GraphIndex·store 全量 tenant 透传
+- governance `run_cycle` / maturity → **K19 已加深**（本文件保留 K18 范围陈述）
 - N09 / 附录 N 全量认证
