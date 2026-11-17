@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T17:13:39+08:00",
+  "reviewed_at": "2026-11-17T20:27:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "40a48741a97e561e3865dae18c77fd69849a04e14a3f4faff751a7feb86440fa",
-  "head_sha": "bf3758e8baea21f127655d5309cd436554b5df84",
+  "diff_sha256": "6bda57c393da62875e46ca293aff374b11a150608907d2c6b8a45ac4c2f739fa",
+  "head_sha": "edb3fd15777d1a18794ce2c6d7362a82dc6db8eb",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "J7 ActionStore.action_audit into unified bus/view; tenant via params.tenant_id. Residual: no physical tenant_id column; N24 not certified."
+  "note": "J8 ActionStore physical tenant_id + list_audit pre-recall filter; legacy empty column falls back to params. Residual: no forced historical backfill; N24 not certified."
 }
