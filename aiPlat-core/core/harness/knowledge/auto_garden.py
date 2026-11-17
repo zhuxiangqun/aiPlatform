@@ -63,10 +63,14 @@ class AutoGarden:
         result = garden.run(collection_id="default", dry_run=False)
     """
 
-    def __init__(self):
+    def __init__(self, *, tenant_id: str = ""):
         """初始化。
+
+        Args:
+            tenant_id: 可选租户；空则 run 时枚举全部 KB 分库（N09 K16）。
         """
         self._wiki_root = _Path(get_aiplat_data_dir("wiki"))
+        self._tenant_id = (tenant_id or "").strip()
 
     def run(
         self,
@@ -74,6 +78,7 @@ class AutoGarden:
         collection_id: str = "",
         dry_run: bool = False,
         hard_delete: bool = False,
+        tenant_id: str = "",
     ) -> GardenResult:
         """执行花园整理.
 
@@ -81,11 +86,16 @@ class AutoGarden:
             collection_id: 指定集合 (为空=所有集合)
             dry_run: 是否仅报告不执行
             hard_delete: 是否硬删除 obsolete 页面 (默认仅软删除)
+            tenant_id: 可选覆盖构造时的租户；空则枚举 KB 分库（N09 K16）。
 
         Returns:
             GardenResult
         """
         result = GardenResult()
+
+        tid = (tenant_id or "").strip() or self._tenant_id
+        # 为什么：N09 K16 — 花园整理须按租户扫 KB，禁止 StalenessMonitor()→default
+        self._scan_staleness_tenants(tid)
 
         collections = self._list_collections(collection_id)
 
@@ -111,6 +121,23 @@ class AutoGarden:
         logger.info("AutoGarden complete: %d checked, health=%d",
                      result.total_checked, result.health_score)
         return result
+
+    def _scan_staleness_tenants(self, tenant_id: str = "") -> None:
+        """Scan KB staleness for one tenant or all discovered tenants.
+
+        Args:
+            tenant_id: 非空则只扫该租户；空则 ``list_kb_tenant_ids()``。
+        """
+        try:
+            from core.harness.knowledge.staleness_monitor import (
+                StalenessMonitor,
+                list_kb_tenant_ids,
+            )
+            tids = [tenant_id] if tenant_id else list_kb_tenant_ids()
+            for tid in tids:
+                StalenessMonitor(tenant_id=tid).scan_all_collections()
+        except Exception:
+            logger.debug("AutoGarden staleness scan skipped", exc_info=True)
 
     def _list_collections(self, specific: str) -> List[str]:
         if specific:
@@ -155,15 +182,7 @@ class AutoGarden:
                 if not dry_run:
                     self._mark_thin(page_path, content)
 
-            # 3. 孤立页面 (通过 StalenessMonitor 检查)
-            try:
-                from core.harness.knowledge.staleness_monitor import StalenessMonitor
-                monitor = StalenessMonitor()
-                if hasattr(monitor, "check_stale"):
-                    # Just check, don't auto-rebuild
-                    pass
-            except ImportError:  # noqa: optional-dependency
-                pass
+            # 3. 孤立/漂移探测已在 run() 入口按租户扫过（N09 K16）
 
             # 4. 硬删除 (仅 obsolete 标记的页面)
             if hard_delete and "status: obsolete" in content:

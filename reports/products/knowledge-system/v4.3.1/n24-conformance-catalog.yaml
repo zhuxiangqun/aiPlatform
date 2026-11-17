@@ -124,7 +124,7 @@ items:
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_auto_ontology_pipeline_tenant_k13.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_staleness_tenant_k14.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_process_monitor_tenant_k11.py
-    note: FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ caller（K4）+ GraphIndex（K5）+ 图写入（K6）+ 跨域/snapshot（K7）+ ontology_editor HTTP（K8）+ class/rollback（K9）+ view/meta（K10）+ process_monitor（K11）+ process_instances/engine（K12）+ auto_ontology_pipeline（K13）+ staleness/diagnostics（K14）+ staleness cron/health（K15）+门槛门；未宣称全域 0 泄漏/非 certified
+    note: FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ caller（K4）+ GraphIndex（K5）+ 图写入（K6）+ 跨域/snapshot（K7）+ ontology_editor HTTP（K8）+ class/rollback（K9）+ view/meta（K10）+ process_monitor（K11）+ process_instances/engine（K12）+ auto_ontology_pipeline（K13）+ staleness/diagnostics（K14）+ staleness cron/health（K15）+ garden/file/self_heal（K16）+门槛门；未宣称全域 0 泄漏/非 certified
   - id: N10
     title: 评测有定义/数据集/门槛
     status: partial

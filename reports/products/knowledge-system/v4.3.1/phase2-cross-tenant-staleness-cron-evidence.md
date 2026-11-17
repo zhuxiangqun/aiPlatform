@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / staleness cron + system_health tenant（Batch K15）证据
 
 > 实施权威：附录 N N09 partial 加深（K14 分库路径之上：cron/health 枚举全租户）。  
-> **未宣称** metric/scoring 旁路 / garden·file·self_heal 全接线 / N09 certified。
+> **未宣称** metric/scoring 旁路 / N09 certified（garden/file/self_heal 见 K16）。
 
 ## 检查表
 
@@ -43,5 +43,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做
 
 - metric/scoring/scenario/governance 旁路 CRUD tenant
-- auto_garden / sys_file / self_heal 仍可能 `StalenessMonitor()` → default
+- auto_garden / sys_file / self_heal → **K16 已加深**（本文件保留 K15 范围陈述）
 - N09 / 附录 N 全量认证
