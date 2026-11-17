@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T01:34:10+08:00",
+  "reviewed_at": "2026-11-18T01:45:38+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "a22e757cedeb2e58ebb3f1a91d6790857d43de2054aff02b39317aa5780e262d",
-  "head_sha": "ec441b4763d65c15cdcfa0bff865efe676d5c982",
+  "diff_sha256": "f07ace9e3333a2edcecb7c02ab02484262e8e30fe14e958e6493afb267f46839",
+  "head_sha": "abef2fe707aa1a908dce1f1d401eae4875bc4f9e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K13 threads ingest/watch identity tenant into auto_ontology_pipeline_for_doc → load_engine/process_chunks. staleness/diagnostics still bind default KB path with explicit tenant_id=default — intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "K14 routes StalenessMonitor + drift-status/rebuild via kb_sqlite_path_for_tenant; cache keyed by tenant. Residual: server cron / auto_garden / system_health / self_heal still construct StalenessMonitor() → default tenant (next deepen). HTTP tenant_id query still defaults to default when omitted — not spoof-proof identity binding (diagnostics still query-param; identity wire later). certified stays false. Local lock only; CI needs non-author Approve."
 }
