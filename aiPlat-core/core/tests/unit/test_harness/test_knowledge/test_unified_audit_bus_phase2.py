@@ -179,6 +179,59 @@ async def test_action_store_hotpath_to_bus(harness, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_action_store_physical_tenant_column(tmp_path):
+    """J8：物理 tenant_id 列写入 + list_audit 召回前过滤；跨租户空。"""
+    from core.harness.infrastructure.action_store import ActionStore
+
+    store_db = str(tmp_path / "action_store_tenant.sqlite3")
+    store = ActionStore(store_db)
+    await store.initialize()
+    await store.insert_audit(
+        {
+            "action_id": "knowledge_revision:tcol",
+            "entity_id": "e1",
+            "domain_id": "d1",
+            "actor": "a",
+            "result_status": "executed",
+            "tenant_id": "t1",
+            "params": {},
+        }
+    )
+    await store.insert_audit(
+        {
+            "action_id": "knowledge_revision:tcol2",
+            "entity_id": "e2",
+            "domain_id": "d1",
+            "actor": "a",
+            "result_status": "executed",
+            "tenant_id": "t2",
+            "params": {"tenant_id": "t2"},
+        }
+    )
+    t1 = await store.list_audit(tenant_id="t1", limit=50)
+    assert len(t1) == 1
+    assert t1[0].get("tenant_id") == "t1"
+    t2 = await store.list_audit(tenant_id="t2", limit=50)
+    assert len(t2) == 1
+    view = await list_unified_audit_events(
+        tenant_id="t1",
+        streams=["action_store"],
+        action_store_db_path=store_db,
+        limit=50,
+    )
+    assert view["certified"] is False
+    assert len(view["events"]) == 1
+    assert view["events"][0]["event_id"]
+    other = await list_unified_audit_events(
+        tenant_id="other",
+        streams=["action_store"],
+        action_store_db_path=store_db,
+        limit=50,
+    )
+    assert other["count"] == 0
+
+
+@pytest.mark.asyncio
 async def test_materialize_and_view_bus_stream(harness):
     """materialize 三流进 bus；view streams=bus 可见（热路径后幂等 skip 亦可）。"""
     ledger, pkg_db, act_db, bus_db = harness

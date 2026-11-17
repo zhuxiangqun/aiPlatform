@@ -56,5 +56,6 @@ authority: supporting
 | [phase2-unified-audit-bus-evidence.md](./phase2-unified-audit-bus-evidence.md) | Batch J5 N24 Unified Audit 写总线（非 ActionStore 合并/非 certified） |
 | [phase2-unified-audit-hotpath-evidence.md](./phase2-unified-audit-hotpath-evidence.md) | Batch J6 N24 Package/Action 热路径写总线（非 ActionStore 合并/非 certified） |
 | [phase2-unified-audit-action-store-evidence.md](./phase2-unified-audit-action-store-evidence.md) | Batch J7 N24 ActionStore.action_audit 汇入统一审计（非 certified） |
+| [phase2-unified-audit-action-store-tenant-evidence.md](./phase2-unified-audit-action-store-tenant-evidence.md) | Batch J8 N24 ActionStore 物理 tenant_id（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

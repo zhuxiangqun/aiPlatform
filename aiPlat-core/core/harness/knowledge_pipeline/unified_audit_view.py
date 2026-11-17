@@ -5,7 +5,6 @@
 """
 from __future__ import annotations
 
-import json
 import os
 import tempfile
 from datetime import datetime
@@ -257,7 +256,7 @@ async def _action_store_events(
     limit: int,
     db_path: Optional[str],
 ) -> List[Dict[str, Any]]:
-    """ActionStore.action_audit → 统一事件（按 params.tenant_id 过滤）。
+    """ActionStore.action_audit → 统一事件（物理 tenant_id 优先过滤）。
 
     Args:
         tenant_id: 租户。
@@ -269,25 +268,14 @@ async def _action_store_events(
 
     store = ActionStore(db_path) if db_path else ActionStore()
     await store.initialize()
-    # 多取后按租户过滤，避免跨租户泄漏
     rows = await store.list_audit(
         entity_id="",
         domain_id=(domain_id or "").strip(),
-        limit=max(limit * 5, limit),
+        tenant_id=tenant_id,
+        limit=limit,
     )
     events: List[Dict[str, Any]] = []
     for row in rows:
-        params: Any = row.get("params") or {}
-        if isinstance(params, str):
-            try:
-                params = json.loads(params or "{}")
-            except (TypeError, ValueError, json.JSONDecodeError):
-                params = {}
-        if not isinstance(params, dict):
-            params = {}
-        row_tid = str(row.get("tenant_id") or params.get("tenant_id") or "").strip()
-        if row_tid != tenant_id:
-            continue
         events.append(
             {
                 "stream": "action_store",
@@ -304,8 +292,6 @@ async def _action_store_events(
                 "payload": row,
             }
         )
-        if len(events) >= limit:
-            break
     return events
 
 
