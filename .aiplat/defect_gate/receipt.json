@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T11:18:58+08:00",
+  "reviewed_at": "2026-11-17T11:43:54+08:00",
   "base_ref": "origin/main",
-  "merge_base": "965fdf0ff7bfc37f6f122521385b4f3b26be718c",
-  "diff_sha256": "156beb86543f8d85c632484e56bc4b7949a637b54890b7c6b2403c8a0b0eecef",
-  "head_sha": "90db536792db5eef048c4683747fa6465fc4459d",
+  "merge_base": "17a8d1f110b5bbd62627975ffa5f5b5f4ac4559a",
+  "diff_sha256": "b1a01845c5f205670f742a57bdfddd321cea70e4e678ae7be853446d586995c1",
+  "head_sha": "e48e6cf6766beb4a792fae4a997acd331fd017b2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "I1 restore: actor/reason required; missing rev rejected; bump+archive; idempotent same content; gate forbids certified. Residual: no rollback UI / approval revert / audit bus. Local lock only; CI unlock is non-author Approve."
+  "note": "I2 revision_audit: archive/restore emit; tenant filter; gate forbids certified. Residual: no rollback UI / Package+Action bus. Local lock only; CI unlock is non-author Approve."
 }
