@@ -15,7 +15,7 @@ import sqlite3
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +179,53 @@ def lookup_execution(
         if not row:
             return None
         return _row_to_record(row)
+    finally:
+        conn.close()
+
+
+def list_action_executions(
+    *,
+    tenant_id: str,
+    action_id_prefix: str = "",
+    limit: int = 100,
+    db_path: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """按租户列出 ActionExecution 行（只读；跨租户空）。
+
+    Args:
+        tenant_id: 租户（必填）。
+        action_id_prefix: 可选 action_id 前缀（LIKE prefix%）。
+        limit: 最大条数（1–500）。
+        db_path: 可选库路径。
+    """
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return []
+    lim = max(1, min(int(limit or 100), 500))
+    prefix = (action_id_prefix or "").strip()
+    conn = _connect(db_path)
+    try:
+        if prefix:
+            rows = conn.execute(
+                """
+                SELECT * FROM action_executions
+                WHERE tenant_id=? AND action_id LIKE ?
+                ORDER BY COALESCE(completed_at, started_at) ASC, execution_id ASC
+                LIMIT ?
+                """,
+                (tid, f"{prefix}%", lim),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM action_executions
+                WHERE tenant_id=?
+                ORDER BY COALESCE(completed_at, started_at) ASC, execution_id ASC
+                LIMIT ?
+                """,
+                (tid, lim),
+            ).fetchall()
+        return [_row_to_record(r) for r in rows]
     finally:
         conn.close()
 
