@@ -1,7 +1,7 @@
-"""N24 Unified Audit View（Batch J3）— Package + ActionExecution + revision_audit 只读汇合。
+"""N24 Unified Audit View（Batch J3/J5）— Package + Action + revision + bus 汇合。
 
-职责：按租户 fan-in 三路事件为统一只读列表；suite/gate 诚实锁。
-非目标：不写统一总线表；不合并 ActionStore.action_audit；不宣称 N24 certified。
+职责：按租户 fan-in 源三流与写总线为统一列表；suite/gate 诚实锁。
+非目标：不合并 ActionStore.action_audit；不宣称 N24 certified。
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-_DEFAULT_STREAMS = ("package", "action_execution", "revision_audit")
+_DEFAULT_STREAMS = ("package", "action_execution", "revision_audit", "bus")
 _N24_UNIFIED_AUDIT_CASES = (
     "package_stream_present",
     "action_stream_present",
@@ -20,7 +20,7 @@ _N24_UNIFIED_AUDIT_CASES = (
 
 
 def _resolve_streams(streams: Optional[Sequence[str]]) -> List[str]:
-    """解析流集合（参数 > 环境变量 > 默认三流）。
+    """解析流集合（参数 > 环境变量 > 默认四流含 bus）。
 
     Args:
         streams: 显式流名；空则读 env / 默认。
@@ -182,6 +182,46 @@ async def _revision_events(
     return events
 
 
+def _bus_events(
+    *,
+    tenant_id: str,
+    limit: int,
+    db_path: Optional[str],
+) -> List[Dict[str, Any]]:
+    """总线表行 → 统一事件（stream 标记为 bus）。
+
+    Args:
+        tenant_id: 租户。
+        limit: 上限。
+        db_path: 总线 DB。
+    """
+    from core.harness.knowledge_pipeline.unified_audit_bus import (
+        list_unified_audit_bus_events,
+    )
+
+    rows = list_unified_audit_bus_events(
+        tenant_id=tenant_id, limit=limit, db_path=db_path
+    )
+    events: List[Dict[str, Any]] = []
+    for row in rows:
+        refs = dict(row.get("refs") or {})
+        refs["source_stream"] = row.get("stream") or ""
+        events.append(
+            {
+                "stream": "bus",
+                "tenant_id": tenant_id,
+                "event_id": str(row.get("event_id") or ""),
+                "event_type": str(row.get("event_type") or ""),
+                "occurred_at": _norm_ts(row.get("occurred_at")),
+                "actor": str(row.get("actor") or ""),
+                "subject": str(row.get("subject") or ""),
+                "refs": refs,
+                "payload": row.get("payload") or {},
+            }
+        )
+    return events
+
+
 async def list_unified_audit_events(
     *,
     tenant_id: str,
@@ -193,13 +233,14 @@ async def list_unified_audit_events(
     limit: int = 100,
     package_db_path: Optional[str] = None,
     action_execution_db_path: Optional[str] = None,
+    bus_db_path: Optional[str] = None,
     fact_ledger: Any = None,
 ) -> Dict[str, Any]:
-    """只读汇合 Package / ActionExecution / revision_audit（非写总线）。
+    """汇合 Package / ActionExecution / revision_audit / bus（写总线切片）。
 
     Args:
         tenant_id: 租户（必填）。
-        streams: 可选流过滤；默认三流或 ``AIPLAT_UNIFIED_AUDIT_STREAMS``。
+        streams: 可选流过滤；默认四流或 ``AIPLAT_UNIFIED_AUDIT_STREAMS``。
         package_id: Package 流可选过滤。
         action_id_prefix: Action 流可选前缀。
         entity_type: revision 流可选实体类型。
@@ -207,6 +248,7 @@ async def list_unified_audit_events(
         limit: 汇合后最大条数（1–500）。
         package_db_path: 可选 Package DB。
         action_execution_db_path: 可选 ActionExecution DB。
+        bus_db_path: 可选统一审计总线 DB。
         fact_ledger: 可选 FactLedger；默认单例。
 
     Returns:
@@ -256,6 +298,10 @@ async def list_unified_audit_events(
                 fact_ledger=lg,
             )
         )
+    if "bus" in active:
+        events.extend(
+            _bus_events(tenant_id=tid, limit=per, db_path=bus_db_path)
+        )
 
     events.sort(key=lambda e: (_norm_ts(e.get("occurred_at")), str(e.get("event_id") or "")))
     clipped = events[:lim]
@@ -266,7 +312,7 @@ async def list_unified_audit_events(
         "tenant_id": tid,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "read-only Package+Action+revision_audit merge view; not full audit bus / not N24 certified",
+        "note": "Package+Action+revision+bus merge; not ActionStore merge / not N24 certified",
     }
 
 
@@ -437,7 +483,7 @@ async def run_unified_audit_view_suite(
         "cases": cases,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "Package+Action+revision_audit read-only merge; not full bus / not N24 certified",
+        "note": "Package+Action+revision merge (+bus stream); not ActionStore merge / not N24 certified",
     }
 
 
