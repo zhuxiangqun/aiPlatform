@@ -1309,6 +1309,7 @@ def watch_directory(
                                 _aio.run(auto_ontology_pipeline_for_doc(
                                     doc_id=doc_id, file_path=file_path,
                                     collection_id=collection_id,
+                                    tenant_id=tenant_id,
                                 ))
                         except Exception:
                             logging.getLogger(__name__).debug('_poll failed', exc_info=True)

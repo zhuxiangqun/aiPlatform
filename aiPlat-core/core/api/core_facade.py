@@ -1761,13 +1761,20 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     return {"status": "created", "title": title, "category": final_category, "chars": len(body)}
 
 
-async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection_id: str = "default") -> Dict[str, Any]:
+async def auto_ontology_pipeline_for_doc(
+    doc_id: str,
+    file_path: str,
+    collection_id: str = "default",
+    *,
+    tenant_id: str = "default",
+) -> Dict[str, Any]:
     """Auto-run ontology engine pipeline on a newly ingested/re-ingested document.
 
     Args:
         doc_id: doc 标识。
         file_path: file_path 参数。
         collection_id: collection 标识。
+        tenant_id: 租户；须从 ingest/身份上下文注入（N09 K13）。
     """
     import os as _os
     if _os.getenv("AIPLAT_AUTO_ONTOLOGY_PIPELINE", "true").lower() not in ("true", "1", "yes"):
@@ -1806,7 +1813,9 @@ async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection
     if not engine_chunks:
         return {"status": "skipped", "reason": "chunks too small"}
 
-    engine = load_engine(domain_id)
+    tid = (tenant_id or "").strip() or "default"
+    # 为什么：N09 K13 — 自动本体流水线必须带 ingest 租户，禁止静默落到匿名 default 写库
+    engine = load_engine(domain_id, tenant_id=tid)
     if engine is None:
         return {"status": "skipped", "reason": f"no engine for domain '{domain_id}'"}
 
@@ -1820,7 +1829,7 @@ async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection
     for batch_start in range(0, len(engine_chunks), batch_size):
         batch = engine_chunks[batch_start:batch_start + batch_size]
         try:
-            result = await engine.process_chunks(batch, doc_id=doc_id)
+            result = await engine.process_chunks(batch, doc_id=doc_id, tenant_id=tid)
             total_instances += len(result.instances) if hasattr(result, "instances") else 0
             total_relations += len(result.relations) if hasattr(result, "relations") else 0
             chunks_processed += len(batch)
@@ -1840,9 +1849,16 @@ async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection
     except Exception:
         logging.getLogger(__name__).debug('code failed', exc_info=True)
 
-    return {"status": "completed", "domain": domain_id, "doc_id": doc_id,
-            "instances_created": total_instances, "relations_detected": total_relations,
-            "chunks_processed": chunks_processed, "batches": len(range(0, len(engine_chunks), batch_size))}
+    return {
+        "status": "completed",
+        "domain": domain_id,
+        "doc_id": doc_id,
+        "tenant_id": tid,
+        "instances_created": total_instances,
+        "relations_detected": total_relations,
+        "chunks_processed": chunks_processed,
+        "batches": len(range(0, len(engine_chunks), batch_size)),
+    }
 
 
 # ═══════════════════════════════════════════════════════════════

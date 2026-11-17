@@ -3233,7 +3233,7 @@ async def trigger_drift_rebuild(max_pages: int = 10):
                     conn.close()
                     if row and row[0] and os.path.exists(row[0]):
                         from core.api.core_facade import auto_ontology_pipeline_for_doc
-                        r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid)
+                        r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid, tenant_id="default")
                         if r["status"] == "completed":
                             rebuilt += 1
                         else:

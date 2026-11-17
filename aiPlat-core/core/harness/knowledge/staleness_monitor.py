@@ -401,7 +401,7 @@ class StalenessMonitor:
 
                             from core.api.core_facade import auto_ontology_pipeline_for_doc
 
-                            r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid)
+                            r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid, tenant_id="default")
 
                             if r["status"] == "completed":
 

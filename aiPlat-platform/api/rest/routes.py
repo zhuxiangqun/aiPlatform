@@ -3344,7 +3344,7 @@ async def documents_ingest(request: Request):
 
         if doc_id:
 
-            _asyncio.create_task(_auto_ontology_pipeline(doc_id, str(file_path), collection_id))
+            _asyncio.create_task(_auto_ontology_pipeline(doc_id, str(file_path), collection_id, tenant_id=str(identity.tenant_id or "default")))
 
     except Exception as e:
 
@@ -3492,7 +3492,7 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
 
 
 
-async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: str = "default"):
+async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: str = "default", *, tenant_id: str = "default"):
 
     u"""Background task: run ontology engine pipeline on a newly ingested document.
 
@@ -3508,7 +3508,7 @@ async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: st
 
         from core.api.core_facade import auto_ontology_pipeline_for_doc
 
-        result = await auto_ontology_pipeline_for_doc(doc_id, file_path, collection_id)
+        result = await auto_ontology_pipeline_for_doc(doc_id, file_path, collection_id, tenant_id=tenant_id)
 
         if result.get("status") not in ("disabled", "skipped"):
 

@@ -45,6 +45,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- `auto_ontology_pipeline_for_doc` 从 ingest 上下文强制非 default tenant
+- auto_ontology_pipeline ingest tenant（见 Batch K13：`phase2-cross-tenant-auto-ontology-pipeline-evidence.md`）
 - metric/scoring/scenario/governance 旁路
 - N09 / 附录 N 全量认证
