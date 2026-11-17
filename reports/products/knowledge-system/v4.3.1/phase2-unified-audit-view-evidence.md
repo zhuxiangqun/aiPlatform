@@ -43,5 +43,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 - 写入统一审计总线表 / 强制全量事件进 ActionExecution
 - 合并 ActionStore `action_audit` 为同一流
-- 管理端统一审计 UI
 - N24 / 附录 N 全量认证
+
+> 管理端统一审计 UI 见 Batch J4：`phase2-unified-audit-ui-evidence.md`。
