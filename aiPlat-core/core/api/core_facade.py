@@ -4052,6 +4052,7 @@ async def governance_locate_view(
     *,
     top_k: int = 8,
     with_graphrag: bool = False,
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """Step ⑦ vertical: locate entities on GraphIndex (+ optional GraphRAG).
 
@@ -4060,11 +4061,16 @@ async def governance_locate_view(
         query: 查询。
         top_k: top_k 参数。
         with_graphrag: with_graphrag 参数。
+        tenant_id: 可选租户；透传 GraphRAG（N09 K4）。
     """
     from core.apps.fde.service.governance_deepen import locate_via_ontology_async
 
     return await locate_via_ontology_async(
-        domain_id, query, top_k=top_k, with_graphrag=with_graphrag
+        domain_id,
+        query,
+        top_k=top_k,
+        with_graphrag=with_graphrag,
+        tenant_id=tenant_id or "",
     )
 
 

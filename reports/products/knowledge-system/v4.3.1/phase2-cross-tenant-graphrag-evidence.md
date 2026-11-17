@@ -39,5 +39,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- GraphIndex 图节点级租户隔离 / CRAG·治理入口全量透传 tenant_id
+- GraphIndex 图节点级租户隔离（CRAG/治理透传见 Batch K4：`phase2-cross-tenant-graphrag-caller-evidence.md`）
 - N09 / 附录 N 全量认证

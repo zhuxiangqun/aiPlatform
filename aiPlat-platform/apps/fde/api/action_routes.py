@@ -535,6 +535,8 @@ async def ontology_governance_locate(body: Dict[str, Any]):
             query,
             top_k=int(body.get("top_k") or 8),
             with_graphrag=bool(body.get("with_graphrag", False)),
+            # 为什么：N09 K4 — HTTP 入口透传租户到 GraphRAG 向量层
+            tenant_id=str(body.get("tenant_id") or "").strip(),
         )
     except Exception as e:
         logger.error("ontology_governance_locate failed: %s", e, exc_info=True)

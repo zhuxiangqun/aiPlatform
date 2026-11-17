@@ -61,5 +61,6 @@ authority: supporting
 | [phase2-cross-tenant-objectset-audit-evidence.md](./phase2-cross-tenant-objectset-audit-evidence.md) | Batch K1 N09 ObjectSet+UnifiedAudit 跨租户探针（非 Wiki/KB 全入口/非 certified） |
 | [phase2-cross-tenant-wiki-kb-evidence.md](./phase2-cross-tenant-wiki-kb-evidence.md) | Batch K2 N09 Wiki/KB 跨租户探针（非 GraphRAG/非 certified） |
 | [phase2-cross-tenant-graphrag-evidence.md](./phase2-cross-tenant-graphrag-evidence.md) | Batch K3 N09 GraphRAG 向量层跨租户（非图节点 ACL/非 certified） |
+| [phase2-cross-tenant-graphrag-caller-evidence.md](./phase2-cross-tenant-graphrag-caller-evidence.md) | Batch K4 N09 CRAG/治理 GraphRAG tenant 透传（非 GraphIndex ACL/非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

@@ -3859,6 +3859,7 @@ _N09_CASES = (
     "kb_retrieve_no_leak",
     "wiki_retrieve_no_leak",
     "graphrag_no_leak",
+    "graphrag_caller_passthrough",
 )
 
 
@@ -4222,6 +4223,90 @@ async def run_cross_tenant_isolation_suite(
                 "detail": "" if gr_ok else "graphrag_leak_or_miss",
             }
         )
+
+        # K4：CRAG / 治理入口透传 tenant_id → GraphRAG.retrieve
+        captured: Dict[str, Any] = {}
+        _orig_retrieve = GraphRAGRetriever.retrieve
+
+        async def _capture_retrieve(
+            self: Any,
+            query: str,
+            domain_id: str = "default",
+            top_k: int = 10,
+            run_id: str = "",
+            tenant_id: str = "",
+        ) -> Dict[str, Any]:
+            captured["tenant_id"] = tenant_id
+            captured["domain_id"] = domain_id
+            # 为什么：提前返回 graphrag 命中，避免 CRAG 继续走 Level1+ 拉长探针
+            return {
+                "mode": "graphrag",
+                "chunks": [{"title": "n09", "content": "passthrough"}],
+                "reasoning_paths": [],
+                "subgraph_size": 1,
+            }
+
+        GraphRAGRetriever.retrieve = _capture_retrieve  # type: ignore[method-assign]
+        crag_tid: Any = None
+        gov_tid: Any = None
+        try:
+            from core.apps.fde.service import governance_deepen as _gov
+            from core.harness.syscalls.retrieval_crag import sys_crag_retrieve
+
+            await sys_crag_retrieve(
+                "n09 passthrough probe",
+                domain_id=probe_domain,
+                tenant_id=tenant_a,
+                top_k=3,
+                enable_hyde=False,
+            )
+            crag_tid = captured.get("tenant_id")
+            captured.clear()
+
+            _orig_locate = _gov.locate_via_ontology
+
+            def _fake_locate(
+                domain_id: str, query: str, *, top_k: int = 8
+            ) -> Dict[str, Any]:
+                return {
+                    "hits": [{"id": "n09-hit", "name": "n09"}],
+                    "domain_id": domain_id,
+                    "query": query,
+                }
+
+            _gov.locate_via_ontology = _fake_locate  # type: ignore[assignment]
+            try:
+                await _gov.locate_via_ontology_async(
+                    probe_domain,
+                    "n09 passthrough probe",
+                    top_k=3,
+                    with_graphrag=True,
+                    tenant_id=tenant_a,
+                )
+            finally:
+                _gov.locate_via_ontology = _orig_locate  # type: ignore[assignment]
+            gov_tid = captured.get("tenant_id")
+            pass_ok = crag_tid == tenant_a and gov_tid == tenant_a
+        except Exception as exc:
+            pass_ok = False
+            captured["error"] = str(exc)[:200]
+        finally:
+            GraphRAGRetriever.retrieve = _orig_retrieve  # type: ignore[method-assign]
+        cases.append(
+            {
+                "id": "graphrag_caller_passthrough",
+                "ok": pass_ok,
+                "detail": (
+                    ""
+                    if pass_ok
+                    else (
+                        "passthrough_miss "
+                        f"crag={crag_tid!r} gov={gov_tid!r} "
+                        f"err={captured.get('error', '')!r}"
+                    )
+                ),
+            }
+        )
     finally:
         if prev_kb_tenants is None:
             os.environ.pop("AIPLAT_KB_TENANTS_DIR", None)
@@ -4249,8 +4334,8 @@ async def run_cross_tenant_isolation_suite(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG probes; "
-            "not global zero-leak certification"
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller "
+            "passthrough probes; not global zero-leak certification"
         ),
     }
 
@@ -4287,8 +4372,8 @@ def evaluate_cross_tenant_gate(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG deepen; "
-            "not platform-wide zero-leak certified"
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller "
+            "passthrough deepen; not platform-wide zero-leak certified"
         ),
     }
 

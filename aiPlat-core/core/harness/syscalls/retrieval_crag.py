@@ -156,7 +156,14 @@ async def sys_crag_retrieve(
         try:
             from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever
             gr = GraphRAGRetriever()
-            g_result = await gr.retrieve(query, domain_id=domain_id, top_k=_effective_top_k, run_id=run_id)
+            # 为什么：N09 K4 — CRAG 已有 tenant_id，须透传 GraphRAG 向量层，禁止静默用 domain 回退他租户
+            g_result = await gr.retrieve(
+                query,
+                domain_id=domain_id,
+                top_k=_effective_top_k,
+                run_id=run_id,
+                tenant_id=tenant_id or "",
+            )
             if g_result.get("mode") == "graphrag" and g_result.get("chunks"):
                 chunks_text = "\n\n".join(
                     f"[{c.get('title', '')}] {c.get('content', '')}"
