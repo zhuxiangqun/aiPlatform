@@ -154,15 +154,25 @@ class ReconSubgraph:
 
         return computed
 
-    def merge_to(self, target_domain: str, *, min_confidence: float = 0.7) -> Dict[str, int]:
+    def merge_to(
+        self,
+        target_domain: str,
+        *,
+        min_confidence: float = 0.7,
+        tenant_id: str = "",
+    ) -> Dict[str, int]:
         """Merge high-confidence entities/edges into a persistent domain.
 
         Args:
             target_domain: target_domain 参数。
             min_confidence: min_confidence 参数。
+            tenant_id: 租户；空则解析 ActiveRequestContext（N09 K23）。
         """
         from core.harness.ontology_engine.graph_index import GraphIndex
-        target = GraphIndex.load(target_domain)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+        # 为什么：N09 K23 — recon merge 目标域须按租户
+        target = GraphIndex.load(target_domain, tenant_id=tid)
         
         merged_entities = 0
         merged_relations = 0

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3779
+total_capabilities: 3780
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1243,7 +1243,8 @@ scan_hash: 8f9548ec24f4
 | **跨租户 governance/maturity（v4.3.1 N09 K19）** | `run_cycle`/`refresh_domain_maturity`/`compute_domain_maturity` → `GraphIndex.load(..., tenant_id=)` | ✅ | 证据 `phase2-cross-tenant-governance-maturity-evidence.md`。**未宣称** N09 certified（ontology quality 见 K20）。生成物适用：已接线（governance） | 本批 |
 | **跨租户 ontology quality（v4.3.1 N09 K20）** | completeness/audit/validator + diagnostics ontology-audit → `GraphIndex.load(..., tenant_id=)` / `actor_from_http` | ✅ | 证据 `phase2-cross-tenant-ontology-quality-evidence.md`。**未宣称** N09 certified（context_bus/health 见 K21）。生成物适用：已接线（diagnostics） | 本批 |
 | **跨租户 context_bus/system_health（v4.3.1 N09 K21）** | `_resolve_graph_tenant` + health `list_kb_tenant_ids` → `GraphIndex.load`/`audit_all_domains` | ✅ | 证据 `phase2-cross-tenant-context-bus-health-evidence.md`。**未宣称** N09 certified（evolver/SECI 见 K22）。生成物适用：已接线（context/health） | 本批 |
-| **跨租户 evolver/SECI/retrieval（v4.3.1 N09 K22）** | SystemEvolver/SECIEngine/orchestrated_retrieval/path_planner/candidate_pool → `GraphIndex.load(..., tenant_id=)` / `_resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-evolver-seci-retrieval-evidence.md`。**未宣称** diagnostician/convergence/case_learning/recon / N09 certified。生成物适用：已接线（evolver/SECI/retrieval） | 本批 |
+| **跨租户 evolver/SECI/retrieval（v4.3.1 N09 K22）** | SystemEvolver/SECIEngine/orchestrated_retrieval/path_planner/candidate_pool → `GraphIndex.load(..., tenant_id=)` / `_resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-evolver-seci-retrieval-evidence.md`。**未宣称** N09 certified（diagnostician 见 K23）。生成物适用：已接线（evolver/SECI/retrieval） | 本批 |
+| **跨租户 diagnostician/convergence/case/recon（v4.3.1 N09 K23）** | SystemDiagnostician/ConvergenceEngine/OntologyCaseStore/ReconSubgraph.merge_to → `GraphIndex.load(..., tenant_id=)` / `_resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-diagnostician-convergence-evidence.md`。**未宣称** wiki/syscalls/engine 等其它 bare load / N09 certified。生成物适用：已接线（diagnose/converge/case/recon） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
 | **Claim 证据硬门+冲突（v4.3.1 N03 F2）** | `put_claim` / `record_claim_conflict` / `run_claim_evidence_suite` / `evaluate_claim_evidence_gate` + Facade `fact_ledger_run_claim_evidence_suite` | ✅ | published 无证据拒；同 conflict_key 不同主张记 open 冲突；门槛门 certified 恒 false。证据 `phase2-claim-evidence-evidence.md`。**未宣称** Claim 全量状态机 / N03 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -4680,7 +4681,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 702 | 1 | 703 |
+| Harness 执行引擎 | 703 | 1 | 704 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 600 | 9 | 609 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4725,7 +4726,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3768** | **11** | **3779** |
+| **总计** | **3769** | **11** | **3780** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -153,13 +153,16 @@ class OntologyCase:
 class OntologyCaseStore:
     """Per-domain JSON case library with reward-weighted keyword retrieval."""
 
-    def __init__(self, domain_id: str = ""):
+    def __init__(self, domain_id: str = "", *, tenant_id: str = ""):
         """初始化。
 
         Args:
             domain_id: domain 标识。
+            tenant_id: 可选租户；空则从 ActiveRequestContext 解析（N09 K23）。
         """
         self.domain_id = (domain_id or "").strip() or "default"
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        self._tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
 
     def _load(self) -> Dict[str, OntologyCase]:
         path = _domain_path(self.domain_id)
@@ -260,7 +263,8 @@ class OntologyCaseStore:
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
 
-            g = GraphIndex.load(self.domain_id)
+            # 为什么：N09 K23 — case 图写入须按租户
+            g = GraphIndex.load(self.domain_id, tenant_id=self._tenant_id)
             nid = case.case_id
             g.add_entity(nid, case.title[:60] or nid, "case_study")
             g.add_entity_property(nid, "summary", case.summary[:500])

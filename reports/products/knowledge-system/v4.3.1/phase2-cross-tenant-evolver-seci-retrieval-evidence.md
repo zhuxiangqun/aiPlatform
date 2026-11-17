@@ -44,5 +44,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- system_diagnostician / convergence_engine / ontology_case_learning / recon_subgraph 默认 GraphIndex.load
+- system_diagnostician / convergence_engine / ontology_case_learning / recon_subgraph → 见 Batch K23
 - N09 / 附录 N 全量认证
