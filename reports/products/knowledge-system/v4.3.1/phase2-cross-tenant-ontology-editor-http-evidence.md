@@ -39,5 +39,5 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- ontology_editor 全量 CRUD（class/view/monitor 等）tenant 透传
-- N09 / 附录 N 全量认证
+- ontology_editor class/rollback tenant（见 Batch K9：`phase2-cross-tenant-ontology-editor-crud-evidence.md`）
+- view/monitor 等旁路 CRUD / N09 / 附录 N 全量认证

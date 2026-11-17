@@ -7259,6 +7259,8 @@ def upsert_ontology_class(
     domain_id: str,
     class_name: str,
     class_data: Dict[str, Any],
+    *,
+    tenant_id: str = "default",
 ) -> Dict[str, Any]:
     """Create or update a class definition in a domain YAML.
 
@@ -7266,6 +7268,7 @@ def upsert_ontology_class(
         domain_id: domain 标识。
         class_name: class_name 参数。
         class_data: class_data 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K9）。
     """
     import yaml
 
@@ -7285,18 +7288,30 @@ def upsert_ontology_class(
     assert_live_yaml_write()
     Path(file_path).write_text(yaml_str, encoding="utf-8")
 
-    _invalidate_domain_caches(domain_id)
-    return {"domain_id": domain_id, "class_name": class_name, "status": "upserted"}
+    tid = (tenant_id or "").strip() or "default"
+    # 为什么：N09 K9 — class CRUD 后须清对应租户 GraphIndex 缓存
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
+    return {
+        "domain_id": domain_id,
+        "tenant_id": tid,
+        "class_name": class_name,
+        "status": "upserted",
+    }
 
 
-def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
+def delete_ontology_class(
+    domain_id: str, class_name: str, *, tenant_id: str = "default"
+) -> Dict[str, Any]:
     """Remove a class — always via VersionedOntologyStore proposal (F2 live YAML gate).
 
     Args:
         domain_id: domain 标识。
         class_name: class_name 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K9）。
     """
     import asyncio
+
+    tid = (tenant_id or "").strip() or "default"
 
     async def _via_proposal() -> Dict[str, Any]:
         store = VersionedOntologyStore(domain_id)
@@ -7312,6 +7327,7 @@ def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
         if not approved.get("success"):
             return {
                 "domain_id": domain_id,
+                "tenant_id": tid,
                 "class_name": class_name,
                 "status": "approve_failed",
                 "proposal_id": proposal_id,
@@ -7321,14 +7337,17 @@ def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
         if not receipt.get("ok"):
             return {
                 "domain_id": domain_id,
+                "tenant_id": tid,
                 "class_name": class_name,
                 "status": "apply_failed",
                 "proposal_id": proposal_id,
                 "reason": receipt.get("reason"),
             }
-        _invalidate_domain_caches(domain_id)
+        # 为什么：N09 K9 — sync delete 与 async 路径一致，按租户清 GraphIndex 缓存
+        _invalidate_domain_caches(domain_id, tenant_id=tid)
         return {
             "domain_id": domain_id,
+            "tenant_id": tid,
             "class_name": class_name,
             "status": "deleted",
             "proposal_id": proposal_id,
@@ -7345,12 +7364,15 @@ def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
     return asyncio.run(_via_proposal())
 
 
-async def delete_ontology_class_async(domain_id: str, class_name: str) -> Dict[str, Any]:
+async def delete_ontology_class_async(
+    domain_id: str, class_name: str, *, tenant_id: str = "default"
+) -> Dict[str, Any]:
     """Async delete class via create→approve→apply proposal (F2-safe).
 
     Args:
         domain_id: domain 标识。
         class_name: class_name 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K9）。
     """
     store = VersionedOntologyStore(domain_id)
     current = store.load_current() or {}
@@ -7381,9 +7403,11 @@ async def delete_ontology_class_async(domain_id: str, class_name: str) -> Dict[s
     receipt = await store.apply_proposal(proposal_id)
     if not receipt.get("ok"):
         raise RuntimeError(receipt.get("reason") or "apply_failed")
-    _invalidate_domain_caches(domain_id)
+    tid = (tenant_id or "").strip() or "default"
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
     return {
         "domain_id": domain_id,
+        "tenant_id": tid,
         "class_name": class_name,
         "status": "deleted",
         "proposal_id": proposal_id,
@@ -7417,7 +7441,7 @@ def publish_ontology_domain(
     except Exception:
         logging.getLogger(__name__).debug('publish_ontology_domain failed', exc_info=True)
 
-    _invalidate_domain_caches(domain_id)
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
     _save_rule_version(domain_id, file_path, domain, tenant_id=tid)
     return {
         "domain_id": domain_id,
@@ -7462,7 +7486,7 @@ def rollback_rule_version(
     try:
         graph = GraphIndex.load(domain_id, tenant_id=tid)
         result = graph.restore_snapshot(int(version_id))
-        _invalidate_domain_caches(domain_id)
+        _invalidate_domain_caches(domain_id, tenant_id=tid)
         return {
             "domain_id": domain_id,
             "tenant_id": tid,
@@ -7699,7 +7723,14 @@ def _remove_domain_from_registry(domain_id: str) -> None:
     reg_path.write_text(_json.dumps(registry, indent=2, ensure_ascii=False))
 
 
-def _invalidate_domain_caches(domain_id: str) -> None:
+def _invalidate_domain_caches(domain_id: str, *, tenant_id: str = "default") -> None:
+    """Invalidate DomainRouter + GraphIndex cache for a domain.
+
+    Args:
+        domain_id: domain 标识。
+        tenant_id: 租户；须与 GraphIndex 分库键一致（N09 K9）。
+    """
+    tid = (tenant_id or "").strip() or "default"
     try:
         from core.harness.knowledge.domain_router import DomainRouter
         DomainRouter()._built = False
@@ -7707,7 +7738,8 @@ def _invalidate_domain_caches(domain_id: str) -> None:
         logging.getLogger(__name__).debug('_invalidate_domain_caches failed', exc_info=True)
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K9 — 缓存键含 tenant；只清 default 会留下他租户脏缓存
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         graph._built = False
     except Exception:
         logging.getLogger(__name__).debug('_invalidate_domain_caches failed', exc_info=True)
