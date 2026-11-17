@@ -47,5 +47,6 @@ authority: supporting
 | [phase2-source-revision-evidence.md](./phase2-source-revision-evidence.md) | Batch H2 N24 Source Revision 归档/抬号（非回滚 UI/非 certified） |
 | [phase2-revision-restore-evidence.md](./phase2-revision-restore-evidence.md) | Batch I1 N24 Revision Restore 程序化恢复（非回滚 UI/非 certified） |
 | [phase2-revision-audit-evidence.md](./phase2-revision-audit-evidence.md) | Batch I2 N24 Revision Audit 账本内事件（非统一总线/非 certified） |
+| [phase2-restore-approval-evidence.md](./phase2-restore-approval-evidence.md) | Batch I3 N24 审批式 Restore（非回滚 UI/非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
