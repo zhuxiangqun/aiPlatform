@@ -657,6 +657,24 @@ async def put_fact_with_source_policy(
         if current is None:
             raise SourcePolicyError(f"fact not found for publish: {fid}")
         extra = {k: v for k, v in kwargs.items() if k != "fact_id"}
+        keep_rs = str(current.get("review_status") or "draft")
+        keep_st = str(current.get("status") or "active")
+        # 为什么：N24 内容变更须抬 revision；相等则 put_fact 幂等返回
+        proposed = {
+            **current,
+            "subject": subject,
+            "predicate": predicate,
+            "object": object,
+            "evidence": evidence,
+            "source_policy": source_policy,
+            "extractor_version": extractor_version,
+            "review_status": keep_rs,
+            "confidence": float(confidence),
+            "status": keep_st,
+        }
+        rev = int(current.get("revision") or 1)
+        if not ledger._fact_content_equal(current, proposed):
+            rev += 1
         await ledger.put_fact(
             tenant_id=tenant_id,
             collection_id=collection_id,
@@ -666,15 +684,17 @@ async def put_fact_with_source_policy(
             evidence=evidence,
             source_policy=source_policy,
             extractor_version=extractor_version,
-            review_status=str(current.get("review_status") or "draft"),
+            review_status=keep_rs,
             confidence=confidence,
             source_policy_db_path=db_path,
             fact_id=fid,
-            status=str(current.get("status") or "active"),
+            status=keep_st,
             inferred=bool(current.get("inferred")),
             valid_from=current.get("valid_from"),
             valid_to=current.get("valid_to"),
-            revision=int(current.get("revision") or 1),
+            revision=rev,
+            revision_actor=act,
+            revision_reason=rsn,
             domain_id=str(
                 current.get("domain_id") or extra.pop("domain_id", "") or ""
             ),

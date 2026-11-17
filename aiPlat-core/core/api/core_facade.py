@@ -15764,6 +15764,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     evaluate_claim_evidence_gate,
     evaluate_cross_tenant_gate,
     evaluate_datasource_raw_gate,
+    evaluate_fact_revision_gate,
     evaluate_gateway_contract_gate,
     evaluate_raw_integrity_gate,
     get_fact_ledger,
@@ -15773,6 +15774,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_claim_evidence_suite,
     run_cross_tenant_isolation_suite,
     run_datasource_raw_suite,
+    run_fact_revision_suite,
     validate_gateway_response,
 )
 from core.harness.knowledge_pipeline.fact_projector import project_facts_to_graph  # noqa: boundary
@@ -16017,6 +16019,105 @@ def evaluate_fact_claim_evidence_gate(suite: dict | None = None) -> dict:
         gate 结果。
     """
     return evaluate_claim_evidence_gate(suite)
+
+
+async def fact_ledger_list_revisions(
+    *,
+    fact_id: str,
+    tenant_id: str,
+) -> list:
+    """CoreFacade：列出 Fact 修订历史（归档 + 头；N24 最小切片）。
+
+    Args:
+        fact_id: Fact ID。
+        tenant_id: 调用方租户。
+
+    Returns:
+        修订条目列表。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.list_fact_revisions(fact_id, tenant_id=tenant_id)
+
+
+async def fact_ledger_get_at_revision(
+    *,
+    fact_id: str,
+    tenant_id: str,
+    revision: int,
+) -> dict | None:
+    """CoreFacade：按 revision 读取 Fact 快照。
+
+    Args:
+        fact_id: Fact ID。
+        tenant_id: 调用方租户。
+        revision: 修订号。
+
+    Returns:
+        快照；不存在则 None。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.get_fact_at_revision(
+        fact_id, tenant_id=tenant_id, revision=revision
+    )
+
+
+async def fact_ledger_diff_revisions(
+    *,
+    fact_id: str,
+    tenant_id: str,
+    from_revision: int,
+    to_revision: int,
+) -> dict:
+    """CoreFacade：比较两个 Fact revision 的内容差。
+
+    Args:
+        fact_id: Fact ID。
+        tenant_id: 调用方租户。
+        from_revision: 旧修订。
+        to_revision: 新修订。
+
+    Returns:
+        diff 回执。
+    """
+    ledger = get_fact_ledger()
+    await ledger.initialize()
+    return await ledger.diff_fact_revisions(
+        fact_id,
+        tenant_id=tenant_id,
+        from_revision=from_revision,
+        to_revision=to_revision,
+    )
+
+
+async def fact_ledger_run_fact_revision_suite(
+    *,
+    tenant_id: str = "n24-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N24 Fact Revision 加深套件（临时账本；certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_fact_revision_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_revision_ledger_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N24 Fact Revision 门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_fact_revision_gate(suite)
 
 
 async def fact_ledger_project_to_graph(
