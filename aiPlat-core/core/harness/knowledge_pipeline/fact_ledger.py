@@ -3854,6 +3854,8 @@ _N09_CASES = (
     "get_source_no_leak",
     "gateway_no_leak",
     "verify_raw_no_leak",
+    "object_set_no_leak",
+    "unified_audit_no_leak",
 )
 
 
@@ -3864,7 +3866,7 @@ async def run_cross_tenant_isolation_suite(
     tenant_b: str = "n09-tenant-b",
     domain_id: str = "",
 ) -> Dict[str, Any]:
-    """N09 跨租户 0 泄漏最小加深套件（FactLedger 四探针）。
+    """N09 跨租户 0 泄漏加深套件（FactLedger 四探针 + ObjectSet + Unified Audit）。
 
     Args:
         ledger: 可选账本；默认临时目录新建（不污染单例）。
@@ -3879,6 +3881,7 @@ async def run_cross_tenant_isolation_suite(
 
     own = ledger is None
     tmp: Optional[tempfile.TemporaryDirectory] = None
+    root: Optional[Path] = None
     if own:
         tmp = tempfile.TemporaryDirectory(prefix="n09-cross-tenant-")
         root = Path(tmp.name)
@@ -3902,10 +3905,37 @@ async def run_cross_tenant_isolation_suite(
             connector="n09_cross_tenant",
             domain_id=domain_id,
         )
+        # 为什么：K1 用临时 ObjectType 绑定，避免 harness 依赖业务域种子
+        import json as _json
+
+        probe_domain = (domain_id or "n09-probe").strip() or "n09-probe"
+        probe_type = "N09Probe"
+        bind_dir = root or Path(tempfile.mkdtemp(prefix="n09-bindings-"))
+        bindings_path = bind_dir / "n09-object-types.json"
+        bindings_path.write_text(
+            _json.dumps(
+                {
+                    "domain_id": probe_domain,
+                    "object_types": [
+                        {
+                            "object_type_id": probe_type,
+                            "label": "N09 probe",
+                            "primary_key": "id",
+                            "domain_id": probe_domain,
+                            "properties": [
+                                {"id": "note", "type": "string", "indexed": True}
+                            ],
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
         fact = await lg.put_fact(
             tenant_id=tenant_a,
             collection_id="n09-kb",
-            subject="InstallOrder:n09-secret",
+            subject=f"{probe_type}:n09-secret",
             predicate="note",
             object="secret",
             evidence=[
@@ -3921,7 +3951,7 @@ async def run_cross_tenant_isolation_suite(
             review_status="published",
             confidence=0.9,
             allow_bootstrap_published=True,
-            domain_id=domain_id,
+            domain_id=probe_domain,
         )
         same = await lg.query_facts(tenant_id=tenant_a, domain_id=domain_id or None)
         other = await lg.query_facts(tenant_id=tenant_b, domain_id=domain_id or None)
@@ -3975,6 +4005,95 @@ async def run_cross_tenant_isolation_suite(
                 "detail": "" if v_ok else "verify_allowed_cross_tenant",
             }
         )
+
+        # K1：ObjectSet 入口跨租户（经 FactLedger 租户前置；临时 ObjectType）
+        from core.harness.knowledge_pipeline.object_set import query_object_set
+
+        os_kwargs: Dict[str, Any] = {"ledger": lg}
+        if bindings_path is not None:
+            os_kwargs["bindings_path"] = bindings_path
+        os_a = await query_object_set(
+            {"object_type": probe_type, "domain_id": probe_domain},
+            tenant_id=tenant_a,
+            permissions=["kb:read"],
+            **os_kwargs,
+        )
+        os_b = await query_object_set(
+            {"object_type": probe_type, "domain_id": probe_domain},
+            tenant_id=tenant_b,
+            permissions=["kb:read"],
+            **os_kwargs,
+        )
+        ids_a = {
+            str(i.get("id") or i.get("order_id") or "")
+            for i in (os_a.get("items") or [])
+        }
+        ids_b = {
+            str(i.get("id") or i.get("order_id") or "")
+            for i in (os_b.get("items") or [])
+        }
+        os_ok = (
+            bindings_path is not None
+            and os_a.get("status") == "ok"
+            and "n09-secret" in ids_a
+            and os_b.get("status") == "ok"
+            and "n09-secret" not in ids_b
+            and int(os_b.get("total") or 0) == 0
+        )
+        cases.append(
+            {
+                "id": "object_set_no_leak",
+                "ok": os_ok,
+                "detail": "" if os_ok else "object_set_leak_or_miss",
+            }
+        )
+
+        # K1：Unified Audit / ActionStore 跨租户（物理 tenant_id 召回前过滤）
+        from core.harness.infrastructure.action_store import ActionStore
+        from core.harness.knowledge_pipeline.unified_audit_view import (
+            list_unified_audit_events,
+        )
+
+        store_root = root or Path(tempfile.mkdtemp(prefix="n09-audit-"))
+        store_db = str(store_root / "action_store.sqlite3")
+        store = ActionStore(store_db)
+        await store.initialize()
+        await store.insert_audit(
+            {
+                "action_id": "n09:probe",
+                "entity_id": "n09-secret",
+                "domain_id": (domain_id or "n09").strip() or "n09",
+                "actor": "n09-suite",
+                "result_status": "executed",
+                "tenant_id": tenant_a,
+                "params": {"tenant_id": tenant_a},
+            }
+        )
+        view_a = await list_unified_audit_events(
+            tenant_id=tenant_a,
+            streams=["action_store"],
+            action_store_db_path=store_db,
+            limit=50,
+        )
+        view_b = await list_unified_audit_events(
+            tenant_id=tenant_b,
+            streams=["action_store"],
+            action_store_db_path=store_db,
+            limit=50,
+        )
+        ua_ok = (
+            view_a.get("certified") is False
+            and int(view_a.get("count") or 0) >= 1
+            and int(view_b.get("count") or 0) == 0
+            and view_b.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "unified_audit_no_leak",
+                "ok": ua_ok,
+                "detail": "" if ua_ok else "unified_audit_leak_or_miss",
+            }
+        )
     finally:
         if tmp is not None:
             tmp.cleanup()
@@ -3993,7 +4112,10 @@ async def run_cross_tenant_isolation_suite(
         "cases": cases,
         "certified": False,
         "n09_full_conformance": False,
-        "note": "FactLedger isolation probes only; not global zero-leak certification",
+        "note": (
+            "FactLedger+ObjectSet+UnifiedAudit probes; "
+            "not global zero-leak certification"
+        ),
     }
 
 
@@ -4028,7 +4150,10 @@ def evaluate_cross_tenant_gate(
         "issues": issues,
         "certified": False,
         "n09_full_conformance": False,
-        "note": "FactLedger suite deepen; not platform-wide zero-leak certified",
+        "note": (
+            "FactLedger+ObjectSet+UnifiedAudit deepen; "
+            "not platform-wide zero-leak certified"
+        ),
     }
 
 

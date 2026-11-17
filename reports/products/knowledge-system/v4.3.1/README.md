@@ -58,5 +58,6 @@ authority: supporting
 | [phase2-unified-audit-action-store-evidence.md](./phase2-unified-audit-action-store-evidence.md) | Batch J7 N24 ActionStore.action_audit 汇入统一审计（非 certified） |
 | [phase2-unified-audit-action-store-tenant-evidence.md](./phase2-unified-audit-action-store-tenant-evidence.md) | Batch J8 N24 ActionStore 物理 tenant_id（非 certified） |
 | [phase2-unified-audit-action-store-tenant-backfill-evidence.md](./phase2-unified-audit-action-store-tenant-backfill-evidence.md) | Batch J9 N24 ActionStore tenant_id 存量回填（非 certified） |
+| [phase2-cross-tenant-objectset-audit-evidence.md](./phase2-cross-tenant-objectset-audit-evidence.md) | Batch K1 N09 ObjectSet+UnifiedAudit 跨租户探针（非 Wiki/KB 全入口/非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
