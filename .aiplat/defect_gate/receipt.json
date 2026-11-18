@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T07:00:15+08:00",
+  "reviewed_at": "2026-11-18T17:06:31+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "c622f95d167ae6454e66f94d27d4884baa5f5ffd0234c3dd9788632c05e8aafe",
-  "head_sha": "298ffc41392d420b63dc7e6b6f464615a9c785a2",
+  "diff_sha256": "ce4a69ca2ae5f677b1194621dab211b1bad5e5392b6d7581ebcf27276417e30f",
+  "head_sha": "fc8eebe32945928c796fb551e08d1d8fdb4a8230",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K26 OntologyEngine/get_graph tenant-keyed cache + shard/cleanup/gap/run_context/action/business bridge GraphIndex via tenant_id/_resolve_graph_tenant. Residual: builtin_handlers/FDE bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K26 (PR #826)"
 }
