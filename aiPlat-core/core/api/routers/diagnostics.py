@@ -3143,7 +3143,7 @@ def get_drift_status(
 
     # 为什么：N09 K17 — 禁止 query/body 伪造 tenant_id；只信 gated identity headers
     actor0 = actor_from_http(request, None)
-    tid = str(actor0.get("tenant_id") or "").strip() or "default"
+    tid = str(actor0.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
     # Simple cache (5 min TTL) — key includes tenant
     cache_key = f"drift:{tid}:{collection}"
     cached = _drift_cache.get("by_tenant", {}).get(cache_key)
@@ -3226,7 +3226,7 @@ async def trigger_drift_rebuild(request: Request, max_pages: int = 10):
 
     # 为什么：N09 K17 — rebuild 租户同 drift-status，禁止 query 旁路
     actor0 = actor_from_http(request, None)
-    tid = str(actor0.get("tenant_id") or "").strip() or "default"
+    tid = str(actor0.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
     # 为什么：N09 K14 — rebuild 与扫描共用租户分库
     monitor = StalenessMonitor(tenant_id=tid)
     reports = monitor.scan_all_collections()
@@ -3468,7 +3468,7 @@ def get_ontology_audit(request: Request, domain_id: str = DomainRouter.PLATFORM_
     from core.harness.knowledge.ontology_audit import OntologyAuditor
     # 为什么：N09 K20 — 审计 GraphIndex 须跟身份租户，禁止默认分库
     actor0 = actor_from_http(request, None)
-    tid = str(actor0.get("tenant_id") or "").strip() or "default"
+    tid = str(actor0.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
     auditor = OntologyAuditor()
     if domain_id == "all":
         reports = auditor.audit_all_domains(tenant_id=tid)
@@ -3495,7 +3495,7 @@ def get_ontology_audit_summary(request: Request):
     """
     from core.harness.knowledge.ontology_audit import OntologyAuditor
     actor0 = actor_from_http(request, None)
-    tid = str(actor0.get("tenant_id") or "").strip() or "default"
+    tid = str(actor0.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
     auditor = OntologyAuditor()
     reports = auditor.audit_all_domains(tenant_id=tid)
     total_orphans = sum(len(r.orphan_classes) for r in reports)
