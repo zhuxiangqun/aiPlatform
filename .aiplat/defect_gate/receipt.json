@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T07:44:08+08:00",
+  "reviewed_at": "2026-11-18T18:01:32+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "e0683f90336f12a907b1a9342cef97ca13507c63aa9fa38bed3420fead711e86",
-  "head_sha": "5ae1c51a7da9a79ef7b75784d6d1fe462c337c87",
+  "diff_sha256": "08fb8c793de459f73a6b80bc0df7200b5ad1ab31ac329af65f8c599f82e50542",
+  "head_sha": "1e33d89f274b49c49ceeff462aaa3fb40f3b1792",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K31 wave1: fde_graph_tenant + CoreFacade resolve_graph_tenant; except logs with exc_info (no silent pass); no platform→core.harness import. Residual: fde.py/sessions_v2/diagnostics/bootstrap/validate/manuals. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K31 (PR #831)"
 }
