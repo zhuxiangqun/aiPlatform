@@ -4254,7 +4254,10 @@ async def run_cross_tenant_isolation_suite(
         crag_tid: Any = None
         gov_tid: Any = None
         try:
-            from core.apps.fde.service import governance_deepen as _gov
+            # 为什么：经 CoreFacade + importlib，避免 harness AST 直导 apps/
+            import importlib
+
+            from core.api.core_facade import governance_locate_view
             from core.harness.syscalls.retrieval_crag import sys_crag_retrieve
 
             await sys_crag_retrieve(
@@ -4267,6 +4270,7 @@ async def run_cross_tenant_isolation_suite(
             crag_tid = captured.get("tenant_id")
             captured.clear()
 
+            _gov = importlib.import_module("core.apps.fde.service.governance_deepen")
             _orig_locate = _gov.locate_via_ontology
 
             def _fake_locate(
@@ -4280,7 +4284,7 @@ async def run_cross_tenant_isolation_suite(
 
             _gov.locate_via_ontology = _fake_locate  # type: ignore[assignment]
             try:
-                await _gov.locate_via_ontology_async(
+                await governance_locate_view(
                     probe_domain,
                     "n09 passthrough probe",
                     top_k=3,
