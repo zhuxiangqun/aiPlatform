@@ -58,6 +58,8 @@ from dataclasses import dataclass, field
 
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, TypedDict
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 
 
 # ── Pipeline Registry (for Playbook v1 export/import) ──
@@ -603,7 +605,6 @@ from core.harness.execution.pipeline_state import PipelineStateMixin
 from core.harness.execution.pipeline_prompt import PipelinePromptMixin
 from core.harness.execution.pipeline_eval import PipelineEvalMixin, _apply_skip_pytest_gate
 from core.harness.execution.pipeline_stage import PipelineStageMixin
-from core.harness.knowledge.domain_router import DomainRouter
 
 
 class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin, PipelineStateMixin, PipelineHealingMixin):
