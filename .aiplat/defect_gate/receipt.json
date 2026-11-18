@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T09:20:04+08:00",
+  "reviewed_at": "2026-11-18T09:28:05+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "e5c13b2e4564c3facd55b6f5250bb13953501a406686af981af23733f431d0e1",
-  "head_sha": "5560b57ec22f181e639ecc9daca3154b496c0a0b",
+  "diff_sha256": "19a080a5f664a88135b1a116e342c5033a2c72f4e46a7f4cb5a41e61e34cb88b",
+  "head_sha": "e2158106ad714a479779cb3d8fccbec8f38d4b13",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K39 FDE terms/atom/kb via DomainRouter + Step1.8 SSOT exemption. Residual: harness knowledge-atom literals; skills/registry enterprise-terms; N09 certified false."
+  "note": "K40 harness atom/kb/terms via DomainRouter. Residual: bell-competition GraphIndex.load; knowledge-atom.yaml filename paths; N09 certified false."
 }
