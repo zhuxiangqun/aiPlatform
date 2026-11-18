@@ -3,7 +3,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-RI = Path("aiPlat-core/core/apps/fde/service/rapid_insight_service.py")
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
+RI = (_repo_root() / "aiPlat-core/core/apps/fde/service/rapid_insight_service.py")
 
 
 def test_domain_router_competition_domain():
@@ -33,7 +41,7 @@ def test_production_graphindex_load_literals_empty():
 
     rx = re.compile(r'GraphIndex\.load\(\s*["\']([a-z0-9_-]+)["\']')
     hits = []
-    for root in (Path("aiPlat-core/core"), Path("aiPlat-platform")):
+    for root in ((_repo_root() / "aiPlat-core/core"), (_repo_root() / "aiPlat-platform")):
         for p in root.rglob("*.py"):
             if "/tests/" in str(p):
                 continue
