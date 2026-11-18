@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T20:48:48+08:00",
+  "reviewed_at": "2026-11-18T22:37:06+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "9786094b0336ef20608880f83a274ee8e4604ec4cacdc2beee7dc97ff07369d4",
-  "head_sha": "b043cdcefcbfc905a94e7634eecd18cfea0d4b54",
+  "diff_sha256": "944e3d7b87f23dd18572dada18d190ad9ea7e8304a6ce8e9604e8eb86bcc175d",
+  "head_sha": "047175b9e65f1ba4f899884a1f9d5cc9020456c4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Cascade Path repo-root test fix onto K30 (PR #830)"
+  "note": "Cascade Path(rel) repo-root fix onto K30 (PR #830)"
 }
