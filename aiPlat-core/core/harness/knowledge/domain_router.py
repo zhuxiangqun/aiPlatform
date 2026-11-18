@@ -69,6 +69,9 @@ class DomainRouter:
 
     # D2: sole platform tracking domain constant (assignment allowed; behavior forks forbidden)
     PLATFORM_TRACKING_DOMAIN = "fde-delivery"
+    PLATFORM_TERMS_DOMAIN = "enterprise-terms"
+    PLATFORM_ATOM_DOMAIN = "knowledge-atom"
+    PLATFORM_KB_DOMAIN = "ai-knowledge"
 
     @staticmethod
     def _home() -> str:
@@ -347,6 +350,27 @@ class DomainRouter:
         Prefer this over hardcoding ``\"fde-delivery\"`` in callers.
         """
         return self.PLATFORM_TRACKING_DOMAIN
+
+    def terms_domain(self) -> str:
+        """Return platform enterprise-terms domain id (N09 K39).
+
+        Prefer this over hardcoding the terms domain string in callers.
+        """
+        return self.PLATFORM_TERMS_DOMAIN
+
+    def knowledge_atom_domain(self) -> str:
+        """Return platform knowledge-atom domain id (N09 K39).
+
+        Prefer this over hardcoding the atom domain string in callers.
+        """
+        return self.PLATFORM_ATOM_DOMAIN
+
+    def default_kb_domain(self) -> str:
+        """Return default KB / wiki graph domain id (N09 K39).
+
+        Prefer this over hardcoding the KB domain string in callers.
+        """
+        return self.PLATFORM_KB_DOMAIN
 
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).

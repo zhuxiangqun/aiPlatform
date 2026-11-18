@@ -8,7 +8,7 @@ from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResp
 
 
 from fastapi import APIRouter, HTTPException
-from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_kb_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-validate"])
 
@@ -54,7 +54,7 @@ async def fde_validate():
     # 3. GraphIndex load
     def _ck_graph():
         from core.api.core_facade import GraphIndex
-        g = GraphIndex.load("ai-knowledge", tenant_id=fde_graph_tenant())
+        g = GraphIndex.load(fde_kb_domain(), tenant_id=fde_graph_tenant())
         return g.stats().get("node_count", 0) >= 0
 
     # 4. Delivery graph

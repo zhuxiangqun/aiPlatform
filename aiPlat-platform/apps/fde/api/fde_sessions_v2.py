@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 import json
 import logging
 import time as _time_mod
-from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-sessions-v2"])
 
@@ -395,7 +395,7 @@ async def fde_session_quality(session_id: str):
 
         # Term coverage
         try:
-            tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+            tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
             tc = sum(1 for _, n in tg._nodes.items() if getattr(n, "class_name", "") == "Term")
             dims["terms"] = min(100, tc * 5)
         except Exception:
@@ -503,7 +503,7 @@ async def fde_ontology_coverage(session_id: str):
         # ── 2. Term coverage from enterprise-terms graph ──
         term_coverage = 0.0
         try:
-            tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+            tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
             term_count = sum(1 for _, n in tg._nodes.items()
                            if getattr(n, "class_name", "") == "Term")
             # Rough estimate: each term covers ~1 concept per diagnosis

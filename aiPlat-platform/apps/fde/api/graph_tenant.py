@@ -1,7 +1,7 @@
-"""FDE API GraphIndex tenant + tracking-domain resolution (N09 K31/K38).
+"""FDE API GraphIndex tenant + platform domain resolution (N09 K31/K38/K39).
 
 Shared helpers so platform FDE routers do not invent parallel tenant paths
-or hardcode the tracking domain string.
+or hardcode tracking/terms/atom/kb domain strings.
 """
 
 from __future__ import annotations
@@ -56,4 +56,43 @@ def fde_graph_domain() -> str:
         return did
     # 为什么：tracking_domain 契约应永非空；若异常空串则回落类常量，避免 GraphIndex.load("")
     return str(getattr(router, "PLATFORM_TRACKING_DOMAIN", "") or "fde-delivery")
+
+
+def fde_terms_domain() -> str:
+    """Resolve enterprise-terms domain for FDE GraphIndex loads (N09 K39).
+
+    Returns:
+        非空 domain id。
+    """
+    from core.api.core_facade import get_domain_router
+
+    router = get_domain_router()
+    did = str(router.terms_domain() or "").strip()
+    return did or str(getattr(router, "PLATFORM_TERMS_DOMAIN", "") or "enterprise-terms")
+
+
+def fde_atom_domain() -> str:
+    """Resolve knowledge-atom domain for FDE GraphIndex loads (N09 K39).
+
+    Returns:
+        非空 domain id。
+    """
+    from core.api.core_facade import get_domain_router
+
+    router = get_domain_router()
+    did = str(router.knowledge_atom_domain() or "").strip()
+    return did or str(getattr(router, "PLATFORM_ATOM_DOMAIN", "") or "knowledge-atom")
+
+
+def fde_kb_domain() -> str:
+    """Resolve default KB domain for FDE GraphIndex loads (N09 K39).
+
+    Returns:
+        非空 domain id。
+    """
+    from core.api.core_facade import get_domain_router
+
+    router = get_domain_router()
+    did = str(router.default_kb_domain() or "").strip()
+    return did or str(getattr(router, "PLATFORM_KB_DOMAIN", "") or "ai-knowledge")
 

@@ -42,7 +42,7 @@ from fastapi import APIRouter, Body, HTTPException, Query
 from core.api.http_errors import not_found, bad_request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel as _PydanticBaseModel
-from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_atom_domain, fde_graph_tenant
 
 router = APIRouter(prefix="/fde", tags=["fde"])
 
@@ -2204,7 +2204,7 @@ async def fde_improve_suggestions(session_id: str):
 
         # ── Check term dictionary size ──
         try:
-            tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+            tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
             term_count = sum(1 for _, n in tg._nodes.items()
                            if getattr(n, "class_name", "") == "Term")
             if term_count < 10:
@@ -2282,7 +2282,7 @@ def _record_health_snapshot(result: dict):
         from core.api.core_facade import GraphIndex
         import json as _json_hs, time as _time_hs
 
-        kg = GraphIndex.load("knowledge-atom", tenant_id=fde_graph_tenant())
+        kg = GraphIndex.load(fde_atom_domain(), tenant_id=fde_graph_tenant())
         ts = int(_time_hs.time())
         snap_id = f"snap_{ts}"
         kg.add_entity(
@@ -2315,7 +2315,7 @@ def _get_evolution_stats() -> dict:
     """Quick evolution cycle stats for dashboard."""
     try:
         from core.api.core_facade import GraphIndex
-        kg = GraphIndex.load("knowledge-atom", tenant_id=fde_graph_tenant())
+        kg = GraphIndex.load(fde_atom_domain(), tenant_id=fde_graph_tenant())
         snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("heal_"))
         total_snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("snap_"))
         from core.api.core_facade import get_seci_engine
@@ -2358,7 +2358,7 @@ async def fde_seci_status():
         from core.api.core_facade import GraphIndex
 
         engine = get_seci_engine()
-        kg = GraphIndex.load("knowledge-atom", tenant_id=fde_graph_tenant())
+        kg = GraphIndex.load(fde_atom_domain(), tenant_id=fde_graph_tenant())
 
         # ── 1. Atom statistics ──
         atoms = {}
@@ -2478,7 +2478,7 @@ def _get_governance_live_status() -> dict:
 
     try:
         from core.api.core_facade import GraphIndex
-        tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+        tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
         status["enterprise_term_count"] = sum(
             1 for _, n in tg._nodes.items()
             if getattr(n, "class_name", "") == "Term"

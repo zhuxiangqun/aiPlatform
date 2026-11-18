@@ -14,7 +14,7 @@ from core.utils.paths import get_aiplat_data_dir
 import re as _re_manual
 import json
 from datetime import datetime, timezone
-from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-manuals"])
 
@@ -75,7 +75,7 @@ def _generate_manual_content(req: FdeManualRequest) -> str:
     term_table = ""
     try:
         from core.api.core_facade import GraphIndex
-        tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+        tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
         terms = [(n.entity_name[:60], getattr(n, "source_doc_id", "")[:20])
                  for _, n in tg._nodes.items() if getattr(n, "class_name", "") == "Term"][:8]
         if terms:

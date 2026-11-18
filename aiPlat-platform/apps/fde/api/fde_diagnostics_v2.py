@@ -10,7 +10,7 @@ from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResp
 
 from fastapi import APIRouter, HTTPException, Query
 import logging
-from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-diagnostics-v2"])
 
@@ -151,7 +151,7 @@ async def fde_trends(
         # ── Term dictionary growth trend ──
         term_trends = []
         try:
-            tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+            tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
             term_buckets = defaultdict(int)
             for nid, node in list(tg._nodes.items()):
                 if getattr(node, "class_name", "") != "Term":
@@ -269,7 +269,7 @@ async def fde_search(
         # ── 3. Search enterprise-terms ──
         if scope in ("all", "terms"):
             try:
-                tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+                tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
                 for nid, node in list(tg._nodes.items()):
                     name = node.entity_name.lower()
                     if query in name and (nid, "term") not in seen:

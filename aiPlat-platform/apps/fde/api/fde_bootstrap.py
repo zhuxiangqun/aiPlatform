@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 import time
 import json
 import logging
-from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-bootstrap"])
 
@@ -90,7 +90,7 @@ async def fde_bootstrap_test_data(
         fd.add_relation(sid, tid, "has_transition", relation_label="状态变更", confidence=1.0)
 
         # enterprise-terms: seed terms
-        tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+        tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
         for term_name in ["文本相似度检测", "关联图谱分析", "围标串标"]:
             term_id = f"term_bootstrap_{term_name.replace(' ', '_')[:40]}"
             tg.add_entity(term_id, term_name, "Term", source_doc_id=sid)
@@ -171,7 +171,7 @@ async def fde_bootstrap_all():
         tid = f"trans_{sid}_{ts}"
         fd.add_entity(tid,f"Session → delivered ({ind})","StateTransition",source_doc_id=sid)
         fd.add_relation(sid,tid,"has_transition",relation_label="状态变更",confidence=1.0)
-        tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+        tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
         for tn in [acts[0][0][:20], acts[1][0][:20]]:
             ti = f"term_{ind}_{tn.replace(' ','_')[:40]}"
             tg.add_entity(ti, tn, "Term", source_doc_id=sid)

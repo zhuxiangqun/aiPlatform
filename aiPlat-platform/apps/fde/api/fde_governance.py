@@ -1,7 +1,7 @@
 """FDE Governance Validate — self-audit endpoint for 8 governance capabilities (split from fde.py)."""
 from __future__ import annotations
 
-from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_atom_domain, fde_graph_tenant
 from typing import Any, Dict, List
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
@@ -84,13 +84,13 @@ async def fde_governance_validate():
     # 5. coverage_metrics: determinism_score compute logic is accessible
     def _ck5():
         from core.api.core_facade import GraphIndex
-        g = GraphIndex.load("knowledge-atom", tenant_id=fde_graph_tenant())
+        g = GraphIndex.load(fde_atom_domain(), tenant_id=fde_graph_tenant())
         return g.stats().get("node_count", -1) >= 0
 
     # 6. term_auto_seeding: enterprise-terms GraphIndex exists
     def _ck6():
         from core.api.core_facade import GraphIndex
-        tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
+        tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
         return tg.stats().get("node_count", -1) >= 0
 
     # 7. knowledge_convergence: ConvergenceEngine loads config

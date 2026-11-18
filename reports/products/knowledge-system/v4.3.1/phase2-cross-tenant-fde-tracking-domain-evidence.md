@@ -39,7 +39,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- `enterprise-terms` / `knowledge-atom` 等其它域名硬编码
-- core `apps/fde/service` 内 `fde-delivery` 字面量
+- `enterprise-terms` / `knowledge-atom` 等其它域名硬编码 — platform FDE 见 K39；harness 仍延后
+- core `apps/fde/service` 内 `fde-delivery` 字面量 — clarify_dialog 见 K39
 - DomainRouter.PLATFORM_TRACKING_DOMAIN 常量本身仍为 `fde-delivery`（SSOT，非调用点硬编码）
 - N09 / 附录 N 全量认证（certified 仍 false）
