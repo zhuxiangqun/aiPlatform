@@ -42,7 +42,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- 函数签名默认参数 `domain_id: str = "ai-knowledge"`（多处）
-- icebreaker_map 业务域键；函数签名默认参数 `domain_id: str = "ai-knowledge"`（非请求回落）
+- 函数签名默认参数 `domain_id: str = "ai-knowledge"` → 见 Batch K44
+- icebreaker_map 业务域键
 - `tenant_id or "default"` 租户回落
 - N09 certified（仍 false）
