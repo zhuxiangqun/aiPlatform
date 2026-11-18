@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:46:14+08:00",
+  "reviewed_at": "2026-11-18T16:58:25+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "062c430800fae023885a8e4d53d72a1f6376e845b16d99a849d019a5330e6312",
-  "head_sha": "daf7f0b15e8479da4d2977ac19ce82e06919dfc3",
+  "diff_sha256": "8508a582d7723133c95abf8edfe3ead66c124891a77aff4569b1998da29d5912",
+  "head_sha": "896f9c845d69993ca2935ea0b59ec4388c8601db",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K23 diagnostician/convergence/OntologyCaseStore/ReconSubgraph.merge_to GraphIndex via tenant_id/_resolve_graph_tenant. Residual: wiki/syscalls/engine bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K23 (PR #823)"
 }
