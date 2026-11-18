@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T12:53:03+08:00",
+  "reviewed_at": "2026-11-18T12:55:09+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "90141d1a0f7d3ebd04b2fffca60bc8680f2d8f7ce8b38930a64d2a203bfb3be9",
-  "head_sha": "0f8aa5b9afc954ebc594bdc3f40c3865fba6b5be",
+  "diff_sha256": "ca9ab6121f490c3a3d504558d4ab13fb3fefa33a84fbe7a64d6ceb01bc148a5a",
+  "head_sha": "004d99330f36f261ee0b7e503427b195d9391809",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K53: session_id signature defaults -> default_session(); N09 not certified. Local lock only."
+  "note": "K53: session_id defaults -> default_session(); N09 not certified. Local lock only."
 }
