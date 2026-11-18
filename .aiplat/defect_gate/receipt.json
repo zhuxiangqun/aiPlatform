@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T21:59:28+08:00",
+  "reviewed_at": "2026-11-18T16:16:18+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "8969cd9cd116596a92ca53ca8a3e5e354dd2dc879b0db910fb9249dc2c40118f",
-  "head_sha": "e5fcea494c27aaf1495c62c5ccd15d29fcc8ce38",
+  "diff_sha256": "79039fa1acf68779c176571ff8cf5c22d817eec4f9b5b7a0a2b78235ed8f14b8",
+  "head_sha": "28690c87c04fd2416b97c236fb5f8009de737218",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K4 wires CRAG/governance/HTTP locate tenant_id into GraphRAGRetriever and adds graphrag_caller_passthrough (10 probes). GraphIndex node-level tenant remains intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Mid-stack CI unblock on K4: FactLedger via CoreFacade+importlib; wiki READ_MODEL_COLLECTIONS §40.2 noqa. Cascade cherry-pick next."
 }
