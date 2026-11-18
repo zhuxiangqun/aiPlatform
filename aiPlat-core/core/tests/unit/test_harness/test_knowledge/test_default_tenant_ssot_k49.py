@@ -35,7 +35,7 @@ def test_platform_default_tenant_helper():
 
 def test_knowledge_targets_use_default_tenant_ssot():
     for rel in TARGETS:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert (
             "default_tenant()" in text or "PLATFORM_DEFAULT_TENANT" in text
         ), rel
