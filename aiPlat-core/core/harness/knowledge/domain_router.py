@@ -72,6 +72,7 @@ class DomainRouter:
     PLATFORM_TERMS_DOMAIN = "enterprise-terms"
     PLATFORM_ATOM_DOMAIN = "knowledge-atom"
     PLATFORM_KB_DOMAIN = "ai-knowledge"
+    PLATFORM_COMPETITION_DOMAIN = "bell-competition"
 
     @staticmethod
     def _home() -> str:
@@ -371,6 +372,14 @@ class DomainRouter:
         Prefer this over hardcoding the KB domain string in callers.
         """
         return self.PLATFORM_KB_DOMAIN
+
+    def competition_domain(self) -> str:
+        """Return platform competition-landscape domain id (N09 K41).
+
+        Prefer this over hardcoding the competition domain string in callers
+        (e.g. rapid_insight GraphIndex loads).
+        """
+        return self.PLATFORM_COMPETITION_DOMAIN
 
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).

@@ -48,7 +48,7 @@ def test_seci_metadata_domain_not_literal():
 
 
 def test_production_graphindex_literal_inventory_nearly_clear():
-    """bell-competition residual is intentional pilot domain (out of K40)."""
+    """K40 baseline; K41 clears bell-competition — inventory must stay empty."""
     from pathlib import Path
     import re
 
@@ -63,4 +63,4 @@ def test_production_graphindex_literal_inventory_nearly_clear():
                 if m:
                     hits.append((m.group(1), f"{p}:{i}"))
     domains = sorted({d for d, _ in hits})
-    assert domains == ["bell-competition"], domains
+    assert domains == [], domains

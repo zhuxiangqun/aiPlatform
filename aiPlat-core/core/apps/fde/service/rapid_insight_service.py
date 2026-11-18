@@ -48,6 +48,13 @@ def _ri_graph_tenant() -> str:
     return _resolve_graph_tenant()
 
 
+def _ri_competition_domain() -> str:
+    """Resolve competition domain via DomainRouter SSOT (N09 K41)."""
+    from core.harness.knowledge.domain_router import get_domain_router
+
+    return get_domain_router().competition_domain()
+
+
 def extract_industry_consensus(
     domain_id: str,
     aligned_domains: List[str],
@@ -164,14 +171,15 @@ def detect_industry_controversies(
             })
 
     # Also check competition domain for explicit competitor data
-    if "bell-competition" in aligned_domains:
+    comp_domain = _ri_competition_domain()
+    if comp_domain in aligned_domains:
         try:
-            g_comp = GraphIndex.load("bell-competition", tenant_id=_ri_graph_tenant())
+            g_comp = GraphIndex.load(comp_domain, tenant_id=_ri_graph_tenant())
             competitors = g_comp.get_entities_by_class("Competitor")
             competitor_names = [n.entity_name for n in competitors]
             if competitor_names:
                 controversies.append({
-                    "domain": "bell-competition",
+                    "domain": comp_domain,
                     "type": "competitive_landscape",
                     "entity": "行业竞争格局",
                     "positions": [
@@ -699,7 +707,7 @@ def generate_icebreaker_questions(aligned_domains: List[str]) -> List[str]:
         aligned_domains: aligned_domains 参数。
     """
     icebreaker_map = {
-        "bell-competition": [
+        _ri_competition_domain(): [
             "这个行业的头部公司是谁？他们各自押注的技术路线有何不同？",
             "目前的竞争格局中，哪类公司的利润率最高？为什么？",
             "行业里有没有还没达成共识的关键问题？",
