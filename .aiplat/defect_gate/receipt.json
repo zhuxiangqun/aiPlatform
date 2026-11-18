@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T23:29:35+08:00",
+  "reviewed_at": "2026-11-19T06:36:41+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "a14c8863411fe01a6b93046b08e537619f0136bc50be32f58bc0aaef82ec20ca",
-  "head_sha": "3e4743c515a89a38907c9bf155f76b5812fd67fc",
+  "diff_sha256": "2151d2503e351d5f26d127b76bd84e4e49c771f4c3b1d90252d333c504a75e99",
+  "head_sha": "913c9c626c5a4b37fdc150aee357a49ac272dc2a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Cascade Path(rel) repo-root fix onto K48 (PR #849)"
+  "note": "DomainRouter module import cascade. Five checks clean."
 }
