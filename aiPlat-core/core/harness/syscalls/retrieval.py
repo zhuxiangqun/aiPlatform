@@ -1355,8 +1355,12 @@ def sys_knowledge_retrieve(
     try:
 
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.domain_router import get_domain_router
 
-        gi = GraphIndex(domain_id=domain_id or "default", tenant_id=tenant_id or "default")
+        gi = GraphIndex(
+            domain_id=domain_id or get_domain_router().default_graph_domain(),
+            tenant_id=tenant_id or "default",
+        )
 
         if hasattr(gi, 'traverse') and gi._entities:
 
