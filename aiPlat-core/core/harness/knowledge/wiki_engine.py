@@ -27,6 +27,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 # ── Configuration ──────────────────────────────────────────────
 
 FRONTMATTER_FIELDS = {
