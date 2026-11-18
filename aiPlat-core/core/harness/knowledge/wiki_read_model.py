@@ -50,7 +50,8 @@ def read_model_collections() -> FrozenSet[str]:
     Returns:
         collection_id 集合；未配置时为空（门不生效，需显式配置试点名单）。
     """
-    raw = (os.getenv("AIPLAT_WIKI_READ_MODEL_COLLECTIONS") or "").strip()
+    # 为什么：名单 env 含 MODEL 字样但非 LLM 模型解析；豁免 §40.2 误报
+    raw = (os.getenv("AIPLAT_WIKI_READ_MODEL_COLLECTIONS") or "").strip()  # noqa: env-legacy
     if not raw:
         return frozenset()
     return frozenset(x.strip() for x in raw.split(",") if x.strip())
