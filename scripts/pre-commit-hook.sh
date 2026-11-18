@@ -54,13 +54,26 @@ if [ -n "$NEW_CORE_ROUTERS" ]; then
     echo "  as a comment on line 1 of the file to suppress this warning."
 fi
 
-# ── Step 1.8: Detect new hardcoded business strings in harness ──
-NEW_HARNESS_HARDCODES=$(git diff --cached -U0 | grep -E '^\+.*"[a-z]+-[a-z]+"' | grep -v '#\|__pycache__\|test_' || true)
+# ── Step 1.8: Detect new hardcoded business strings in harness (advisory) ──
+# 目标：抓住调用点字面量（如 GraphIndex.load("fde-delivery")）。
+# 豁免：DomainRouter.PLATFORM_*_DOMAIN SSOT 常量定义、测试文件。
+# 不把 SSOT 收敛点误报成「又引入了域名硬编码」。
+NEW_HARNESS_HARDCODES=$(
+  git diff --cached -U0 --diff-filter=AM -- '*.py' \
+    ':(exclude)**/tests/**' \
+    ':(exclude)**/test_*.py' \
+    ':(exclude)**/*_test.py' \
+  | grep -E '^\+[^+].*"[a-z]+(-[a-z0-9]+)+"' \
+  | grep -vE '#|__pycache__' \
+  | grep -vE 'PLATFORM_[A-Z0-9_]*_DOMAIN[[:space:]]*=' \
+  || true
+)
 if [ -n "$NEW_HARNESS_HARDCODES" ]; then
     echo ""
     echo "  ⚠️  New hardcoded domain-like strings detected in staged changes:"
     echo "$NEW_HARNESS_HARDCODES" | head -5
     echo "  Per CLAUDE.md §5.29, harness must be kernel-agnostic. Use DomainRouter instead."
+    echo "  (SSOT: DomainRouter.PLATFORM_*_DOMAIN / tests are exempt.)"
     echo ""
 fi
 

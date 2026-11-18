@@ -39,6 +39,30 @@ def fde_graph_tenant(request: Any = None) -> str:
     return resolve_graph_tenant()
 
 
+def _router_domain(method: str, attr: str) -> str:
+    """Resolve a DomainRouter domain helper via CoreFacade (no call-site literals).
+
+    Args:
+        method: DomainRouter 方法名（如 terms_domain）。
+        attr: 回落类常量名（PLATFORM_*_DOMAIN）。
+    """
+    from core.api.core_facade import get_domain_router
+
+    router = get_domain_router()
+    fn = getattr(router, method, None)
+    if callable(fn):
+        did = str(fn() or "").strip()
+        if did:
+            return did
+    # 为什么：方法异常空串时回落 SSOT 类常量，避免再引入域名字面量
+    for obj in (router, type(router)):
+        did = str(getattr(obj, attr, "") or "").strip()
+        if did:
+            return did
+    logger.debug("fde domain resolve empty method=%s attr=%s", method, attr)
+    return ""
+
+
 def fde_graph_domain() -> str:
     """Resolve FDE tracking domain for GraphIndex loads (N09 K38).
 
@@ -48,14 +72,7 @@ def fde_graph_domain() -> str:
     Returns:
         非空 domain id（SSOT: DomainRouter.tracking_domain）。
     """
-    from core.api.core_facade import get_domain_router
-
-    router = get_domain_router()
-    did = str(router.tracking_domain() or "").strip()
-    if did:
-        return did
-    # 为什么：tracking_domain 契约应永非空；若异常空串则回落类常量，避免 GraphIndex.load("")
-    return str(getattr(router, "PLATFORM_TRACKING_DOMAIN", "") or "fde-delivery")
+    return _router_domain("tracking_domain", "PLATFORM_TRACKING_DOMAIN")
 
 
 def fde_terms_domain() -> str:
@@ -64,11 +81,7 @@ def fde_terms_domain() -> str:
     Returns:
         非空 domain id。
     """
-    from core.api.core_facade import get_domain_router
-
-    router = get_domain_router()
-    did = str(router.terms_domain() or "").strip()
-    return did or str(getattr(router, "PLATFORM_TERMS_DOMAIN", "") or "enterprise-terms")
+    return _router_domain("terms_domain", "PLATFORM_TERMS_DOMAIN")
 
 
 def fde_atom_domain() -> str:
@@ -77,11 +90,7 @@ def fde_atom_domain() -> str:
     Returns:
         非空 domain id。
     """
-    from core.api.core_facade import get_domain_router
-
-    router = get_domain_router()
-    did = str(router.knowledge_atom_domain() or "").strip()
-    return did or str(getattr(router, "PLATFORM_ATOM_DOMAIN", "") or "knowledge-atom")
+    return _router_domain("knowledge_atom_domain", "PLATFORM_ATOM_DOMAIN")
 
 
 def fde_kb_domain() -> str:
@@ -90,9 +99,4 @@ def fde_kb_domain() -> str:
     Returns:
         非空 domain id。
     """
-    from core.api.core_facade import get_domain_router
-
-    router = get_domain_router()
-    did = str(router.default_kb_domain() or "").strip()
-    return did or str(getattr(router, "PLATFORM_KB_DOMAIN", "") or "ai-knowledge")
-
+    return _router_domain("default_kb_domain", "PLATFORM_KB_DOMAIN")
