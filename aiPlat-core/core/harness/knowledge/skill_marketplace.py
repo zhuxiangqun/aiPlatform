@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from core.utils.paths import get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 class SkillMarketplace:
@@ -502,7 +503,7 @@ class SkillMarketplace:
                 """,
                 (
                     submission_id,
-                    tenant_id or "default",
+                    tenant_id or DomainRouter.default_tenant(),
                     skill_id,
                     "pending_review",
                     payload,
@@ -513,7 +514,7 @@ class SkillMarketplace:
             conn.close()
         return {
             "submission_id": submission_id,
-            "tenant_id": tenant_id or "default",
+            "tenant_id": tenant_id or DomainRouter.default_tenant(),
             "skill_id": skill_id,
             "status": "pending_review",
             "test_result": test_result if isinstance(test_result, dict) else {},

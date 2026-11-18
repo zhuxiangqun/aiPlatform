@@ -97,7 +97,7 @@ async def run_cycle(
 
     auto_publish: bool = False,
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
 ) -> GovernanceCycleResult:
 
@@ -112,7 +112,7 @@ async def run_cycle(
 
     import time
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     cycle_id = f"gov-cycle-{domain_id}-{int(time.time())}"
 
@@ -240,7 +240,7 @@ async def run_cycle(
 
 
 
-async def run_all_domains(*, tenant_id: str = "default") -> List[GovernanceCycleResult]:
+async def run_all_domains(*, tenant_id: str = DomainRouter.default_tenant()) -> List[GovernanceCycleResult]:
 
     """Run governance cycle for all registered domains.
 
@@ -256,7 +256,7 @@ async def run_all_domains(*, tenant_id: str = "default") -> List[GovernanceCycle
 
     results = []
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     for did in domains:
 
@@ -336,7 +336,7 @@ def _save_cycle(result: GovernanceCycleResult):
 
 
 
-def _run_scenario_check(domain_id: str, step: StepResult, tenant_id: str = "default"):
+def _run_scenario_check(domain_id: str, step: StepResult, tenant_id: str = DomainRouter.default_tenant()):
 
     try:
 
@@ -466,7 +466,7 @@ def _run_mapping_check(domain_id: str, step: StepResult):
 
 
 
-def _run_quality_check(domain_id: str, step: StepResult, tenant_id: str = "default"):
+def _run_quality_check(domain_id: str, step: StepResult, tenant_id: str = DomainRouter.default_tenant()):
 
     try:
 
@@ -496,7 +496,7 @@ def _run_quality_check(domain_id: str, step: StepResult, tenant_id: str = "defau
 
 
 
-def _run_publishing_check(domain_id: str, step: StepResult, auto_publish: bool, tenant_id: str = "default"):
+def _run_publishing_check(domain_id: str, step: StepResult, auto_publish: bool, tenant_id: str = DomainRouter.default_tenant()):
 
     try:
 

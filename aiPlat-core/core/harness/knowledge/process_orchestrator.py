@@ -17,6 +17,7 @@ Process instances tracked in SQLite (process_instances table) in state_changes.d
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
+from core.harness.knowledge.domain_router import DomainRouter
 import json as _json
 import logging
 import os as _os
@@ -41,7 +42,7 @@ def _db_path() -> str:
 
 
 def _tid(tenant_id: str | None) -> str:
-    return (tenant_id or "").strip() or "default"
+    return (tenant_id or "").strip() or DomainRouter.default_tenant()
 
 
 def _ensure_schema():
@@ -106,7 +107,7 @@ def start_process(
     starter_entity: str,
     process_def: Dict[str, Any],
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> str:
     """Start a new process instance. Returns instance_id.
 
@@ -232,7 +233,7 @@ def check_step_completion(
 
 
 def get_process_status(
-    domain_id: str, process_name: str = "", *, tenant_id: str = "default"
+    domain_id: str, process_name: str = "", *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Get status of all running process instances.
 
@@ -271,7 +272,7 @@ def get_process_status(
 
 
 def get_bottlenecks(
-    domain_id: str, limit: int = 10, *, tenant_id: str = "default"
+    domain_id: str, limit: int = 10, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Find process instances stuck at the same step the longest.
 

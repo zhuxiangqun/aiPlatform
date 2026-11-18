@@ -32,6 +32,7 @@ from __future__ import annotations
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 import json as _json
 
 import logging
@@ -104,7 +105,7 @@ class SqliteEmbeddingRetriever(IRetriever):
 
         *,
 
-        tenant_id: str = "default",
+        tenant_id: str = DomainRouter.default_tenant(),
 
         collection_id: str = "default",
 
@@ -509,7 +510,7 @@ def create_sqlite_retriever(
 
     *,
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
     collection_id: str = "default",
 
