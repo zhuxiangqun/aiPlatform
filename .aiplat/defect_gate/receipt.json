@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T06:31:13+08:00",
+  "reviewed_at": "2026-11-19T06:48:02+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "be89fe5974bc4f13ef67d82b87bdfbf9481f5b47bcd2015bc3b728887e452b63",
-  "head_sha": "c880eaa2b3d58c7cacba83b250e90275ccf67abc",
+  "diff_sha256": "2f55933688ffccb4c68ab3e7cd804d5d313f31297c85fe4859e0716f11e510a3",
+  "head_sha": "2532ef37296f3f6dcffbe98751bc1b289a243c8c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K46 DomainRouter module import. Five checks clean."
+  "note": "CoreFacade DomainRouter import for signature defaults. Five checks clean."
 }
