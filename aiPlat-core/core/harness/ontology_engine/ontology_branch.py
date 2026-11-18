@@ -117,11 +117,32 @@ def _branch_key(domain_id: str, branch_name: str) -> str:
     return f"{domain_id}::{branch_name}"
 
 
-def _branch_db_path(domain_id: str, branch_name: str) -> _Path:
-    """获取分支的 SQLite DB 路径."""
+def _branch_db_path(domain_id: str, branch_name: str, tenant_id: str = "default") -> _Path:
+    """获取分支的 SQLite DB 路径（与 GraphIndex 租户前缀约定一致，N09 K34）。
+
+    Args:
+        domain_id: domain 标识。
+        branch_name: 分支名；main 对应域主库。
+        tenant_id: 租户；default 无前缀。
+    """
+    tid = (tenant_id or "default").strip() or "default"
+    prefix = f"{tid}:" if tid != "default" else ""
     if branch_name == "main":
-        return GRAPH_DIR / f"{domain_id}.db"
-    return GRAPH_DIR / f"{domain_id}__{branch_name}.db"
+        return GRAPH_DIR / f"{prefix}{domain_id}.db"
+    return GRAPH_DIR / f"{prefix}{domain_id}__{branch_name}.db"
+
+
+def _resolve_branch_tenant(tenant_id: str = "") -> str:
+    """Resolve tenant for branch GraphIndex / DB paths.
+
+    Args:
+        tenant_id: 显式租户；空则 ActiveRequestContext / default。
+    """
+    tid = (tenant_id or "").strip()
+    if tid:
+        return tid
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    return _resolve_graph_tenant()
 
 
 # ── Branch Manager ─────────────────────────────────────────────────────────
@@ -156,6 +177,7 @@ class OntologyBranchManager:
         *,
         description: str = "",
         from_snapshot: bool = True,
+        tenant_id: str = "",
     ) -> BranchInfo:
         """从 main 分支派生新分支.
 
@@ -164,10 +186,12 @@ class OntologyBranchManager:
             branch_name: 新分支名 (如 "experiment", "poc-v2")
             description: 分支描述
             from_snapshot: 是否先从当前状态创建快照作为基线
+            tenant_id: 租户；空则 resolve（N09 K34）
 
         Returns:
             BranchInfo
         """
+        tid = _resolve_branch_tenant(tenant_id)
         # Check branch limit
         existing = self.list_branches(domain_id)
         if len(existing) >= self._MAX_BRANCHES_PER_DOMAIN:
@@ -181,11 +205,11 @@ class OntologyBranchManager:
             raise ValueError(f"Branch '{branch_name}' already exists for domain '{domain_id}'")
 
         # Get source DB path
-        source_db = _branch_db_path(domain_id, "main")
+        source_db = _branch_db_path(domain_id, "main", tid)
         if not source_db.exists():
             raise FileNotFoundError(f"Main database not found: {source_db}")
 
-        target_db = _branch_db_path(domain_id, branch_name)
+        target_db = _branch_db_path(domain_id, branch_name, tid)
 
         # Snapshot the current state as baseline
         base_snapshot_id = 0
@@ -193,7 +217,7 @@ class OntologyBranchManager:
         if from_snapshot:
             try:
                 from core.harness.ontology_engine.graph_index import GraphIndex
-                gi = GraphIndex(domain_id)
+                gi = GraphIndex(domain_id, tenant_id=tid)
                 snap = gi.snapshot(label=f"fork_{branch_name}")
                 base_snapshot_id = snap.get("id", 0)
                 base_version = snap.get("label", "")
@@ -259,16 +283,18 @@ class OntologyBranchManager:
 
         return sorted(branches, key=lambda b: b.created_at, reverse=True)
 
-    def delete_branch(self, domain_id: str, branch_name: str) -> bool:
+    def delete_branch(self, domain_id: str, branch_name: str, *, tenant_id: str = "") -> bool:
         """删除分支 (不允许删除 main).
 
         Args:
             domain_id: domain 标识。
             branch_name: branch_name 参数。
+            tenant_id: 租户；空则 resolve（N09 K34）。
         """
         if branch_name == "main":
             raise ValueError("Cannot delete main branch")
 
+        tid = _resolve_branch_tenant(tenant_id)
         # Remove registries
         registry = _load_registry()
         key = _branch_key(domain_id, branch_name)
@@ -279,7 +305,7 @@ class OntologyBranchManager:
         _save_registry(registry)
 
         # Remove DB file
-        db_path = _branch_db_path(domain_id, branch_name)
+        db_path = _branch_db_path(domain_id, branch_name, tid)
         if db_path.exists():
             db_path.unlink()
 
@@ -315,6 +341,8 @@ class OntologyBranchManager:
         domain_id: str,
         source_branch: str,
         target_branch: str = "main",
+        *,
+        tenant_id: str = "",
     ) -> DiffResult:
         """三方差异对比: ancestor → source vs ancestor → target.
 
@@ -322,20 +350,22 @@ class OntologyBranchManager:
             domain_id: domain 标识。
             source_branch: source_branch 参数。
             target_branch: target_branch 参数。
+            tenant_id: 租户；空则 resolve（N09 K34）。
         """
+        tid = _resolve_branch_tenant(tenant_id)
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
 
             # Build graph indices for both branches
-            gi_source = GraphIndex(domain_id)
-            gi_target = GraphIndex(domain_id)
+            gi_source = GraphIndex(domain_id, tenant_id=tid)
+            gi_target = GraphIndex(domain_id, tenant_id=tid)
 
-            # Override DB paths for branch routing
+            # Override DB paths for branch routing（含租户前缀）
             if source_branch != "main":
-                gi_source._db_path = _branch_db_path(domain_id, source_branch)
+                gi_source._db_path = _branch_db_path(domain_id, source_branch, tid)
                 gi_source._conn = None  # force reconnect
             if target_branch != "main":
-                gi_target._db_path = _branch_db_path(domain_id, target_branch)
+                gi_target._db_path = _branch_db_path(domain_id, target_branch, tid)
                 gi_target._conn = None
 
             # Load both
@@ -437,6 +467,7 @@ class OntologyBranchManager:
         target_branch: str = "main",
         *,
         auto_apply: bool = False,
+        tenant_id: str = "",
     ) -> MergeResult:
         """合并分支: 先在 dry-run 模式做 diff，再决定是否应用.
 
@@ -445,21 +476,23 @@ class OntologyBranchManager:
             source_branch: 源分支
             target_branch: 目标分支
             auto_apply: 是否自动应用 (仅 MergeLevel.AUTO 时生效)
+            tenant_id: 租户；空则 resolve（N09 K34）
 
         Returns:
             MergeResult
         """
+        tid = _resolve_branch_tenant(tenant_id)
         # Step 1: Snapshot target before merge (for rollback)
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            gi = GraphIndex(domain_id)
+            gi = GraphIndex(domain_id, tenant_id=tid)
             gi.snapshot(label=f"pre_merge_{source_branch}_to_{target_branch}")
             gi.close()
         except Exception as e:
             logger.debug("Pre-merge snapshot failed: %s", e)
 
         # Step 2: Compute diff
-        diff_result = self.diff(domain_id, source_branch, target_branch)
+        diff_result = self.diff(domain_id, source_branch, target_branch, tenant_id=tid)
 
         # Step 3: Determine if safe to merge
         if diff_result.merge_level == MergeLevel.BLOCKED:
@@ -482,8 +515,8 @@ class OntologyBranchManager:
 
         # Step 4: Apply merge — copy branch DB over target
         if source_branch != "main" and target_branch == "main":
-            source_db = _branch_db_path(domain_id, source_branch)
-            target_db = _branch_db_path(domain_id, "main")
+            source_db = _branch_db_path(domain_id, source_branch, tid)
+            target_db = _branch_db_path(domain_id, "main", tid)
 
             if not source_db.exists():
                 return MergeResult(

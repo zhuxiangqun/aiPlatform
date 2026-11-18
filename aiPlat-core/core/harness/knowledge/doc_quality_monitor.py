@@ -559,7 +559,8 @@ class DocumentQualityMonitor:
 
             from core.harness.ontology_engine.graph_index import GraphIndex
 
-            graph = GraphIndex("default")
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            graph = GraphIndex("default", tenant_id=_resolve_graph_tenant())
 
             nodes = list(graph._nodes.values())
 
@@ -775,7 +776,8 @@ class DocumentQualityMonitor:
 
             from core.harness.ontology_engine.graph_index import GraphIndex
 
-            return len(GraphIndex("default"))
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            return len(GraphIndex("default", tenant_id=_resolve_graph_tenant()))
 
         except Exception:
 

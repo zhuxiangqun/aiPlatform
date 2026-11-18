@@ -225,7 +225,9 @@ class OntologyValidator:
         if action == "snapshot_before_deploy":
             try:
                 from core.harness.ontology_engine.graph_index import GraphIndex
-                gi = GraphIndex(domain_id)
+                from core.harness.knowledge.context_bus import _resolve_graph_tenant
+                tid = _resolve_graph_tenant(state if isinstance(state, dict) else None)
+                gi = GraphIndex(domain_id, tenant_id=tid)
                 snap = gi.snapshot(label=f"retention_before_deploy")
                 gi.close()
                 return f"snapshot_id={snap.get('id', '?')}"

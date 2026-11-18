@@ -47,12 +47,13 @@ class ReconSubgraph:
         recon.discard()
     """
 
-    def __init__(self, run_id: str, *, data_dir: str = ""):
+    def __init__(self, run_id: str, *, data_dir: str = "", tenant_id: str = ""):
         """初始化。
 
         Args:
             run_id: 运行 ID。
             data_dir: data_dir 参数。
+            tenant_id: 租户；空则 resolve（N09 K34）。
         """
         self.run_id = run_id
         self.domain_id = f"_recon_{run_id}"
@@ -65,10 +66,11 @@ class ReconSubgraph:
         self.created_at = _time.time()
         self.agent_contributions: Dict[str, int] = {}  # agent_id → count
         
-        # Lazy-init GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
         from core.harness.ontology_engine.graph_index import GraphIndex
-        self.graph = GraphIndex(self.domain_id)
-        logger.info("ReconSubgraph created: %s", self.domain_id)
+        self.tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
+        self.graph = GraphIndex(self.domain_id, tenant_id=self.tenant_id)
+        logger.info("ReconSubgraph created: %s tenant=%s", self.domain_id, self.tenant_id)
 
     def add_entity(
         self, entity_id: str, entity_name: str, class_name: str,

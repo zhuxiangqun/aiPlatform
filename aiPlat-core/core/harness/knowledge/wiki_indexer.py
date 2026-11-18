@@ -299,7 +299,8 @@ class WikiIndexer:
 
             from core.harness.ontology_engine.graph_index import GraphIndex
 
-            graph = GraphIndex(domain_id=node_type)
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            graph = GraphIndex(domain_id=node_type, tenant_id=_resolve_graph_tenant())
 
             await graph.add_entity(node_value, {"source": "execution_feedback", "execution_id": execution_id})
 

@@ -1356,7 +1356,7 @@ def sys_knowledge_retrieve(
 
         from core.harness.ontology_engine.graph_index import GraphIndex
 
-        gi = GraphIndex(domain_id=domain_id or "default")
+        gi = GraphIndex(domain_id=domain_id or "default", tenant_id=tenant_id or "default")
 
         if hasattr(gi, 'traverse') and gi._entities:
 

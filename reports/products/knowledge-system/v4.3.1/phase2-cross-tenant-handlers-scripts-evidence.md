@@ -42,4 +42,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 ## 明确未做
 
 - FDE/平台业务域名硬编码（`fde-delivery` 等）消除
+- GraphIndex 直构 / branch DB 前缀（见 K34）
 - N09 / 附录 N 全量认证（certified 仍 false）

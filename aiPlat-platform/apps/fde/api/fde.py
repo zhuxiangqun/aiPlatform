@@ -3254,6 +3254,7 @@ async def export_okf(payload: dict = Body(...)):
         payload.get("domain_id", "ai-knowledge"),
         incremental=payload.get("incremental", False),
         output_dir=payload.get("output_dir", ""),
+        tenant_id=fde_graph_tenant(),
     )
     return result
 
@@ -3607,7 +3608,10 @@ async def fork_branch(domain_id: str, payload: dict = Body(...)):
         payload: 载荷 dict。
     """
     from core.api.core_facade import OntologyBranchManager
-    info = OntologyBranchManager.get().fork(domain_id, payload.get("branch_name", ""), description=payload.get("description", ""))
+    info = OntologyBranchManager.get().fork(
+        domain_id, payload.get("branch_name", ""), description=payload.get("description", ""),
+        tenant_id=fde_graph_tenant(),
+    )
     return info.to_dict()
 
 
@@ -3620,7 +3624,7 @@ async def delete_branch(domain_id: str, branch_name: str):
         branch_name: branch_name 参数。
     """
     from core.api.core_facade import OntologyBranchManager
-    OntologyBranchManager.get().delete_branch(domain_id, branch_name)
+    OntologyBranchManager.get().delete_branch(domain_id, branch_name, tenant_id=fde_graph_tenant())
     return {"deleted": True, "branch": branch_name}
 
 
@@ -3634,7 +3638,7 @@ async def diff_branches(domain_id: str, source: str = Query("main"), target: str
         target: target 参数。
     """
     from core.api.core_facade import OntologyBranchManager
-    diff = OntologyBranchManager.get().diff(domain_id, source, target)
+    diff = OntologyBranchManager.get().diff(domain_id, source, target, tenant_id=fde_graph_tenant())
     return {"merge_level": diff.merge_level.value, "diff_summary": diff.diff_summary,
             "added_entities": diff.added_entities, "removed_entities": diff.removed_entities,
             "modified_entities": diff.modified_entities, "added_relations": diff.added_relations,
@@ -3650,8 +3654,11 @@ async def merge_branches(domain_id: str, payload: dict = Body(...)):
         payload: 载荷 dict。
     """
     from core.api.core_facade import OntologyBranchManager
-    result = OntologyBranchManager.get().merge(domain_id, payload.get("source", ""), payload.get("target", "main"),
-                                                auto_apply=payload.get("auto_apply", False))
+    result = OntologyBranchManager.get().merge(
+        domain_id, payload.get("source", ""), payload.get("target", "main"),
+        auto_apply=payload.get("auto_apply", False),
+        tenant_id=fde_graph_tenant(),
+    )
     return {"success": result.success, "merge_level": result.merge_level.value,
             "summary": result.summary, "conflict_details": result.conflict_details}
 
