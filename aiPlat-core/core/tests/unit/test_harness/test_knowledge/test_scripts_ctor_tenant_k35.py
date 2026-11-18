@@ -4,6 +4,14 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 TARGETS = [
     "scripts/benchmark_ontology.py",
     "scripts/benchmark_traversal.py",
@@ -14,7 +22,7 @@ TARGETS = [
 
 def _bare_ctors(rel: str) -> list[str]:
     out = []
-    for ln in Path(rel).read_text(encoding="utf-8").splitlines():
+    for ln in (_repo_root() / rel).read_text(encoding="utf-8").splitlines():
         if "GraphIndex(" not in ln or "GraphIndex.load" in ln:
             continue
         if ln.strip().startswith("#"):
@@ -38,13 +46,13 @@ def test_scripts_cli_tenant_flags():
         "scripts/benchmark_traversal.py",
         "scripts/seed_lock_service_orders.py",
     ):
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert 'add_argument("--tenant"' in text
         assert "def _script_graph_tenant(" in text
 
 
 def test_script_graph_tenant_prefers_explicit(monkeypatch):
-    path = Path("scripts/seed_lock_service_orders.py")
+    path = (_repo_root() / "scripts/seed_lock_service_orders.py")
     spec = importlib.util.spec_from_file_location("seed_lock_k35", path)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -58,5 +66,5 @@ def test_script_graph_tenant_prefers_explicit(monkeypatch):
 
 
 def test_scaffold_template_wires_tenant():
-    text = Path("scripts/new_domain_scaffold.py").read_text(encoding="utf-8")
+    text = (_repo_root() / "scripts/new_domain_scaffold.py").read_text(encoding="utf-8")
     assert 'GraphIndex(DOMAIN, tenant_id="default")' in text
