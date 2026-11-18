@@ -5,6 +5,7 @@ SSOT: docs/products/five-products/modules/ontology/contracts/schemas/ontology_ap
 from __future__ import annotations
 
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 SCHEMA_VERSION = "ontology.api.v0"
@@ -70,7 +71,7 @@ def from_wiki_pages(
     pages: List[Mapping[str, Any]],
     *,
     query: str = "",
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """from_wiki_pages。
 

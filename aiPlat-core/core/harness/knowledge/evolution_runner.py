@@ -19,6 +19,7 @@ import os as _os
 import time as _time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class PageFitness:
 class EvolutionRunner:
     """Orchestrates generation-based knowledge evolution."""
 
-    def __init__(self, collection_id: str = "default",
+    def __init__(self, collection_id: str = DomainRouter.default_collection(),
                  max_mutations: int = 5):
         """初始化。
 

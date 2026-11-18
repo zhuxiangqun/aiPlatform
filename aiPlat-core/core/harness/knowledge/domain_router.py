@@ -77,8 +77,10 @@ class DomainRouter:
     PLATFORM_IT_OPS_DOMAIN = "it-ops"
     PLATFORM_DATA_GOV_DOMAIN = "data-gov"
     PLATFORM_SYSTEM_DOMAIN = "aiplat-system"
-    # Tenant fallback SSOT (N09 K49) — not an ontology domain id.
+    # Tenant / collection / profile fallback SSOT (N09 K49/K52) — not ontology domain ids.
     PLATFORM_DEFAULT_TENANT = "default"
+    PLATFORM_DEFAULT_COLLECTION = "default"
+    PLATFORM_DEFAULT_PROFILE = "default"
 
     @staticmethod
     def _home() -> str:
@@ -428,6 +430,24 @@ class DomainRouter:
         defaults / GraphIndex resolve fallbacks.
         """
         return cls.PLATFORM_DEFAULT_TENANT
+
+    @classmethod
+    def default_collection(cls) -> str:
+        """Return platform default wiki/KB collection id (N09 K52).
+
+        Prefer this over hardcoding ``\"default\"`` in ``collection_id``
+        signature defaults / DDL.
+        """
+        return cls.PLATFORM_DEFAULT_COLLECTION
+
+    @classmethod
+    def default_profile(cls) -> str:
+        """Return platform default skill/kanban profile id (N09 K52).
+
+        Prefer this over hardcoding ``\"default\"`` in ``profile_id``
+        signature defaults / DDL.
+        """
+        return cls.PLATFORM_DEFAULT_PROFILE
 
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).

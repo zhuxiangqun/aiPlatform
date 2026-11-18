@@ -27,6 +27,7 @@ import time as _time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from core.harness.knowledge.domain_router import DomainRouter
 
 if TYPE_CHECKING:
     from core.harness.knowledge.knowledge_ontology import KnowledgeOntology
@@ -63,12 +64,12 @@ class QualitySignal:
         }
 
 
-def _quality_path(collection_id: str = "default") -> str:
+def _quality_path(collection_id: str = DomainRouter.default_collection()) -> str:
     home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "quality_signals.json")
 
 
-def sync_quality_to_abox(entity_uri: str, collection_id: str = "default") -> None:
+def sync_quality_to_abox(entity_uri: str, collection_id: str = DomainRouter.default_collection()) -> None:
     """Sync the latest quality score to the ontology A-Box.
 
     Args:
@@ -97,7 +98,7 @@ def record_quality_signal(
     *,
     source: str = "",
     severity: str = "info",
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> QualitySignal:
     """Record a quality signal for an ontology entity.
 
@@ -143,7 +144,7 @@ def get_quality_signals(
     entity_uri: str = "",
     *,
     limit: int = 50,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> List[Dict[str, Any]]:
     """Get quality signals, optionally filtered by entity_uri.
 
@@ -172,7 +173,7 @@ def get_quality_signals(
 def get_entity_quality_score(
     entity_uri: str,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Compute a 0-100 quality score for an entity based on accumulated signals.
 
@@ -245,7 +246,7 @@ def _score_to_assessment(score: int) -> str:
     return "critical"
 
 
-def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[str, Any]]:
+def check_ontology_health_triggers(collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Run health checks and return triggered curation tasks.
 
     Args:

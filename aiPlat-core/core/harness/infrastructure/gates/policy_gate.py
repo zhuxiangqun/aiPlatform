@@ -2487,7 +2487,7 @@ async def check_stage_ontology_guard(
 
     state: Dict[str, Any],
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
 ) -> Optional[str]:
 
@@ -2671,7 +2671,7 @@ async def check_kb_access(
 
     tenant_id: str = DomainRouter.default_tenant(),
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
 ) -> PolicyResult:
 

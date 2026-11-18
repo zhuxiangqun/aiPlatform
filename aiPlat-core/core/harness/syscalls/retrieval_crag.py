@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 
 from typing import Any, Dict, List, Optional, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -64,7 +65,7 @@ async def sys_crag_retrieve(
 
     domain_id: Optional[str] = None,
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     tenant_id: str = "system",
 
@@ -397,7 +398,7 @@ async def _deep_research_retrieve(
 
     query: str,
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     domain_id: str = "",
 

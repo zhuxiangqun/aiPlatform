@@ -18,6 +18,7 @@ import time as _time
 import json as _json
 
 import asyncio
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -1087,7 +1088,7 @@ def _extract_keywords_light(text: str) -> set:
 
 
 
-def _get_cached_vector(title: str, *, collection_id: str = "default") -> list:
+def _get_cached_vector(title: str, *, collection_id: str = DomainRouter.default_collection()) -> list:
 
     """Read cached embedding vector from vectors.json. Returns None if not found."""
 

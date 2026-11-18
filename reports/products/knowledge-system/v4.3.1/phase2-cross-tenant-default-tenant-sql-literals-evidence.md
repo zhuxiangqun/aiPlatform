@@ -40,5 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- `collection_id` / `profile_id` DDL `DEFAULT 'default'`
+- `collection_id` / `profile_id` → 见 Batch K52
 - N09 / 附录 N 全量认证（certified 仍 false）

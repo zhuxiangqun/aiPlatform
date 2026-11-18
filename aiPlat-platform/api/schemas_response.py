@@ -39,7 +39,7 @@ class ChatSessionDetailResponse(BaseModel):
 
 class ConversationScope(BaseModel):
     """ConversationScope。"""
-    collection_id: str = "default"
+    collection_id: str = DomainRouter.default_collection()
     doc_ids: List[str] = Field(default_factory=list)
     version: int = 0
     scope_hash: str = ""

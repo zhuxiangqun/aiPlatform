@@ -53,7 +53,7 @@ def archive_filename(week: Optional[str] = None) -> str:
 def archive_kb_health_report(
     *,
     tenant_id: str = DomainRouter.default_tenant(),
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     window_hours: int = 168,
     project_id: str = "",
     force: bool = False,

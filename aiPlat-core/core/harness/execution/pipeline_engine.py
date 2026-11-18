@@ -58,6 +58,8 @@ from dataclasses import dataclass, field
 
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, TypedDict
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 
 
 # ── Pipeline Registry (for Playbook v1 export/import) ──
@@ -279,7 +281,7 @@ async def _save_pipeline_knowledge_to_wiki(state: dict, config: Any) -> None:
                     body=f"# {_val.get('label', _key)} - {_name}\n\n{_output[:5000]}",
                     category="topics",
                     tags=["pipeline-output", _key],
-                    collection_id="default",
+                    collection_id=DomainRouter.default_collection(),
                     status="draft",
                     skip_validation=True,
                 )
@@ -7019,7 +7021,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
 
 
-            result = execute_action(action, onto, collection_id="default")
+            result = execute_action(action, onto, collection_id=DomainRouter.default_collection())
 
 
 

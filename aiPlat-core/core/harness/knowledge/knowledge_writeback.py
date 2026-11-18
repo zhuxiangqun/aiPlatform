@@ -31,6 +31,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from core.harness.knowledge.domain_router import DomainRouter
 
 if TYPE_CHECKING:
     from core.harness.knowledge.knowledge_action import OntologyAction
@@ -350,12 +351,12 @@ _ADAPTER_REGISTRY: Dict[WriteBackTarget, IWriteBackAdapter] = {
 }
 
 
-def _writeback_config_path(collection_id: str = "default") -> str:
+def _writeback_config_path(collection_id: str = DomainRouter.default_collection()) -> str:
     home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "writebacks.json")
 
 
-def register_writeback(config: WriteBackConfig, *, collection_id: str = "default") -> WriteBackConfig:
+def register_writeback(config: WriteBackConfig, *, collection_id: str = DomainRouter.default_collection()) -> WriteBackConfig:
     """注册一条写回配置。
 
     Args:
@@ -368,7 +369,7 @@ def register_writeback(config: WriteBackConfig, *, collection_id: str = "default
     return config
 
 
-def unregister_writeback(target_endpoint: str, *, collection_id: str = "default") -> bool:
+def unregister_writeback(target_endpoint: str, *, collection_id: str = DomainRouter.default_collection()) -> bool:
     """按 endpoint 移除写回配置。
 
     Args:
@@ -383,7 +384,7 @@ def unregister_writeback(target_endpoint: str, *, collection_id: str = "default"
     return True
 
 
-def load_writebacks(*, collection_id: str = "default") -> List[WriteBackConfig]:
+def load_writebacks(*, collection_id: str = DomainRouter.default_collection()) -> List[WriteBackConfig]:
     """加载已注册的写回配置列表。
 
     Args:
@@ -400,7 +401,7 @@ def load_writebacks(*, collection_id: str = "default") -> List[WriteBackConfig]:
         return []
 
 
-def _save_writebacks(configs: List[WriteBackConfig], *, collection_id: str = "default") -> None:
+def _save_writebacks(configs: List[WriteBackConfig], *, collection_id: str = DomainRouter.default_collection()) -> None:
     path = _writeback_config_path(collection_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -411,7 +412,7 @@ def _save_writebacks(configs: List[WriteBackConfig], *, collection_id: str = "de
         }, f, indent=2, ensure_ascii=False)
 
 
-async def trigger_writebacks(action: Any, *, collection_id: str = "default") -> List[Dict[str, Any]]:
+async def trigger_writebacks(action: Any, *, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """对 ontology action 触发所有已注册写回适配器。
 
     Args:

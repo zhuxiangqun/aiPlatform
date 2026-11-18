@@ -86,7 +86,7 @@ def sys_kb_retrieve(
 
     *,
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     domain_id: str = None,
 
@@ -1133,7 +1133,7 @@ def sys_knowledge_retrieve(
 
     tenant_id: str = DomainRouter.default_tenant(),
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     wiki_collection_ids: List[str] = None,
 
@@ -1690,7 +1690,7 @@ def _filter_by_security(
 
     actor_scopes: List[str],
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
 ) -> List[Dict[str, Any]]:
 
@@ -1933,7 +1933,7 @@ def _route_intent(query: str) -> str:
 
 
 async def sys_routed_retrieve(query: str, *, top_k: int = 8, include_web: bool = True,
-                              tenant_id: str = DomainRouter.default_tenant(), collection_id: str = "default",
+                              tenant_id: str = DomainRouter.default_tenant(), collection_id: str = DomainRouter.default_collection(),
                               doc_ids: List[str] = None) -> Dict[str, Any]:
     """意图路由统一检索：code/knowledge/web 三通道按查询意图分发。
 

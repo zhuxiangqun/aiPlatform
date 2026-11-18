@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
+from core.api.core_facade import DomainRouter
 
 router = APIRouter(tags=["kanban"])
 
@@ -20,7 +21,7 @@ log = logging.getLogger("aiplat.kanban")
 class TaskCreate(BaseModel):
     """TaskCreate。"""
     title: str
-    profile_id: str = "default"
+    profile_id: str = DomainRouter.default_profile()
     description: str = ""
     priority: int = 5
     depends_on: Optional[List[str]] = None

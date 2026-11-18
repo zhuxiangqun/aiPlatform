@@ -603,7 +603,7 @@ def submit_as_proposal(
 
     *,
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
 ) -> bool:
 
@@ -674,7 +674,7 @@ async def run_active_synthesis(
 
     domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     max_gaps: int = 5,
 

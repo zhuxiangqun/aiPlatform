@@ -2496,7 +2496,7 @@ async def aggregate_all_alerts() -> Dict[str, Any]:
     # 4. Wiki content quality alerts
     try:
         from core.harness.knowledge.wiki_quality_monitor import get_wiki_quality_monitor
-        for a in get_wiki_quality_monitor().get_alerts(limit=20, collection_id="default"):
+        for a in get_wiki_quality_monitor().get_alerts(limit=20, collection_id=DomainRouter.default_collection()):
             _add(f"wikiq:{a.get('page_id', a.get('id','?'))}", a.get("severity"),
                  a.get("alert_type", "wiki_quality"), "wiki_quality",
                  str(a.get("message") or a.get("alert_type", "wiki quality")),

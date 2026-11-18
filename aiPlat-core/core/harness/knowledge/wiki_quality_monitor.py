@@ -37,10 +37,10 @@ Trigger modes:
 
 
 from __future__ import annotations
-
-
-
 from core.harness.knowledge.domain_router import DomainRouter
+
+
+
 import json
 
 import logging
@@ -146,11 +146,11 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
 
     conn.execute(
 
-        """CREATE TABLE IF NOT EXISTS wiki_quality_alerts (
+        f"""CREATE TABLE IF NOT EXISTS wiki_quality_alerts (
 
             page_title TEXT NOT NULL,
 
-            collection_id TEXT DEFAULT 'default',
+            collection_id TEXT DEFAULT '{DomainRouter.default_collection()}',
 
             source_count INTEGER DEFAULT 0,
 
@@ -174,11 +174,11 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
 
     conn.execute(
 
-        """CREATE TABLE IF NOT EXISTS wiki_quality_trends (
+        f"""CREATE TABLE IF NOT EXISTS wiki_quality_trends (
 
             page_title TEXT NOT NULL,
 
-            collection_id TEXT DEFAULT 'default',
+            collection_id TEXT DEFAULT '{DomainRouter.default_collection()}',
 
             checked_at TEXT NOT NULL,
 
@@ -228,7 +228,7 @@ def _get_conn() -> sqlite3.Connection:
 
 def _fetch_source_content(source_refs: List[str], tenant_id: str = DomainRouter.default_tenant()) -> str:
 
-    """Fetch raw content for kb: source references from kb_elements.
+    f"""Fetch raw content for kb: source references from kb_elements.
 
 
 
@@ -372,13 +372,13 @@ _QUALITY_PROMPT = """你是文档质量评估专家。请对比以下 Wiki 页�
 
 async def _evaluate_page(question: str, wiki_body: str, source_content: str) -> WikiQualityScore:
 
-    """Use LLM to evaluate Wiki page content quality against source documents."""
+    """Use LLM to evaluate Wiki page content quality against source documents.f"""
 
     if not source_content or not wiki_body:
 
         return WikiQualityScore(
 
-            page_title=question, collection_id="default",
+            page_title=question, collection_id=DomainRouter.default_collection(),
 
             source_count=0, completeness=0, accuracy=0, overall=0,
 
@@ -418,7 +418,7 @@ async def _evaluate_page(question: str, wiki_body: str, source_content: str) -> 
 
         )
 
-        text = getattr(resp, "content", "") or str(resp)
+        text = getattr(resp, "content", "f") or str(resp)
 
 
 
@@ -428,7 +428,7 @@ async def _evaluate_page(question: str, wiki_body: str, source_content: str) -> 
 
         return WikiQualityScore(
 
-            page_title=question, collection_id="default",
+            page_title=question, collection_id=DomainRouter.default_collection(),
 
             source_count=1,
 
@@ -446,11 +446,11 @@ async def _evaluate_page(question: str, wiki_body: str, source_content: str) -> 
 
     except Exception as e:
 
-        logger.debug("LLM evaluation failed for '%s': %s", question, e)
+        logger.debug("LLM evaluation failed for '%s': %sf", question, e)
 
         return WikiQualityScore(
 
-            page_title=question, collection_id="default",
+            page_title=question, collection_id=DomainRouter.default_collection(),
 
             source_count=1, completeness=0, accuracy=0, overall=0,
 
@@ -464,7 +464,7 @@ async def _evaluate_page(question: str, wiki_body: str, source_content: str) -> 
 
 def _parse_eval_response(text: str) -> Dict[str, Any]:
 
-    """Extract JSON from LLM evaluation response."""
+    """Extract JSON from LLM evaluation response.f"""
 
     try:
 
@@ -514,7 +514,7 @@ class WikiQualityMonitor:
         """
         self._cron_hour = int(os.getenv("AIPLAT_WIKI_QUALITY_CRON_HOUR", "3"))
 
-        self._sample_size = int(os.getenv("AIPLAT_WIKI_QUALITY_SAMPLE_SIZE", "10"))
+        self._sample_size = int(os.getenv("AIPLAT_WIKI_QUALITY_SAMPLE_SIZE", "10f"))
 
         self._running = False
 
@@ -526,7 +526,7 @@ class WikiQualityMonitor:
 
 
 
-    def _sample_pages(self, collection_id: str = "default") -> List[Tuple[str, str, List[str]]]:
+    def _sample_pages(self, collection_id: str = DomainRouter.default_collection()) -> List[Tuple[str, str, List[str]]]:
 
         """Sample pages with non-empty source_articles.
 
@@ -534,7 +534,7 @@ class WikiQualityMonitor:
 
         Returns list of (title, body, source_articles).
 
-        """
+        f"""
 
         try:
 
@@ -610,7 +610,7 @@ class WikiQualityMonitor:
 
         except Exception as e:
 
-            logger.debug("Page sampling failed: %s", e)
+            logger.debug("Page sampling failed: %sf", e)
 
             return []
 
@@ -626,7 +626,7 @@ class WikiQualityMonitor:
 
         *,
 
-        collection_id: str = "default",
+        collection_id: str = DomainRouter.default_collection(),
 
         force: bool = False,
 
@@ -637,7 +637,7 @@ class WikiQualityMonitor:
         Args:
             collection_id: collection 标识。
             force: 是否强制。
-        """
+        f"""
 
         if self._running:
 
@@ -758,7 +758,7 @@ class WikiQualityMonitor:
 
         except Exception as e:
 
-            logger.debug("Persist scores failed: %s", e)
+            logger.debug("Persist scores failed: %sf", e)
 
         finally:
 
@@ -770,14 +770,14 @@ class WikiQualityMonitor:
 
 
 
-    def get_alerts(self, *, limit: int = 20, collection_id: str = "default") -> List[Dict[str, Any]]:
+    def get_alerts(self, *, limit: int = 20, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
 
         """获取 alerts。
 
         Args:
             limit: 返回条数上限。
             collection_id: collection 标识。
-        """
+        f"""
         conn = _get_conn()
 
         try:
@@ -802,7 +802,7 @@ class WikiQualityMonitor:
 
 
 
-    def get_trends(self, *, page_title: str = "", collection_id: str = "default", limit: int = 10) -> List[Dict[str, Any]]:
+    def get_trends(self, *, page_title: str = "f", collection_id: str = DomainRouter.default_collection(), limit: int = 10) -> List[Dict[str, Any]]:
 
         """获取 trends。
 
@@ -810,7 +810,7 @@ class WikiQualityMonitor:
             page_title: page_title 参数。
             collection_id: collection 标识。
             limit: 返回条数上限。
-        """
+        f"""
         conn = _get_conn()
 
         try:
@@ -885,7 +885,7 @@ class WikiQualityMonitor:
 
                 "low_quality_unreviewed": low["n"] if low else 0,
 
-                "last_run": self._last_run,
+                "last_runf": self._last_run,
 
             }
 
@@ -895,7 +895,7 @@ class WikiQualityMonitor:
 
 
 
-    def mark_reviewed(self, page_title: str, collection_id: str = "default") -> None:
+    def mark_reviewed(self, page_title: str, collection_id: str = DomainRouter.default_collection()) -> None:
 
         """mark_reviewed。
 

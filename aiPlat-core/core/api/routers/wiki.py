@@ -105,7 +105,7 @@ except ImportError:
 class ConvertKbRequest(BaseModel):
     """ConvertKbRequest。"""
     tenant_id: str = DomainRouter.default_tenant()
-    collection_id: str = "default"
+    collection_id: str = DomainRouter.default_collection()
     limit: int = 50
     doc_ids: Optional[List[str]] = None
 

@@ -1240,7 +1240,7 @@ _WATCH_STOP_FLAGS: Dict[str, bool] = {}
 
 def watch_directory(
     *, tenant_id: str, watch_id: str, directory: str,
-    collection_id: str = "default", recursive: bool = True,
+    collection_id: str = DomainRouter.default_collection(), recursive: bool = True,
     pattern: str = "*.md", kind: str = "markdown", poll_interval: float = 30.0,
 ) -> Dict[str, Any]:
     """Start background watcher for a directory. On each poll, ingest new/changed files.
@@ -1599,7 +1599,7 @@ _VAULT_INDEX_STATE: Dict[str, Dict[str, Any]] = {}  # vault_id → {status, prog
 
 def vault_start_indexer(
     *, tenant_id: str, vault_id: str, vault_path: str,
-    collection_id: str = "default", poll_interval: float = 30.0,
+    collection_id: str = DomainRouter.default_collection(), poll_interval: float = 30.0,
     auto_wiki: bool = False,
 ) -> Dict[str, Any]:
     """Start background indexer for a vault. Optionally auto-wiki new files.
@@ -1703,7 +1703,7 @@ def vault_index_status(*, tenant_id: str, vault_id: str) -> Dict[str, Any]:
     return _VAULT_INDEX_STATE.get(key, {"status": "idle", "progress": 0, "last_error": None})
 
 
-def vault_reindex(*, tenant_id: str, vault_path: str, collection_id: str = "default") -> Dict[str, Any]:
+def vault_reindex(*, tenant_id: str, vault_path: str, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Rebuild all indexes for a vault: clear existing docs + re-scan + re-ingest.
 
     Args:

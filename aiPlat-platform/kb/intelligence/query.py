@@ -46,7 +46,7 @@ async def query_elements(
     if not tenant_id:
         tenant_id = DomainRouter.default_tenant()
     if not collection_id:
-        collection_id = "default"
+        collection_id=DomainRouter.default_collection()
     st = get_tenant_storage(tenant_id)
     from core.api.core_facade import get_knowledge_db  # v2.5: canonical path (via CoreFacade re-export)
     db = get_knowledge_db()

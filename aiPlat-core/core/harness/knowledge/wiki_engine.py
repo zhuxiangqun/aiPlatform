@@ -86,7 +86,7 @@ def _inc_change_counter() -> None:
         _wiki_change_counter = 0
 
 
-def _wiki_root(collection_id: str = "default") -> Path:
+def _wiki_root(collection_id: str = DomainRouter.default_collection()) -> Path:
     home = get_aiplat_home()
     root = Path(home) / "wiki"
     _migrate_legacy_wiki(root)
@@ -205,7 +205,7 @@ def parse_title_from_uri(source_uri: str) -> str:
         return parts[0][:60]
     return fname[:60]
 
-def _ensure_dirs(collection_id: str = "default"):
+def _ensure_dirs(collection_id: str = DomainRouter.default_collection()):
     root = _wiki_root(collection_id)
     for d in ["entities", "topics", "contradictions", "atoms"]:
         (root / d).mkdir(parents=True, exist_ok=True)
@@ -276,7 +276,7 @@ def _parse_frontmatter(text: str) -> Tuple[Dict[str, Any], str]:
     return fm, body
 
 
-def read_page(title_or_path: str, *, category: str = "entities", collection_id: str = "default") -> Optional[Dict[str, Any]]:
+def read_page(title_or_path: str, *, category: str = "entities", collection_id: str = DomainRouter.default_collection()) -> Optional[Dict[str, Any]]:
     """Read a wiki page by title or path. Returns {title, page_id, category, tags, body, fm, path} or None.
 
     Args:
@@ -306,7 +306,7 @@ def read_page(title_or_path: str, *, category: str = "entities", collection_id: 
     return None
 
 
-def read_page_by_id(page_id: str, *, collection_id: str = "default") -> Optional[Dict[str, Any]]:
+def read_page_by_id(page_id: str, *, collection_id: str = DomainRouter.default_collection()) -> Optional[Dict[str, Any]]:
     """Read a wiki page by its stable page_id (UUID). Survives title renames.
 
     Args:
@@ -408,7 +408,7 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
                relationships: List[Dict[str, str]] = None,
                images: List[Dict[str, str]] = None,
                version: str = "1", summary: str = "", status: str = "",
-               marking: str = "", page_id: str = "", collection_id: str = "default",
+               marking: str = "", page_id: str = "", collection_id: str = DomainRouter.default_collection(),
                skip_validation: bool = False) -> str:
     """Create or update a wiki page. Returns the file path.
 
@@ -762,7 +762,7 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
     return str(p)
 
 
-def _reconcile_source_articles(title: str, sources: list, collection_id: str = "default") -> None:
+def _reconcile_source_articles(title: str, sources: list, collection_id: str = DomainRouter.default_collection()) -> None:
     """Validate source_articles against kb_elements; prune invalid kb: IDs.
     
     Only validates kb: prefixed references. URL/DOI/user-entered refs preserved as-is.
@@ -816,7 +816,7 @@ def _reconcile_source_articles(title: str, sources: list, collection_id: str = "
         _update_page_source_articles(title, valid, collection_id)
 
 
-def _update_page_source_articles(title: str, sources: list, collection_id: str = "default") -> None:
+def _update_page_source_articles(title: str, sources: list, collection_id: str = DomainRouter.default_collection()) -> None:
     """Update a page's source_articles field without rewriting the body."""
     import re
     existing = read_page(title, collection_id=collection_id)
@@ -838,13 +838,13 @@ def _update_page_source_articles(title: str, sources: list, collection_id: str =
     )
 
 
-def _changelog_path(collection_id: str = "default") -> Path:
+def _changelog_path(collection_id: str = DomainRouter.default_collection()) -> Path:
     return _wiki_root(collection_id) / "changelog.json"
 
 
 def _record_changelog(title: str, action: str, *, existing_page: dict = None,
                        new_body: str = "", new_status: str = "", new_marking: str = "",
-                       collection_id: str = "default") -> None:
+                       collection_id: str = DomainRouter.default_collection()) -> None:
     """Record a wiki page change to the changelog."""
     log_path = _changelog_path(collection_id)
     entries = []
@@ -875,7 +875,7 @@ def _record_changelog(title: str, action: str, *, existing_page: dict = None,
     log_path.write_text(_json.dumps(entries[-500:], indent=2, ensure_ascii=False))
 
 
-def rollback_page(title: str, index: int = -1, *, collection_id: str = "default") -> bool:
+def rollback_page(title: str, index: int = -1, *, collection_id: str = DomainRouter.default_collection()) -> bool:
     """Restore a wiki page to a previous version from the changelog.
     
     Args:
@@ -1059,7 +1059,7 @@ def _propagate_marking(title: str, marking: str, collection_id: str) -> None:
         _log.info(f"Marking '{marking}' propagated from '{title}' to {updated} pages: {sorted(connected)}")
 
 
-def _update_index(title: str, category: str, tags: List[str], related: List[str], collection_id: str = "default"):
+def _update_index(title: str, category: str, tags: List[str], related: List[str], collection_id: str = DomainRouter.default_collection()):
     idx_path = _wiki_root(collection_id) / "index.json"
     try:
         idx = _json.loads(idx_path.read_text(encoding="utf-8"))
@@ -1071,7 +1071,7 @@ def _update_index(title: str, category: str, tags: List[str], related: List[str]
     idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
 
 
-def generate_index_md(collection_id: str = "default") -> str:
+def generate_index_md(collection_id: str = DomainRouter.default_collection()) -> str:
     """Generate a human-readable Markdown index (index.md) from index.json.
 
     Args:
@@ -1109,7 +1109,7 @@ def generate_index_md(collection_id: str = "default") -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def update_page(title: str, *, collection_id: str = "default", **kwargs) -> bool:
+def update_page(title: str, *, collection_id: str = DomainRouter.default_collection(), **kwargs) -> bool:
     """Update specific frontmatter fields of an existing wiki page, preserving others.
 
     Args:
@@ -1169,7 +1169,7 @@ def update_page(title: str, *, collection_id: str = "default", **kwargs) -> bool
     return True
 
 
-def delete_page(title: str, collection_id: str = "default") -> bool:
+def delete_page(title: str, collection_id: str = DomainRouter.default_collection()) -> bool:
     """Delete a wiki page by title, removing from disk and index.
 
     Args:
@@ -1277,7 +1277,7 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
     return True
 
 
-def cleanup_ghost_pages(*, collection_id: str = "default", dry_run: bool = False) -> Dict[str, Any]:
+def cleanup_ghost_pages(*, collection_id: str = DomainRouter.default_collection(), dry_run: bool = False) -> Dict[str, Any]:
     """Batch-clean ghost pages — search index entries with no stored page data.
 
     Args:
@@ -1361,7 +1361,7 @@ def cleanup_ghost_pages(*, collection_id: str = "default", dry_run: bool = False
     return {"deleted": deleted, "skipped": skipped, "errors": errors, "dry_run": False}
 
 
-def delete_all_pages(*, collection_id: str = "default") -> Dict[str, Any]:
+def delete_all_pages(*, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Delete ALL wiki pages, reset index, and clear KB document wiki_pages references.
 
     Args:
@@ -1424,11 +1424,11 @@ def delete_all_pages(*, collection_id: str = "default") -> Dict[str, Any]:
 
 # ── Knowledge proposals (merge/update/supplement/contradict) ──────
 
-def _proposals_path(collection_id: str = "default") -> Path:
+def _proposals_path(collection_id: str = DomainRouter.default_collection()) -> Path:
     return _wiki_root(collection_id) / "proposals.json"
 
 
-def load_proposals(*, collection_id: str = "default") -> List[Dict[str, Any]]:
+def load_proposals(*, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Load all proposals from disk.
 
     Args:
@@ -1444,7 +1444,7 @@ def load_proposals(*, collection_id: str = "default") -> List[Dict[str, Any]]:
         return []
 
 
-def save_proposal(proposal: Dict[str, Any], collection_id: str = "default") -> str:
+def save_proposal(proposal: Dict[str, Any], collection_id: str = DomainRouter.default_collection()) -> str:
     """Add or update a proposal. Returns the proposal id.
 
     Args:
@@ -1468,7 +1468,7 @@ def save_proposal(proposal: Dict[str, Any], collection_id: str = "default") -> s
     return pid
 
 
-def update_proposal_status(proposal_id: str, status: str, collection_id: str = "default") -> bool:
+def update_proposal_status(proposal_id: str, status: str, collection_id: str = DomainRouter.default_collection()) -> bool:
     """Update a proposal's status (pending→approved→rejected).
 
     Args:
@@ -1488,7 +1488,7 @@ def update_proposal_status(proposal_id: str, status: str, collection_id: str = "
     return False
 
 
-def apply_proposal(proposal_id: str, collection_id: str = "default") -> Dict[str, Any]:
+def apply_proposal(proposal_id: str, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Execute an approved proposal: merge, update, supplement, or contrad.
 
     Args:
@@ -1684,7 +1684,7 @@ def _execute_contradict(prop, from_title, to_title) -> Dict[str, Any]:
 # ── Search ─────────────────────────────────────────────────────
 
 def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
-                   limit: int = 20, collection_id: str = "default",
+                   limit: int = 20, collection_id: str = DomainRouter.default_collection(),
                    department: str = "", effective_after: str = "",
                    expiry_before: str = "") -> List[Dict[str, Any]]:
     """Search wiki pages by title, tags, body, with K4 metadata filters.
@@ -1769,7 +1769,7 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
     return results[:limit]
 
 
-def traverse_links(start_title: str, depth: int = 2, collection_id: str = "default") -> List[Dict[str, Any]]:
+def traverse_links(start_title: str, depth: int = 2, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """BFS traverse wiki link graph starting from a page.
 
     Args:
@@ -1814,7 +1814,7 @@ def wiki_health_report() -> Dict[str, Any]:
     return get_wiki_registry().run().to_dict()
 
 
-def list_all_pages(*, collection_id: str = "default") -> List[Dict[str, Any]]:
+def list_all_pages(*, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Return summary of all wiki pages for index display.
 
     Args:
@@ -1825,7 +1825,7 @@ def list_all_pages(*, collection_id: str = "default") -> List[Dict[str, Any]]:
 
 # ── Graph export (ECharts force-layout) ──────────────────────────
 
-def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = "default") -> Dict[str, Any]:
+def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Build node/edge graph for ECharts force-layout visualization (cached).
 
     Args:
@@ -1846,7 +1846,7 @@ def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_
     return result
 
 
-def invalidate_graph_cache(collection_id: str = "default") -> None:
+def invalidate_graph_cache(collection_id: str = DomainRouter.default_collection()) -> None:
     """Invalidate all graph caches (call after write_page/delete_page).
 
     Args:
@@ -1907,7 +1907,7 @@ def _write_graph_cache(cache_key: str, result: Dict[str, Any]) -> None:
         logging.debug(str(e), exc_info=True)
 
 
-def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = "default") -> Dict[str, Any]:
+def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     u"""Internal: raw graph builder (no cache)."""
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
@@ -2051,7 +2051,7 @@ def auto_link_page(title: str, body: str, all_titles: List[str],
     return [s[0] for s in scored[:5]]
 
 
-def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "default") -> List[Dict[str, Any]]:
+def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Multi-dimensional duplicate page detection across all wiki pages.
 
     Args:
@@ -2355,7 +2355,7 @@ Reply with ONLY a JSON object (no markdown fences, no explanation):
 
 # ── Knowledge Atom Operations ────────────────────────────────────
 
-def write_atom(atom_data: Dict[str, Any], *, collection_id: str = "default") -> str:
+def write_atom(atom_data: Dict[str, Any], *, collection_id: str = DomainRouter.default_collection()) -> str:
     """Write a KnowledgeAtom as a wiki page (category='atoms').
 
     Args:
@@ -2388,7 +2388,7 @@ def write_atom(atom_data: Dict[str, Any], *, collection_id: str = "default") -> 
     )
 
 
-def write_atoms_batch(atoms: List[Dict[str, Any]], *, collection_id: str = "default") -> Dict[str, int]:
+def write_atoms_batch(atoms: List[Dict[str, Any]], *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, int]:
     """Batch write KnowledgeAtom list. Returns {written, failed} counts.
 
     Args:
@@ -2445,7 +2445,7 @@ def detect_contradicting_atoms(atoms: List[Dict[str, Any]]) -> List[Dict[str, An
 
 
 def build_contradiction_page(atoms: List[Dict[str, Any]], contradiction: Dict,
-                              *, collection_id: str = "default") -> Optional[str]:
+                              *, collection_id: str = DomainRouter.default_collection()) -> Optional[str]:
     """Create a ContradictionPage from a detected contradiction pair.
 
     Args:
@@ -2484,7 +2484,7 @@ def build_contradiction_page(atoms: List[Dict[str, Any]], contradiction: Dict,
 
 
 async def atomize_document(doc_text: str, doc_id: str, *,
-                            collection_id: str = "default",
+                            collection_id: str = DomainRouter.default_collection(),
                             max_atoms: int = 20,
                             model_name: str = "") -> Dict[str, Any]:
     """Full pipeline: raw document → KnowledgeAtom extraction → schema validation → write → contradiction detection.
@@ -2573,7 +2573,7 @@ async def atomize_document(doc_text: str, doc_id: str, *,
     return result
 
 
-def clean_stale_references(collection_id: str = "default") -> Dict[str, Any]:
+def clean_stale_references(collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Scan all wiki pages, move stale kb: references from source_articles to stale_references.
 
     Args:
@@ -2781,7 +2781,7 @@ Return ONLY a JSON object:
 
 def build_contradiction_page_by_data(a_page: Dict, b_page: Dict, *,
                                      reason: str = "",
-                                     collection_id: str = "default") -> Optional[str]:
+                                     collection_id: str = DomainRouter.default_collection()) -> Optional[str]:
     """Create a ContradictionPage from two page dicts.
 
     Args:
@@ -2813,7 +2813,7 @@ def build_contradiction_page_by_data(a_page: Dict, b_page: Dict, *,
     )
 
 
-async def seed_instances(collection_id: str = "default",
+async def seed_instances(collection_id: str = DomainRouter.default_collection(),
                           model_name: str = "") -> Dict[str, Any]:
     """Create seed instances for empty T-Box categories (atoms, contradictions).
 
@@ -2893,7 +2893,7 @@ async def seed_instances(collection_id: str = "default",
     return result
 
 
-def backfill_evidence_for_page_sync(title: str, *, collection_id: str = "default") -> Dict[str, Any]:
+def backfill_evidence_for_page_sync(title: str, *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Extract evidence annotations from a wiki page's own content (non-LLM fallback).
 
     Args:
@@ -2954,7 +2954,7 @@ def backfill_evidence_for_page_sync(title: str, *, collection_id: str = "default
     }
 
 
-def backfill_evidence_batch_sync(collection_id: str = "default",
+def backfill_evidence_batch_sync(collection_id: str = DomainRouter.default_collection(),
                                   limit: int = 50) -> Dict[str, Any]:
     """Batch backfill evidence for all pages that have kb: source_articles but no evidence.
 
@@ -3012,7 +3012,7 @@ def backfill_evidence_batch_sync(collection_id: str = "default",
     return result
 
 
-def _sync_synthesis_pages(updated_title: str, *, collection_id: str = "default", domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN) -> int:
+def _sync_synthesis_pages(updated_title: str, *, collection_id: str = DomainRouter.default_collection(), domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN) -> int:
     """When a source page is updated, find synthesis pages that reference it and create review entries.
 
     Synthesis pages have frontmatter.source_instances listing their source entities.
@@ -3056,7 +3056,7 @@ def recommend_knowledge(
     *,
     domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN,
     limit: int = 5,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> List[Dict[str, Any]]:
     """L5 active knowledge recommendation engine.
 
@@ -3173,7 +3173,7 @@ _PII_PATTERNS = [
 ]
 
 
-def classify_page(title: str = "", body: str = "", *, collection_id: str = "default") -> Dict[str, Any]:
+def classify_page(title: str = "", body: str = "", *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Phase 53: Auto-classify wiki page based on content patterns.
 
     Args:
