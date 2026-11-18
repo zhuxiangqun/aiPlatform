@@ -18,6 +18,8 @@ def test_wiki_ontology_engine_req_fallbacks_use_helper():
     assert 'req.get("domain_id", "ai-knowledge")' not in text
     assert text.count("domain_id = _req_domain_id(req)") >= 13
     assert '["ai-knowledge", "default", "ship-design"]' not in text
+    assert '"ship-design"' not in text
+    assert "list_domains()" in text
 
 
 def test_facade_pipeline_agents_kb_fallback():

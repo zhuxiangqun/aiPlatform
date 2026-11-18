@@ -1911,12 +1911,15 @@ async def get_cross_domain_stats():
 
     sharded = get_sharded_graph()
 
-    # Load probe domains (KB + catch-all graph + ship-design residual)
+    # Load probe domains from DomainRouter registry (no call-site domain literals)
     from core.harness.knowledge.domain_router import get_domain_router
 
     _r = get_domain_router()
-    for did in [_r.default_kb_domain(), _r.default_graph_domain(), "ship-design"]:
-
+    probe = [_r.default_kb_domain(), _r.default_graph_domain()]
+    for did in _r.list_domains():
+        if did not in probe:
+            probe.append(did)
+    for did in probe:
         sharded.get_shard(did)
 
     return {
