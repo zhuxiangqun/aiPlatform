@@ -435,7 +435,7 @@ async def generate_answer(
 
         tenant_id = sanitize_tenant_id(tenant_id)
     except Exception:
-        tenant_id = "default"
+        tenant_id = DomainRouter.default_tenant()
 
     import asyncio as _aio
     answer = ""

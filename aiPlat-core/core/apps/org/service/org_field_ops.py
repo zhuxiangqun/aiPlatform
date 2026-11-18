@@ -336,7 +336,7 @@ def signoff_prep_view(
     try:
         from core.apps.org.service.org_value_translation import load_value_baseline
 
-        baseline_ok = (load_value_baseline(tenant_id="default").get("baseline_source") or "") != "missing"
+        baseline_ok = (load_value_baseline(tenant_id=DomainRouter.default_tenant()).get("baseline_source") or "") != "missing"
     except Exception:
         baseline_ok = False
 

@@ -123,11 +123,14 @@ class EmotionTracker:
             from core.services.execution_store import get_execution_store
             store = get_execution_store()
             def _create():
+                from core.harness.knowledge.domain_router import DomainRouter
+
                 conn = store._connect()
-                conn.execute("""
+                default_tid = DomainRouter.default_tenant()
+                conn.execute(f"""
                     CREATE TABLE IF NOT EXISTS emotion_snapshots (
                         id TEXT PRIMARY KEY,
-                        tenant_id TEXT NOT NULL DEFAULT 'default',
+                        tenant_id TEXT NOT NULL DEFAULT '{default_tid}',
                         session_id TEXT NOT NULL,
                         dominant_tone TEXT NOT NULL DEFAULT 'neutral',
                         intensity REAL NOT NULL DEFAULT 0.5,

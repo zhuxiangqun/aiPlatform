@@ -625,7 +625,7 @@ class ExtractionPipeline:
         # Best-effort: 无 LLM/embedding 模型时静默跳过，不阻断抽取主流程。
         # Only wire the (already capped) chunks used for LLM — never the full dump.
         try:
-            await self._wire_kb(all_relations, chunks, doc_name, tenant_id="default")
+            await self._wire_kb(all_relations, chunks, doc_name, tenant_id=DomainRouter.default_tenant())
         except Exception:
             logger.debug("kb wiring (graph/vector) failed", exc_info=True)
         return [result]

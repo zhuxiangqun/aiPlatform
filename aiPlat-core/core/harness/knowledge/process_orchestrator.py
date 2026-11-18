@@ -48,12 +48,14 @@ def _tid(tenant_id: str | None) -> str:
 def _ensure_schema():
     """Ensure process_instances schema including physical tenant_id."""
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
-    conn.execute("""
+    # 为什么：N09 K12/K51 — DDL DEFAULT 与回填值均走 default_tenant SSOT
+    default_tid = DomainRouter.default_tenant()
+    conn.execute(f"""
         CREATE TABLE IF NOT EXISTS process_instances (
             id TEXT PRIMARY KEY,
             process_name TEXT NOT NULL,
             domain_id TEXT NOT NULL,
-            tenant_id TEXT NOT NULL DEFAULT 'default',
+            tenant_id TEXT NOT NULL DEFAULT '{default_tid}',
             current_step INTEGER DEFAULT 0,
             starter_entity TEXT NOT NULL,
             status TEXT DEFAULT 'running',
@@ -61,15 +63,15 @@ def _ensure_schema():
             updated_at REAL NOT NULL
         )
     """)
-    # 为什么：N09 K12 — 存量库补物理 tenant_id
     cols = {r[1] for r in conn.execute("PRAGMA table_info(process_instances)").fetchall()}
     if "tenant_id" not in cols:
         conn.execute(
-            "ALTER TABLE process_instances ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'"
+            f"ALTER TABLE process_instances ADD COLUMN tenant_id TEXT NOT NULL DEFAULT '{default_tid}'"
         )
     conn.execute(
-        "UPDATE process_instances SET tenant_id = 'default' "
-        "WHERE tenant_id IS NULL OR trim(tenant_id) = ''"
+        "UPDATE process_instances SET tenant_id = ? "
+        "WHERE tenant_id IS NULL OR trim(tenant_id) = ''",
+        (default_tid,),
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_proc_domain ON process_instances(domain_id, process_name)")
     conn.execute(

@@ -64,8 +64,10 @@ class SkillMarketplace:
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
+            # 为什么：N09 K51 — tenant DDL DEFAULT 走 default_tenant SSOT
+            default_tid = DomainRouter.default_tenant()
 
-            conn.executescript("""
+            conn.executescript(f"""
 
                 CREATE TABLE IF NOT EXISTS skill_registry (
 
@@ -119,10 +121,10 @@ class SkillMarketplace:
 
                 CREATE TABLE IF NOT EXISTS publish_submissions (
                     submission_id TEXT PRIMARY KEY,
-                    tenant_id TEXT NOT NULL DEFAULT 'default',
+                    tenant_id TEXT NOT NULL DEFAULT '{default_tid}',
                     skill_id TEXT NOT NULL,
                     status TEXT NOT NULL DEFAULT 'pending_review',
-                    test_result_json TEXT DEFAULT '{}',
+                    test_result_json TEXT DEFAULT '{{}}',
                     created_at TEXT NOT NULL,
                     decided_at TEXT,
                     decided_by TEXT,

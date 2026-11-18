@@ -6,7 +6,7 @@ recording complete reasoning paths. Used for impact analysis, root cause
 tracing, and knowledge graph-enhanced retrieval.
 
 Usage:
-  graph = GraphIndex.load(<default_kb_domain>, tenant_id="default")  # example; DomainRouter.default_kb_domain()
+  graph = GraphIndex.load(<default_kb_domain>, tenant_id=DomainRouter.default_tenant())  # example; DomainRouter.default_kb_domain()
   result = traverse("RAG", graph, max_hops=2)
   # → TraversalResult with paths[] and terminal_entities[]
 """
