@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T08:43:23+08:00",
+  "reviewed_at": "2026-11-18T18:13:08+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "7b45b9e6baf17ead3e94f89729affee20cee9518fed58f9f06679f46639492ba",
-  "head_sha": "1304962a15f5e138c3d9cf75feb4fd4fbb55a8ce",
+  "diff_sha256": "387e97bdd4bc2ae032e03852c2ea0c23392c5a52c5384a6e72d366dec0993db5",
+  "head_sha": "26a7d0f2d232d69fc9f1aefed4b6284e5f1ce13f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K36 branch registry tenant keys. Residual: branch YAML path tenant prefix; domain-id hardcodes; N09 certified false."
+  "note": "Cascade cherry-pick CI unblock onto K36 (PR #836)"
 }
