@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:24:01+08:00",
+  "reviewed_at": "2026-11-18T16:50:53+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "b709bd390b34701a2507607822671eec4389c34a539c750973bc188669e08b0f",
-  "head_sha": "739b379c8412e2109805d4f4ae271ae9c2ae5ea5",
+  "diff_sha256": "1f15ea8991423d382f57b498125127bc9ac474ee9e9b17056b491271bee67a0a",
+  "head_sha": "07467c1026cd111037159878a09382d7cc05a8ff",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K20 threads tenant_id through OCS C5 / OntologyAuditor / validate_domain GraphIndex.load; diagnostics ontology-audit binds actor_from_http. Residual: context_bus/evolver/SECI/orchestrated_retrieval bare loads; system_health audit_all_domains may still default. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K20 (PR #820)"
 }
