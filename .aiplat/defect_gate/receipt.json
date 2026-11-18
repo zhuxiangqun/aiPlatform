@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T09:05:45+08:00",
+  "reviewed_at": "2026-11-18T09:20:04+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "1fc85ae830d770553f023838a90624edeaa1b41809577d0cc2c5b290cb175d7a",
-  "head_sha": "53e5c0796d593324758fbaa9198abade1a48aa54",
+  "diff_sha256": "e5c13b2e4564c3facd55b6f5250bb13953501a406686af981af23733f431d0e1",
+  "head_sha": "5560b57ec22f181e639ecc9daca3154b496c0a0b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K38 FDE tracking domain via DomainRouter. Residual: enterprise-terms/knowledge-atom hardcodes; core fde service literals; PLATFORM_TRACKING_DOMAIN SSOT; N09 certified false."
+  "note": "K39 FDE terms/atom/kb via DomainRouter + Step1.8 SSOT exemption. Residual: harness knowledge-atom literals; skills/registry enterprise-terms; N09 certified false."
 }
