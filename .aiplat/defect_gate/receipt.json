@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T08:58:13+08:00",
+  "reviewed_at": "2026-11-18T09:05:45+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "ad8c9126ef9469ff09b84cd55b4070ca3d9725197484e559af3ca6980bf0d35a",
-  "head_sha": "76b322606c1fd3866fdd56103c0ab16d49c80877",
+  "diff_sha256": "1fc85ae830d770553f023838a90624edeaa1b41809577d0cc2c5b290cb175d7a",
+  "head_sha": "53e5c0796d593324758fbaa9198abade1a48aa54",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K37 branch YAML tenant prefix. Residual: domain-id hardcodes; N09 certified false. Shared YAML bootstrap read for new tenants is intentional."
+  "note": "K38 FDE tracking domain via DomainRouter. Residual: enterprise-terms/knowledge-atom hardcodes; core fde service literals; PLATFORM_TRACKING_DOMAIN SSOT; N09 certified false."
 }
