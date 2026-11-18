@@ -24,6 +24,8 @@ injects plan metadata into the agent context for step-by-step execution.
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 
 
@@ -46,7 +48,7 @@ from ..kernel.types import ExecutionPlan
 
 
 
-def _ontology_routing_hint(query: str, domain_id: str = "ai-knowledge") -> Optional[str]:
+def _ontology_routing_hint(query: str, domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN) -> Optional[str]:
 
     """Phase 11.1: Use ontology mapping + graph topology to suggest best engine.
 

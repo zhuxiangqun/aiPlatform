@@ -4,6 +4,8 @@
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
@@ -3456,7 +3458,7 @@ def get_adoption_metrics():
     }
 
 @router.get("/diagnostics/ontology-audit", response_model=Dict[str, Any])
-def get_ontology_audit(request: Request, domain_id: str = "ai-knowledge"):
+def get_ontology_audit(request: Request, domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN):
     """Ontology domain audit: class coverage, relation density, state machine activity.
 
     Args:

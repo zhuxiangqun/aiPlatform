@@ -3249,9 +3249,11 @@ async def export_okf(payload: dict = Body(...)):
         payload: 载荷 dict。
     """
     from core.api.core_facade import OKFExporter
+    from apps.fde.api.graph_tenant import fde_kb_domain
+
     exporter = OKFExporter()
     result = await exporter.export(
-        payload.get("domain_id", "ai-knowledge"),
+        payload.get("domain_id") or fde_kb_domain(),
         incremental=payload.get("incremental", False),
         output_dir=payload.get("output_dir", ""),
         tenant_id=fde_graph_tenant(),

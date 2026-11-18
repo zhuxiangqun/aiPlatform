@@ -12,6 +12,8 @@ Endpoints:
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 
 import json
@@ -929,7 +931,7 @@ async def get_codebase_stats() -> Dict[str, Any]:
 # ═══════════════════════════════════════════════════════════════
 
 @router.post("/rules/design", response_model=Dict[str, Any])
-async def design_rule(domain_id: str = "ai-knowledge", text: str = ""):
+async def design_rule(domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN, text: str = ""):
     """Translate natural language business requirement into an inference rule.
 
     Args:
@@ -943,7 +945,7 @@ async def design_rule(domain_id: str = "ai-knowledge", text: str = ""):
 
 
 @router.post("/rules/deploy", response_model=Dict[str, Any])
-async def deploy_rule(domain_id: str = "ai-knowledge", rule: Dict[str, Any] = None):
+async def deploy_rule(domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN, rule: Dict[str, Any] = None):
     """Deploy an inference rule to the domain.
 
     Args:
@@ -967,7 +969,7 @@ async def deploy_rule(domain_id: str = "ai-knowledge", rule: Dict[str, Any] = No
 
 
 @router.get("/rules", response_model=Dict[str, Any])
-async def list_domain_rules(domain_id: str = "ai-knowledge"):
+async def list_domain_rules(domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN):
     """List all inference rules for a domain.
 
     Args:

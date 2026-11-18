@@ -19,6 +19,8 @@ Usage:
 
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
@@ -1796,7 +1798,7 @@ class OntologyEngine:
 
 def load_engine(
 
-    domain_id: str = "ai-knowledge", *, tenant_id: str = "default"
+    domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN, *, tenant_id: str = "default"
 
 ) -> Optional[OntologyEngine]:
 
@@ -1839,7 +1841,7 @@ _MAX_GRAPH_CACHE = 5  # keep at most 5 domain graphs in memory
 
 
 
-def get_graph(domain_id: str = "ai-knowledge", *, tenant_id: str = "") -> GraphIndex:
+def get_graph(domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN, *, tenant_id: str = "") -> GraphIndex:
 
     """Get or load the graph for a domain. Thread-safe via dict cache.
 

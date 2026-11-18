@@ -27,6 +27,8 @@ OKF 文件结构:
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
@@ -93,7 +95,7 @@ class OKFExporter:
 
     async def export(
         self,
-        domain_id: str = "ai-knowledge",
+        domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN,
         *,
         incremental: bool = False,
         output_dir: str = "",
