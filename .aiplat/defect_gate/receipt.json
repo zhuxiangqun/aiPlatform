@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T11:01:32+08:00",
+  "reviewed_at": "2026-11-18T18:40:17+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "7a747074b5a5f427b30e1a5703aaaa1db98193d7ee180bd2fa328429cf8249d9",
-  "head_sha": "5f185e8a60db2b5f69a9d5aeedf5c7d692bab526",
+  "diff_sha256": "2f593f38ff0b23589291062448af807d89d93a3bdacc6ff0909c395cf99d981c",
+  "head_sha": "a32b1e49bc787fb7ba08b653380f474c4fbb684e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K46: it-ops/data-gov signature defaults -> PLATFORM_IT_OPS_DOMAIN/PLATFORM_DATA_GOV_DOMAIN; residual domain_id='aiplat-system' in wiki.py; N09 not certified. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K46 (PR #847)"
 }
