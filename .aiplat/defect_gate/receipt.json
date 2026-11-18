@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:04:14+08:00",
+  "reviewed_at": "2026-11-18T16:44:38+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "848a715c55bad1c896b99f5fa380da78e62472d3b740fd56d5294999036f7893",
-  "head_sha": "01d6bd66f5b6870c5efde872dbd331e084078345",
+  "diff_sha256": "6143d9a391453a40001934a7a9045db15347a7bd24b8d0c09dff24aaacc7bc1a",
+  "head_sha": "2d400da0bd4fa3bcff7917b35e861b724a48955b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K17 binds drift-status/rebuild tenant via actor_from_http; query tenant_id removed. Residual: metric/scoring/scenario/governance CRUD tenant. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K17 (PR #817)"
 }
