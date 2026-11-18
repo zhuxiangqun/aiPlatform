@@ -20,6 +20,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
+from core.harness.knowledge.domain_router import DomainRouter
 
 if TYPE_CHECKING:
     from core.harness.knowledge.knowledge_ontology import KnowledgeOntology, OntologyTriple
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 _ABOX_CACHE: Dict[str, tuple] = {}  # collection_id → (timestamp, ontology)
 
 
-def invalidate_abox_cache(collection_id: str = "default") -> None:
+def invalidate_abox_cache(collection_id: str = DomainRouter.default_collection()) -> None:
     """Invalidate cached A-Box for a collection. Call from write_page/delete_page.
 
     Args:
@@ -41,13 +42,13 @@ def invalidate_abox_cache(collection_id: str = "default") -> None:
     _ABOX_CACHE.pop(collection_id, None)
 
 
-def _wiki_root(collection_id: str = "default") -> Path:
+def _wiki_root(collection_id: str = DomainRouter.default_collection()) -> Path:
     """Get wiki root for a specific collection, delegating to wiki_engine."""
     from core.harness.knowledge.wiki_engine import _wiki_root as _engine_wiki_root
     return _engine_wiki_root(collection_id)
 
 
-def build_abox(partial: Optional[str] = None, *, collection_id: str = "default") -> KnowledgeOntology:
+def build_abox(partial: Optional[str] = None, *, collection_id: str = DomainRouter.default_collection()) -> KnowledgeOntology:
     """Build A-Box from current Wiki + KB data.
 
     Args:
@@ -101,7 +102,7 @@ def build_abox(partial: Optional[str] = None, *, collection_id: str = "default")
 # Wiki Page Scanner
 # ══════════════════════════════════════════════════════════════
 
-def _scan_wiki_pages(partial: Optional[str] = None, *, collection_id: str = "default") -> List[Dict[str, Any]]:
+def _scan_wiki_pages(partial: Optional[str] = None, *, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Scan wiki collection for all .md files, parse frontmatter."""
     root = _wiki_root(collection_id)
     if not root.exists():
@@ -203,7 +204,7 @@ def _scan_kb_documents(partial: Optional[str] = None) -> List[Dict[str, Any]]:
 # ══════════════════════════════════════════════════════════════
 
 def _build_wiki_triples(onto: KnowledgeOntology, pages: List[Dict[str, Any]],
-                        collection_id: str = "default") -> None:
+                        collection_id: str = DomainRouter.default_collection()) -> None:
     """Build triples from Wiki page frontmatter data."""
     from core.harness.knowledge.knowledge_ontology import OntologyTriple
     now = datetime.now(timezone.utc).isoformat()
@@ -456,7 +457,7 @@ def _safe_uri(name: str) -> str:
 # Incremental Rebuild API
 # ══════════════════════════════════════════════════════════════
 
-def rebuild_for_doc(doc_id: str, *, collection_id: str = "default") -> KnowledgeOntology:
+def rebuild_for_doc(doc_id: str, *, collection_id: str = DomainRouter.default_collection()) -> KnowledgeOntology:
     """Incremental rebuild: only triples related to a specific KB document.
 
     Args:
@@ -466,7 +467,7 @@ def rebuild_for_doc(doc_id: str, *, collection_id: str = "default") -> Knowledge
     return build_abox(partial=doc_id, collection_id=collection_id)
 
 
-def rebuild_for_page(title: str, *, collection_id: str = "default") -> KnowledgeOntology:
+def rebuild_for_page(title: str, *, collection_id: str = DomainRouter.default_collection()) -> KnowledgeOntology:
     """Incremental rebuild: only triples related to a specific Wiki page.
 
     Args:
@@ -476,7 +477,7 @@ def rebuild_for_page(title: str, *, collection_id: str = "default") -> Knowledge
     return build_abox(partial=title, collection_id=collection_id)
 
 
-def rebuild_full(*, collection_id: str = "default") -> KnowledgeOntology:
+def rebuild_full(*, collection_id: str = DomainRouter.default_collection()) -> KnowledgeOntology:
     """Full A-Box rebuild from scratch.
 
     Args:

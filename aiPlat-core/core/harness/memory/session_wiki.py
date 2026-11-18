@@ -11,6 +11,7 @@ import os
 import re
 import time
 from typing import Any, Dict, List, Optional, Sequence
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def write_session_wiki_page(
     session_id: str = "",
     tags: Optional[Sequence[str]] = None,
     source: str = "session",
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Write a short draft wiki page for a finished coding / IDE session.
 

@@ -107,7 +107,7 @@ class SqliteEmbeddingRetriever(IRetriever):
 
         tenant_id: str = DomainRouter.default_tenant(),
 
-        collection_id: str = "default",
+        collection_id: str = DomainRouter.default_collection(),
 
         domain_id: str = None,
 
@@ -512,7 +512,7 @@ def create_sqlite_retriever(
 
     tenant_id: str = DomainRouter.default_tenant(),
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     domain_id: str = None,
 

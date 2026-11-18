@@ -22,6 +22,7 @@ import logging
 import time as _time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ AI = "http://aiplat.local/knowledge#"
 
 
 async def generate_semantic_suggestions(
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     *,
     max_suggestions: int = 5,
     confidence_threshold: float = 0.7,

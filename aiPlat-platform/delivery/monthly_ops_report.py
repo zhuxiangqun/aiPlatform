@@ -48,7 +48,7 @@ def build_monthly_ops_report(
     tenant_id: str = DomainRouter.default_tenant(),
     window_hours: int = 720,
     project_id: str = "",
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """build_monthly_ops_report。
 

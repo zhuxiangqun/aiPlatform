@@ -122,7 +122,7 @@ def compute_domain_maturity(
         from core.harness.knowledge.wiki_engine import search_pages
         # Resolve collection_id from registry
         reg_path = _os.path.join(base, "registry.json")
-        collection_id = "default"
+        collection_id=DomainRouter.default_collection()
         if _os.path.exists(reg_path):
             import json
             with open(reg_path) as f:

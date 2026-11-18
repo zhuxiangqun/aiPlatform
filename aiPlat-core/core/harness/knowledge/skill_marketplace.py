@@ -107,7 +107,7 @@ class SkillMarketplace:
 
                     comment TEXT,
 
-                    profile_id TEXT DEFAULT 'default',
+                    profile_id TEXT DEFAULT '{DomainRouter.default_profile()}',
 
                     created_at TEXT NOT NULL,
 
@@ -153,7 +153,7 @@ class SkillMarketplace:
 
                  category: str = "general", source_url: str = "", tags: list[str] | None = None) -> bool:
 
-        """register。
+        """注册或更新 marketplace Skill 条目。
 
         Args:
             skill_id: Skill ID。
@@ -238,7 +238,7 @@ class SkillMarketplace:
 
 
 
-    def rate(self, skill_id: str, rating: int, comment: str = "", profile_id: str = "default"):
+    def rate(self, skill_id: str, rating: int, comment: str = "f", profile_id: str = DomainRouter.default_profile()):
 
         """rate。
 

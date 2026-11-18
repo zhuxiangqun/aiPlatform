@@ -22,6 +22,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from core.harness.knowledge.domain_router import DomainRouter
 
 if TYPE_CHECKING:
     from core.harness.knowledge.knowledge_ontology import KnowledgeOntology, OntologyTriple
@@ -99,7 +100,7 @@ class MarkingConfig:
     })
 
     @classmethod
-    def default(cls, collection_id: str = "default") -> "MarkingConfig":
+    def default(cls, collection_id: str = DomainRouter.default_collection()) -> "MarkingConfig":
         """default。
 
         Args:
@@ -108,12 +109,12 @@ class MarkingConfig:
         return cls(collection_id=collection_id)
 
 
-def _markings_path(collection_id: str = "default") -> str:
+def _markings_path(collection_id: str = DomainRouter.default_collection()) -> str:
     home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "markings.json")
 
 
-def load_markings_config(collection_id: str = "default") -> MarkingConfig:
+def load_markings_config(collection_id: str = DomainRouter.default_collection()) -> MarkingConfig:
     """load_markings_config。
 
     Args:
@@ -176,7 +177,7 @@ def set_marking(
     level: MarkingLevel,
     scope: str = "",
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Marking:
     """set_marking。
 
@@ -209,7 +210,7 @@ def remove_marking(
     entity_uri: str,
     label: str = "",
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> bool:
     """remove_marking。
 
@@ -242,7 +243,7 @@ def remove_marking(
 def get_entity_markings(
     entity_uri: str,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     resolve_effective: bool = True,
 ) -> Dict[str, Any]:
     """获取 entity_markings。
@@ -367,7 +368,7 @@ def compute_marking_diff(
 def get_propagation_tree(
     entity_uri: str,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     max_depth: int = 4,
 ) -> Dict[str, Any]:
     """Return full propagation tree showing all inherited markings + their sources.

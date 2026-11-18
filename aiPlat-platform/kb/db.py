@@ -19,6 +19,7 @@ from core.utils.ids import new_prefixed_id
 from core.api.facades.kb_facade import kb_create_infra_db_client
 
 import logging
+from core.api.core_facade import DomainRouter
 
 
 
@@ -374,7 +375,7 @@ CREATE TABLE IF NOT EXISTS kb_watches (
 
   directory_path TEXT NOT NULL,
 
-  collection_id TEXT NOT NULL DEFAULT 'default',
+  collection_id TEXT NOT NULL DEFAULT '{collection_id}',
 
   recursive INTEGER NOT NULL DEFAULT 1,
 
@@ -509,7 +510,7 @@ class KBSqlite:
         """
         with self.connect() as conn:
 
-            conn.executescript(SCHEMA_SQL)
+            conn.executescript(SCHEMA_SQL.format(collection_id=DomainRouter.default_collection()))
 
             # Migration: add wiki_status column for existing DBs
 
@@ -2093,7 +2094,7 @@ class KBSqlite:
 
 
 
-    def upsert_watch(self, *, tenant_id: str, watch_id: str, directory_path: str, collection_id: str = "default", recursive: bool = True, pattern: str = "*.md", enabled: bool = True) -> None:
+    def upsert_watch(self, *, tenant_id: str, watch_id: str, directory_path: str, collection_id: str = DomainRouter.default_collection(), recursive: bool = True, pattern: str = "*.md", enabled: bool = True) -> None:
 
         """upsert_watch。
 

@@ -31,6 +31,7 @@ import os as _os
 import time as _time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -180,12 +181,12 @@ class OntologyScene:
 # Scene Store
 # ══════════════════════════════════════════════════════════════
 
-def _scene_path(collection_id: str = "default") -> str:
+def _scene_path(collection_id: str = DomainRouter.default_collection()) -> str:
     home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "scenes.json")
 
 
-def list_scenes(collection_id: str = "default") -> List[OntologyScene]:
+def list_scenes(collection_id: str = DomainRouter.default_collection()) -> List[OntologyScene]:
     """列出 scenes。
 
     Args:
@@ -201,7 +202,7 @@ def list_scenes(collection_id: str = "default") -> List[OntologyScene]:
         return []
 
 
-def get_scene(scene_id: str, *, collection_id: str = "default") -> Optional[OntologyScene]:
+def get_scene(scene_id: str, *, collection_id: str = DomainRouter.default_collection()) -> Optional[OntologyScene]:
     """获取 scene。
 
     Args:
@@ -215,7 +216,7 @@ def get_scene(scene_id: str, *, collection_id: str = "default") -> Optional[Onto
     return None
 
 
-def save_scene(scene: OntologyScene, *, collection_id: str = "default") -> OntologyScene:
+def save_scene(scene: OntologyScene, *, collection_id: str = DomainRouter.default_collection()) -> OntologyScene:
     """save_scene。
 
     Args:
@@ -242,7 +243,7 @@ def save_scene(scene: OntologyScene, *, collection_id: str = "default") -> Ontol
     return scene
 
 
-def delete_scene(scene_id: str, *, collection_id: str = "default") -> bool:
+def delete_scene(scene_id: str, *, collection_id: str = DomainRouter.default_collection()) -> bool:
     """删除 scene。
 
     Args:
@@ -269,7 +270,7 @@ def instantiate_scene(
     scene_id: str,
     *,
     params: Optional[Dict[str, Any]] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Optional[Dict[str, Any]]:
     """Instantiate a scene into a PipelineConfig dict.
 

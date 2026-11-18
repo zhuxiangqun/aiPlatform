@@ -49,7 +49,7 @@ async def summarize_document(
     if not tenant_id:
         tenant_id = DomainRouter.default_tenant()
     if not collection_id:
-        collection_id = "default"
+        collection_id=DomainRouter.default_collection()
     if not doc_id:
         raise ValueError("doc_id_required")
 

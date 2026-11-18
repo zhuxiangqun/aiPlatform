@@ -29,6 +29,7 @@ import time as _time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +65,12 @@ class GrowthSnapshot:
         }
 
 
-def _snapshots_path(collection_id: str = "default") -> str:
+def _snapshots_path(collection_id: str = DomainRouter.default_collection()) -> str:
     home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "growth_snapshots.json")
 
 
-def _load_snapshots(collection_id: str = "default") -> List[Dict[str, Any]]:
+def _load_snapshots(collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     path = _snapshots_path(collection_id)
     if not _os.path.exists(path):
         return []
@@ -79,7 +80,7 @@ def _load_snapshots(collection_id: str = "default") -> List[Dict[str, Any]]:
         return []
 
 
-def _save_snapshots(snapshots: List[Dict[str, Any]], collection_id: str = "default") -> None:
+def _save_snapshots(snapshots: List[Dict[str, Any]], collection_id: str = DomainRouter.default_collection()) -> None:
     path = _snapshots_path(collection_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     if len(snapshots) > 200:  # keep last 200 snapshots
@@ -88,7 +89,7 @@ def _save_snapshots(snapshots: List[Dict[str, Any]], collection_id: str = "defau
         _json.dump(snapshots, f, indent=2, ensure_ascii=False)
 
 
-def take_growth_snapshot(collection_id: str = "default") -> GrowthSnapshot:
+def take_growth_snapshot(collection_id: str = DomainRouter.default_collection()) -> GrowthSnapshot:
     """Snapshot current ontology state. Call this from write_page / delete_page hooks.
 
     Args:
@@ -164,7 +165,7 @@ def take_growth_snapshot(collection_id: str = "default") -> GrowthSnapshot:
 
 
 def get_growth_stats(
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     *,
     days: int = 30,
 ) -> Dict[str, Any]:
@@ -232,7 +233,7 @@ def get_growth_stats(
     }
 
 
-def estimate_compound_value(collection_id: str = "default") -> Dict[str, Any]:
+def estimate_compound_value(collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Estimate the compound value of the knowledge base.
 
     Args:

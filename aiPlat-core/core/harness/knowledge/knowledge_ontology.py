@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import logging
 
 from core.utils.paths import get_aiplat_data_dir, get_aiplat_home
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -711,7 +712,7 @@ def load_collection_extension(collection_id: str) -> Optional[Dict]:
         return None
 
 
-def get_extended_class(category: str, collection_id: str = "default") -> Optional[OntologyClass]:
+def get_extended_class(category: str, collection_id: str = DomainRouter.default_collection()) -> Optional[OntologyClass]:
     """Get the T-Box class for a category, merged with collection extension.
 
     Args:
@@ -747,7 +748,7 @@ def validate_page_against_schema(
     page_data: Dict[str, Any],
     *,
     mode: str = "warning",
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> SchemaValidationResult:
     """Validate a Wiki page against T-Box class schema constraints.
 
@@ -1130,12 +1131,12 @@ import json as _json
 import time as _time
 
 
-def _suggestions_path(collection_id: str = "default") -> str:
+def _suggestions_path(collection_id: str = DomainRouter.default_collection()) -> str:
     home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "ontology_suggestions.json")
 
 
-def load_pending_suggestions(collection_id: str = "default") -> List[Dict[str, Any]]:
+def load_pending_suggestions(collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Load all suggestions from the tracking file.
 
     Args:
@@ -1153,7 +1154,7 @@ def load_pending_suggestions(collection_id: str = "default") -> List[Dict[str, A
         return []
 
 
-def save_suggestions(suggestions: List[Dict[str, Any]], collection_id: str = "default") -> None:
+def save_suggestions(suggestions: List[Dict[str, Any]], collection_id: str = DomainRouter.default_collection()) -> None:
     """Write suggestions to the tracking file.
 
     Args:
@@ -1170,7 +1171,7 @@ def save_suggestions(suggestions: List[Dict[str, Any]], collection_id: str = "de
         }, f, indent=2, ensure_ascii=False)
 
 
-def accept_suggestion(suggestion_id: str, reviewer: str = "", *, collection_id: str = "default") -> Optional[Dict]:
+def accept_suggestion(suggestion_id: str, reviewer: str = "", *, collection_id: str = DomainRouter.default_collection()) -> Optional[Dict]:
     """Mark a suggestion as accepted. Does NOT modify any code.
 
     Args:
@@ -1189,7 +1190,7 @@ def accept_suggestion(suggestion_id: str, reviewer: str = "", *, collection_id: 
     return None
 
 
-def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str = "", *, collection_id: str = "default") -> Optional[Dict]:
+def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str = "", *, collection_id: str = DomainRouter.default_collection()) -> Optional[Dict]:
     """Mark a suggestion as rejected with optional reason.
 
     Args:
@@ -1210,7 +1211,7 @@ def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str = "", 
     return None
 
 
-def generate_code_for_suggestion(suggestion_id: str, *, collection_id: str = "default") -> Dict[str, Any]:
+def generate_code_for_suggestion(suggestion_id: str, *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Generate Python code block for implementing an accepted suggestion.
 
     Args:
@@ -1299,7 +1300,7 @@ def generate_code_for_suggestion(suggestion_id: str, *, collection_id: str = "de
 
 
 def add_suggestions_from_patterns(
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     *,
     include_llm: bool = False,
     max_llm_suggestions: int = 5,
@@ -1414,7 +1415,7 @@ def add_suggestions_from_patterns(
 
 
 def check_key_discrimination(
-    title: str, summary: str = "", *, collection_id: str = "default"
+    title: str, summary: str = "", *, collection_id: str = DomainRouter.default_collection()
 ) -> Tuple[bool, List[str]]:
     """A8: Check that a new entity's key has sufficient discrimination from existing ones.
 
@@ -1447,7 +1448,7 @@ def check_key_discrimination(
     return len(warnings) == 0, warnings
 
 
-def check_schema_readiness(collection_id: str = "default"):
+def check_schema_readiness(collection_id: str = DomainRouter.default_collection()):
     """Scan all wiki pages and report ERROR-mode schema compliance.
 
     Args:
@@ -1618,7 +1619,7 @@ def _infer_parent_from_label(label: str, existing: List[OntologyClass]) -> str:
     return f"{AI}ConceptPage"
 
 
-def export_suggestions_to_owl(collection_id: str = "default",
+def export_suggestions_to_owl(collection_id: str = DomainRouter.default_collection(),
                               format: str = "turtle") -> str:
     """Ontology learning output: pending suggestions → standard OWL/Turtle.
 
@@ -1677,7 +1678,7 @@ def export_suggestions_to_owl(collection_id: str = "default",
     return "\n".join(lines)
 
 
-def write_suggestions_owl_file(collection_id: str = "default",
+def write_suggestions_owl_file(collection_id: str = DomainRouter.default_collection(),
                                format: str = "turtle") -> Optional[str]:
     """Persist learned suggestions as an OWL/Turtle file under ~/.aiplat/ontologies/.
 

@@ -27,6 +27,7 @@ import os as _os
 import time as _time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -73,12 +74,12 @@ class FieldLevelPermission:
         )
 
 
-def _permissions_path(collection_id: str = "default") -> str:
+def _permissions_path(collection_id: str = DomainRouter.default_collection()) -> str:
     home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "field_permissions.json")
 
 
-def load_field_permissions(collection_id: str = "default") -> List[FieldLevelPermission]:
+def load_field_permissions(collection_id: str = DomainRouter.default_collection()) -> List[FieldLevelPermission]:
     """load_field_permissions。
 
     Args:
@@ -95,7 +96,7 @@ def load_field_permissions(collection_id: str = "default") -> List[FieldLevelPer
         return []
 
 
-def _save_field_permissions(perms: List[FieldLevelPermission], collection_id: str = "default") -> None:
+def _save_field_permissions(perms: List[FieldLevelPermission], collection_id: str = DomainRouter.default_collection()) -> None:
     path = _permissions_path(collection_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -112,7 +113,7 @@ def set_field_permission(
     visibility: str = "all",
     redaction_strategy: str = "mask",
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> FieldLevelPermission:
     """Set a field-level permission rule for an entity.
 
@@ -147,7 +148,7 @@ def remove_field_permission(
     entity_uri: str,
     field_name: str = "",
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> bool:
     """Remove field-level permissions. Pass empty field_name to remove all for entity.
 
@@ -172,7 +173,7 @@ def apply_field_level_security(
     *,
     actor_role: str = "",
     actor_scopes: Optional[List[str]] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Apply field-level security redaction to entity data.
 
@@ -213,7 +214,7 @@ def apply_field_level_security_batch(
     *,
     actor_role: str = "",
     actor_scopes: Optional[List[str]] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     title_field: str = "title",
 ) -> List[Dict[str, Any]]:
     """Apply field-level security to a batch of entities, using title_field as entity_uri.

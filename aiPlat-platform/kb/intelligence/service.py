@@ -342,7 +342,7 @@ def enqueue_doc_ingest(
     if not tenant_id:
         tenant_id = DomainRouter.default_tenant()
     if not collection_id:
-        collection_id = "default"
+        collection_id=DomainRouter.default_collection()
     if not file_path and not url:
         raise ValueError("file_path_or_url_required")
 

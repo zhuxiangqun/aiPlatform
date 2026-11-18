@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ MARKING_LABELS: Dict[int, str] = {
 def get_entity_max_marking_level(
     entity_uri: str,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     max_depth: int = 5,
 ) -> int:
     """获取实体及其关联数据链的**最高**标记级别 (快速检查，best-effort).
@@ -74,7 +75,7 @@ def check_marking_clearance(
     entity_uri: str,
     max_allowed_level: int,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Tuple[bool, str]:
     """检查实体标记是否在允许范围内.
 
@@ -101,7 +102,7 @@ def check_tool_args_markings(
     tool_args: Optional[Dict[str, Any]],
     max_allowed_level: int,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Tuple[bool, str]:
     """检查工具参数中引用的数据是否在标记允许范围内.
 
@@ -131,7 +132,7 @@ def check_tool_args_markings(
 def inject_marking_context(
     trace_context: Dict[str, Any],
     entity_uri: str = "",
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> None:
     """将标记上下文注入 trace_context，供 downstream 的 PolicyGate 3D 评估使用.
 

@@ -185,7 +185,7 @@ def _kb_stats(tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
 
 def _docs_this_week(
     tenant_id: str = DomainRouter.default_tenant(),
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     window_hours: int = 168,
 ) -> Dict[str, Any]:
     import os
@@ -540,7 +540,7 @@ def _suggestions(
 def build_kb_health_report(
     *,
     tenant_id: str = DomainRouter.default_tenant(),
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     window_hours: int = 168,
     project_id: str = "",
     low_confidence_threshold: float = 0.5,

@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from typing import Any, Dict, List, Optional, Set
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -397,7 +398,7 @@ class ThinContentCheck(WikiRule):
         """
         issues = []
 
-        collection_id = "default"
+        collection_id=DomainRouter.default_collection()
 
         
 

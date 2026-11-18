@@ -8,13 +8,14 @@ rather than just "here's what we know".
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 def sys_ontology_context(
     question: str = "",
     *,
     max_pages: int = 10,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     include_contradictions: bool = True,
     include_state_summary: bool = True,
     include_gaps: bool = True,

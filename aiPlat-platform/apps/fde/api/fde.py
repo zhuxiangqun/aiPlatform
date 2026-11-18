@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
-from core.api.core_facade import _sync_resolve
+from core.api.core_facade import _sync_resolve, DomainRouter
 
 from fastapi import APIRouter, Body, HTTPException, Query
 from core.api.http_errors import not_found, bad_request
@@ -946,7 +946,7 @@ def _get_knowledge_context(text: str) -> str:
     try:
         # Tier 1: Wiki FTS5 search
         from core.api.core_facade import wiki_search_pages
-        pages = wiki_search_pages(text, limit=3, collection_id="default")
+        pages = wiki_search_pages(text, limit=3, collection_id=DomainRouter.default_collection())
         if pages:
             parts.append("\n".join(
                 f"- {p.get('title','')}: {p.get('body','')[:300]}"

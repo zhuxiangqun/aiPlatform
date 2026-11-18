@@ -2905,7 +2905,7 @@ class AgentExecuteRequest(BaseModel):
 class DocIngestRequest(BaseModel):
 
     """DocIngestRequest。"""
-    collection_id: str = "default"
+    collection_id: str = DomainRouter.default_collection()
 
     url: Optional[str] = None
 
@@ -2980,7 +2980,7 @@ async def documents_preview(request: Request):
 
     kind = ""
 
-    collection_id = "default"
+    collection_id=DomainRouter.default_collection()
 
     dst = None
 
@@ -3110,7 +3110,7 @@ async def documents_ingest(request: Request):
 
 
 
-    collection_id = "default"
+    collection_id=DomainRouter.default_collection()
 
     url = None
 
@@ -3492,7 +3492,7 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
 
 
 
-async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: str = "default", *, tenant_id: str = DomainRouter.default_tenant()):
+async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: str = DomainRouter.default_collection(), *, tenant_id: str = DomainRouter.default_tenant()):
 
     u"""Background task: run ontology engine pipeline on a newly ingested document.
 
@@ -7737,7 +7737,7 @@ async def vault_index_status(vault_id: str, tenant_id: str = DomainRouter.defaul
 
 @app.post("/platform/kb/vault/{vault_id}/index/start")
 
-async def vault_index_start(vault_id: str, tenant_id: str = DomainRouter.default_tenant(), collection_id: str = "default"):
+async def vault_index_start(vault_id: str, tenant_id: str = DomainRouter.default_tenant(), collection_id: str = DomainRouter.default_collection()):
 
     """vault_index_start。
 

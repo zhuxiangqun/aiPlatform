@@ -1778,7 +1778,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
 async def auto_ontology_pipeline_for_doc(
     doc_id: str,
     file_path: str,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     *,
     tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
@@ -2163,7 +2163,7 @@ def wiki_pages_by_source(source_key: str) -> List[Dict[str, Any]]:
 
 
 def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
-                       limit: int = 20, collection_id: str = "default") -> List[Dict[str, Any]]:
+                       limit: int = 20, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Search wiki pages — Phase 45: CoreFacade wrapper for platform layer.
 
     Args:
@@ -2179,7 +2179,7 @@ def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str 
 
 
 def wiki_search_pages_api(query: str = "", *, tags: List[str] = None, category: str = "",
-                          limit: int = 20, collection_id: str = "default") -> Dict[str, Any]:
+                          limit: int = 20, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Wiki search with ontology.api.v0 envelope (A1 contract).
 
     Args:
@@ -3774,7 +3774,7 @@ def get_chat_service_model(rt: Any = None) -> Any:
 # ── Semantic Ontology Evolution Facade (Phase 3) ──
 
 async def generate_ontology_suggestions(
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     *,
     max_suggestions: int = 5,
     confidence_threshold: float = 0.7,
@@ -3860,7 +3860,7 @@ def enqueue_listed_agent_eval(agent_id: str) -> None:
 
 def predict_evolution_impact_for(
     suggestion: Dict[str, Any],
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Predict the impact scope of accepting an evolution suggestion.
 
@@ -3876,7 +3876,7 @@ def predict_evolution_impact_for(
 
 # ── Ontology Health & Quality Facade (Phase 4) ──
 
-def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[str, Any]]:
+def check_ontology_health_triggers(collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Check ontology health and return triggered curation tasks.
 
     Args:
@@ -3886,7 +3886,7 @@ def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[
     return _check(collection_id=collection_id)
 
 
-def get_entity_quality(entity_uri: str, *, collection_id: str = "default") -> Dict[str, Any]:
+def get_entity_quality(entity_uri: str, *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Get quality score and recent signals for an ontology entity.
 
     Args:
@@ -3909,7 +3909,7 @@ def apply_field_security(
     entity_uri: str = "",
     actor_role: str = "",
     actor_scopes: Optional[List[str]] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Apply field-level security redaction to entity data.
 
@@ -6862,7 +6862,7 @@ def set_graph_field_acl(
 
 # ── Growth & Obsidian Facade (Phase E + Phase F) ──
 
-def get_growth_stats(days: int = 30, *, collection_id: str = "default") -> Dict[str, Any]:
+def get_growth_stats(days: int = 30, *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Get knowledge base growth statistics for the last N days.
 
     Args:
@@ -6873,7 +6873,7 @@ def get_growth_stats(days: int = 30, *, collection_id: str = "default") -> Dict[
     return _gs(collection_id=collection_id, days=days)
 
 
-def check_obsidian_compatibility(collection_id: str = "default") -> Dict[str, Any]:
+def check_obsidian_compatibility(collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Verify that the wiki directory is 100% compatible with Obsidian vault format.
 
     Args:
@@ -6973,7 +6973,7 @@ def instantiate_scene(
     scene_id: str,
     *,
     params: Optional[Dict[str, Any]] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Optional[Dict[str, Any]]:
     """Instantiate a scene template into a PipelineConfig dict.
 
@@ -7019,7 +7019,7 @@ def register_writeback_target(
     *,
     trigger_actions: Optional[List[str]] = None,
     field_mapping: Optional[Dict[str, str]] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Register a writeback target for ontology actions.
 
@@ -7043,7 +7043,7 @@ def register_writeback_target(
     return {"status": "ok", "config": config.to_dict()}
 
 
-def list_writeback_targets(collection_id: str = "default") -> List[Dict[str, Any]]:
+def list_writeback_targets(collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """List all registered writeback targets.
 
     Args:
@@ -7058,7 +7058,7 @@ def list_writeback_targets(collection_id: str = "default") -> List[Dict[str, Any
 def get_entity_markings(
     entity_uri: str,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     resolve_effective: bool = True,
 ) -> Dict[str, Any]:
     """Get explicit and effective markings for an entity.
@@ -7078,7 +7078,7 @@ def set_entity_marking(
     level: int,
     scope: str = "",
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Set a marking on an entity.
 
@@ -7101,7 +7101,7 @@ def check_kb_entity_access(
     *,
     actor_scopes: Optional[List[str]] = None,
     actor_role: str = "",
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Check if an actor can access a knowledge entity (three-layer fusion).
 

@@ -28,7 +28,7 @@ def map_query_to_ontology(
     question: str,
     *,
     domain_id: str = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     max_matches: int = 3,
 ) -> Dict[str, Any]:
     u"""Map a natural language question to T-Box classes and properties.
@@ -276,7 +276,7 @@ def _get_concept_map() -> Dict[str, str]:
 def enrich_query_for_retrieval(
     question: str,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> str:
     """Convenience function: map query and return the rewritten version.
 

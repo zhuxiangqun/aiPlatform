@@ -279,7 +279,7 @@ async def _save_pipeline_knowledge_to_wiki(state: dict, config: Any) -> None:
                     body=f"# {_val.get('label', _key)} - {_name}\n\n{_output[:5000]}",
                     category="topics",
                     tags=["pipeline-output", _key],
-                    collection_id="default",
+                    collection_id=DomainRouter.default_collection(),
                     status="draft",
                     skip_validation=True,
                 )
@@ -603,6 +603,7 @@ from core.harness.execution.pipeline_state import PipelineStateMixin
 from core.harness.execution.pipeline_prompt import PipelinePromptMixin
 from core.harness.execution.pipeline_eval import PipelineEvalMixin, _apply_skip_pytest_gate
 from core.harness.execution.pipeline_stage import PipelineStageMixin
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin, PipelineStateMixin, PipelineHealingMixin):
@@ -7019,7 +7020,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
 
 
-            result = execute_action(action, onto, collection_id="default")
+            result = execute_action(action, onto, collection_id=DomainRouter.default_collection())
 
 
 

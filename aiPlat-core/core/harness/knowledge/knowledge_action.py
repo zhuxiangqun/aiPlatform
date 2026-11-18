@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from core.harness.knowledge.domain_router import DomainRouter
 
 if TYPE_CHECKING:
     from core.harness.knowledge.knowledge_ontology import KnowledgeOntology, OntologyTriple
@@ -172,7 +173,7 @@ def execute_action(
     action: OntologyAction,
     onto: KnowledgeOntology,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> OntologyActionResult:
     """execute_action。
 
@@ -514,7 +515,7 @@ def _check_postcondition(condition: str, onto: KnowledgeOntology, entity_uri: st
 
 def get_entity_lifecycle_summary(
     onto: KnowledgeOntology,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """获取 entity_lifecycle_summary。
 
@@ -550,7 +551,7 @@ def new_action_id() -> str:
     return f"action_{uuid.uuid4().hex[:12]}"
 
 
-def _trigger_writebacks(action: OntologyAction, collection_id: str = "default") -> None:
+def _trigger_writebacks(action: OntologyAction, collection_id: str = DomainRouter.default_collection()) -> None:
     u"""Fire-and-forget writeback trigger. Runs in background thread.
 
     Writeback failures are logged but never block the ontology action.
