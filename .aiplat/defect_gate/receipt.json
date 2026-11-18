@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T19:15:43+08:00",
+  "reviewed_at": "2026-11-18T21:12:36+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "41738d581a900afa6221044eb74bf1db7c7279ebb0005b22b45b3cdc0bf26967",
-  "head_sha": "c06101c393b5a50816418527ee2f7357e2ed45d2",
+  "diff_sha256": "bd68f491e4b5be19e189974f02e8f6dd30b10c7d5b6ed1890a76af5978390e16",
+  "head_sha": "72a539f6e1fd66210b5c285add970ed0fbbd867d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Cascade LOC/DomainRouter CI unblock onto K39 (PR #839)"
+  "note": "Cascade Path repo-root test fix onto K39 (PR #839)"
 }
