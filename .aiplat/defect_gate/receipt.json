@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:53:42+08:00",
+  "reviewed_at": "2026-11-18T17:03:29+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "d5465ef902873a4841e3d58d9b215957daea5998ee4dd2007a59f4720f99dd7f",
-  "head_sha": "7f7bc923f7584085229ef11352ce18d6cb3cc1b8",
+  "diff_sha256": "4b4beade798712bbaa9a100de90ff80ad539e113eb288ee632d13c9859bd802a",
+  "head_sha": "c03b102033b9579daad49033ff09f2bae06a4a9e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K25 wiki_ontology_engine 10x GraphIndex via _graph_tenant/_resolve_graph_tenant. Residual: ontology_engine.engine/FDE bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K25 (PR #825)"
 }
