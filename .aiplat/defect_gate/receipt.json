@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T11:16:53+08:00",
+  "reviewed_at": "2026-11-18T11:27:32+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "49127a7dbd45c39d1a42e10298e7132342867cdff37dc0c469b2bd61f582df03",
-  "head_sha": "fcf712caee42dab911d6e2ca13271faff2201c4f",
+  "diff_sha256": "8ca40d916cf60996bcb0b9e817dd89ce8822ddc5bbc88fd6369bffb34f8d0ecb",
+  "head_sha": "0f52aa5f2880b00cb705944785f8ba3421f50588",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K48: icebreaker questions YAML-driven; tenant_id=default still open; N09 not certified. Local lock only."
+  "note": "K49: knowledge-layer tenant SSOT via PLATFORM_DEFAULT_TENANT; facade/syscalls/platform tenant defaults + SQL literals remain; N09 not certified. Local lock only."
 }
