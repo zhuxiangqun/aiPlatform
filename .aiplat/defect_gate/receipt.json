@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T08:58:13+08:00",
+  "reviewed_at": "2026-11-18T18:15:32+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "ad8c9126ef9469ff09b84cd55b4070ca3d9725197484e559af3ca6980bf0d35a",
-  "head_sha": "76b322606c1fd3866fdd56103c0ab16d49c80877",
+  "diff_sha256": "bb2db25605924eb81bc027ab1e7075f3b98fb9af06ef6a64a679d2773a6efbda",
+  "head_sha": "86f0a3789c992b16db2bad7168607aa1b79904d0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K37 branch YAML tenant prefix. Residual: domain-id hardcodes; N09 certified false. Shared YAML bootstrap read for new tenants is intentional."
+  "note": "Cascade cherry-pick CI unblock onto K37 (PR #837)"
 }
