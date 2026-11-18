@@ -3,9 +3,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 def test_context_bus_source_wires_tenant():
-    text = Path("aiPlat-core/core/harness/knowledge/context_bus.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/context_bus.py").read_text(
         encoding="utf-8"
     )
     assert "def _resolve_graph_tenant" in text
@@ -21,9 +29,7 @@ def test_context_bus_source_wires_tenant():
 
 
 def test_system_health_source_aggregates_tenants():
-    text = Path(
-        "aiPlat-core/core/harness/evaluation/system_health.py"
-    ).read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/harness/evaluation/system_health.py").read_text(encoding="utf-8")
     assert "list_kb_tenant_ids" in text
     assert "audit_all_domains(tenant_id=_tid)" in text
     assert "GraphIndex.load(yf.stem, tenant_id=_tid)" in text
