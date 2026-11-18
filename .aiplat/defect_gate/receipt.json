@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T22:34:50+08:00",
+  "reviewed_at": "2026-11-18T16:18:52+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "58db3e249546f7d9237f77ef7fcae645452551e8d64a9d8a4f302126fb4a1d7f",
-  "head_sha": "1682a4959f014ab969e7dbf385bdabd53271505d",
+  "diff_sha256": "25a43b5fa258adc76f7c5fb540c55c8357c90cfd862520f9cba8009957be3d96",
+  "head_sha": "3abb04f17fde5297b83989ab4bb6b76fafcca1ce",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K6 requires tenant_id on write_extraction_to_graph_index (empty→tenant_id_required) and adds graph_write_tenant (12 probes). Ontology publish/snapshot/cross-domain edge writes remain intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K6 (PR #806)"
 }
