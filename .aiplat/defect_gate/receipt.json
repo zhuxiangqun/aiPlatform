@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T14:32:00+08:00",
+  "reviewed_at": "2026-11-18T10:09:49+08:00",
   "base_ref": "origin/main",
-  "merge_base": "d812383f2f2a9c63f5f5caf86dd6f76a0c0031d8",
-  "diff_sha256": "d50a2603dfc7e3686160d931cb78a1e501a27498a25de8ee76b368c942ab7d59",
-  "head_sha": "72eeecc0cc66b80e642adec63ea9a68d738a7117",
+  "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
+  "diff_sha256": "fce228b89aa23cb6ec3b8793b4a8ffb9968b03fe3822b004fb03bc92245a1a98",
+  "head_sha": "0ab5d96c02f3353ffb804ffaad3fd9be3a205ac9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "I4: approve/reject only bridge to ActionExecution; direct restore_* unchanged; suite/gate certified=false. Residual: no rollback UI; not full audit bus; N24 not certified. Local lock only."
+  "note": "capability_guard advisory cleanup. Five checks: wiki_engine via embed_text_semantic clears §B; get_dashboard GENERIC; §F requires import; consumer_patterns for meta/observability/delivery. Guard 0/0. Local lock only."
 }
