@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 def test_branch_yaml_path_tenant_prefix(tmp_path, monkeypatch):
     import core.harness.ontology_engine.ontology_branch as ob
@@ -74,7 +82,7 @@ def test_fork_copies_yaml_to_tenant_path(tmp_path, monkeypatch):
 
 
 def test_source_wires_branch_yaml_helpers():
-    text = Path("aiPlat-core/core/harness/ontology_engine/ontology_branch.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/harness/ontology_engine/ontology_branch.py").read_text(
         encoding="utf-8"
     )
     assert "def _branch_yaml_path(" in text
