@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T07:28:45+08:00",
+  "reviewed_at": "2026-11-18T17:59:20+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "5c92718b4dc527fe81d32109a1b64448f44db29a79f5a98a05b7d6181fae79a3",
-  "head_sha": "9dca55ccfd75ea8258b8cb0101e58cd594a2f661",
+  "diff_sha256": "9eb891f1e4fde6d4f7ac0665804e5c772ef03637f812672229533dbe518e8342",
+  "head_sha": "b25237a509c3ac583674b39cddac6f2c6b939d70",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K30 skills/registry + org_kpi + pipeline_engine + execution router GraphIndex via _skills_graph_tenant/_resolve_graph_tenant. Residual: graph_traversal docstring example only. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K30 (PR #830)"
 }
