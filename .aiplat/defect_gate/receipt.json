@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T00:16:42+08:00",
+  "reviewed_at": "2026-11-18T16:19:27+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "34e0f13584ee5cccbaa5ba4cd32940fe9084410fdaea01bdfa4a4c2a4d4d4c6b",
-  "head_sha": "7939ca1ac768e673bf95cdbcd6ff7dfbaa5c3958",
+  "diff_sha256": "f24ca6e104baa98a85173f2a92c2b319d25f5904a75d7dcc6943ed96982a0784",
+  "head_sha": "7ac93a262687d21e1d87529bc69052ecc802d91c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K9 wires resolve_request_tenant into ontology_editor rollback + class upsert/delete; _invalidate_domain_caches loads GraphIndex with tenant_id. StatusResponse import via apps.common_schemas avoids api/__init__ circular import. view/monitor/metric CRUD remain intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K9 (PR #809)"
 }
