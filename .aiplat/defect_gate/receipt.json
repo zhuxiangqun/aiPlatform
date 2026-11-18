@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T10:02:38+08:00",
+  "reviewed_at": "2026-11-18T18:27:49+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "30a20a6c8c13409ed0c3f51c2768c56e971da91ee451d91dec23cbe794ea336b",
-  "head_sha": "2291a406ce8fd6aff8a48cb11a0111f552903b60",
+  "diff_sha256": "3dd3875f582829f3a8bbba43befe902da3ec1bd4cc705d38cd9499e6a980aa29",
+  "head_sha": "03d422bf3dd2f5a55e57af70e4bbc137b114d6ea",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K42 GraphIndex ctor domain SSOT. Five checks: hallucination→default_kb_domain; doc_quality/retrieval→default_graph_domain; ctor domain literals empty; tenant_id or default residual intentional. certified false. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K42 (PR #842)"
 }
