@@ -95,6 +95,14 @@ def test_infer_receipt_status_ignores_benign_not_found():
 def test_done_stop_uses_leading_marker_not_substring():
     from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
     root = Path(__file__).resolve().parents[3] / "harness" / "execution"
     react = (root / "langgraph" / "compiled_graphs" / "react.py").read_text(encoding="utf-8")
     facade = (root / "loop" / "_facade.py").read_text(encoding="utf-8")
@@ -218,7 +226,7 @@ def test_reevaluate_defaults_record_novel_false():
         / "code_review_gold.py"
     )
     if not path.is_file():
-        path = Path("aiPlat-platform/apps/eval/api/code_review_gold.py")
+        path = (_repo_root() / "aiPlat-platform/apps/eval/api/code_review_gold.py")
     src = path.read_text(encoding="utf-8")
     tree = ast.parse(src)
     fn = next(
