@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T08:20:50+08:00",
+  "reviewed_at": "2026-11-18T08:28:54+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "ac6c54af40dcc0d8c6eae4800da1450288fa8143a37117720686f5987c3c3903",
-  "head_sha": "e3185583bba8eea7d0b20d1310ecfdf9adf48d2e",
+  "diff_sha256": "91d48986c95c8ffb63fa96cbe0390dde7f5f3abb4f2096ad44c9c6cab05846d1",
+  "head_sha": "5ca89b60792c7d2511f53eb1aab2205307d4ede5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K33 handlers/scripts GraphIndex tenant. Residual: domain-id hardcodes; N09 certified false; seed resolve failure falls back to default with debug log."
+  "note": "K34 GraphIndex ctor/branch tenant. Residual: scripts GraphIndex( ctors; domain-id hardcodes; N09 certified false. Branch registry keys still domain::branch without tenant (DB paths are tenant-scoped)."
 }
