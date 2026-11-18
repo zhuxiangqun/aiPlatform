@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T00:27:06+08:00",
+  "reviewed_at": "2026-11-18T16:25:57+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "a263652d94720ef6eab533b99be1263240a5d33ece88da79da6e8f83ad675c00",
-  "head_sha": "9ce2ad16e78af9eb0e1387bb97774460bdd7e9af",
+  "diff_sha256": "ebecd49f74b1575369e4c5e76e68c4a986f54ffe60f0d524334ce63815a72627",
+  "head_sha": "3cd94282870d9cea6fddb8ca45896abdc6fc8a1c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K10 wires resolve_request_tenant into view upsert/delete and domain meta update; Facade invalidates GraphIndex per tenant. process_monitor state_changes lacks tenant_id column — intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K10 (PR #810)"
 }
