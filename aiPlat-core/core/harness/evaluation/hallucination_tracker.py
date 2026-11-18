@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from collections import defaultdict
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 @dataclass
 # disposition: internal data type — used by HallucinationTracker.evaluate(); wired to llm.py
 class FactualClaim:
@@ -77,7 +78,7 @@ class HallucinationTracker:
         answer: str,
         retrieved_context: List[Dict[str, Any]],
         run_id: str = "",
-        domain_id: str = "default",
+        domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
     ) -> HallucinationReport:
         """评估答案的幻觉风险。
 

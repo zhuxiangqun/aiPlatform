@@ -17231,7 +17231,7 @@ async def wake_agent_stop() -> dict:
     agent.stop()
     return {"running": False}
 
-def cross_validation_verify(output: dict, *, domain_id: str = "default") -> dict:
+def cross_validation_verify(output: dict, *, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> dict:
     """Run CrossValidationGate semantic verification (equipment/process/quality).
 
     Args:

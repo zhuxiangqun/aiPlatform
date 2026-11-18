@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger(__name__)
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -4235,7 +4236,7 @@ async def run_cross_tenant_isolation_suite(
         async def _capture_retrieve(
             self: Any,
             query: str,
-            domain_id: str = "default",
+            domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
             top_k: int = 10,
             run_id: str = "",
             tenant_id: str = "",

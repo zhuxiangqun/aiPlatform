@@ -14,6 +14,7 @@ import logging
 from collections import deque
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger(__name__)
 
 
@@ -32,7 +33,7 @@ class GraphRAGRetriever:
     async def retrieve(
         self,
         query: str,
-        domain_id: str = "default",
+        domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
         top_k: int = 10,
         run_id: str = "",
         tenant_id: str = "",

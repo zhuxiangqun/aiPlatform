@@ -19,6 +19,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger("aiplat.semantic_gate")
 
 
@@ -92,7 +93,7 @@ class SemanticGate:
         """
         self.mode = mode  # "warn" | "audit" | "block"
 
-    def verify(self, output: dict, *, domain_id: str = "default") -> SemanticGateResult:
+    def verify(self, output: dict, *, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> SemanticGateResult:
         """Run all three validation layers against the given domain.
 
         Args:
