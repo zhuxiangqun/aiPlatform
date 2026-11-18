@@ -10,6 +10,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, List
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ def evaluate_live_unlock() -> Dict[str, Any]:
     }
 
 
-def field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
+def field_ops_checklist(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Readiness checklist for field / customer sandbox (sign-off aid).
 
     Args:
@@ -294,7 +295,7 @@ def field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
     }
 
 
-def customer_signoff_view(domain_id: str = "it-ops") -> Dict[str, Any]:
+def customer_signoff_view(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """V3 read model. Pack readiness is not a signature. No write, no button.
 
     Args:
@@ -314,7 +315,7 @@ def customer_signoff_view(domain_id: str = "it-ops") -> Dict[str, Any]:
 
 
 def signoff_prep_view(
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     *,
     as_markdown: bool = False,

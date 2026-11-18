@@ -6,6 +6,7 @@ Business entry is only ``run_org_goal``. No customer SQL. No second channel.
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import hashlib
 import json
@@ -266,7 +267,7 @@ def process_channel_message(
     user_id: str,
     text: str = "",
     action: str = "",
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
 ) -> Dict[str, Any]:
     """Verified message → confirm gate → org_run_goal. Idempotent on channel+message_id.
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json
 import logging
@@ -108,7 +109,7 @@ def list_skill_drafts(*, role: str, domain_id: str = "") -> Dict[str, Any]:
     }
 
 
-def create_skill_draft(*, role: str, case_id: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+def create_skill_draft(*, role: str, case_id: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """创建 skill_draft。
 
     Args:
@@ -232,7 +233,7 @@ def reject_skill_draft(*, role: str, draft_id: str) -> Dict[str, Any]:
     return {"ok": True, "writable": False, **doc}
 
 
-def list_action_gap_hints(*, domain_id: str = "it-ops") -> Dict[str, Any]:
+def list_action_gap_hints(*, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Same action failed at least twice. Hint only. Does not open a write path.
 
     Args:

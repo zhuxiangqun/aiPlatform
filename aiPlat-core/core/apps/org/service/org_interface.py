@@ -7,6 +7,7 @@ exists. Never write both. Never arbitrary SQL; never plaintext credentials.
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import logging
 import os
@@ -100,7 +101,7 @@ def resolve_interface_raw(domain_id: str) -> Tuple[Dict[str, Any], str, str]:
     return load_live_raw(did), "connector.live", ""
 
 
-def materialize_interface_yaml(domain_id: str = "it-ops") -> Dict[str, Any]:
+def materialize_interface_yaml(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Copy the resolved spec into AIPLAT_HOME yaml if missing. Never writes connector.live.
 
     Args:
@@ -293,7 +294,7 @@ def validate_interface_spec(
     }
 
 
-def get_interface_spec(domain_id: str = "it-ops") -> Dict[str, Any]:
+def get_interface_spec(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Load + validate InterfaceSpec. YAML if present, else connector.live read-compat.
 
     Args:
@@ -403,7 +404,7 @@ def assert_action_bound(domain_id: str, action_id: str) -> Dict[str, Any]:
     }
 
 
-def interface_ready_for_outbound(domain_id: str = "it-ops") -> Tuple[bool, Dict[str, Any]]:
+def interface_ready_for_outbound(domain_id: str = DomainRouter.it_ops_domain()) -> Tuple[bool, Dict[str, Any]]:
     """Hard gate used by live_io_gates: valid spec + declared + enabled.
 
     Args:

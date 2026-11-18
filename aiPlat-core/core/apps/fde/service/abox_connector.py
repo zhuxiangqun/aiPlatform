@@ -6,6 +6,7 @@ not hardcoded domain_id branches in core/harness.
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import hmac
 import json
@@ -384,7 +385,7 @@ def map_table_rows_to_payload(
     }
 
 
-def load_table_map_sample(domain_id: str = "it-ops") -> Dict[str, Any]:
+def load_table_map_sample(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Bundled CSV + relation sample for demos (it-ops).
 
     Args:

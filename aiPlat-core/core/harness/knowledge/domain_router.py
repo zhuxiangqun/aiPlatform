@@ -74,6 +74,8 @@ class DomainRouter:
     PLATFORM_KB_DOMAIN = "ai-knowledge"
     PLATFORM_COMPETITION_DOMAIN = "bell-competition"
     PLATFORM_DEFAULT_GRAPH_DOMAIN = "default"
+    PLATFORM_IT_OPS_DOMAIN = "it-ops"
+    PLATFORM_DATA_GOV_DOMAIN = "data-gov"
 
     @staticmethod
     def _home() -> str:
@@ -389,6 +391,22 @@ class DomainRouter:
         over hardcoding ``\"default\"`` in GraphIndex constructors.
         """
         return self.PLATFORM_DEFAULT_GRAPH_DOMAIN
+
+    @classmethod
+    def it_ops_domain(cls) -> str:
+        """Return platform IT-ops / org pilot domain id (N09 K46).
+
+        Prefer this over hardcoding ``\"it-ops\"`` in org/FDE signature defaults.
+        """
+        return cls.PLATFORM_IT_OPS_DOMAIN
+
+    @classmethod
+    def data_gov_domain(cls) -> str:
+        """Return platform data-governance domain id (N09 K46).
+
+        Prefer this over hardcoding ``\"data-gov\"`` in governance signature defaults.
+        """
+        return cls.PLATFORM_DATA_GOV_DOMAIN
 
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).

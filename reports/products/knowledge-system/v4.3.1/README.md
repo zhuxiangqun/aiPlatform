@@ -104,5 +104,6 @@ authority: supporting
 | [phase2-cross-tenant-kb-domain-fallbacks-evidence.md](./phase2-cross-tenant-kb-domain-fallbacks-evidence.md) | Batch K43 N09 KB/tracking request fallbacks 去硬编码（非 certified） |
 | [phase2-cross-tenant-kb-domain-defaults-evidence.md](./phase2-cross-tenant-kb-domain-defaults-evidence.md) | Batch K44 N09 KB domain 签名默认去硬编码（非 certified） |
 | [phase2-cross-tenant-default-graph-domain-defaults-evidence.md](./phase2-cross-tenant-default-graph-domain-defaults-evidence.md) | Batch K45 N09 default graph domain 签名默认去硬编码（非 certified） |
+| [phase2-cross-tenant-it-ops-domain-defaults-evidence.md](./phase2-cross-tenant-it-ops-domain-defaults-evidence.md) | Batch K46 N09 it-ops/data-gov domain 签名默认去硬编码（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

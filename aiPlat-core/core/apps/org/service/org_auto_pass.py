@@ -6,6 +6,7 @@ never writes cross-domain edges.
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json
 import logging
@@ -316,7 +317,7 @@ async def _eligible_extraction(row: Dict[str, Any], rules: Dict[str, Any]) -> st
     return ""
 
 
-async def run_h4_auto_pass(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+async def run_h4_auto_pass(*, role: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Pass eligible queue items. Does not write live YAML or edges.
 
     Args:

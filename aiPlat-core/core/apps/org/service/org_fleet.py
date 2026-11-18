@@ -6,6 +6,7 @@ Does not spawn multi-agent fleets yet; gates readiness for future wiring.
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json
 import logging
@@ -35,7 +36,7 @@ def set_hop_aggregate_fn(fn) -> None:
 def evaluate_fleet_gate(
     goal_id: str = "",
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     project_id: str = "",
 ) -> Dict[str, Any]:
     """Hard gate for org fleet (multi_agent). Default: blocked.
@@ -161,7 +162,7 @@ def set_allow_fleet(goal_id: str, allow: bool) -> Dict[str, Any]:
 def request_fleet_or_run(
     goal_id: str = "",
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     project_id: str = "",
     week_label: str = "",
     force_fleet: bool = False,
@@ -222,7 +223,7 @@ def _clean_roles(roles: List[Any]) -> List[str]:
 
 
 async def probe_sandbox_conflict(
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     *,
     resource_id: str = "shared_interface",
 ) -> Dict[str, Any]:

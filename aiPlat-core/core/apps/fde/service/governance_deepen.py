@@ -8,13 +8,14 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
 _TOKEN = re.compile(r"[a-zA-Z0-9_\u4e00-\u9fff]{2,}")
 
 
-def governance_quality_snapshot(domain_id: str = "data-gov") -> Dict[str, Any]:
+def governance_quality_snapshot(domain_id: str = DomainRouter.data_gov_domain()) -> Dict[str, Any]:
     """Step ⑥: OCS + action surface + deep links (read-only).
 
     Args:

@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def live_config(domain_id: str) -> Dict[str, Any]:
     return raw
 
 
-def adapter_declared(domain_id: str = "it-ops") -> Dict[str, Any]:
+def adapter_declared(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Whether connector declares a valid InterfaceSpec (http_json + hosts).
 
     Args:
@@ -98,7 +99,7 @@ def _url_allowed(url: str, allowed_hosts: List[str]) -> Tuple[bool, str]:
     return True, "ok"
 
 
-def live_io_gates(domain_id: str = "it-ops") -> Dict[str, Any]:
+def live_io_gates(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Compute whether live HTTP path may run (unlock + InterfaceSpec + base URL).
 
     Args:
