@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 def _assert_no_bare_loads(rel: str) -> None:
     text = Path(rel).read_text(encoding="utf-8")
@@ -15,9 +23,7 @@ def _assert_no_bare_loads(rel: str) -> None:
 
 
 def test_system_diagnostician_source_wires_tenant():
-    text = Path(
-        "aiPlat-core/core/harness/knowledge/system_diagnostician.py"
-    ).read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/system_diagnostician.py").read_text(encoding="utf-8")
     assert "tenant_id: str = \"\"" in text
     assert "_resolve_graph_tenant" in text
     assert 'GraphIndex.load("knowledge-atom", tenant_id=self._tenant_id)' in text
@@ -29,9 +35,7 @@ def test_system_diagnostician_source_wires_tenant():
 
 
 def test_convergence_engine_source_wires_tenant():
-    text = Path(
-        "aiPlat-core/core/harness/knowledge/convergence_engine.py"
-    ).read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/convergence_engine.py").read_text(encoding="utf-8")
     assert "self._tenant_id" in text
     assert 'GraphIndex.load("knowledge-atom", tenant_id=self._tenant_id)' in text
     _assert_no_bare_loads(
@@ -40,9 +44,7 @@ def test_convergence_engine_source_wires_tenant():
 
 
 def test_ontology_case_learning_source_wires_tenant():
-    text = Path(
-        "aiPlat-core/core/harness/knowledge/ontology_case_learning.py"
-    ).read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/ontology_case_learning.py").read_text(encoding="utf-8")
     assert "tenant_id: str = \"\"" in text
     assert "GraphIndex.load(self.domain_id, tenant_id=self._tenant_id)" in text
     _assert_no_bare_loads(
@@ -51,9 +53,7 @@ def test_ontology_case_learning_source_wires_tenant():
 
 
 def test_recon_subgraph_source_wires_tenant():
-    text = Path(
-        "aiPlat-core/core/harness/knowledge/recon_subgraph.py"
-    ).read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/recon_subgraph.py").read_text(encoding="utf-8")
     assert "tenant_id: str = \"\"" in text
     assert "GraphIndex.load(target_domain, tenant_id=tid)" in text
     _assert_no_bare_loads(
