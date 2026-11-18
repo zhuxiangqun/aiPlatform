@@ -113,8 +113,61 @@ def _save_registry(registry: Dict[str, Any]) -> None:
         _json.dump(registry, f, ensure_ascii=False, indent=2)
 
 
-def _branch_key(domain_id: str, branch_name: str) -> str:
+def _branch_key(domain_id: str, branch_name: str, tenant_id: str = "default") -> str:
+    """Registry key for a branch (N09 K36 tenant-scoped).
+
+    Non-default tenants use ``{tenant}::{domain}::{branch}``.
+    Default tenant keeps legacy ``{domain}::{branch}`` so existing
+    ``branches.json`` entries remain readable.
+
+    Args:
+        domain_id: domain 标识。
+        branch_name: 分支名。
+        tenant_id: 租户；default 写旧格式键。
+    """
+    tid = (tenant_id or "default").strip() or "default"
+    if tid == "default":
+        return f"{domain_id}::{branch_name}"
+    return f"{tid}::{domain_id}::{branch_name}"
+
+
+def _legacy_branch_key(domain_id: str, branch_name: str) -> str:
+    """Pre-K36 registry key (tenant=default only).
+
+    Args:
+        domain_id: domain 标识。
+        branch_name: 分支名。
+    """
     return f"{domain_id}::{branch_name}"
+
+
+def _find_branch_entry(
+    branches: Dict[str, Any],
+    domain_id: str,
+    branch_name: str,
+    tenant_id: str,
+) -> tuple[str, Optional[Dict[str, Any]]]:
+    """Locate registry entry; prefer tenant key, fall back to legacy for default.
+
+    Args:
+        branches: registry branches map.
+        domain_id: domain 标识。
+        branch_name: 分支名。
+        tenant_id: 已解析租户。
+
+    Returns:
+        (canonical_key_for_writes, data_or_None)
+    """
+    tid = (tenant_id or "default").strip() or "default"
+    key = _branch_key(domain_id, branch_name, tid)
+    data = branches.get(key)
+    if data is not None:
+        return key, data
+    if tid == "default":
+        legacy = _legacy_branch_key(domain_id, branch_name)
+        if legacy in branches:
+            return legacy, branches[legacy]
+    return key, None
 
 
 def _branch_db_path(domain_id: str, branch_name: str, tenant_id: str = "default") -> _Path:
@@ -193,7 +246,7 @@ class OntologyBranchManager:
         """
         tid = _resolve_branch_tenant(tenant_id)
         # Check branch limit
-        existing = self.list_branches(domain_id)
+        existing = self.list_branches(domain_id, tenant_id=tid)
         if len(existing) >= self._MAX_BRANCHES_PER_DOMAIN:
             raise ValueError(
                 f"Domain '{domain_id}' has {len(existing)} branches (max {self._MAX_BRANCHES_PER_DOMAIN}). "
@@ -251,29 +304,41 @@ class OntologyBranchManager:
         )
 
         registry = _load_registry()
-        key = _branch_key(domain_id, branch_name)
-        registry["branches"][key] = info.to_dict()
+        key = _branch_key(domain_id, branch_name, tid)
+        registry.setdefault("branches", {})[key] = info.to_dict()
         _save_registry(registry)
 
-        logger.info("Branch '%s' for domain '%s' created", branch_name, domain_id)
+        logger.info("Branch '%s' for domain '%s' tenant=%s created", branch_name, domain_id, tid)
         return info
 
-    def list_branches(self, domain_id: str) -> List[BranchInfo]:
-        """列出域的所有分支.
+    def list_branches(self, domain_id: str, *, tenant_id: str = "") -> List[BranchInfo]:
+        """列出域的所有分支（按租户隔离，N09 K36）.
 
         Args:
             domain_id: domain 标识。
+            tenant_id: 租户；空则 resolve。
         """
+        tid = _resolve_branch_tenant(tenant_id)
         registry = _load_registry()
         branches = []
-        prefix = f"{domain_id}::"
+        seen_names: set[str] = set()
+        tenant_prefix = f"{tid}::{domain_id}::"
+        legacy_prefix = f"{domain_id}::"
         for key, data in registry.get("branches", {}).items():
-            if key.startswith(prefix):
+            if tid != "default" and key.startswith(tenant_prefix):
                 branches.append(BranchInfo(**data))
+                seen_names.add(data.get("branch_name", key.rsplit("::", 1)[-1]))
+            elif tid == "default":
+                # 新格式 default::{domain}::{branch} 或旧格式 domain::branch
+                if key.startswith(f"default::{domain_id}::"):
+                    branches.append(BranchInfo(**data))
+                    seen_names.add(data.get("branch_name", key.rsplit("::", 1)[-1]))
+                elif key.startswith(legacy_prefix) and key.count("::") == 1:
+                    branches.append(BranchInfo(**data))
+                    seen_names.add(data.get("branch_name", key.rsplit("::", 1)[-1]))
 
         # Add main branch if not registered (always exists)
-        main_key = _branch_key(domain_id, "main")
-        if main_key not in registry.get("branches", {}):
+        if "main" not in seen_names:
             branches.append(BranchInfo(
                 domain_id=domain_id,
                 branch_name="main",
@@ -297,9 +362,9 @@ class OntologyBranchManager:
         tid = _resolve_branch_tenant(tenant_id)
         # Remove registries
         registry = _load_registry()
-        key = _branch_key(domain_id, branch_name)
-        if key not in registry.get("branches", {}):
-            raise ValueError(f"Branch '{branch_name}' not found for domain '{domain_id}'")
+        key, data = _find_branch_entry(registry.get("branches", {}), domain_id, branch_name, tid)
+        if data is None:
+            raise ValueError(f"Branch '{branch_name}' not found for domain '{domain_id}' tenant={tid}")
 
         del registry["branches"][key]
         _save_registry(registry)
@@ -318,16 +383,19 @@ class OntologyBranchManager:
         logger.info("Branch '%s' for domain '%s' deleted", branch_name, domain_id)
         return True
 
-    def get_branch_info(self, domain_id: str, branch_name: str) -> Optional[BranchInfo]:
+    def get_branch_info(
+        self, domain_id: str, branch_name: str, *, tenant_id: str = "",
+    ) -> Optional[BranchInfo]:
         """获取分支信息.
 
         Args:
             domain_id: domain 标识。
             branch_name: branch_name 参数。
+            tenant_id: 租户；空则 resolve（N09 K36）。
         """
+        tid = _resolve_branch_tenant(tenant_id)
         registry = _load_registry()
-        key = _branch_key(domain_id, branch_name)
-        data = registry.get("branches", {}).get(key)
+        _, data = _find_branch_entry(registry.get("branches", {}), domain_id, branch_name, tid)
         if data:
             return BranchInfo(**data)
         if branch_name == "main":
@@ -546,11 +614,9 @@ class OntologyBranchManager:
 
         # Step 5: Update branch metadata
         registry = _load_registry()
-        for key in [
-            _branch_key(domain_id, source_branch),
-            _branch_key(domain_id, target_branch),
-        ]:
-            if key in registry.get("branches", {}):
+        for bname in (source_branch, target_branch):
+            key, data = _find_branch_entry(registry.get("branches", {}), domain_id, bname, tid)
+            if data is not None:
                 registry["branches"][key]["last_modified"] = _time.time()
         _save_registry(registry)
 
@@ -561,29 +627,35 @@ class OntologyBranchManager:
             diff=diff_result,
         )
 
-    def commit_branch(self, domain_id: str, branch_name: str) -> BranchInfo:
+    def commit_branch(
+        self, domain_id: str, branch_name: str, *, tenant_id: str = "",
+    ) -> BranchInfo:
         """更新分支的最后修改时间 (相当于 git commit).
 
         Args:
             domain_id: domain 标识。
             branch_name: branch_name 参数。
+            tenant_id: 租户；空则 resolve（N09 K36）。
         """
+        tid = _resolve_branch_tenant(tenant_id)
         registry = _load_registry()
-        key = _branch_key(domain_id, branch_name)
-        info_data = registry.get("branches", {}).get(key)
+        key, info_data = _find_branch_entry(registry.get("branches", {}), domain_id, branch_name, tid)
 
         if not info_data and branch_name == "main":
+            write_key = _branch_key(domain_id, branch_name, tid)
             info_data = BranchInfo(
                 domain_id=domain_id, branch_name="main",
                 created_at=_time.time(), description="主分支 (生产)",
             ).to_dict()
-            registry.setdefault("branches", {})[key] = info_data
+            registry.setdefault("branches", {})[write_key] = info_data
+            key = write_key
 
         if not info_data:
-            raise ValueError(f"Branch '{branch_name}' not found for domain '{domain_id}'")
+            raise ValueError(f"Branch '{branch_name}' not found for domain '{domain_id}' tenant={tid}")
 
         info_data["last_modified"] = _time.time()
         info_data["commit_count"] = info_data.get("commit_count", 0) + 1
+        registry.setdefault("branches", {})[key] = info_data
         _save_registry(registry)
 
         return BranchInfo(**info_data)

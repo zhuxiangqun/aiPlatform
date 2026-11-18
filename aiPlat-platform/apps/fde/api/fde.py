@@ -3429,7 +3429,7 @@ async def health_all():
     # Branching
     try:
         from core.api.core_facade import OntologyBranchManager
-        branches = OntologyBranchManager.get().list_branches("fde-delivery")
+        branches = OntologyBranchManager.get().list_branches("fde-delivery", tenant_id=fde_graph_tenant())
         subsystems["Branching"] = {"ok": True, "msg": f"{len(branches)} branches"}
     except Exception as e:
         subsystems["Branching"] = {"ok": False, "msg": str(e)[:100]}
@@ -3596,7 +3596,7 @@ async def list_branches(domain_id: str):
         domain_id: domain 标识。
     """
     from core.api.core_facade import OntologyBranchManager
-    return {"domain_id": domain_id, "branches": [b.to_dict() for b in OntologyBranchManager.get().list_branches(domain_id)]}
+    return {"domain_id": domain_id, "branches": [b.to_dict() for b in OntologyBranchManager.get().list_branches(domain_id, tenant_id=fde_graph_tenant())]}
 
 
 @router.post("/branches/{domain_id}/fork")

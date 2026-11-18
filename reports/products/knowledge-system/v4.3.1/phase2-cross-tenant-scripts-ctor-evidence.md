@@ -41,5 +41,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 ## 明确未做
 
 - FDE/平台业务域名硬编码消除
-- branch registry key 跨租户拆分（K34 已租户化 DB 路径）
+- branch registry key 跨租户拆分 — 已由 K36 覆盖
 - N09 / 附录 N 全量认证（certified 仍 false）
