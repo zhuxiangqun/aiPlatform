@@ -2191,7 +2191,8 @@ class _GenericSkill(BaseSkill):
                                 # S: term auto-seeding
                                 try:
                                     # 为什么：N09 K30 — 术语播种写租户图；域名硬编码仍为存量债务
-                                    tg = GraphIndex.load("enterprise-terms", tenant_id=_skills_graph_tenant())
+                                    from core.harness.knowledge.domain_router import get_domain_router
+                                    tg = GraphIndex.load(get_domain_router().terms_domain(), tenant_id=_skills_graph_tenant())
                                     for gap in gaps[:5]:
                                         name = gap["concept"][:100]
                                         tid = f"term_{did}_{gap['concept'].replace(' ', '_')[:60]}"

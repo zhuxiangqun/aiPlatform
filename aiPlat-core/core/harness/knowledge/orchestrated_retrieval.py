@@ -127,6 +127,7 @@ def traverse_ontology_graph(
     try:
 
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.domain_router import get_domain_router
         from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
         tid = (tenant_id or "").strip() or _resolve_graph_tenant()
@@ -249,7 +250,8 @@ async def ontology_first_retrieve(
         try:
 
             # 为什么：N09 K22 — 邻域扩展图须按租户；域名硬编码仍为存量债务
-            g = GraphIndex.load("ai-knowledge", tenant_id=tid)
+            from core.harness.knowledge.domain_router import get_domain_router
+            g = GraphIndex.load(get_domain_router().default_kb_domain(), tenant_id=tid)
 
             if len(g) > 0:
 

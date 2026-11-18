@@ -41,6 +41,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- harness 内 `knowledge-atom` 字面量（SECI/diagnostician/evolver 等）
-- skills/registry `enterprise-terms` 字面量
+- harness 内 `knowledge-atom` 字面量 — 已由 K40 覆盖
+- skills/registry `enterprise-terms` 字面量 — 已由 K40 覆盖
 - N09 / 附录 N 全量认证（certified 仍 false）

@@ -40,8 +40,9 @@ class SECIEngine:
             return
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.harness.knowledge.domain_router import get_domain_router
             # 为什么：N09 K22 — SECI 原子图须按租户分库
-            self._graph = GraphIndex.load("knowledge-atom", tenant_id=self._tenant_id)
+            self._graph = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=self._tenant_id)
             self._initialized = True
         except Exception as e:
             logger.debug("SECIEngine: graph load failed: %s", str(e))
@@ -131,6 +132,8 @@ class SECIEngine:
             atom_id: atom 标识。
             threshold: threshold 参数。
         """
+        from core.harness.knowledge.domain_router import get_domain_router
+
         self._ensure_graph()
 
         atom_node = self._graph.get_node(atom_id)
@@ -203,7 +206,7 @@ class SECIEngine:
                     links.append({
                         "link_id": link_id,
                         "target_class": "SECI知识原子(existing)",
-                        "domain": "knowledge-atom",
+                        "domain": get_domain_router().knowledge_atom_domain(),
                         "score": round(overlap, 2),
                     })
                     linked_count += 1
@@ -237,7 +240,7 @@ class SECIEngine:
                     links.append({
                         "link_id": link_id,
                         "target_class": "SECI知识原子(deprecated)",
-                        "domain": "knowledge-atom",
+                        "domain": get_domain_router().knowledge_atom_domain(),
                         "score": round(overlap, 2),
                     })
                     linked_count += 1
@@ -528,7 +531,8 @@ def register_seci_hook() -> bool:
                 from core.harness.ontology_engine.graph_index import GraphIndex
                 import json as _json_qs, time as _time_qs
 
-                kg = GraphIndex.load("knowledge-atom", tenant_id=engine._tenant_id)
+                from core.harness.knowledge.domain_router import get_domain_router
+                kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=engine._tenant_id)
                 atom_count = engine.get_atom_count()
                 link_count = engine.get_link_count()
                 qs_id = f"qs_{int(_time_qs.time())}"

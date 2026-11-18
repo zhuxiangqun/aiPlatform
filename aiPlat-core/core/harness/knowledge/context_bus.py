@@ -495,7 +495,8 @@ def _inject_self_optimization(parts: List[str], params: Optional[Dict[str, Any]]
                 from core.harness.ontology_engine.graph_index import GraphIndex
                 from datetime import timezone as _tz, timedelta as _td
                 import time as _time_fresh
-                kg = GraphIndex.load("knowledge-atom", tenant_id=tid)
+                from core.harness.knowledge.domain_router import get_domain_router
+                kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=tid)
                 stale = 0
                 cutoff = int(_time_fresh.time()) - 90 * 86400
                 for _, n in kg._nodes.items():

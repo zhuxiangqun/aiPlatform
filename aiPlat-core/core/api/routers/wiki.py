@@ -6,6 +6,7 @@ from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import get_domain_router
 try:
     from core.api.routers.wiki_ontology_engine import (
         OntologyDomainCreate, OntologyClassCreate, OntologyPropertyCreate,
@@ -838,7 +839,7 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
         from core.harness.ontology_engine.engine import _persist_reviews
         from core.harness.knowledge.context_bus import _resolve_graph_tenant
         # 为什么：N09 K24 — wiki 版本同步读租户图
-        graph = GraphIndex.load("ai-knowledge", tenant_id=_resolve_graph_tenant())
+        graph = GraphIndex.load(get_domain_router().default_kb_domain(), tenant_id=_resolve_graph_tenant())
         node = graph.find_by_name(body.title)
         if node and len(graph) > 0:
             inverse_rels = graph.get_inverse_relations(node.entity_id)

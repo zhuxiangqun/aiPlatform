@@ -35,7 +35,8 @@ class SystemDiagnostician:
             return
         from core.harness.ontology_engine.graph_index import GraphIndex
         # 为什么：N09 K23 — diagnostician 知识原子图须按租户分库
-        self._kg = GraphIndex.load("knowledge-atom", tenant_id=self._tenant_id)
+        from core.harness.knowledge.domain_router import get_domain_router
+        self._kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=self._tenant_id)
 
     # ═══════════════════════════════════════════════════════════════
     # Main API
@@ -637,7 +638,8 @@ class SystemHealer:
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
             # 为什么：N09 K23 — heal rollback 读租户原子图
-            kg = GraphIndex.load("knowledge-atom", tenant_id=self._tenant_id)
+            from core.harness.knowledge.domain_router import get_domain_router
+            kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=self._tenant_id)
             # Find last heal audit for this rule
             for _, n in sorted(kg._nodes.items(), key=lambda x: x[0], reverse=True):
                 if getattr(n, "class_name", "") != "SystemSnapshot":
@@ -706,7 +708,8 @@ def _record_heal_audit(rule: str, resolved: bool, before: Dict, after: Dict):
         from core.harness.knowledge.context_bus import _resolve_graph_tenant
         import json, time
         # 为什么：N09 K23 — heal audit 写入租户原子图
-        kg = GraphIndex.load("knowledge-atom", tenant_id=_resolve_graph_tenant())
+        from core.harness.knowledge.domain_router import get_domain_router
+        kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=_resolve_graph_tenant())
         ts = int(time.time())
         hid = f"heal_{ts}_{rule}"
         kg.add_entity(

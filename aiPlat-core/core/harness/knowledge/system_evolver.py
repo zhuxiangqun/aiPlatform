@@ -48,7 +48,8 @@ class SystemEvolver:
             return
         from core.harness.ontology_engine.graph_index import GraphIndex
         # 为什么：N09 K22 — evolver 知识原子图须按租户分库
-        self._kg = GraphIndex.load("knowledge-atom", tenant_id=self._tenant_id)
+        from core.harness.knowledge.domain_router import get_domain_router
+        self._kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=self._tenant_id)
 
     # ═══════════════════════════════════════════════════════════════
     # Main API

@@ -6559,7 +6559,8 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
                 import json as _json_pt
 
                 # 为什么：N09 K30 — pipeline 阶段快照写租户原子图
-                kg = GraphIndex.load("knowledge-atom", tenant_id=_resolve_graph_tenant())
+                from core.harness.knowledge.domain_router import get_domain_router
+                kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=_resolve_graph_tenant())
 
                 pt_id = f"pt_{stage.id}_{int(time.time())}"
 
