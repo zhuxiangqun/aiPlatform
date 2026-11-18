@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T12:45:25+08:00",
+  "reviewed_at": "2026-11-18T15:28:57+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "1a482cb63d894a54853e2d2d4fac80b488884884813ecbd7180c24d9418ea964",
-  "head_sha": "09ef8dc2a1dcd7d6e68b002188ae86921f1382ef",
+  "diff_sha256": "78dc6d65bc9bda9f8e6a044a7d1734e1b76725532c676465bdb41776722e955e",
+  "head_sha": "c7ef07763bdb84067ccd202c1cfad90e8ab1128d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K52: collection/profile defaults -> PLATFORM_DEFAULT_COLLECTION/PROFILE; session_id still open; N09 not certified. Local lock only."
+  "note": "CI unblock for #854: FactLedger probe via CoreFacade; DOCUMENT_SYSTEM LOC; §40.2 noqa for WIKI_READ_MODEL_COLLECTIONS; clause-sync row 128. Not N09 certified."
 }

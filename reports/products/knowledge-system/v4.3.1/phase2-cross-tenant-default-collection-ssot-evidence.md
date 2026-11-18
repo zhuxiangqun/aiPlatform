@@ -38,5 +38,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- `session_id = "default"` 等其它非 collection/profile 字段
+- `session_id = "default"` → 见 Batch K53
 - N09 / 附录 N 全量认证（certified 仍 false）

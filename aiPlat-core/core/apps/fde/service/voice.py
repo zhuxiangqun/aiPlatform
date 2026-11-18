@@ -12,6 +12,8 @@ import os
 import time as _time
 from typing import Any, Dict
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 _log = logging.getLogger("aiplat.voice")
 
 
@@ -80,7 +82,7 @@ async def _trigger_conversation_ingest() -> None:
 async def run_voice_brainstorm(
     transcript: str,
     duration_seconds: int,
-    session_id: str = "default",
+    session_id: str = DomainRouter.default_session(),
 ) -> Dict[str, Any]:
     """执行语音漫谈 LLM 意图提取.
 

@@ -111,5 +111,6 @@ authority: supporting
 | [phase2-cross-tenant-default-tenant-outer-evidence.md](./phase2-cross-tenant-default-tenant-outer-evidence.md) | Batch K50 N09 default tenant 外层签名默认（非 certified） |
 | [phase2-cross-tenant-default-tenant-sql-literals-evidence.md](./phase2-cross-tenant-default-tenant-sql-literals-evidence.md) | Batch K51 N09 default tenant SQL/赋值字面量（非 certified） |
 | [phase2-cross-tenant-default-collection-ssot-evidence.md](./phase2-cross-tenant-default-collection-ssot-evidence.md) | Batch K52 N09 default collection/profile SSOT（非 certified） |
+| [phase2-cross-tenant-default-session-ssot-evidence.md](./phase2-cross-tenant-default-session-ssot-evidence.md) | Batch K53 N09 default session SSOT（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
