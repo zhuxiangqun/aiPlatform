@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T09:28:05+08:00",
+  "reviewed_at": "2026-11-18T09:34:07+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "19a080a5f664a88135b1a116e342c5033a2c72f4e46a7f4cb5a41e61e34cb88b",
-  "head_sha": "e2158106ad714a479779cb3d8fccbec8f38d4b13",
+  "diff_sha256": "9418e5092b4a400a07d1061a4a42c7991a05f84a0c0083eb4d41c14ea83495e2",
+  "head_sha": "d7873d5824d2434cb2e856b8ee72007d131117f0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K40 harness atom/kb/terms via DomainRouter. Residual: bell-competition GraphIndex.load; knowledge-atom.yaml filename paths; N09 certified false."
+  "note": "K40 + proxy listen probe. Five checks on merge diff: TCP/lsof supersedes ps --port for gunicorn; signature set[str] unchanged; old ps path additive; proxy_dead_target verified 0 with start.sh up. Residual: TCP accept != correct service identity. Local lock only."
 }
