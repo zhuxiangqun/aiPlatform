@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T21:44:25+08:00",
+  "reviewed_at": "2026-11-19T06:16:44+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "5216845118e0767fdeeab5c0f4ba5e6451077c155ca99bde96d2c4c91fd70823",
-  "head_sha": "62ec50cef4f64d7ff7cc690d8676cbf33a3ebcb9",
+  "diff_sha256": "a66c76f0264c2932ab0d733188777aae14738fd26a0f6687df51d8834bb343b4",
+  "head_sha": "8aeb8c0fdcd7e34c859105f91f6a5864cd3e8c45",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Cascade Path repo-root test fix onto K51 (PR #852)"
+  "note": "Path(rel)->_repo_root in N09 AST probes only. Five checks clean on merge diff. Residual: mid-stack K45-K49 still need DomainRouter module import + same Path(rel) cascade (tracked next)."
 }
