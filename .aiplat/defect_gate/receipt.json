@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T00:38:31+08:00",
+  "reviewed_at": "2026-11-18T16:28:03+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "52401e5995d75d42fd7f07e0ae8d646f2749bad0afb128674cb6b338aa28aa45",
-  "head_sha": "0b8ce88e1dd5b8703bf8c1901389b8eb02a96fb9",
+  "diff_sha256": "02270e1c57a1b7e1b4fff0fb7b17653898f5cf28b25c99ff8782b2ed39d235b1",
+  "head_sha": "1197f800b9060bbfd8bddfe2645e81a0f27ecee6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K11 adds physical tenant_id on state_changes, filters process_monitor reads, aligns monitor DB path to state_history, injects resolve_request_tenant on monitor HTTP. OntologyEngine write-path tenant and process_instances remain intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K11 (PR #811)"
 }
