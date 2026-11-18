@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 def test_list_kb_tenant_ids_discovers_dirs(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
@@ -59,14 +67,14 @@ def test_aggregate_stale_summary_uses_per_tenant_monitors(monkeypatch, tmp_path)
 
 
 def test_cron_and_health_source_wire_aggregate():
-    server = Path("aiPlat-core/core/server.py").read_text(encoding="utf-8")
+    server = (_repo_root() / "aiPlat-core/core/server.py").read_text(encoding="utf-8")
     assert "aggregate_stale_summary" in server
     assert "auto_rebuild_stale_tenants" in server
     # no bare StalenessMonitor() in the governance cron block
     cron = server[server.find("Knowledge drift monitoring") : server.find("ConfigDriftDetector")]
     assert "StalenessMonitor()" not in cron
 
-    health = Path("aiPlat-core/core/harness/evaluation/system_health.py").read_text(
+    health = (_repo_root() / "aiPlat-core/core/harness/evaluation/system_health.py").read_text(
         encoding="utf-8"
     )
     assert "aggregate_stale_summary()" in health

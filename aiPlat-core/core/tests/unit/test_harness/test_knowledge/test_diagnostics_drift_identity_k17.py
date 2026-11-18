@@ -2,13 +2,21 @@
 from __future__ import annotations
 
 from pathlib import Path
+
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
 from types import SimpleNamespace
 
 import pytest
 
 
 def _drift_block() -> str:
-    text = Path("aiPlat-core/core/api/routers/diagnostics.py").read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/api/routers/diagnostics.py").read_text(encoding="utf-8")
     start = text.find("def get_drift_status")
     end = text.find("_drift_cache:", start)
     return text[start:end]

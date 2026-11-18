@@ -3,7 +3,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-API = Path("aiPlat-platform/apps/fde/api")
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
+API = (_repo_root() / "aiPlat-platform/apps/fde/api")
 HARD = ("enterprise-terms", "knowledge-atom", "ai-knowledge", "fde-delivery")
 
 
@@ -53,7 +61,7 @@ def test_fde_domain_helpers_delegate(monkeypatch):
 
 
 def test_clarify_dialog_uses_tracking_domain():
-    text = Path("aiPlat-core/core/apps/fde/service/clarify_dialog.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/apps/fde/service/clarify_dialog.py").read_text(
         encoding="utf-8"
     )
     assert 'GraphIndex.load("fde-delivery"' not in text

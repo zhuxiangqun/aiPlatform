@@ -3,7 +3,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-API = Path("aiPlat-platform/apps/fde/api")
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
+API = (_repo_root() / "aiPlat-platform/apps/fde/api")
 
 
 def test_platform_fde_api_no_hardcoded_fde_delivery_loads():
@@ -34,13 +42,13 @@ def test_fde_graph_domain_uses_tracking_domain(monkeypatch):
 
 
 def test_graph_tenant_module_exports_domain_helper():
-    text = Path("aiPlat-platform/apps/fde/api/graph_tenant.py").read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-platform/apps/fde/api/graph_tenant.py").read_text(encoding="utf-8")
     assert "def fde_graph_domain(" in text
     assert "get_domain_router" in text
     assert "from core.harness" not in text
 
 
 def test_sessions_v2_loads_via_fde_graph_domain():
-    text = Path("aiPlat-platform/apps/fde/api/fde_sessions_v2.py").read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-platform/apps/fde/api/fde_sessions_v2.py").read_text(encoding="utf-8")
     assert "GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())" in text
     assert text.count("GraphIndex.load(fde_graph_domain()") >= 5

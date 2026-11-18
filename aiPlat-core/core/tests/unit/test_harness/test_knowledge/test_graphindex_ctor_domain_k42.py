@@ -4,6 +4,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 TARGETS = [
     "aiPlat-core/core/harness/evaluation/hallucination_tracker.py",
     "aiPlat-core/core/harness/knowledge/doc_quality_monitor.py",
@@ -45,7 +53,7 @@ def test_production_graphindex_ctor_domain_literals_empty():
     rx_pos = re.compile(r'GraphIndex\(\s*["\']([a-z0-9_-]+)["\']')
     rx_kw = re.compile(r'GraphIndex\([^)]*domain_id\s*=\s*["\']([a-z0-9_-]+)["\']')
     hits = []
-    for root in (Path("aiPlat-core/core"), Path("aiPlat-platform")):
+    for root in ((_repo_root() / "aiPlat-core/core"), (_repo_root() / "aiPlat-platform")):
         for p in root.rglob("*.py"):
             if "/tests/" in str(p).replace("\\", "/"):
                 continue
