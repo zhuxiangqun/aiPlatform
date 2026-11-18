@@ -22,7 +22,7 @@ _FILES = (
 
 
 def _assert_no_bare_loads(rel: str) -> None:
-    text = Path(rel).read_text(encoding="utf-8")
+    text = (_repo_root() / rel).read_text(encoding="utf-8")
     bare = [
         ln
         for ln in text.splitlines()
@@ -33,7 +33,7 @@ def _assert_no_bare_loads(rel: str) -> None:
 
 def test_k32_wave_sources_wire_tenant():
     for rel in _FILES:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert "fde_graph_tenant" in text, rel
         assert "from apps.fde.api.graph_tenant import fde_graph_tenant" in text, rel
         _assert_no_bare_loads(rel)
