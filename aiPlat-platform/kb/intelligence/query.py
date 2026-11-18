@@ -9,6 +9,7 @@ from . import video_retrieval as _video_retrieval
 from core.api.facades.kb_facade import kb_llm_chat_complete as chat_complete, kb_llm_enabled as llm_enabled
 from core.api.facades.kb_facade import kb_extract_keywords, kb_get_tenant_storage as get_tenant_storage
 import logging
+from core.api.core_facade import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ async def query_elements(
         retrieval_policy: retrieval_policy 参数。
     """
     if not tenant_id:
-        tenant_id = "default"
+        tenant_id = DomainRouter.default_tenant()
     if not collection_id:
         collection_id = "default"
     st = get_tenant_storage(tenant_id)

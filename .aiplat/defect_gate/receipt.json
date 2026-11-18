@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T11:34:52+08:00",
+  "reviewed_at": "2026-11-18T11:41:45+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "93dad924aa136b6a6578351a09f7dd80d209a236dd3331e7c1febba8d3812ac0",
-  "head_sha": "5bbea865631e0dd0f631f64b897d4b3184ecda92",
+  "diff_sha256": "f506705797560f6883abca805a152e0838c804efbfafa118cc44df698337c20c",
+  "head_sha": "b5cce83893690e7e195aabdf5091850cf8ca5a11",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K50: outer tenant_id signature defaults -> default_tenant(); SQL literals + some non-knowledge or-default remain; N09 not certified. Local lock only."
+  "note": "K51: tenant SQL/assignment literals -> default_tenant(); collection/profile DEFAULT remain; N09 not certified. Local lock only."
 }

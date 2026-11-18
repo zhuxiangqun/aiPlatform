@@ -674,8 +674,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
                             THEN json_set(meta_json, '$.wiki_pages', json_insert(json_extract(meta_json, '$.wiki_pages'), '$[#]', ?))
                             ELSE meta_json
                         END
-                        WHERE doc_id = ? AND tenant_id = 'default'
-                    """, (title, title, title, doc_id))
+                        WHERE doc_id = ? AND tenant_id = ?
+                    """, (title, title, title, doc_id, DomainRouter.default_tenant()))
                 conn.commit()
                 conn.close()
     except Exception as e:
@@ -1385,18 +1385,24 @@ def delete_all_pages(*, collection_id: str = "default") -> Dict[str, Any]:
     try:
         import sqlite3 as _sq
         kb_dir = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
-        kb_db = os.path.join(kb_dir, "default", "kb.sqlite3")
+        _tid = DomainRouter.default_tenant()
+        kb_db = os.path.join(kb_dir, _tid, "kb.sqlite3")
         if os.path.exists(kb_db):
             conn = _sq.connect(kb_db)
             conn.row_factory = _sq.Row
-            docs = conn.execute("SELECT doc_id, meta_json FROM documents WHERE tenant_id='default'").fetchall()
+            docs = conn.execute(
+                "SELECT doc_id, meta_json FROM documents WHERE tenant_id=?",
+                (_tid,),
+            ).fetchall()
             for d in docs:
                 try:
                     meta = _json.loads(d["meta_json"] or "{}")
                     if "wiki_pages" in meta:
                         del meta["wiki_pages"]
-                        conn.execute("UPDATE documents SET meta_json=? WHERE doc_id=? AND tenant_id='default'",
-                                     (_json.dumps(meta, ensure_ascii=False), d["doc_id"]))
+                        conn.execute(
+                            "UPDATE documents SET meta_json=? WHERE doc_id=? AND tenant_id=?",
+                            (_json.dumps(meta, ensure_ascii=False), d["doc_id"], _tid),
+                        )
                         conn.commit()
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)

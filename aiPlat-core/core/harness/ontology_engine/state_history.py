@@ -38,11 +38,13 @@ _lock = threading.RLock()
 
 
 def _ensure_schema(conn) -> None:
-    conn.execute("""
+    # 为什么：N09 K11/K51 — DDL DEFAULT 与回填值均走 default_tenant SSOT
+    default_tid = DomainRouter.default_tenant()
+    conn.execute(f"""
         CREATE TABLE IF NOT EXISTS state_changes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             domain_id TEXT NOT NULL,
-            tenant_id TEXT NOT NULL DEFAULT 'default',
+            tenant_id TEXT NOT NULL DEFAULT '{default_tid}',
             entity_name TEXT NOT NULL,
             class_name TEXT NOT NULL,
             from_state TEXT NOT NULL,
@@ -55,15 +57,15 @@ def _ensure_schema(conn) -> None:
             tags TEXT DEFAULT '[]'
         )
     """)
-    # 为什么：N09 K11 — 存量库补物理 tenant_id，空值视为 default
     cols = {r[1] for r in conn.execute("PRAGMA table_info(state_changes)").fetchall()}
     if "tenant_id" not in cols:
         conn.execute(
-            "ALTER TABLE state_changes ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'"
+            f"ALTER TABLE state_changes ADD COLUMN tenant_id TEXT NOT NULL DEFAULT '{default_tid}'"
         )
     conn.execute(
-        "UPDATE state_changes SET tenant_id = 'default' "
-        "WHERE tenant_id IS NULL OR trim(tenant_id) = ''"
+        "UPDATE state_changes SET tenant_id = ? "
+        "WHERE tenant_id IS NULL OR trim(tenant_id) = ''",
+        (default_tid,),
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_domain_entity ON state_changes(domain_id, entity_name)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_domain_ts ON state_changes(domain_id, timestamp)")

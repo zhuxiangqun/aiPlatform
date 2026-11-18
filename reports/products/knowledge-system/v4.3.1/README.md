@@ -109,5 +109,6 @@ authority: supporting
 | [phase2-cross-tenant-icebreaker-config-evidence.md](./phase2-cross-tenant-icebreaker-config-evidence.md) | Batch K48 N09 icebreaker 业务域键配置外置（非 certified） |
 | [phase2-cross-tenant-default-tenant-ssot-evidence.md](./phase2-cross-tenant-default-tenant-ssot-evidence.md) | Batch K49 N09 default tenant SSOT（knowledge 层，非 certified） |
 | [phase2-cross-tenant-default-tenant-outer-evidence.md](./phase2-cross-tenant-default-tenant-outer-evidence.md) | Batch K50 N09 default tenant 外层签名默认（非 certified） |
+| [phase2-cross-tenant-default-tenant-sql-literals-evidence.md](./phase2-cross-tenant-default-tenant-sql-literals-evidence.md) | Batch K51 N09 default tenant SQL/赋值字面量（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

@@ -38,7 +38,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- SQL 字面量 `tenant_id='default'`（wiki_engine / process_orchestrator 回填）
+- SQL 字面量 `tenant_id='default'` → 见 Batch K51
 - `or "default"` 回落在 knowledge 以外层（部分仍开放）
 - collection_id / session_id `"default"`
 - N09 / 附录 N 全量认证（certified 仍 false）

@@ -658,7 +658,7 @@ def _resolve_identity(request: Request) -> Identity:
 
         scopes = ["kb:read", "kb:write", "admin"]
 
-    return Identity(request_id=request_id, tenant_id="default", actor_id="anonymous", scopes=scopes, auth_type="anonymous")
+    return Identity(request_id=request_id, tenant_id=DomainRouter.default_tenant(), actor_id="anonymous", scopes=scopes, auth_type="anonymous")
 
 
 
