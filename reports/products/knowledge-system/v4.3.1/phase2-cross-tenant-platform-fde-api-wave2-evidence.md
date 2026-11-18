@@ -37,5 +37,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做
 
 - `fde-delivery` / `enterprise-terms` / `knowledge-atom` 等域名硬编码（仅补 tenant）
-- custom_handlers / scripts seed 工具面
+- custom_handlers / scripts → 见 Batch K33
 - N09 / 附录 N 全量认证

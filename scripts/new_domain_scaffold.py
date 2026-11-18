@@ -166,7 +166,7 @@ async def test_scaffold_assign_executed_and_blocked(aiplat_home):
     )
     assert ok.get("status") == "executed", ok
 
-    g2 = GraphIndex.load(DOMAIN)
+    g2 = GraphIndex.load(DOMAIN, tenant_id="default")  # N09 K33 scaffold smoke
     g2.add_entity("WO-2", "blocked", "工单", source_doc_id="scaffold")
     g2.add_entity_property("WO-2", "state", "completed")
     g2.save()

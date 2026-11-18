@@ -23,6 +23,29 @@ SEED_DIR = os.path.expanduser("~/.aiplat/seed_data")
 WIKI_DIR = os.path.expanduser("~/.aiplat/wiki/collections")
 
 
+def _seed_tenant(tenant_id: str = "") -> str:
+    """Resolve tenant for seed GraphIndex writes (N09 K33).
+
+    Args:
+        tenant_id: 显式租户；空则 CoreFacade resolve_graph_tenant，失败回落 default。
+    """
+    tid = (tenant_id or "").strip()
+    if tid:
+        return tid
+    try:
+        from core.api.core_facade import resolve_graph_tenant
+        return resolve_graph_tenant()
+    except Exception:
+        # scripts 可能在无 facade 环境执行；回落 default 并记日志
+        import logging
+        logging.getLogger(__name__).debug(
+            "quick_seed resolve_graph_tenant failed; using default",
+            exc_info=True,
+        )
+        return "default"
+
+
+
 def _load_registry():
     """Read registry.json → {domain_id: domain_cfg}."""
     path = os.path.join(ONTOLOGIES_DIR, "registry.json")
@@ -81,12 +104,13 @@ def _get_class_descriptions(ontology: dict) -> list[tuple[str, str]]:
     return result
 
 
-def seed_graph_from_json(domain_id: str, dry_run: bool = False) -> int:
+def seed_graph_from_json(domain_id: str, dry_run: bool = False, *, tenant_id: str = "") -> int:
     """Load entities + relations from seed_data JSON and write to GraphIndex.
 
     Args:
         domain_id: domain 标识。
         dry_run: 是否仅演练。
+        tenant_id: 租户；空则 resolve_graph_tenant / default（N09 K33）。
     """
     data = _load_seed_json(domain_id)
     if not data:
@@ -99,7 +123,7 @@ def seed_graph_from_json(domain_id: str, dry_run: bool = False) -> int:
         return len(entities)
 
     from core.harness.ontology_engine.graph_index import GraphIndex
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_seed_tenant(tenant_id))
 
     for e in data.get("entities", []):
         cls = e.pop("class", e.pop("class_name", "Entity"))
@@ -137,13 +161,14 @@ def seed_graph_from_json(domain_id: str, dry_run: bool = False) -> int:
     return count
 
 
-def seed_graph_minimal(domain_id: str, ontology: dict, dry_run: bool = False) -> int:
+def seed_graph_minimal(domain_id: str, ontology: dict, dry_run: bool = False, *, tenant_id: str = "") -> int:
     """Create 2 minimal entities using ontology's own class names.
 
     Args:
         domain_id: domain 标识。
         ontology: ontology 参数。
         dry_run: 是否仅演练。
+        tenant_id: 租户；空则 resolve_graph_tenant / default（N09 K33）。
     """
     classes = _get_class_names(ontology)
     if not classes:
@@ -157,7 +182,7 @@ def seed_graph_minimal(domain_id: str, ontology: dict, dry_run: bool = False) ->
         return 2
 
     from core.harness.ontology_engine.graph_index import GraphIndex
-    g = GraphIndex.load(domain_id)
+    g = GraphIndex.load(domain_id, tenant_id=_seed_tenant(tenant_id))
     domain_name = ontology.get("name", domain_id)
 
     g.add_entity(
@@ -254,12 +279,13 @@ def _register_in_index(domain_id: str, title: str, tags: list[str]):
         json.dump(index, f, ensure_ascii=False, indent=2)
 
 
-def seed_domain(domain_id: str, dry_run: bool = False) -> tuple[int, int]:
+def seed_domain(domain_id: str, dry_run: bool = False, *, tenant_id: str = "") -> tuple[int, int]:
     """Seed one domain: entities to GraphIndex, wiki pages from ontology.
 
     Args:
         domain_id: domain 标识。
         dry_run: 是否仅演练。
+        tenant_id: 租户；空则 resolve_graph_tenant / default（N09 K33）。
     """
     ontology = _load_ontology(domain_id)
     if not ontology:
@@ -268,9 +294,9 @@ def seed_domain(domain_id: str, dry_run: bool = False) -> tuple[int, int]:
 
     has_seed_json = _load_seed_json(domain_id) is not None
     if has_seed_json:
-        entity_count = seed_graph_from_json(domain_id, dry_run)
+        entity_count = seed_graph_from_json(domain_id, dry_run, tenant_id=tenant_id)
     else:
-        entity_count = seed_graph_minimal(domain_id, ontology, dry_run)
+        entity_count = seed_graph_minimal(domain_id, ontology, dry_run, tenant_id=tenant_id)
 
     wiki_count = seed_wiki_pages(domain_id, ontology, dry_run)
     return entity_count, wiki_count
@@ -282,6 +308,7 @@ def main():
     parser = argparse.ArgumentParser(description="Data-driven domain seeder")
     parser.add_argument("--domain", type=str, help="Seed a specific domain")
     parser.add_argument("--all", action="store_true", help="Seed all registered domains (default)")
+    parser.add_argument("--tenant", default="", help="GraphIndex tenant id (N09 K33)")
     parser.add_argument("--dry-run", action="store_true", help="Show what would happen without writing")
     args = parser.parse_args()
 
@@ -311,7 +338,7 @@ def main():
     for domain_id in domains:
         print(f"\n[{domain_id}]")
         try:
-            e, w = seed_domain(domain_id, dry_run=args.dry_run)
+            e, w = seed_domain(domain_id, dry_run=args.dry_run, tenant_id=args.tenant)
             total_entities += e
             total_wiki += w
         except Exception as exc:
