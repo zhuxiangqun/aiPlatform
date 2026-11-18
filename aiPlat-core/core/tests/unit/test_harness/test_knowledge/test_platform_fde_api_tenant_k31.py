@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 _FILES = (
     "aiPlat-platform/apps/fde/api/action_routes.py",
     "aiPlat-platform/apps/fde/api/fde_ask.py",
@@ -26,7 +34,7 @@ def _assert_no_bare_loads(rel: str) -> None:
 
 
 def test_k31_wave_sources_wire_tenant():
-    helper = Path("aiPlat-platform/apps/fde/api/graph_tenant.py").read_text(
+    helper = (_repo_root() / "aiPlat-platform/apps/fde/api/graph_tenant.py").read_text(
         encoding="utf-8"
     )
     assert "def fde_graph_tenant(" in helper
@@ -39,7 +47,7 @@ def test_k31_wave_sources_wire_tenant():
 def test_fde_graph_tenant_prefers_request(monkeypatch):
     from apps.fde.api import graph_tenant as gt
 
-    helper = Path("aiPlat-platform/apps/fde/api/graph_tenant.py").read_text(
+    helper = (_repo_root() / "aiPlat-platform/apps/fde/api/graph_tenant.py").read_text(
         encoding="utf-8"
     )
     # 为什么：身份失败必须可观测，禁止静默吞错回归
