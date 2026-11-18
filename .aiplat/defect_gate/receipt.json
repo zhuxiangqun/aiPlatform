@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T22:04:41+08:00",
+  "reviewed_at": "2026-11-19T07:50:32+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "a7c3ca9124ac12eea5064f05cc26c4afc65fc70156a31f7986d053281fcb2666",
-  "head_sha": "10b3a9ccff6503efa674ddee8e5464730236ebcd",
+  "diff_sha256": "deb6ec65e0438ea5b67d0bc58a03b4c10baf83f873650ed9fe35814bd0ad3cd0",
+  "head_sha": "5960e6fec80e00f8a228c9bd46d2bb9a40b72712",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Tip Path(rel)/DomainRouter N09 test fix (#854)"
+  "note": "K54 CI unblock: clause-sync #129 + CAPABILITIES registry_loader + AUTO-STATS. Docs-only tip; product fallbacks unchanged."
 }

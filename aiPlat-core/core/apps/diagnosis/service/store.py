@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 STORE_SCHEMA_VERSION = "diagnosis.store.v0"
 SCENARIOS = frozenset({"run_failure", "version_regression"})
@@ -29,7 +30,7 @@ def default_db_path(*, tenant_id: str = "") -> Path:
     """
     from core.utils.paths import get_aiplat_data_dir
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     root = Path(get_aiplat_data_dir(f"diagnosis/tenants/{tid}"))
     root.mkdir(parents=True, exist_ok=True)
     override = (os.getenv("AIPLAT_DIAGNOSIS_STORE_DB") or "").strip()

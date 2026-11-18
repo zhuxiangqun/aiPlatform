@@ -1258,7 +1258,7 @@ def sys_knowledge_retrieve(
 
         if not _wiki_circuit_breaker.allow_request(
 
-            domain_id=_cb_domain, tenant_id=tenant_id or "default"):
+            domain_id=_cb_domain, tenant_id=tenant_id or DomainRouter.default_tenant()):
 
             return []
 
@@ -1280,7 +1280,7 @@ def sys_knowledge_retrieve(
 
             _wiki_circuit_breaker.record_success(
 
-                domain_id=_cb_domain, tenant_id=tenant_id or "default")
+                domain_id=_cb_domain, tenant_id=tenant_id or DomainRouter.default_tenant())
 
             for wr in out:
 
@@ -1292,7 +1292,7 @@ def sys_knowledge_retrieve(
 
             _wiki_circuit_breaker.record_failure(
 
-                domain_id=_cb_domain, tenant_id=tenant_id or "default")
+                domain_id=_cb_domain, tenant_id=tenant_id or DomainRouter.default_tenant())
 
             logging.getLogger("retrieval").warning(
 
@@ -1363,7 +1363,7 @@ def sys_knowledge_retrieve(
 
         gi = GraphIndex(
             domain_id=domain_id or get_domain_router().default_graph_domain(),
-            tenant_id=tenant_id or "default",
+            tenant_id=tenant_id or DomainRouter.default_tenant(),
         )
 
         if hasattr(gi, 'traverse') and gi._entities:

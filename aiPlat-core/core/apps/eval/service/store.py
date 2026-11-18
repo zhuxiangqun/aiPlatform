@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
+from core.harness.knowledge.domain_router import DomainRouter
 
 STORE_SCHEMA_VERSION = "eval.store.v0"
 
@@ -36,7 +37,7 @@ def default_db_path(*, tenant_id: str = "") -> Path:
     """
     from core.utils.paths import get_aiplat_data_dir
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     root = Path(get_aiplat_data_dir(f"eval/tenants/{tid}"))
     root.mkdir(parents=True, exist_ok=True)
     override = (os.getenv("AIPLAT_EVAL_STORE_DB") or "").strip()
@@ -1114,7 +1115,7 @@ def import_code_review_gold(
             raise FileNotFoundError(f"gold_dir not found: {root}")
 
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
-    set_id = f"set_crg_{(tenant_id or 'default').strip() or 'default'}"
+    set_id = f"set_crg_{(tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()}"
     existing = store.get_set(set_id)
     if not existing:
         store.create_set(

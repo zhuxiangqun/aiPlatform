@@ -45,7 +45,7 @@ class KBIngestTool(BaseTool):
         Args:
             params: params 参数。
         """
-        tenant_id = str(params.get("tenant_id") or "").strip() or "default"
+        tenant_id = str(params.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
         collection_id = str(params.get("collection_id") or "").strip() or "default"
         file_path = str(params.get("file_path") or "").strip()
         kind = str(params.get("kind") or "pdf").strip()
@@ -132,7 +132,7 @@ class KBQueryTool(BaseTool):
         Args:
             params: params 参数。
         """
-        tenant_id = str(params.get("tenant_id") or "").strip() or "default"
+        tenant_id = str(params.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
         collection_id = str(params.get("collection_id") or "").strip() or "default"
         question = str(params.get("question") or "").strip()
         year = params.get("year")

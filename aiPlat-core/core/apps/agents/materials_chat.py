@@ -7,6 +7,7 @@ import os
 import re
 import time
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 from core.harness.utils.model_injection import best_model_for_purpose
 from core.harness.utils.prompt_loader import _sync_resolve as _resolve
@@ -346,7 +347,7 @@ class MaterialsChatAgent(BaseAgent):
             run_id = str(vars0.get("_run_id") or "").strip() or None
             scope = dict(vars0.get("scope") or {})
             options = dict(vars0.get("options") or {})
-            tenant_id = str(vars0.get("tenant_id") or "default")
+            tenant_id = str(vars0.get("tenant_id") or DomainRouter.default_tenant())
             session_id = str(context.session_id or "default")
             user_id = str(context.user_id or "system")
 
@@ -388,7 +389,7 @@ class MaterialsChatAgent(BaseAgent):
                     collection_id = profile.collection_filter
             except Exception:
                 logging.getLogger(__name__).debug('_execute_impl failed', exc_info=True)
-            if not _enforce_scope(collection_id, str(vars0.get("tenant_id") or "default")):
+            if not _enforce_scope(collection_id, str(vars0.get("tenant_id") or DomainRouter.default_tenant())):
                 return AgentResult(success=False, error="scope_required")
             _trace("问题理解", f"DMQR 多查询改写", query_len=len(question))
             doc_ids = [str(x).strip() for x in (scope.get("doc_ids") or []) if str(x).strip()]

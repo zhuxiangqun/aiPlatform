@@ -9,6 +9,7 @@ Usage:
 """
 
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 import json, logging, os, sqlite3, sys
 
 logging.basicConfig(level=logging.INFO)
@@ -41,7 +42,7 @@ def run(dry_run: bool = True):
     total = 0
     for r in rows:
         meta = json.loads(r["metadata_json"] or "{}")
-        tid = meta.get("tenant_id") or "default"
+        tid = meta.get("tenant_id") or DomainRouter.default_tenant()
         if not meta.get("tenant_id"):
             orphans += 1
         groups.setdefault(tid, []).append(r)

@@ -52,7 +52,7 @@ MEMORY_DIR = get_aiplat_data_dir("memory")
 def _safe_tenant_key(tenant_id: str = "") -> str:
     import re as _re
 
-    s = _re.sub(r"[^a-zA-Z0-9_\-]", "_", str(tenant_id or "default").strip())[:80]
+    s = _re.sub(r"[^a-zA-Z0-9_\-]", "_", str(tenant_id or DomainRouter.default_tenant()).strip())[:80]
     return s or "default"
 
 
