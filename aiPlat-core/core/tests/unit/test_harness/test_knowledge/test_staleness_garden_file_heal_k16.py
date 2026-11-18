@@ -3,9 +3,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 def test_file_source_wires_tenant_scan():
-    text = Path("aiPlat-core/core/harness/syscalls/file.py").read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/harness/syscalls/file.py").read_text(encoding="utf-8")
     assert "list_kb_tenant_ids" in text
     assert "StalenessMonitor(tenant_id=t)" in text
     assert "StalenessMonitor().scan_all_collections()" not in text
@@ -13,7 +21,7 @@ def test_file_source_wires_tenant_scan():
 
 
 def test_garden_source_wires_tenant_scan():
-    text = Path("aiPlat-core/core/harness/knowledge/auto_garden.py").read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/auto_garden.py").read_text(encoding="utf-8")
     assert "_scan_staleness_tenants" in text
     assert "list_kb_tenant_ids" in text
     assert "StalenessMonitor(tenant_id=tid)" in text
@@ -23,7 +31,7 @@ def test_garden_source_wires_tenant_scan():
 
 
 def test_self_heal_source_wires_tenant_scan():
-    text = Path("aiPlat-core/core/harness/evaluation/self_heal_gate.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/harness/evaluation/self_heal_gate.py").read_text(
         encoding="utf-8"
     )
     assert "list_kb_tenant_ids" in text
