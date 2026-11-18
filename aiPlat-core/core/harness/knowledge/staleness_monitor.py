@@ -22,6 +22,7 @@ Usage:
 
 
 from __future__ import annotations
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
@@ -80,7 +81,7 @@ class StalenessReport:
 
 
 
-def kb_sqlite_path_for_tenant(tenant_id: str = "default") -> Path:
+def kb_sqlite_path_for_tenant(tenant_id: str = DomainRouter.default_tenant()) -> Path:
     """Resolve per-tenant KB sqlite path under AIPLAT_HOME.
 
     Args:
@@ -89,7 +90,7 @@ def kb_sqlite_path_for_tenant(tenant_id: str = "default") -> Path:
     Returns:
         ``{AIPLAT_HOME}/kb/tenants/{tenant}/kb.sqlite3``。
     """
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     # 为什么：N09 K14 — 禁止写死 tenants/default，漂移扫描须命中租户分库
     return Path(get_aiplat_home()) / "kb" / "tenants" / tid / "kb.sqlite3"
 
@@ -199,14 +200,14 @@ class StalenessMonitor:
 
 
 
-    def __init__(self, *, tenant_id: str = "default"):
+    def __init__(self, *, tenant_id: str = DomainRouter.default_tenant()):
 
         """初始化。
 
         Args:
             tenant_id: 租户；选择 KB 分库路径（N09 K14）。
         """
-        self._tenant_id = (tenant_id or "").strip() or "default"
+        self._tenant_id = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
         self._kb_db_path = kb_sqlite_path_for_tenant(self._tenant_id)
 

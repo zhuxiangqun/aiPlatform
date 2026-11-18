@@ -40,6 +40,7 @@ from __future__ import annotations
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 import json
 
 import logging
@@ -225,7 +226,7 @@ def _get_conn() -> sqlite3.Connection:
 
 
 
-def _fetch_source_content(source_refs: List[str], tenant_id: str = "default") -> str:
+def _fetch_source_content(source_refs: List[str], tenant_id: str = DomainRouter.default_tenant()) -> str:
 
     """Fetch raw content for kb: source references from kb_elements.
 

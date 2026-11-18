@@ -39,6 +39,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- `tenant_id: str = "default"` 签名默认 / 回落字面量 SSOT 化
+- `tenant_id` knowledge 层 SSOT → 见 Batch K49；其它层签名默认仍开放
 - wiki collection 字面量（consultant_knowledge）
 - N09 / 附录 N 全量认证（certified 仍 false）

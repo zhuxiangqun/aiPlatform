@@ -23,6 +23,7 @@ Usage:
 
 
 from __future__ import annotations
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
@@ -123,7 +124,7 @@ class OntologyAuditor:
 
 
 
-    def audit_domain(self, domain_id: str, *, tenant_id: str = "default") -> OntologyAuditReport:
+    def audit_domain(self, domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()) -> OntologyAuditReport:
 
         """Run full audit on one domain.
 
@@ -133,7 +134,7 @@ class OntologyAuditor:
         """
 
         report = OntologyAuditReport(domain_id=domain_id)
-        tid = (tenant_id or "").strip() or "default"
+        tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
 
 
@@ -424,7 +425,7 @@ class OntologyAuditor:
 
 
 
-    def audit_all_domains(self, *, tenant_id: str = "default") -> List[OntologyAuditReport]:
+    def audit_all_domains(self, *, tenant_id: str = DomainRouter.default_tenant()) -> List[OntologyAuditReport]:
 
         """Run audit on all registered domains.
 

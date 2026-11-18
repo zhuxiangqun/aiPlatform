@@ -77,6 +77,8 @@ class DomainRouter:
     PLATFORM_IT_OPS_DOMAIN = "it-ops"
     PLATFORM_DATA_GOV_DOMAIN = "data-gov"
     PLATFORM_SYSTEM_DOMAIN = "aiplat-system"
+    # Tenant fallback SSOT (N09 K49) — not an ontology domain id.
+    PLATFORM_DEFAULT_TENANT = "default"
 
     @staticmethod
     def _home() -> str:
@@ -418,6 +420,15 @@ class DomainRouter:
         """
         return cls.PLATFORM_SYSTEM_DOMAIN
 
+    @classmethod
+    def default_tenant(cls) -> str:
+        """Return platform default tenant id fallback (N09 K49).
+
+        Prefer this over hardcoding ``\"default\"`` in ``tenant_id`` signature
+        defaults / GraphIndex resolve fallbacks.
+        """
+        return cls.PLATFORM_DEFAULT_TENANT
+
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).
 
@@ -441,7 +452,7 @@ class DomainRouter:
             "fallback_domains", [self.PLATFORM_DEFAULT_GRAPH_DOMAIN]
         )
 
-    def register_domain(self, domain_id: str, config: dict, auto_rebuild: bool = True, tenant_id: str = "default"):
+    def register_domain(self, domain_id: str, config: dict, auto_rebuild: bool = True, tenant_id: str = PLATFORM_DEFAULT_TENANT):
         """Hot-register a new domain at runtime (no restart).
 
         Args:
@@ -520,7 +531,7 @@ class DomainRouter:
             ]
 
     def refresh_domain_maturity(
-        self, domain_id: str = "", *, tenant_id: str = "default"
+        self, domain_id: str = "", *, tenant_id: str = PLATFORM_DEFAULT_TENANT
     ) -> Dict[str, Any]:
         """Refresh maturity scores for one or all domains, writing back to registry.
 
@@ -530,7 +541,7 @@ class DomainRouter:
         """
         import json as _json
         registry = self._load_registry()
-        tid = (tenant_id or "").strip() or "default"
+        tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
         if domain_id:
             from core.harness.knowledge.domain_maturity import compute_domain_maturity

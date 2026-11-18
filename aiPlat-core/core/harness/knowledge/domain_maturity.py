@@ -14,6 +14,7 @@ Levels: seeding(0-20) → growing(20-40) → building(40-60) → stable(60-80) �
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 import os as _os
 import sqlite3 as _sqlite3
@@ -90,7 +91,7 @@ def compute_domain_maturity(
     domain_id: str,
     ontologies_dir: str = "",
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Compute 6-dimension maturity for a domain. Returns score + level + dimensions.
 
@@ -100,7 +101,7 @@ def compute_domain_maturity(
         tenant_id: 租户；加载 GraphIndex 并过滤 state_changes（N09 K19）。
     """
     base = _os.path.expanduser(ontologies_dir or _os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     dims = {}
     thresholds = dict(DEFAULT_THRESHOLDS)
@@ -228,7 +229,7 @@ def compute_domain_maturity(
 def compare_domains(
     ontologies_dir: str = "",
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> List[Dict[str, Any]]:
     """Cross-domain comparison: compute maturity for all domains, sorted by score desc.
 

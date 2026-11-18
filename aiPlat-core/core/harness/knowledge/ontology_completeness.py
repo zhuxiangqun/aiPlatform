@@ -5,6 +5,7 @@ C5 按声明类的实例/边覆盖计分，禁止用节点数/页面数档位替
 非目标：不替代准确率/忠实度/权限/Action 审计；不宣称 N24 全量符合。
 """
 from __future__ import annotations
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
@@ -147,7 +148,7 @@ def _class_key(cls: Any) -> str:
     return str(getattr(cls, "label", None) or getattr(cls, "name", None) or "").strip()
 
 
-def _score_c5(domain_id: str, domain: Any = None, *, tenant_id: str = "default") -> float:
+def _score_c5(domain_id: str, domain: Any = None, *, tenant_id: str = DomainRouter.default_tenant()) -> float:
     """事实层：声明类的实例覆盖 + 声明关系的边覆盖（禁止节点数档位）。
 
     Args:
@@ -158,7 +159,7 @@ def _score_c5(domain_id: str, domain: Any = None, *, tenant_id: str = "default")
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
 
-        tid = (tenant_id or "").strip() or "default"
+        tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
         # 为什么：N09 K20 — OCS C5 须读租户图，禁止默认 GraphIndex
         g = GraphIndex.load(domain_id, tenant_id=tid)
         classes = list(getattr(domain, "classes", None) or [])
@@ -277,7 +278,7 @@ def compute_domain_ocs(
     domain_id: str,
     *,
     credit_test_evidence: bool = True,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """计算单域 OCS 分解（v4.3.1 权重）。
 
@@ -325,7 +326,7 @@ def compute_domain_ocs(
         level = "seeding"
     return {
         "domain_id": domain_id,
-        "tenant_id": (tenant_id or "").strip() or "default",
+        "tenant_id": (tenant_id or "").strip() or DomainRouter.default_tenant(),
         "ocs": total,
         "level": level,
         "threshold": threshold,
@@ -347,7 +348,7 @@ def evaluate_ocs_gate(
     *,
     threshold: Optional[float] = None,
     credit_test_evidence: bool = False,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """OCS 门槛门：达标才 pass；默认不给测试证据加分。
 
@@ -393,7 +394,7 @@ def evaluate_ocs_gate(
 def compute_all_ocs(
     *,
     domain_ids: Optional[List[str]] = None,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> List[Dict[str, Any]]:
     """compute_all_ocs。
 

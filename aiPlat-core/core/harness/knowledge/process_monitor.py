@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
 import os as _os
 import sqlite3 as _sqlite3
 import time as _time
@@ -32,11 +33,11 @@ def _get_conn():
 
 
 def _tid(tenant_id: str | None) -> str:
-    return (tenant_id or "").strip() or "default"
+    return (tenant_id or "").strip() or DomainRouter.default_tenant()
 
 
 def state_distribution(
-    domain_id: str, *, tenant_id: str = "default"
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Count instances per class per state. Returns [{class_name, state_name, count}].
 
@@ -69,7 +70,7 @@ def state_distribution(
 
 
 def bottleneck_analysis(
-    domain_id: str, limit: int = 10, *, tenant_id: str = "default"
+    domain_id: str, limit: int = 10, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Find entities stuck in their current state the longest.
 
@@ -106,7 +107,7 @@ def bottleneck_analysis(
 
 
 def sla_violations(
-    domain_id: str, *, tenant_id: str = "default"
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Find instances with time_elapsed transitions that have triggered.
 
@@ -145,7 +146,7 @@ def sla_violations(
 
 
 def trend_data(
-    domain_id: str, days: int = 7, *, tenant_id: str = "default"
+    domain_id: str, days: int = 7, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Daily state transition counts for the last N days.
 
@@ -195,7 +196,7 @@ def trend_data(
 
 
 def state_transition_stats(
-    domain_id: str, *, tenant_id: str = "default"
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """Get summary stats: total transitions, most common transitions.
 

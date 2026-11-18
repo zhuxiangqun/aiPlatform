@@ -10,6 +10,7 @@ aggregation = multi-instance method  (p95, avg, sum, count, none)
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 import os as _os
 import re as _re
@@ -86,7 +87,7 @@ def compute(
     domain_id: str,
     *,
     time_window_days: int = 30,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Compute a metric value from state_history.db + GraphIndex.
 
@@ -99,7 +100,7 @@ def compute(
     if not _os.path.exists(DB_PATH):
         return {"value": None, "error": "state_changes.db not found", "metric_name": metric.name}
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     cutoff = _time.time() - (time_window_days * 86400)
     try:
         conn = _sqlite3.connect(DB_PATH, timeout=5.0)
@@ -159,7 +160,7 @@ def get_trend(
     domain_id: str,
     days: int = 30,
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> List[Dict[str, Any]]:
     """Get daily metric values for the last N days.
 
@@ -169,7 +170,7 @@ def get_trend(
         days: days 参数。
         tenant_id: 租户；透传 compute（N09 K18）。
     """
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     results = []
     for offset in range(days):
         val = compute(metric, domain_id, time_window_days=1, tenant_id=tid)
@@ -183,7 +184,7 @@ def scorecard(
     metrics: List[MetricDefinition],
     domain_id: str,
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> List[Dict[str, Any]]:
     """Compute all metrics for a domain, returning a scorecard.
 
@@ -192,7 +193,7 @@ def scorecard(
         domain_id: domain 标识。
         tenant_id: 租户；透传 compute（N09 K18）。
     """
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     result = []
     for m in metrics:
         val = compute(m, domain_id, tenant_id=tid)
@@ -206,14 +207,14 @@ def _eval_per_instance(
     domain_id: str,
     conn,
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Optional[float]:
     u"""Evaluate measurement formula for a single instance."""
     formula = metric.measurement
     if not formula:
         return None
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     # Simple field references: completed_at, created_at are timestamps from state_changes
     # For "completed_at - created_at": extract transition timestamps
     row = conn.execute(

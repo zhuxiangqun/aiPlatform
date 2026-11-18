@@ -45,7 +45,9 @@ def _resolve_graph_tenant(params: Optional[Dict[str, Any]] = None) -> str:
                 return tid
     except Exception:
         logger.debug("_resolve_graph_tenant: no active request context", exc_info=True)
-    return "default"
+    from core.harness.knowledge.domain_router import DomainRouter
+
+    return DomainRouter.default_tenant()
 
 
 def _estimate_tokens(text: str) -> int:

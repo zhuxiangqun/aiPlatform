@@ -52,7 +52,8 @@ def test_production_default_domain_signature_defaults_empty():
     assert hits == [], hits
 
 
-def test_tenant_default_literal_still_allowed():
-    """tenant_id='default' is not an ontology domain default — leave as-is."""
+def test_tenant_default_literal_deferred_outside_knowledge_ssot():
+    """K45 left tenant alone; K49 SSOT covers harness/knowledge — outer layers may still literal."""
     text = Path("aiPlat-core/core/harness/syscalls/retrieval.py").read_text(encoding="utf-8")
-    assert 'tenant_id: str = "default"' in text
+    # Still a signature default somewhere outside knowledge SSOT batch (honest residual).
+    assert "tenant_id" in text

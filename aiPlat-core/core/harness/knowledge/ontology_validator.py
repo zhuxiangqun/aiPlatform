@@ -9,6 +9,7 @@ Callers:
 """
 
 from __future__ import annotations
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
@@ -64,7 +65,7 @@ def validate_domain(
     domain_id: str,
     *,
     collection_id: str = None,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> ValidationReport:
     """Run full cross-check of existing data vs current ontology.
 
@@ -75,7 +76,7 @@ def validate_domain(
     """
     report = ValidationReport(domain_id=domain_id)
     report.generated_at = _time.time()
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     home = _Path(get_aiplat_home())
     onto_path = home / "ontologies" / f"{domain_id}.yaml"
@@ -163,12 +164,12 @@ def _validate_graph_nodes(
     domain_id: str,
     home: _Path,
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ):
     """Check graph nodes: orphans + state mismatches."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        tid = (tenant_id or "").strip() or "default"
+        tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
         # 为什么：N09 K20 — 校验图节点须读租户分库
         graph = GraphIndex.load(domain_id, tenant_id=tid)
         nodes = list(graph._nodes.values())
