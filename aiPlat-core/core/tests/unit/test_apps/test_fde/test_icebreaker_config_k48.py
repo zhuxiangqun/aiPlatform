@@ -4,14 +4,22 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 from core.apps.fde.service.rapid_insight_service import (
     _load_icebreaker_map,
     generate_icebreaker_questions,
 )
 from core.harness.knowledge.domain_router import DomainRouter
 
-SERVICE = Path("aiPlat-core/core/apps/fde/service/rapid_insight_service.py")
-YAML = Path("aiPlat-core/workspace_seeds/fde/icebreaker_questions.yaml")
+SERVICE = (_repo_root() / "aiPlat-core/core/apps/fde/service/rapid_insight_service.py")
+YAML = (_repo_root() / "aiPlat-core/workspace_seeds/fde/icebreaker_questions.yaml")
 
 
 def test_yaml_seed_exists_and_has_domains():

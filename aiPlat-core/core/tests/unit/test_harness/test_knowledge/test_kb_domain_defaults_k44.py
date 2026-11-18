@@ -4,6 +4,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 TARGETS = [
     "aiPlat-core/core/apps/agents/multi_agent_orchestrator.py",
     "aiPlat-core/core/api/routers/diagnostics.py",
@@ -28,7 +36,7 @@ def test_targets_use_platform_kb_domain_default():
 def test_production_ai_knowledge_signature_defaults_empty():
     rx = re.compile(r'domain_id\s*:\s*str\s*=\s*["\']ai-knowledge["\']')
     hits = []
-    for root in (Path("aiPlat-core/core"), Path("aiPlat-platform")):
+    for root in ((_repo_root() / "aiPlat-core/core"), (_repo_root() / "aiPlat-platform")):
         for p in root.rglob("*.py"):
             if "/tests/" in str(p).replace("\\", "/"):
                 continue
@@ -39,9 +47,9 @@ def test_production_ai_knowledge_signature_defaults_empty():
 
 
 def test_fde_ask_and_export_use_ssot():
-    ask = Path("aiPlat-platform/apps/fde/api/fde_ask.py").read_text(encoding="utf-8")
+    ask = (_repo_root() / "aiPlat-platform/apps/fde/api/fde_ask.py").read_text(encoding="utf-8")
     assert "PLATFORM_KB_DOMAIN" in ask
     assert 'else "ai-knowledge"' not in ask
-    fde = Path("aiPlat-platform/apps/fde/api/fde.py").read_text(encoding="utf-8")
+    fde = (_repo_root() / "aiPlat-platform/apps/fde/api/fde.py").read_text(encoding="utf-8")
     assert "fde_kb_domain()" in fde
     assert 'domain_id", "ai-knowledge"' not in fde
