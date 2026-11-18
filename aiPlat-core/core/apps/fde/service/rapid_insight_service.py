@@ -741,13 +741,13 @@ def _load_icebreaker_map() -> Dict[str, List[str]]:
         if not key or not isinstance(qs, list):
             continue
         out[key] = [str(q).strip() for q in qs if str(q).strip()]
-    # Alias competition SSOT id so YAML may use either literal or router constant.
+    # Alias competition SSOT id when YAML used the platform competition constant value.
+    from core.harness.knowledge.domain_router import DomainRouter
+
     comp = _ri_competition_domain()
-    if comp and comp not in out:
-        for alt in ("bell-competition",):
-            if alt in out:
-                out[comp] = out[alt]
-                break
+    alt = DomainRouter.PLATFORM_COMPETITION_DOMAIN
+    if comp and comp not in out and alt in out:
+        out[comp] = out[alt]
     return out
 
 
