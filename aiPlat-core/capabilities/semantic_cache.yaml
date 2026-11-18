@@ -29,6 +29,12 @@ methods:
     signature: "() -> SemanticCache"
     purpose: "获取全局语义缓存单例"
 
+consumers:
+  - path: aiPlat-platform/delivery/cost_report.py
+    uses: get
+    via: core.api.core_facade.get_semantic_cache
+    note: "交付成本报告读语义缓存命中"
+
 consumer_patterns:
   - "harness/syscalls/"
   - "harness/knowledge/"
@@ -39,3 +45,4 @@ consumer_patterns:
   - "harness/integration"
   - "harness/optimization/"
   - "management/"
+  - "delivery/"

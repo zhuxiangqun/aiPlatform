@@ -225,6 +225,8 @@ GENERIC_METHOD_NAMES = {
     "register", "get", "set", "search", "list", "list_all", "run_all",
     "store", "track", "match", "evaluate", "create", "update", "delete",
     "prune", "close", "start", "stop", "encode",
+    # 多模块仪表盘共用名，非并行实现信号（HallucinationTracker / SLA / …）
+    "get_dashboard",
 }
 # Facade / syscall / integration re-exports are the approved surface, not forks.
 FACADE_PATH_MARKERS = (
@@ -359,6 +361,18 @@ for c in contracts:
     
     # Report each unique file once per capability
     for filepath, term in sorted(found_files.items()):
+        # 为什么：注释/字符串里提到符号名不是消费；要求 import 才算未登记消费者
+        try:
+            content = (workspace / filepath).read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        import_hit = re.search(
+            rf"(?:from\s+[\w.]+\s+import\s+[^\n]*\b{re.escape(term)}\b|"
+            rf"import\s+{re.escape(term)}\b)",
+            content,
+        )
+        if not import_hit:
+            continue
         print(f"  [WARN] §F: {filepath} 使用了 {term}（{cap} 能力），但未在 {cap}.yaml 的 consumers 中注册")
         warnings += 1
 
