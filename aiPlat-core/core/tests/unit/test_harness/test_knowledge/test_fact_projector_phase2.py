@@ -1,6 +1,15 @@
 """v4.3.1 Phase 2 G2：Fact→Graph 可重建 + Action L1 required_permissions。"""
 from __future__ import annotations
 
+from pathlib import Path
+
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
 import pytest
 
 from core.harness.infrastructure.action_contract import ActionContractModel
@@ -66,7 +75,7 @@ async def test_project_facts_rebuildable(ledger: FactLedger, tmp_path, monkeypat
     # use repo seed if present
     from pathlib import Path
 
-    repo_seed = Path("aiPlat-core/workspace_seeds/ontologies/lock-service-object-types.json")
+    repo_seed = (_repo_root() / "aiPlat-core/workspace_seeds/ontologies/lock-service-object-types.json")
     bindings = repo_seed if repo_seed.is_file() else None
 
     r1 = await project_facts_to_graph(

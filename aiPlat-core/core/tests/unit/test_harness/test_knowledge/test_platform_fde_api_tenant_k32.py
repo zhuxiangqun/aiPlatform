@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 _FILES = (
     "aiPlat-platform/apps/fde/api/fde.py",
     "aiPlat-platform/apps/fde/api/fde_sessions_v2.py",
@@ -33,7 +41,7 @@ def test_k32_wave_sources_wire_tenant():
 
 def test_platform_fde_api_no_bare_graphindex_loads():
     """Wave1+wave2: no executable bare GraphIndex.load under apps/fde/api."""
-    root = Path("aiPlat-platform/apps/fde/api")
+    root = (_repo_root() / "aiPlat-platform/apps/fde/api")
     bare = []
     for py in root.glob("*.py"):
         for i, ln in enumerate(py.read_text(encoding="utf-8").splitlines(), 1):
