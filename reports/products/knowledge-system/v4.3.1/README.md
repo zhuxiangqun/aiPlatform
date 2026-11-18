@@ -95,5 +95,6 @@ authority: supporting
 | [phase2-cross-tenant-graphindex-ctor-evidence.md](./phase2-cross-tenant-graphindex-ctor-evidence.md) | Batch K34 N09 GraphIndex 直构 / branch DB 租户（非 certified） |
 | [phase2-cross-tenant-scripts-ctor-evidence.md](./phase2-cross-tenant-scripts-ctor-evidence.md) | Batch K35 N09 scripts GraphIndex 直构租户（非 certified） |
 | [phase2-cross-tenant-branch-registry-evidence.md](./phase2-cross-tenant-branch-registry-evidence.md) | Batch K36 N09 branch registry 租户键（非 certified） |
+| [phase2-cross-tenant-branch-yaml-evidence.md](./phase2-cross-tenant-branch-yaml-evidence.md) | Batch K37 N09 branch YAML 租户前缀（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

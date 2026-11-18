@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- 分支 YAML 路径租户前缀（`{domain}__{branch}.yaml`）
+- 分支 YAML 路径租户前缀 — 已由 K37 覆盖
 - FDE/平台业务域名硬编码消除
 - N09 / 附录 N 全量认证（certified 仍 false）

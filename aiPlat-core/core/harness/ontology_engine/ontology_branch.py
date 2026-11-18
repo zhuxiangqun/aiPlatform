@@ -3,7 +3,7 @@ OntologyBranchManager — 本体分支管理 (Palantir Global Branching 对齐)
 
 为每个本体域提供 git-like 的分支/派生/合并能力:
 
-  分支隔离: graph/{domain}__{branch}.db  (每分支独立 SQLite)
+  分支隔离: graph/{tenant:}{domain}__{branch}.db + ontologies YAML 同前缀 (N09 K34/K37)
   fork: 从快照复制 DB → 新分支
   diff: 三方对比 (ancestor → branch_a + branch_b)
   merge: 自动合并 (无冲突) / 警告合并 (属性级冲突) / 阻断 (结构级冲突)
@@ -185,6 +185,49 @@ def _branch_db_path(domain_id: str, branch_name: str, tenant_id: str = "default"
     return GRAPH_DIR / f"{prefix}{domain_id}__{branch_name}.db"
 
 
+def _branch_yaml_path(domain_id: str, branch_name: str, tenant_id: str = "default") -> _Path:
+    """Ontology YAML path for a branch (N09 K37 tenant prefix).
+
+    Mirrors GraphIndex / ``_branch_db_path`` prefix:
+    non-default → ``{tenant}:{domain}.yaml`` / ``{tenant}:{domain}__{branch}.yaml``.
+
+    Args:
+        domain_id: domain 标识。
+        branch_name: 分支名；main 对应域主 YAML。
+        tenant_id: 租户；default 无前缀。
+    """
+    tid = (tenant_id or "default").strip() or "default"
+    prefix = f"{tid}:" if tid != "default" else ""
+    ont_dir = HOME / "ontologies"
+    if branch_name == "main":
+        return ont_dir / f"{prefix}{domain_id}.yaml"
+    return ont_dir / f"{prefix}{domain_id}__{branch_name}.yaml"
+
+
+def _resolve_branch_yaml_source(
+    domain_id: str, branch_name: str, tenant_id: str,
+) -> _Path | None:
+    """Prefer tenant-scoped YAML; fall back to unprefixed for bootstrap.
+
+    Args:
+        domain_id: domain 标识。
+        branch_name: 分支名。
+        tenant_id: 已解析租户。
+
+    Returns:
+        存在的路径，或 None。
+    """
+    primary = _branch_yaml_path(domain_id, branch_name, tenant_id)
+    if primary.exists():
+        return primary
+    # 为什么：新租户尚无隔离副本时允许从共享域 YAML 引导，写路径仍走租户前缀
+    if (tenant_id or "default") != "default":
+        legacy = _branch_yaml_path(domain_id, branch_name, "default")
+        if legacy.exists():
+            return legacy
+    return None
+
+
 def _resolve_branch_tenant(tenant_id: str = "") -> str:
     """Resolve tenant for branch GraphIndex / DB paths.
 
@@ -282,12 +325,12 @@ class OntologyBranchManager:
         _shutil.copy2(str(source_db), str(target_db))
         logger.info("Forked branch '%s' from '%s' (snapshot=%s)", branch_name, domain_id, base_snapshot_id)
 
-        # Also copy versioned YAML if exists
+        # Also copy versioned YAML if exists（租户前缀，N09 K37）
         try:
-            ont_dir = HOME / "ontologies"
-            yaml_main = ont_dir / f"{domain_id}.yaml"
-            yaml_branch = ont_dir / f"{domain_id}__{branch_name}.yaml"
-            if yaml_main.exists():
+            yaml_main = _resolve_branch_yaml_source(domain_id, "main", tid)
+            yaml_branch = _branch_yaml_path(domain_id, branch_name, tid)
+            if yaml_main is not None:
+                yaml_branch.parent.mkdir(parents=True, exist_ok=True)
                 _shutil.copy2(str(yaml_main), str(yaml_branch))
         except Exception as e:
             logger.debug("YAML copy for fork failed: %s", e)
@@ -602,12 +645,12 @@ class OntologyBranchManager:
             _shutil.copy2(str(source_db), str(target_db))
             logger.info("Merged '%s' → '%s' (backup: %s)", source_branch, target_branch, backup_path.name)
 
-            # Also merge YAML
+            # Also merge YAML（租户前缀，N09 K37）
             try:
-                ont_dir = HOME / "ontologies"
-                yaml_source = ont_dir / f"{domain_id}__{source_branch}.yaml"
-                yaml_target = ont_dir / f"{domain_id}.yaml"
-                if yaml_source.exists():
+                yaml_source = _resolve_branch_yaml_source(domain_id, source_branch, tid)
+                yaml_target = _branch_yaml_path(domain_id, "main", tid)
+                if yaml_source is not None:
+                    yaml_target.parent.mkdir(parents=True, exist_ok=True)
                     _shutil.copy2(str(yaml_source), str(yaml_target))
             except Exception as e:
                 logger.debug("YAML merge failed: %s", e)
