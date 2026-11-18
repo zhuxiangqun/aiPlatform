@@ -4069,7 +4069,7 @@ def get_governance_scenario_loop() -> Dict[str, Any]:
     return get_governance_loop_map()
 
 
-def governance_quality_view(domain_id: str = "data-gov") -> Dict[str, Any]:
+def governance_quality_view(domain_id: str = DomainRouter.data_gov_domain()) -> Dict[str, Any]:
     """Step ⑥ vertical: OCS + gate-2 actions + value links.
 
     Args:
@@ -4169,7 +4169,7 @@ def org_set_goal_status(goal_id: str, status: str) -> Dict[str, Any]:
 def org_run_goal(
     goal_id: str = "",
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     dry_actions: bool = True,
     week_label: str = "",
 ) -> Dict[str, Any]:
@@ -4214,7 +4214,7 @@ def org_get_run(run_id: str) -> Dict[str, Any]:
     return get_run(run_id)
 
 
-def org_replay_trace(trace_id: str = "", *, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_replay_trace(trace_id: str = "", *, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """V1: read-only five-step replay. Does not write ontology, edges, or runs.
 
     Args:
@@ -4245,7 +4245,7 @@ def org_resume_run(
 
 
 def org_weekly_kpi(
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "",
     *,
     week: str = "",
@@ -4262,7 +4262,7 @@ def org_weekly_kpi(
     return weekly_kpi_report(domain_id, goal_id, week=week)
 
 
-def org_joint_health(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_joint_health(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Read-only joint health. Never writes live YAML.
 
     Args:
@@ -4306,7 +4306,7 @@ def org_list_memory(domain_id: str = "", limit: int = 50) -> Dict[str, Any]:
 def org_fleet_gate(
     goal_id: str = "",
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     project_id: str = "",
 ) -> Dict[str, Any]:
     """Org L5 Phase 4 W6: evaluate multi-agent fleet hard gate.
@@ -4346,7 +4346,7 @@ def org_sandbox_rehearsals(limit: int = 5) -> Dict[str, Any]:
 
 async def org_sandbox_conflict_probe(
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     resource_id: str = "shared_interface",
 ) -> Dict[str, Any]:
     """Sandbox concurrent lock probe. No live write.
@@ -4378,7 +4378,7 @@ async def org_sandbox_rehearsal_start(
     return await start_sandbox_rehearsal(role=role, domain_id=domain_id, roles=roles)
 
 
-def org_field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_field_ops_checklist(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Org L5 Phase 4 W7: field ops readiness checklist.
 
     Args:
@@ -4389,7 +4389,7 @@ def org_field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
     return field_ops_checklist(domain_id)
 
 
-def org_customer_signoff(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_customer_signoff(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """V3: customer signoff layer. Read-only. m4_claim_allowed stays false.
 
     Args:
@@ -4401,7 +4401,7 @@ def org_customer_signoff(domain_id: str = "it-ops") -> Dict[str, Any]:
 
 
 def org_signoff_prep(
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     *,
     as_markdown: bool = False,
@@ -4425,7 +4425,7 @@ def org_signoff_prep(
 async def org_approval_inbox(
     *,
     role: str,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     kind: str = "",
     offset: int = 0,
@@ -4572,7 +4572,7 @@ async def org_approval_snapshot(
     item_id: str,
     *,
     role: str,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
 ) -> Dict[str, Any]:
     """H1: read-only approval snapshot. Does not approve.
 
@@ -4592,7 +4592,7 @@ async def org_approval_snapshot(
 def org_evidence_pack(
     *,
     role: str,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     week: str = "",
     max_traces: int = 5,
@@ -4625,7 +4625,7 @@ def org_evidence_pack(
 
 def org_value_translation(
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     week: str = "",
     tenant_id: str = "",
@@ -4650,7 +4650,7 @@ def org_value_translation(
 
 def org_value_roi_preview(
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     week: str = "",
     trial_minutes_per_incident: float,
@@ -4699,7 +4699,7 @@ def org_h4_auto_audit(*, role: str, limit: int = 50) -> Dict[str, Any]:
     return h4_auto_audit(role=role, limit=limit)
 
 
-async def org_h4_auto_pass(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+async def org_h4_auto_pass(*, role: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """H4: sandbox queue status pass. Never writes live YAML or edges.
 
     Args:
@@ -4716,7 +4716,7 @@ async def org_h4_auto_pass(*, role: str, domain_id: str = "it-ops") -> Dict[str,
     return await run_h4_auto_pass(role=role, domain_id=domain_id or "it-ops")
 
 
-def org_h5_drafts(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_h5_drafts(*, role: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """H5: list draft packs and skill_candidate cases. Not a listing.
 
     Args:
@@ -4728,7 +4728,7 @@ def org_h5_drafts(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
     return list_skill_drafts(role=role, domain_id=domain_id or "it-ops")
 
 
-def org_h5_create_draft(*, role: str, case_id: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_h5_create_draft(*, role: str, case_id: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """H5: write a draft pack. Does not register or write SKILL.md.
 
     Args:
@@ -4765,7 +4765,7 @@ def org_h5_reject_draft(*, role: str, draft_id: str) -> Dict[str, Any]:
     return reject_skill_draft(role=role, draft_id=draft_id)
 
 
-def org_gap_hints(*, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_gap_hints(*, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Read-only: repeated action failures may draft via existing proposal path.
 
     Args:
@@ -4776,7 +4776,7 @@ def org_gap_hints(*, domain_id: str = "it-ops") -> Dict[str, Any]:
     return list_action_gap_hints(domain_id=domain_id or "it-ops")
 
 
-def org_preview_schema_gaps(*, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_preview_schema_gaps(*, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Read-only Diff for schema_gap cases. Does not create proposals.
 
     Args:
@@ -4787,7 +4787,7 @@ def org_preview_schema_gaps(*, domain_id: str = "it-ops") -> Dict[str, Any]:
     return preview_schema_gaps(domain_id or "it-ops")
 
 
-def org_list_cold_cases(*, domain_id: str = "it-ops", limit: int = 20) -> Dict[str, Any]:
+def org_list_cold_cases(*, domain_id: str = DomainRouter.it_ops_domain(), limit: int = 20) -> Dict[str, Any]:
     """Read-only cold case archive. Not injected.
 
     Args:
@@ -4799,7 +4799,7 @@ def org_list_cold_cases(*, domain_id: str = "it-ops", limit: int = 20) -> Dict[s
     return list_cold_cases(domain_id or "it-ops", limit=limit)
 
 
-def org_archive_cold_cases(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_archive_cold_cases(*, role: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Move low-yield cases to cold store. Does not delete or change TBox.
 
     Args:
@@ -4816,7 +4816,7 @@ def org_archive_cold_cases(*, role: str, domain_id: str = "it-ops") -> Dict[str,
     return archive_cold_cases(domain_id or "it-ops")
 
 
-async def org_draft_schema_gaps(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+async def org_draft_schema_gaps(*, role: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Draft edge proposals from schema_gap cases. Does not apply.
 
     Args:
@@ -4937,7 +4937,7 @@ def org_signoff_progress_put(*, role: str, body: Dict[str, Any]) -> Dict[str, An
     return save_signoff_progress(role=role, body=body or {})
 
 
-def org_live_unlock_status(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_live_unlock_status(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """org_live_unlock_status。
 
     Args:
@@ -4969,7 +4969,7 @@ def org_list_interfaces(domain_id: str = "") -> Dict[str, Any]:
     return list_interface_specs(domain_id or "")
 
 
-def org_get_interface(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_get_interface(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Phase C1: get + validate InterfaceSpec for domain.
 
     Args:
@@ -4992,7 +4992,7 @@ def org_assert_action_interface(domain_id: str, action_id: str) -> Dict[str, Any
     return assert_action_bound(domain_id or "it-ops", action_id)
 
 
-def org_materialize_interface(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_materialize_interface(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Phase C1.5: copy InterfaceSpec into AIPLAT_HOME yaml. Never writes connector.live.
 
     Args:
@@ -6462,7 +6462,7 @@ def k2_rollback_arbitration_edge(ticket_id: str, *, role: str) -> Dict[str, Any]
     return rollback_ticket_edge(ticket_id, role=role)
 
 
-async def k5_scan_repeat_failures(domain_id: str = "it-ops") -> Dict[str, Any]:
+async def k5_scan_repeat_failures(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Phase K5: repeated failures → edge draft. auto_apply stays false.
 
     Args:

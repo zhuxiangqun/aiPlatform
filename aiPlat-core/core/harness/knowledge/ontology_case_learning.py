@@ -9,6 +9,7 @@ Authority: live TBox stays YAML; this module never writes ontology YAML directly
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json
 import logging
@@ -546,7 +547,7 @@ def _save_cold(domain_id: str, cases: Dict[str, OntologyCase]) -> None:
     tmp.replace(path)
 
 
-def list_cold_cases(domain_id: str = "it-ops", *, limit: int = 20) -> Dict[str, Any]:
+def list_cold_cases(domain_id: str = DomainRouter.it_ops_domain(), *, limit: int = 20) -> Dict[str, Any]:
     """Read-only cold archive listing. Does not inject or write YAML.
 
     Args:
@@ -581,7 +582,7 @@ def list_cold_cases(domain_id: str = "it-ops", *, limit: int = 20) -> Dict[str, 
     }
 
 
-def archive_cold_cases(domain_id: str = "it-ops", *, limit: int = 20) -> Dict[str, Any]:
+def archive_cold_cases(domain_id: str = DomainRouter.it_ops_domain(), *, limit: int = 20) -> Dict[str, Any]:
     """Move low-yield live cases to cold store. Does not delete. Does not change TBox.
 
     Args:
