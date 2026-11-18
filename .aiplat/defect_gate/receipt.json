@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T00:45:32+08:00",
+  "reviewed_at": "2026-11-18T16:30:09+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "85dacb0a83f159ff056affcdb28a13e2c4e7bc643cd31edcdfe965edb4590bd7",
-  "head_sha": "07fd2ee42d25fbbe8bc3c6027f8163836d220efc",
+  "diff_sha256": "5da7cb70af54f8d1f585a3d872d2b96f960f08f195532dd4dec7cde0f1938b7b",
+  "head_sha": "27c0137986e4f99cf5addba8e7a0347dfcf8cec4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K12 adds physical tenant_id on process_instances, filters orchestrator reads, passes tenant from monitor HTTP process endpoints, and threads tenant through OntologyEngine into record_transition. auto_ontology_pipeline_for_doc still defaults tenant — intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K12 (PR #812)"
 }
