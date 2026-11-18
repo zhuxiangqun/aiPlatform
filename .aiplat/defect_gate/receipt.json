@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T10:23:46+08:00",
+  "reviewed_at": "2026-11-18T18:30:08+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "1a421bae699ec01b62dd255b204f8bdaaad5292797a873c464c4c7e0e5fc3263",
-  "head_sha": "bf5059d296980ee3869a4ffbf848703b73361206",
+  "diff_sha256": "1e84cfb6e4ecff08e85dfb05abbcaa90e61708f51daab5321a4f9272bf2301df",
+  "head_sha": "bb165d7e4d11c2f3f50711403b4b5a628cc916a2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K43 + cherry-pick capability_guard cleanup (#843). Guard 0 errors/0 warnings. certified false. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K43 (PR #844)"
 }
