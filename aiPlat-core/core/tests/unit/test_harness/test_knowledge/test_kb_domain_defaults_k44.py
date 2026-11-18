@@ -28,7 +28,7 @@ TARGETS = [
 
 def test_targets_use_platform_kb_domain_default():
     for rel in TARGETS:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert "DomainRouter.PLATFORM_KB_DOMAIN" in text, rel
         assert 'domain_id: str = "ai-knowledge"' not in text, rel
 
