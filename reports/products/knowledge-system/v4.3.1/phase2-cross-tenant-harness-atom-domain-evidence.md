@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / harness atom·kb·terms domain（Batch K40）证据
 
 > 实施权威：附录 N N09 partial 加深（harness/core GraphIndex.load 域名 → DomainRouter helpers）。  
-> **未宣称** N09 certified；`bell-competition` 试点域字面量仍保留。
+> **未宣称** N09 certified；`bell-competition` 已由 Batch K41 清除。
 
 ## 检查表
 
@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- `bell-competition` GraphIndex.load 字面量（rapid_insight 试点）
 - ontology YAML 文件名路径中的 `knowledge-atom.yaml` 字符串（配置文件名，非 GraphIndex domain 参数）
 - N09 / 附录 N 全量认证（certified 仍 false）
+- `bell-competition` → 见 Batch K41

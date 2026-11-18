@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T09:37:39+08:00",
+  "reviewed_at": "2026-11-18T09:49:09+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "2f58f733dffa5ff59232583fdd1051d3f897f610d02100e48fba81e1e43981d0",
-  "head_sha": "8868a0f3f86969f0a5403d7a3fc50885dd8e654b",
+  "diff_sha256": "60d9922f42311e5f5b46df7fa2dc30a3d14c327e0d6ab737b7c522442395f91c",
+  "head_sha": "97489f3e75a5c83b1d31d6682847d31130889f8b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K40 + proxy listen probe + ui barrel. Five checks: ChatWidget/ProjectSelector pages imports via components/ui; ProjectSelector re-exported from barrel; no deep ui/ paths under pages/. Residual: non-pages ui deep imports remain. Local lock only."
+  "note": "K41 competition domain SSOT. Five checks: rapid_insight load/membership/icebreaker via DomainRouter.competition_domain; production GraphIndex.load literals empty; K40 inventory ratchet updated. Residual: icebreaker other domain keys; GraphIndex ctor literals. certified false. Local lock only."
 }
