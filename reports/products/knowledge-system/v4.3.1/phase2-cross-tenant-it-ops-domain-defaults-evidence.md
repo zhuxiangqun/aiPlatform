@@ -38,6 +38,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- `domain_id: str = "aiplat-system"`（wiki generate-domain）
+- `domain_id: str = "aiplat-system"` → 见 Batch K47
 - icebreaker_map 业务域键 / `tenant_id="default"`
 - N09 / 附录 N 全量认证（certified 仍 false）

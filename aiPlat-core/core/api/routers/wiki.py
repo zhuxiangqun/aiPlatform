@@ -6,7 +6,7 @@ from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
-from core.harness.knowledge.domain_router import get_domain_router
+from core.harness.knowledge.domain_router import DomainRouter, get_domain_router
 try:
     from core.api.routers.wiki_ontology_engine import (
         OntologyDomainCreate, OntologyClassCreate, OntologyPropertyCreate,
@@ -1176,7 +1176,7 @@ async def suggest_domain(body: Dict[str, Any]):
 async def generate_domain(
     collection: str = "system_docs",
     domain_name: str = "",
-    domain_id: str = "aiplat-system",
+    domain_id: str = DomainRouter.system_domain(),
 ):
     """从指定集合的实体中自动生成领域 YAML。
 

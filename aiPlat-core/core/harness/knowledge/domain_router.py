@@ -76,6 +76,7 @@ class DomainRouter:
     PLATFORM_DEFAULT_GRAPH_DOMAIN = "default"
     PLATFORM_IT_OPS_DOMAIN = "it-ops"
     PLATFORM_DATA_GOV_DOMAIN = "data-gov"
+    PLATFORM_SYSTEM_DOMAIN = "aiplat-system"
 
     @staticmethod
     def _home() -> str:
@@ -407,6 +408,15 @@ class DomainRouter:
         Prefer this over hardcoding ``\"data-gov\"`` in governance signature defaults.
         """
         return cls.PLATFORM_DATA_GOV_DOMAIN
+
+    @classmethod
+    def system_domain(cls) -> str:
+        """Return platform system / meta ontology domain id (N09 K47).
+
+        Prefer this over hardcoding ``\"aiplat-system\"`` in wiki generate-domain
+        signature defaults.
+        """
+        return cls.PLATFORM_SYSTEM_DOMAIN
 
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).
