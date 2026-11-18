@@ -106,5 +106,6 @@ authority: supporting
 | [phase2-cross-tenant-default-graph-domain-defaults-evidence.md](./phase2-cross-tenant-default-graph-domain-defaults-evidence.md) | Batch K45 N09 default graph domain 签名默认去硬编码（非 certified） |
 | [phase2-cross-tenant-it-ops-domain-defaults-evidence.md](./phase2-cross-tenant-it-ops-domain-defaults-evidence.md) | Batch K46 N09 it-ops/data-gov domain 签名默认去硬编码（非 certified） |
 | [phase2-cross-tenant-system-domain-defaults-evidence.md](./phase2-cross-tenant-system-domain-defaults-evidence.md) | Batch K47 N09 aiplat-system domain 签名默认去硬编码（非 certified） |
+| [phase2-cross-tenant-icebreaker-config-evidence.md](./phase2-cross-tenant-icebreaker-config-evidence.md) | Batch K48 N09 icebreaker 业务域键配置外置（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3808
+total_capabilities: 3810
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1268,7 +1268,8 @@ scan_hash: 8f9548ec24f4
 | **跨租户 KB domain 签名默认（v4.3.1 N09 K44）** | `domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN` + FDE ask/export | ✅ | 证据 `phase2-cross-tenant-kb-domain-defaults-evidence.md`。**未宣称** N09 certified；`default` 签名默认见 K45。生成物适用：已接线（KB signature defaults） | 本批 |
 | **跨租户 default graph domain 签名默认（v4.3.1 N09 K45）** | `domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN` | ✅ | 证据 `phase2-cross-tenant-default-graph-domain-defaults-evidence.md`。**未宣称** N09 certified；`it-ops`/`data-gov` 见 K46。生成物适用：已接线（default-graph signature defaults） | 本批 |
 | **跨租户 it-ops/data-gov domain 签名默认（v4.3.1 N09 K46）** | `PLATFORM_IT_OPS_DOMAIN` / `PLATFORM_DATA_GOV_DOMAIN` + helpers | ✅ | 证据 `phase2-cross-tenant-it-ops-domain-defaults-evidence.md`。**未宣称** N09 certified；`aiplat-system` 见 K47。生成物适用：已接线（org/gov signature defaults） | 本批 |
-| **跨租户 aiplat-system domain 签名默认（v4.3.1 N09 K47）** | `DomainRouter.PLATFORM_SYSTEM_DOMAIN` + `system_domain()` | ✅ | 证据 `phase2-cross-tenant-system-domain-defaults-evidence.md`。**未宣称** N09 certified；wiki collection 字面量 / icebreaker / tenant_id 仍开放。生成物适用：已接线（system signature defaults） | 本批 |
+| **跨租户 aiplat-system domain 签名默认（v4.3.1 N09 K47）** | `DomainRouter.PLATFORM_SYSTEM_DOMAIN` + `system_domain()` | ✅ | 证据 `phase2-cross-tenant-system-domain-defaults-evidence.md`。**未宣称** N09 certified；icebreaker 见 K48；tenant_id 仍开放。生成物适用：已接线（system signature defaults） | 本批 |
+| **跨租户 icebreaker 业务域键配置外置（v4.3.1 N09 K48）** | `workspace_seeds/fde/icebreaker_questions.yaml` + `_load_icebreaker_map` | ✅ | 证据 `phase2-cross-tenant-icebreaker-config-evidence.md`。**未宣称** N09 certified；`tenant_id="default"` 仍开放。生成物适用：已接线（FDE icebreaker config） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
 | **Claim 证据硬门+冲突（v4.3.1 N03 F2）** | `put_claim` / `record_claim_conflict` / `run_claim_evidence_suite` / `evaluate_claim_evidence_gate` + Facade `fact_ledger_run_claim_evidence_suite` | ✅ | published 无证据拒；同 conflict_key 不同主张记 open 冲突；门槛门 certified 恒 false。证据 `phase2-claim-evidence-evidence.md`。**未宣称** Claim 全量状态机 / N03 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -4710,9 +4711,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 727 | 1 | 728 |
+| Harness 执行引擎 | 728 | 1 | 729 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 604 | 9 | 613 |
+| 知识引擎（本体） | 605 | 9 | 614 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4755,7 +4756,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3797** | **11** | **3808** |
+| **总计** | **3799** | **11** | **3810** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
