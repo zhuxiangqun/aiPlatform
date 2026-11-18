@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T09:37:39+08:00",
+  "reviewed_at": "2026-11-18T18:22:53+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "2f58f733dffa5ff59232583fdd1051d3f897f610d02100e48fba81e1e43981d0",
-  "head_sha": "8868a0f3f86969f0a5403d7a3fc50885dd8e654b",
+  "diff_sha256": "b8b8f4e09d9ef4d6319ea597096364050306c5cb4fec3d913acd1bb457c53703",
+  "head_sha": "0c1b58654a5a5534c6aca6b50a3a1967194b82ad",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K40 + proxy listen probe + ui barrel. Five checks: ChatWidget/ProjectSelector pages imports via components/ui; ProjectSelector re-exported from barrel; no deep ui/ paths under pages/. Residual: non-pages ui deep imports remain. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K40 (PR #840)"
 }
