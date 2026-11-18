@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T23:20:22+08:00",
+  "reviewed_at": "2026-11-19T06:25:01+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "738419c108a6804adeeb1a1c8cd46d0a4e7f93e2d55bfd2310080df82f7250c3",
-  "head_sha": "b5611a4894a035de10255f23e94ce51fed54665f",
+  "diff_sha256": "a8929b1edc8e5f55890c3dc7da161363ad093c59373f6695b7261447b7412dd1",
+  "head_sha": "9c4634bdd3ecea7a8d571c98aa7cc64232826602",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Cascade Path(rel) repo-root fix onto K45 (PR #846)"
+  "note": "K45: DomainRouter module import + residual Path helper. Five checks clean. Mid-stack NameError root cause."
 }
