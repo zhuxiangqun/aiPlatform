@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:41:13+08:00",
+  "reviewed_at": "2026-11-18T16:56:09+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "3f337514ee417b30cf684a74aa655e2bef75afde0b4dee3971c731fc7204aa79",
-  "head_sha": "09579a881ce73f231c89403ae5fba1f4cde5f62c",
+  "diff_sha256": "9e579e48fe695b09cc35a09c1701652591833ba88d460a2b12d8c7018bf1a6fd",
+  "head_sha": "51022571377c822d5517755c49424c268de29569",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K22 evolver/SECI/orchestrated_retrieval/path_planner/candidate_pool GraphIndex via tenant_id/_resolve_graph_tenant. Residual: diagnostician/convergence/case_learning/recon bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K22 (PR #822)"
 }
