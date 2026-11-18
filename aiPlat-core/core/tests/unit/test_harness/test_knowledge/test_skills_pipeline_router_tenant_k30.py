@@ -20,7 +20,7 @@ _FILES = (
 
 
 def _assert_no_bare_loads(rel: str) -> None:
-    text = Path(rel).read_text(encoding="utf-8")
+    text = (_repo_root() / rel).read_text(encoding="utf-8")
     bare = [
         ln
         for ln in text.splitlines()
@@ -31,7 +31,7 @@ def _assert_no_bare_loads(rel: str) -> None:
 
 def test_k30_sources_wire_tenant():
     for rel in _FILES:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert "tenant_id=" in text, rel
         _assert_no_bare_loads(rel)
     skills = (_repo_root() / "aiPlat-core/core/apps/skills/registry.py").read_text(

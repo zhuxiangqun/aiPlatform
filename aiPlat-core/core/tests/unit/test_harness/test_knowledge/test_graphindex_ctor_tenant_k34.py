@@ -26,7 +26,7 @@ TARGETS = [
 
 
 def _bare_ctors(rel: str) -> list[str]:
-    text = Path(rel).read_text(encoding="utf-8")
+    text = (_repo_root() / rel).read_text(encoding="utf-8")
     out = []
     for ln in text.splitlines():
         if "GraphIndex(" not in ln or "GraphIndex.load" in ln:
