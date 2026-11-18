@@ -3,12 +3,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
-WIKI_OE = Path("aiPlat-core/core/api/routers/wiki_ontology_engine.py")
-FACADE = Path("aiPlat-core/core/api/core_facade.py")
-PIPELINE = Path("aiPlat-core/core/harness/execution/pipeline_engine.py")
-AGENTS = Path("aiPlat-core/core/api/routers/agents.py")
-ACTIONS = Path("aiPlat-platform/apps/fde/api/action_routes.py")
-RETRIEVAL = Path("aiPlat-core/core/harness/syscalls/retrieval.py")
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
+WIKI_OE = (_repo_root() / "aiPlat-core/core/api/routers/wiki_ontology_engine.py")
+FACADE = (_repo_root() / "aiPlat-core/core/api/core_facade.py")
+PIPELINE = (_repo_root() / "aiPlat-core/core/harness/execution/pipeline_engine.py")
+AGENTS = (_repo_root() / "aiPlat-core/core/api/routers/agents.py")
+ACTIONS = (_repo_root() / "aiPlat-platform/apps/fde/api/action_routes.py")
+RETRIEVAL = (_repo_root() / "aiPlat-core/core/harness/syscalls/retrieval.py")
 
 
 def test_wiki_ontology_engine_req_fallbacks_use_helper():
