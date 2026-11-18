@@ -12,6 +12,14 @@ def _repo_root() -> Path:
     raise RuntimeError("repo root not found from test file")
 
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 def _assert_no_bare_loads(rel: str) -> None:
     text = (_repo_root() / rel).read_text(encoding="utf-8")
