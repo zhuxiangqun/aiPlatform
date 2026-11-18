@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 import time
 import json
 import logging
-from apps.fde.api.graph_tenant import fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-bootstrap"])
 
@@ -44,7 +44,7 @@ async def fde_bootstrap_test_data(
         from core.api.core_facade import GraphIndex
 
         # fde-delivery: session + actions + evidence + meta + transitions
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         fd.add_entity(sid, company_name, "DiagnosisSession", source_doc_id="bootstrap")
 
         actions_data = {
@@ -154,7 +154,7 @@ async def fde_bootstrap_all():
         co = company_names.get(ind,f"{ind}示范企业")
         ts = str(int(_t_ball.time()))
         sid = f"session_{co.replace(' ','')}_{ts}"
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         fd.add_entity(sid, co, "DiagnosisSession", source_doc_id="bootstrap-all")
         acts = actions_map.get(ind,[("智能分析",f"{ind}洞察")])
         for i,(name,_) in enumerate(acts):

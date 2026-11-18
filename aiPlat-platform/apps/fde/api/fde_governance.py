@@ -1,7 +1,7 @@
 """FDE Governance Validate — self-audit endpoint for 8 governance capabilities (split from fde.py)."""
 from __future__ import annotations
 
-from apps.fde.api.graph_tenant import fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 from typing import Any, Dict, List
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
@@ -69,7 +69,7 @@ async def fde_governance_validate():
     # 3. schema_validation: GraphIndex loads domain constraints
     def _ck3():
         from core.api.core_facade import GraphIndex
-        g = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        g = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         c = g._load_property_constraints()  # noqa - internal method, intentional for audit
         return "has_action" in c and "has_evidence" in c
 

@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 import json
 import logging
 import time as _time_mod
-from apps.fde.api.graph_tenant import fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-sessions-v2"])
 
@@ -39,7 +39,7 @@ async def fde_sessions(
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         sessions = []
         industry_lower = industry.strip().lower()
         company_lower = company.strip().lower()
@@ -129,7 +129,7 @@ async def fde_session_timeline(session_id: str):
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
         if not session_node:
             for nid, node in list(fd._nodes.items()):
@@ -230,7 +230,7 @@ async def fde_session_detail(session_id: str):
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
         if not session_node:
             for nid, node in list(fd._nodes.items()):
@@ -351,7 +351,7 @@ async def fde_session_quality(session_id: str):
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
         if not session_node:
             for nid, node in list(fd._nodes.items()):
@@ -438,7 +438,7 @@ async def fde_ontology_coverage(session_id: str):
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
         if not session_node:
             for nid, node in list(fd._nodes.items()):

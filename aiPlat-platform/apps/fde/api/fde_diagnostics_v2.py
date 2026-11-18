@@ -10,7 +10,7 @@ from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResp
 
 from fastapi import APIRouter, HTTPException, Query
 import logging
-from apps.fde.api.graph_tenant import fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-diagnostics-v2"])
 
@@ -70,7 +70,7 @@ async def fde_trends(
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         now = datetime.now(timezone.utc)
         cutoff = now - timedelta(days=months * 30)
 
@@ -229,7 +229,7 @@ async def fde_search(
 
         # ── 1. Search fde-delivery sessions ──
         if scope in ("all", "sessions"):
-            fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+            fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
             for nid, node in list(fd._nodes.items()):
                 cls = getattr(node, "class_name", "")
                 name = node.entity_name.lower()
@@ -358,7 +358,7 @@ async def fde_alerts(
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         now = datetime.now(timezone.utc)
         stale_cutoff = now - timedelta(days=30)
 

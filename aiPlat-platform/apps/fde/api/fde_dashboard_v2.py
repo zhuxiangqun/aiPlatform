@@ -14,7 +14,7 @@
 # === end ===
 from __future__ import annotations
 
-from apps.fde.api.graph_tenant import fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 from typing import Any, Dict, List
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
@@ -70,7 +70,7 @@ async def fde_dashboard():
     recent = []
     try:
         from core.api.core_facade import GraphIndex
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         for nid, node in sorted(
             list(fd._nodes.items()),
             key=lambda x: x[0], reverse=True

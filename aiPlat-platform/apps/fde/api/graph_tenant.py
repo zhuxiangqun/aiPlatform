@@ -1,6 +1,7 @@
-"""FDE API GraphIndex tenant resolution (N09 K31).
+"""FDE API GraphIndex tenant + tracking-domain resolution (N09 K31/K38).
 
-Shared helper so platform FDE routers do not invent parallel tenant paths.
+Shared helpers so platform FDE routers do not invent parallel tenant paths
+or hardcode the tracking domain string.
 """
 
 from __future__ import annotations
@@ -36,3 +37,23 @@ def fde_graph_tenant(request: Any = None) -> str:
     from core.api.core_facade import resolve_graph_tenant
 
     return resolve_graph_tenant()
+
+
+def fde_graph_domain() -> str:
+    """Resolve FDE tracking domain for GraphIndex loads (N09 K38).
+
+    Uses CoreFacade ``get_domain_router().tracking_domain()`` so platform
+    routers do not hardcode the tracking domain string.
+
+    Returns:
+        非空 domain id（SSOT: DomainRouter.tracking_domain）。
+    """
+    from core.api.core_facade import get_domain_router
+
+    router = get_domain_router()
+    did = str(router.tracking_domain() or "").strip()
+    if did:
+        return did
+    # 为什么：tracking_domain 契约应永非空；若异常空串则回落类常量，避免 GraphIndex.load("")
+    return str(getattr(router, "PLATFORM_TRACKING_DOMAIN", "") or "fde-delivery")
+

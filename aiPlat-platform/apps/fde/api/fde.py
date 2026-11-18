@@ -42,7 +42,7 @@ from fastapi import APIRouter, Body, HTTPException, Query
 from core.api.http_errors import not_found, bad_request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel as _PydanticBaseModel
-from apps.fde.api.graph_tenant import fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 
 router = APIRouter(prefix="/fde", tags=["fde"])
 
@@ -1937,7 +1937,7 @@ async def fde_health():
     # ── 3. Delivery tracking ──
     try:
         from core.api.core_facade import GraphIndex
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         fd_stats = fd.stats()
         sessions = 0
         actions = 0
@@ -2140,7 +2140,7 @@ async def fde_improve_suggestions(session_id: str):
         from core.api.core_facade import GraphIndex
         import json as _json_im
 
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
         if not session_node:
             for nid, node in list(fd._nodes.items()):
@@ -2488,7 +2488,7 @@ def _get_governance_live_status() -> dict:
 
     try:
         from core.api.core_facade import GraphIndex
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         sessions = 0
         evidence = 0
         with_actions = 0
@@ -3429,7 +3429,7 @@ async def health_all():
     # Branching
     try:
         from core.api.core_facade import OntologyBranchManager
-        branches = OntologyBranchManager.get().list_branches("fde-delivery", tenant_id=fde_graph_tenant())
+        branches = OntologyBranchManager.get().list_branches(fde_graph_domain(), tenant_id=fde_graph_tenant())
         subsystems["Branching"] = {"ok": True, "msg": f"{len(branches)} branches"}
     except Exception as e:
         subsystems["Branching"] = {"ok": False, "msg": str(e)[:100]}

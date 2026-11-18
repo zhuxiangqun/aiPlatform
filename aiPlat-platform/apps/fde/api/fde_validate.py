@@ -8,7 +8,7 @@ from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResp
 
 
 from fastapi import APIRouter, HTTPException
-from apps.fde.api.graph_tenant import fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-validate"])
 
@@ -60,7 +60,7 @@ async def fde_validate():
     # 4. Delivery graph
     def _ck_delivery():
         from core.api.core_facade import GraphIndex
-        GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         return True
 
     # 5. Ontology YAML load
@@ -120,7 +120,7 @@ async def fde_benchmark():
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         industries: dict = {}
         total_sessions = 0
         total_actions = 0

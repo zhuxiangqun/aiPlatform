@@ -1,6 +1,6 @@
 """FDE — 追问端点：基于诊断上下文回答后续问题 (B0)."""
 from __future__ import annotations
-from apps.fde.api.graph_tenant import fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import re
@@ -67,7 +67,7 @@ async def fde_ask(req: FdeAskRequest):
 
         # Load delivery tracking history
         try:
-            fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+            fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
             sessions = 0
             for nid, node in list(fd._nodes.items())[:50]:
                 if getattr(node, "class_name", "") == "DiagnosisSession":
@@ -95,7 +95,7 @@ async def fde_ask(req: FdeAskRequest):
         evidence_context = ""
         if req.session_id:
             try:
-                fd_session = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
+                fd_session = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
                 sn = fd_session.get_node(req.session_id) or fd_session.find_by_name(req.session_id)
                 if sn:
                     sid = getattr(sn, "entity_id", req.session_id)
