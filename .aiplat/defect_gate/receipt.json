@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T01:54:46+08:00",
+  "reviewed_at": "2026-11-18T16:36:53+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "83b149da262eb2416caab23b00588a77faa1ef64e79356d7e04b778660ad54bf",
-  "head_sha": "79ce3b7a19197537c75a21a8a352e6802bba0406",
+  "diff_sha256": "d4a7260df0a20edecd2b46e0975a3ca542784f25866fd8038130a82f0d91f43f",
+  "head_sha": "03b2e156746009e6a3f94cf1f45408f55d68e050",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K15 adds list_kb_tenant_ids / aggregate_stale_summary / auto_rebuild_stale_tenants; governance cron + system_health use aggregate. Residual: auto_garden / sys_file / self_heal still StalenessMonitor()→default (next deepen). certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K15 (PR #815)"
 }
