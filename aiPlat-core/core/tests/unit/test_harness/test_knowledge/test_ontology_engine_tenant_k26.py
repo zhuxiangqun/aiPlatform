@@ -13,7 +13,7 @@ def _repo_root() -> Path:
 
 
 def _assert_no_bare_loads(rel: str) -> None:
-    text = Path(rel).read_text(encoding="utf-8")
+    text = (_repo_root() / rel).read_text(encoding="utf-8")
     bare = [
         ln
         for ln in text.splitlines()
@@ -41,7 +41,7 @@ def test_supporting_modules_source_wires_tenant():
         "aiPlat-core/core/harness/ontology_engine/cleanup.py",
         "aiPlat-core/core/harness/ontology_engine/business_event_bridge.py",
     ):
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert "tenant_id" in text and (
             "_resolve_graph_tenant" in text or "self._tenant_id" in text
         ), rel
