@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T07:09:54+08:00",
+  "reviewed_at": "2026-11-18T17:11:02+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "b6ac4b4710b20af5e5d7c9d4ea5e4a3f42ec25a14abb2fa3f621e5763ddd7124",
-  "head_sha": "feb18226f05a1ce2676753714a7a4d96f66b84cf",
+  "diff_sha256": "ceeef25182c52081cbe458a17780fba64bd461ae3fa5ca4b92ce18a2f7c5e12a",
+  "head_sha": "851433ffce9760ef67033780a11be80baa8c9af4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K28 FDE service (k_wave_reason/abox/pillars/rapid_insight/governance/clarify) GraphIndex via _resolve_graph_tenant/_ri_graph_tenant. Residual: core_facade/system/eval/infra bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K28 (PR #828)"
 }
