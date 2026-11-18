@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T10:50:47+08:00",
+  "reviewed_at": "2026-11-18T18:34:46+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "d9cec5c8bc14cf9c7078b2eab88aceab65e92653764cb9ce88678a83e4f5eb08",
-  "head_sha": "22ae7b9e721af0ae606dd22de8400ffa520d7b19",
+  "diff_sha256": "58687833dd52d548989b9385e2d30d56cfa9025562f1df99099ad5ddd55211fa",
+  "head_sha": "229817dc446a9ca67653f255f54e73e53edf4a21",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K45: domain_id signature defaults -> PLATFORM_DEFAULT_GRAPH_DOMAIN; tenant_id/collection_id 'default' intentionally retained; it-ops/data-gov defaults still open; N09 not certified. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K45 (PR #846)"
 }
