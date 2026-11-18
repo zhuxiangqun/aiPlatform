@@ -22,6 +22,7 @@ import time as _time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
+from core.harness.knowledge.domain_router import DomainRouter
 
 AI = "http://aiplat.local/knowledge#"
 
@@ -113,7 +114,7 @@ def grant_object_permission(
     entity_uri: str,
     role: str,
     actions: List[str],
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     granted_by: str = "api",
     *,
     collection_id: str = "default",
@@ -193,7 +194,7 @@ def check_object_permission(
     entity_uri: str,
     role: str,
     action: str,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     *,
     collection_id: str = "default",
 ) -> bool:
@@ -240,7 +241,7 @@ def check_object_permission(
 
 def get_effective_permissions(
     entity_uri: str,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     *,
     collection_id: str = "default",
 ) -> Dict[str, List[str]]:

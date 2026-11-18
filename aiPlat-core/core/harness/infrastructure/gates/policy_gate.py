@@ -56,6 +56,7 @@ from core.harness.kernel.runtime import get_kernel_runtime
 
 from core.policy.engine import evaluate_tool_policy_snapshot, PolicyDecision as EngineDecision
 from core.services.tenant_store_protocol import get_tenant_store  # P0-A3: tenant policy via injected store
+from core.harness.knowledge.domain_router import DomainRouter
 
 # DI: resolve_skill_permission via SkillPermissionResolver
 
@@ -2668,7 +2669,7 @@ async def check_kb_access(
 
     actor_scopes: Optional[List[str]] = None,
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
     collection_id: str = "default",
 

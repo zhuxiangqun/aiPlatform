@@ -35,6 +35,7 @@ from typing import Any, Dict, List, Optional
 
 
 from core.harness.kernel.types import AuditStep, EvidenceFingerprint, _normalize_reasoning_path
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -60,7 +61,7 @@ class AuditTrailGate:
 
         agent_id: str,
 
-        tenant_id: str = "default",
+        tenant_id: str = DomainRouter.default_tenant(),
 
         session_id: str = "",
 

@@ -90,7 +90,7 @@ def sys_kb_retrieve(
 
     domain_id: str = None,
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
     top_k: int = 8,
 
@@ -705,7 +705,7 @@ def _vector_search_chroma(
 
     doc_ids: List[str],
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
     limit: int = 16,
 
@@ -1051,7 +1051,7 @@ class WikiCircuitBreaker:
 
 
 
-    def _get(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = "default"):
+    def _get(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = DomainRouter.default_tenant()):
 
         from core.harness.infrastructure.circuit_breaker import BaseCircuitBreaker
 
@@ -1075,7 +1075,7 @@ class WikiCircuitBreaker:
 
 
 
-    def allow_request(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = "default") -> bool:
+    def allow_request(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = DomainRouter.default_tenant()) -> bool:
 
         """allow_request。
 
@@ -1087,7 +1087,7 @@ class WikiCircuitBreaker:
 
 
 
-    def record_success(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = "default"):
+    def record_success(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = DomainRouter.default_tenant()):
 
         """record_success。
 
@@ -1099,7 +1099,7 @@ class WikiCircuitBreaker:
 
 
 
-    def record_failure(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = "default"):
+    def record_failure(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = DomainRouter.default_tenant()):
 
         """record_failure。
 
@@ -1131,7 +1131,7 @@ def sys_knowledge_retrieve(
 
     wiki_titles: List[str] = None,
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
     collection_id: str = "default",
 
@@ -1933,7 +1933,7 @@ def _route_intent(query: str) -> str:
 
 
 async def sys_routed_retrieve(query: str, *, top_k: int = 8, include_web: bool = True,
-                              tenant_id: str = "default", collection_id: str = "default",
+                              tenant_id: str = DomainRouter.default_tenant(), collection_id: str = "default",
                               doc_ids: List[str] = None) -> Dict[str, Any]:
     """意图路由统一检索：code/knowledge/web 三通道按查询意图分发。
 

@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 class OnboardingDefaultLLMRequest(BaseModel):
@@ -20,7 +21,7 @@ class OnboardingDefaultLLMRequest(BaseModel):
 
 class OnboardingInitTenantRequest(BaseModel):
     """OnboardingInitTenantRequest。"""
-    tenant_id: str = "default"
+    tenant_id: str = DomainRouter.default_tenant()
     tenant_name: Optional[str] = None
     init_policies: bool = True
     strict_tool_approval: bool = True  # if true, approval_required_tools=['*']
@@ -49,7 +50,7 @@ class OnboardingSecretsMigrateRequest(BaseModel):
 
 class OnboardingStrongGateRequest(BaseModel):
     """OnboardingStrongGateRequest。"""
-    tenant_id: str = "default"
+    tenant_id: str = DomainRouter.default_tenant()
     enabled: bool = True
     require_approval: bool = True
     approval_request_id: Optional[str] = None

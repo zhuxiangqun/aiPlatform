@@ -14,14 +14,15 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from core.utils.ids import new_prefixed_id
+from core.harness.knowledge.domain_router import DomainRouter
 
 
-def _kb_db_path(tenant_id: str = "default") -> str:
+def _kb_db_path(tenant_id: str = DomainRouter.default_tenant()) -> str:
     base = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
     return os.path.join(base, tenant_id or "default", "kb.sqlite3")
 
 
-def _kb_connect(tenant_id: str = "default"):
+def _kb_connect(tenant_id: str = DomainRouter.default_tenant()):
     path = _kb_db_path(tenant_id)
     if not os.path.exists(path):
         return None

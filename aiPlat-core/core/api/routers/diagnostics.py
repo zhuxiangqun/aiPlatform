@@ -3702,7 +3702,7 @@ async def get_data_lineage(entity: str = "", type: str = "wiki_page"):
     return {"entity": entity, "type": type, "lineage": lineage}
 
 
-def _fetch_kb_element(doc_id: str, tenant_id: str = "default") -> Optional[str]:
+def _fetch_kb_element(doc_id: str, tenant_id: str = DomainRouter.default_tenant()) -> Optional[str]:
     """Fetch raw text content from kb_elements table."""
     import os as _os
     import sqlite3 as _sq

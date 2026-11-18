@@ -104,7 +104,7 @@ except ImportError:
 
 class ConvertKbRequest(BaseModel):
     """ConvertKbRequest。"""
-    tenant_id: str = "default"
+    tenant_id: str = DomainRouter.default_tenant()
     collection_id: str = "default"
     limit: int = 50
     doc_ids: Optional[List[str]] = None
@@ -289,7 +289,7 @@ async def cleanup_ghost_pages(collection: str = "default", dry_run: bool = True)
 
 
 @router.get("/unprocessed-docs", response_model=Dict[str, Any])
-async def get_unprocessed_docs(tenant_id: str = "default", collection: str = "default"):
+async def get_unprocessed_docs(tenant_id: str = DomainRouter.default_tenant(), collection: str = "default"):
     """Return KB documents that don't have corresponding wiki pages.
 
     Args:
