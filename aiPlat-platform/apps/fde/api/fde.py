@@ -42,6 +42,7 @@ from fastapi import APIRouter, Body, HTTPException, Query
 from core.api.http_errors import not_found, bad_request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel as _PydanticBaseModel
+from apps.fde.api.graph_tenant import fde_graph_tenant
 
 router = APIRouter(prefix="/fde", tags=["fde"])
 
@@ -1923,7 +1924,7 @@ async def fde_health():
         from core.api.core_facade import GraphIndex
         for did in domains[:6]:
             try:
-                g = GraphIndex.load(did)
+                g = GraphIndex.load(did, tenant_id=fde_graph_tenant())
                 s = g.stats()
                 graphs[did] = {"nodes": s["node_count"], "edges": s["edge_count"]}
             except Exception:
@@ -1936,7 +1937,7 @@ async def fde_health():
     # ── 3. Delivery tracking ──
     try:
         from core.api.core_facade import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
         fd_stats = fd.stats()
         sessions = 0
         actions = 0
@@ -2139,7 +2140,7 @@ async def fde_improve_suggestions(session_id: str):
         from core.api.core_facade import GraphIndex
         import json as _json_im
 
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
         if not session_node:
             for nid, node in list(fd._nodes.items()):
@@ -2203,7 +2204,7 @@ async def fde_improve_suggestions(session_id: str):
 
         # ── Check term dictionary size ──
         try:
-            tg = GraphIndex.load("enterprise-terms")
+            tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
             term_count = sum(1 for _, n in tg._nodes.items()
                            if getattr(n, "class_name", "") == "Term")
             if term_count < 10:
@@ -2281,7 +2282,7 @@ def _record_health_snapshot(result: dict):
         from core.api.core_facade import GraphIndex
         import json as _json_hs, time as _time_hs
 
-        kg = GraphIndex.load("knowledge-atom")
+        kg = GraphIndex.load("knowledge-atom", tenant_id=fde_graph_tenant())
         ts = int(_time_hs.time())
         snap_id = f"snap_{ts}"
         kg.add_entity(
@@ -2314,7 +2315,7 @@ def _get_evolution_stats() -> dict:
     """Quick evolution cycle stats for dashboard."""
     try:
         from core.api.core_facade import GraphIndex
-        kg = GraphIndex.load("knowledge-atom")
+        kg = GraphIndex.load("knowledge-atom", tenant_id=fde_graph_tenant())
         snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("heal_"))
         total_snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("snap_"))
         from core.api.core_facade import get_seci_engine
@@ -2357,7 +2358,7 @@ async def fde_seci_status():
         from core.api.core_facade import GraphIndex
 
         engine = get_seci_engine()
-        kg = GraphIndex.load("knowledge-atom")
+        kg = GraphIndex.load("knowledge-atom", tenant_id=fde_graph_tenant())
 
         # ── 1. Atom statistics ──
         atoms = {}
@@ -2477,7 +2478,7 @@ def _get_governance_live_status() -> dict:
 
     try:
         from core.api.core_facade import GraphIndex
-        tg = GraphIndex.load("enterprise-terms")
+        tg = GraphIndex.load("enterprise-terms", tenant_id=fde_graph_tenant())
         status["enterprise_term_count"] = sum(
             1 for _, n in tg._nodes.items()
             if getattr(n, "class_name", "") == "Term"
@@ -2487,7 +2488,7 @@ def _get_governance_live_status() -> dict:
 
     try:
         from core.api.core_facade import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load("fde-delivery", tenant_id=fde_graph_tenant())
         sessions = 0
         evidence = 0
         with_actions = 0

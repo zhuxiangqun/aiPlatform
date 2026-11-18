@@ -37,6 +37,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- `fde.py` / `fde_sessions_v2` / `fde_diagnostics_v2` / `fde_bootstrap` / `fde_validate` / `fde_manuals`
+- wave2 文件 → 见 Batch K32；域名硬编码仍残余
 - custom_handlers / scripts seed 工具面
 - N09 / 附录 N 全量认证

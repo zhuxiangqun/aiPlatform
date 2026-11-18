@@ -1,0 +1,42 @@
+"""N09 K32 — platform FDE API GraphIndex tenant (wave 2)."""
+from __future__ import annotations
+
+from pathlib import Path
+
+_FILES = (
+    "aiPlat-platform/apps/fde/api/fde.py",
+    "aiPlat-platform/apps/fde/api/fde_sessions_v2.py",
+    "aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py",
+    "aiPlat-platform/apps/fde/api/fde_bootstrap.py",
+    "aiPlat-platform/apps/fde/api/fde_validate.py",
+    "aiPlat-platform/apps/fde/api/fde_manuals.py",
+)
+
+
+def _assert_no_bare_loads(rel: str) -> None:
+    text = Path(rel).read_text(encoding="utf-8")
+    bare = [
+        ln
+        for ln in text.splitlines()
+        if "GraphIndex.load(" in ln and "tenant_id" not in ln
+    ]
+    assert bare == [], bare
+
+
+def test_k32_wave_sources_wire_tenant():
+    for rel in _FILES:
+        text = Path(rel).read_text(encoding="utf-8")
+        assert "fde_graph_tenant" in text, rel
+        assert "from apps.fde.api.graph_tenant import fde_graph_tenant" in text, rel
+        _assert_no_bare_loads(rel)
+
+
+def test_platform_fde_api_no_bare_graphindex_loads():
+    """Wave1+wave2: no executable bare GraphIndex.load under apps/fde/api."""
+    root = Path("aiPlat-platform/apps/fde/api")
+    bare = []
+    for py in root.glob("*.py"):
+        for i, ln in enumerate(py.read_text(encoding="utf-8").splitlines(), 1):
+            if "GraphIndex.load(" in ln and "tenant_id" not in ln:
+                bare.append(f"{py}:{i}:{ln.strip()}")
+    assert bare == [], bare
