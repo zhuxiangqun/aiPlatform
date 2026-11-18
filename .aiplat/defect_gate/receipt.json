@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T11:10:07+08:00",
+  "reviewed_at": "2026-11-18T18:43:26+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "5a11b1db7438363b0ea5fc06ec2920b0f412fec6509f887493583df69fca0b19",
-  "head_sha": "f1ab189033258b9b649536891d59ea217e50dda0",
+  "diff_sha256": "154f9d48c466b2f5b586403a98d966a904b24a9eb674c55552192fe3f233cffd",
+  "head_sha": "9ef1d23328fad48774c29dca8f0bc2c38f5d5823",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K47: aiplat-system signature default -> system_domain(); wiki collection literal / icebreaker / tenant_id still open; N09 not certified. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K47 (PR #848)"
 }
