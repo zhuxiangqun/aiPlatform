@@ -23,6 +23,7 @@ from core.harness.utils.model_injection import best_model_for_purpose
 from core.harness.knowledge.ontology_yaml_gate import LiveYamlDirectWriteDenied, assert_live_yaml_write
 from core.harness.knowledge.ontology_case_learning import OntologyCase  # noqa: F401 — facade re-export / wiring
 from core.harness.evaluation.code_review_gold import GoldCase, GoldFinding  # noqa: F401 — facade re-export / wiring
+from core.harness.knowledge.domain_router import DomainRouter  # noqa: F401 — facade re-export / signature SSOT
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1779,7 +1780,7 @@ async def auto_ontology_pipeline_for_doc(
     file_path: str,
     collection_id: str = "default",
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Auto-run ontology engine pipeline on a newly ingested/re-ingested document.
 
@@ -7232,7 +7233,7 @@ def update_ontology_domain_meta(
     description: str = "",
     version: str = "",
     namespace: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Update domain metadata (name, description, version, namespace).
 
@@ -7298,7 +7299,7 @@ def upsert_ontology_class(
     class_name: str,
     class_data: Dict[str, Any],
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Create or update a class definition in a domain YAML.
 
@@ -7338,7 +7339,7 @@ def upsert_ontology_class(
 
 
 def delete_ontology_class(
-    domain_id: str, class_name: str, *, tenant_id: str = "default"
+    domain_id: str, class_name: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """Remove a class — always via VersionedOntologyStore proposal (F2 live YAML gate).
 
@@ -7403,7 +7404,7 @@ def delete_ontology_class(
 
 
 async def delete_ontology_class_async(
-    domain_id: str, class_name: str, *, tenant_id: str = "default"
+    domain_id: str, class_name: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """Async delete class via create→approve→apply proposal (F2-safe).
 
@@ -7454,7 +7455,7 @@ async def delete_ontology_class_async(
 
 
 def publish_ontology_domain(
-    domain_id: str, *, tenant_id: str = "default"
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """Validate and publish — write domain YAML + create graph snapshot.
 
@@ -7491,7 +7492,7 @@ def publish_ontology_domain(
 
 
 def list_rule_versions(
-    domain_id: str, *, tenant_id: str = "default"
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """List all saved rule versions for a domain.
 
@@ -7510,7 +7511,7 @@ def list_rule_versions(
 
 
 def rollback_rule_version(
-    domain_id: str, version_id: str, *, tenant_id: str = "default"
+    domain_id: str, version_id: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """Restore rules to a previous version — restore snapshot + invalidate caches.
 
@@ -7537,7 +7538,7 @@ def rollback_rule_version(
 
 
 def _save_rule_version(
-    domain_id: str, file_path: str, domain, *, tenant_id: str = "default"
+    domain_id: str, file_path: str, domain, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> None:
     u"""Save a version snapshot of the domain YAML after publish."""
     try:
@@ -7585,7 +7586,7 @@ def get_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
 
 
 def upsert_view_for_domain(
-    domain_id: str, role: str, view_data: Dict[str, Any], *, tenant_id: str = "default"
+    domain_id: str, role: str, view_data: Dict[str, Any], *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """Create or update a role view in the domain YAML, writing back via yaml_serializer.
 
@@ -7611,7 +7612,7 @@ def upsert_view_for_domain(
 
 
 def delete_view_for_domain(
-    domain_id: str, role: str, *, tenant_id: str = "default"
+    domain_id: str, role: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """Delete a role view from the domain YAML.
 
@@ -7675,7 +7676,7 @@ def resolve_prompt(prompt_id: str, **variables) -> str:
 
 
 def get_process_status(
-    domain_id: str, process_name: str = "", *, tenant_id: str = "default"
+    domain_id: str, process_name: str = "", *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Get running process instance status.
 
@@ -7689,7 +7690,7 @@ def get_process_status(
 
 
 def get_bottlenecks(
-    domain_id: str, limit: int = 10, *, tenant_id: str = "default"
+    domain_id: str, limit: int = 10, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Get process bottlenecks — instances stuck at same step longest.
 
@@ -7703,7 +7704,7 @@ def get_bottlenecks(
 
 
 def get_state_distribution(
-    domain_id: str, *, tenant_id: str = "default"
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Count instances per class per state.
 
@@ -7716,7 +7717,7 @@ def get_state_distribution(
 
 
 def get_bottleneck_analysis(
-    domain_id: str, limit: int = 10, *, tenant_id: str = "default"
+    domain_id: str, limit: int = 10, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Find entities stuck in their current state longest.
 
@@ -7730,7 +7731,7 @@ def get_bottleneck_analysis(
 
 
 def get_sla_violations(
-    domain_id: str, *, tenant_id: str = "default"
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Get SLA violations triggered by time_elapsed transitions.
 
@@ -7743,7 +7744,7 @@ def get_sla_violations(
 
 
 def get_trend_data(
-    domain_id: str, days: int = 7, *, tenant_id: str = "default"
+    domain_id: str, days: int = 7, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Daily state transition trend data.
 
@@ -7790,7 +7791,7 @@ def _remove_domain_from_registry(domain_id: str) -> None:
     reg_path.write_text(_json.dumps(registry, indent=2, ensure_ascii=False))
 
 
-def _invalidate_domain_caches(domain_id: str, *, tenant_id: str = "default") -> None:
+def _invalidate_domain_caches(domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()) -> None:
     """Invalidate DomainRouter + GraphIndex cache for a domain.
 
     Args:
@@ -8782,7 +8783,7 @@ def query_session_archive(
     *,
     limit: int = 3,
     session_id: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Past compacted turns. Not pinned facts — caller asks, we search.
 
@@ -8803,7 +8804,7 @@ def query_session_archive(
 
 
 def sticky_memory_slice(
-    max_chars: Optional[int] = None, *, tenant_id: str = "default"
+    max_chars: Optional[int] = None, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """User profile + pinned MEMORY.md for Pi session start. Shared char budget.
 
@@ -8888,7 +8889,7 @@ def upsert_pinned_memory(
     key: str = "preference",
     source: str = "agent",
     old_text: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Write or replace a durable pinned fact. Budget-full same-key merges automatically.
 

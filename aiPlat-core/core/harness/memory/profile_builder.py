@@ -18,6 +18,7 @@ import re
 import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 _log = logging.getLogger("pipeline_engine.profile_builder")
 
@@ -379,7 +380,7 @@ def promote_durable_profile_facts(profile: UserProfile) -> Dict[str, Any]:
 
 
 def compose_sticky_memory(
-    max_chars: Optional[int] = None, *, tenant_id: str = "default"
+    max_chars: Optional[int] = None, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """User profile + pinned MEMORY.md under one char budget. Pi sticky payload.
 
@@ -417,7 +418,7 @@ def compose_sticky_memory(
     }
 
 
-def user_profile_sticky_text(max_chars: int = 600, *, tenant_id: str = "default") -> str:
+def user_profile_sticky_text(max_chars: int = 600, *, tenant_id: str = DomainRouter.default_tenant()) -> str:
     """Char-budgeted user profile for sticky / Pi session start. Empty when none.
 
     Args:

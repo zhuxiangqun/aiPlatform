@@ -14,6 +14,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -342,7 +343,7 @@ def _ticket_tenant_id(ticket: Dict[str, Any]) -> str:
 
 
 def _read_cross_domain(
-    domain_id: str, entity_id: str, *, tenant_id: str = "default"
+    domain_id: str, entity_id: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Any:
     from core.api.core_facade import GraphIndex
 
@@ -477,7 +478,7 @@ def _restore_cross_domain(
     entity_id: str,
     value: Any,
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> bool:
     from core.api.core_facade import GraphIndex
 

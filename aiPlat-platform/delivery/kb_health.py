@@ -12,6 +12,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+from core.api.core_facade import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ def _kb_sqlite_path(tenant_id: str) -> str:
     return str(Path(home).expanduser() / "kb" / "tenants" / tid / "kb.sqlite3")
 
 
-def _kb_stats(tenant_id: str = "default") -> Dict[str, Any]:
+def _kb_stats(tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
     """Best-effort document counts from platform KB sqlite (no HTTP / no routes import)."""
     import os
     import sqlite3
@@ -183,7 +184,7 @@ def _kb_stats(tenant_id: str = "default") -> Dict[str, Any]:
 
 
 def _docs_this_week(
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     collection_id: str = "default",
     window_hours: int = 168,
 ) -> Dict[str, Any]:
@@ -451,7 +452,7 @@ def kb_miss_top(
     *,
     window_hours: int = 168,
     limit: int = 5,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Public miss-TOP for ``GET /platform/kb/miss-top`` (HYBRID_ENTERPRISE_KB_HEALTH §3.2.1).
 
@@ -470,7 +471,7 @@ def kb_low_confidence_top(
     window_hours: int = 168,
     limit: int = 5,
     threshold: float = 0.5,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Public low-confidence TOP for ``GET /platform/kb/low-confidence-top`` (§3.2.2).
 
@@ -538,7 +539,7 @@ def _suggestions(
 
 def build_kb_health_report(
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     collection_id: str = "default",
     window_hours: int = 168,
     project_id: str = "",

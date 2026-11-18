@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path as _Path
 from typing import Any, Dict, List, Optional, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ def _save_registry(registry: Dict[str, Any]) -> None:
         _json.dump(registry, f, ensure_ascii=False, indent=2)
 
 
-def _branch_key(domain_id: str, branch_name: str, tenant_id: str = "default") -> str:
+def _branch_key(domain_id: str, branch_name: str, tenant_id: str = DomainRouter.default_tenant()) -> str:
     """Registry key for a branch (N09 K36 tenant-scoped).
 
     Non-default tenants use ``{tenant}::{domain}::{branch}``.
@@ -170,7 +171,7 @@ def _find_branch_entry(
     return key, None
 
 
-def _branch_db_path(domain_id: str, branch_name: str, tenant_id: str = "default") -> _Path:
+def _branch_db_path(domain_id: str, branch_name: str, tenant_id: str = DomainRouter.default_tenant()) -> _Path:
     """获取分支的 SQLite DB 路径（与 GraphIndex 租户前缀约定一致，N09 K34）。
 
     Args:
@@ -185,7 +186,7 @@ def _branch_db_path(domain_id: str, branch_name: str, tenant_id: str = "default"
     return GRAPH_DIR / f"{prefix}{domain_id}__{branch_name}.db"
 
 
-def _branch_yaml_path(domain_id: str, branch_name: str, tenant_id: str = "default") -> _Path:
+def _branch_yaml_path(domain_id: str, branch_name: str, tenant_id: str = DomainRouter.default_tenant()) -> _Path:
     """Ontology YAML path for a branch (N09 K37 tenant prefix).
 
     Mirrors GraphIndex / ``_branch_db_path`` prefix:

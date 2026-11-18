@@ -39,7 +39,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- `core_facade` / syscalls / memory / platform 等其它层的 `tenant_id: str = "default"`（约 90+）
+- `core_facade` / syscalls / memory / platform 等其它层签名默认 → 见 Batch K50
 - wiki_engine SQL 字面量 `tenant_id='default'`
 - collection_id / domain_id / session_id 的 `"default"` 回落
 - N09 / 附录 N 全量认证（certified 仍 false）

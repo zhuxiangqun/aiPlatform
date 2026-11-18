@@ -26,6 +26,7 @@ from .poc.ingest import ingest_scanned_pdf
 from .intelligence.embeddings import embed_text
 from core.api.facades.kb_facade import kb_parse_document, kb_chunk_document
 from core.api.facades.kb_facade import kb_classify_document
+from core.api.core_facade import DomainRouter
 
 
 def _safe_readable_path(p: str) -> bool:
@@ -1425,7 +1426,7 @@ def vault_list(*, tenant_id: str) -> List[Dict[str, Any]]:
 
 
 def vault_tree(*, vault_path: str, subdir: str = "", max_depth: int = 3,
-               vault_id: str = "", tenant_id: str = "default") -> Dict[str, Any]:
+               vault_id: str = "", tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
     """Return directory tree for a vault starting from subdir. Includes wiki status per file.
 
     Args:
@@ -1518,7 +1519,7 @@ def vault_read(*, file_path: str) -> Dict[str, Any]:
 
 
 async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str = "",
-                       vault_id: str = "", tenant_id: str = "default") -> Dict[str, Any]:
+                       vault_id: str = "", tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
     """Convert a vault markdown file to a Wiki page using the full KB pipeline.
 
     Args:

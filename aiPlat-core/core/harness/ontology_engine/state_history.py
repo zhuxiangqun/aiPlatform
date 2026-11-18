@@ -113,7 +113,7 @@ def record_transition(
     to_state: str,
     trigger_type: str,
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     transition_desc: str = "",
     doc_id: str = "",
     chunk_id: str = "",
@@ -151,7 +151,7 @@ def record_transition(
 
 
 def get_entity_history(
-    domain_id: str, entity_name: str, *, tenant_id: str = "default"
+    domain_id: str, entity_name: str, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Get all state changes for a specific entity in a domain.
 
@@ -174,7 +174,7 @@ def get_entity_history(
 
 
 def get_domain_history(
-    domain_id: str, limit: int = 200, *, tenant_id: str = "default"
+    domain_id: str, limit: int = 200, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> List[Dict[str, Any]]:
     """Get recent state changes for a domain.
 

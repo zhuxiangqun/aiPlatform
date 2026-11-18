@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from .embedding import EmbeddingProvider, get_embedding_provider
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 @dataclass
@@ -35,7 +36,7 @@ class MemoryItem:
 class SemanticMemory:
     """Semantic memory - long-term knowledge storage"""
 
-    def __init__(self, store_type: str = "simple", tenant_id: str = "default"):
+    def __init__(self, store_type: str = "simple", tenant_id: str = DomainRouter.default_tenant()):
         """初始化。
 
         Args:

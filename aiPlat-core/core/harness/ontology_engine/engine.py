@@ -189,7 +189,7 @@ class OntologyEngine:
 
 
 
-    def __init__(self, domain: OntologyDomain, *, tenant_id: str = "default"):
+    def __init__(self, domain: OntologyDomain, *, tenant_id: str = DomainRouter.default_tenant()):
 
         """初始化。
 
@@ -1798,7 +1798,7 @@ class OntologyEngine:
 
 def load_engine(
 
-    domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN, *, tenant_id: str = "default"
+    domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN, *, tenant_id: str = DomainRouter.default_tenant()
 
 ) -> Optional[OntologyEngine]:
 

@@ -21,6 +21,7 @@ from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 from typing import Any, Dict, List, Optional, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 def map_query_to_ontology(

@@ -9,6 +9,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from core.api.core_facade import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ def _daemon_snapshot() -> Dict[str, Any]:
 
 def build_monthly_ops_report(
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     window_hours: int = 720,
     project_id: str = "",
     collection_id: str = "default",

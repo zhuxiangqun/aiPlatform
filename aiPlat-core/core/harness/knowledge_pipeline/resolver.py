@@ -19,6 +19,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +152,7 @@ class CrossDomainResolver:
             logger.warning("Failed to load registry cross_domain_views", exc_info=True)
         return self._cache
 
-    def find_candidates(self, view_name: str, tenant_id: str = "default") -> List[CrossDomainCandidate]:
+    def find_candidates(self, view_name: str, tenant_id: str = DomainRouter.default_tenant()) -> List[CrossDomainCandidate]:
         """Find cross-domain merge candidates for a registered view.
 
         Args:
@@ -275,7 +276,7 @@ class CrossDomainResolver:
             return 0.0
 
     @staticmethod
-    def _load_entities(domain_id: str, class_name: str, tenant_id: str = "default") -> List[Dict[str, Any]]:
+    def _load_entities(domain_id: str, class_name: str, tenant_id: str = DomainRouter.default_tenant()) -> List[Dict[str, Any]]:
         """Load entities of a class as dicts. GraphIndex returns GraphNode, not dict."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex

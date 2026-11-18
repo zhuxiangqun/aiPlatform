@@ -84,7 +84,7 @@ from auth.governance_ops_auth import require_governance_ops_auth
 
 from storage import sqlite as platform_store  # type: ignore
 
-from core.api.core_facade import create_infra_database_client  # P0-A2 修复: CoreFacade 已补 re-export
+from core.api.core_facade import create_infra_database_client, DomainRouter  # P0-A2: CoreFacade re-export
 
 from core.api.facades.service_facade import llm_generate
 
@@ -3492,7 +3492,7 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
 
 
 
-async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: str = "default", *, tenant_id: str = "default"):
+async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: str = "default", *, tenant_id: str = DomainRouter.default_tenant()):
 
     u"""Background task: run ontology engine pipeline on a newly ingested document.
 
@@ -7604,7 +7604,7 @@ def _auto_archive_docs(tenant_id: str) -> None:
 
 
 
-def _resolve_vault_path(vault_id: str, tenant_id: str = "default") -> str:
+def _resolve_vault_path(vault_id: str, tenant_id: str = DomainRouter.default_tenant()) -> str:
 
     from kb.db import KBSqlite
 
@@ -7626,7 +7626,7 @@ def _resolve_vault_path(vault_id: str, tenant_id: str = "default") -> str:
 
 @app.get("/platform/kb/vault/list")
 
-async def vault_list(tenant_id: str = "default"):
+async def vault_list(tenant_id: str = DomainRouter.default_tenant()):
 
     """vault_list。
 
@@ -7719,7 +7719,7 @@ async def vault_read_file(vault_id: str, path: str):
 
 @app.get("/platform/kb/vault/{vault_id}/index/status")
 
-async def vault_index_status(vault_id: str, tenant_id: str = "default"):
+async def vault_index_status(vault_id: str, tenant_id: str = DomainRouter.default_tenant()):
 
     """vault_index_status。
 
@@ -7737,7 +7737,7 @@ async def vault_index_status(vault_id: str, tenant_id: str = "default"):
 
 @app.post("/platform/kb/vault/{vault_id}/index/start")
 
-async def vault_index_start(vault_id: str, tenant_id: str = "default", collection_id: str = "default"):
+async def vault_index_start(vault_id: str, tenant_id: str = DomainRouter.default_tenant(), collection_id: str = "default"):
 
     """vault_index_start。
 
@@ -7758,7 +7758,7 @@ async def vault_index_start(vault_id: str, tenant_id: str = "default", collectio
 
 @app.post("/platform/kb/vault/{vault_id}/index/stop")
 
-async def vault_index_stop(vault_id: str, tenant_id: str = "default"):
+async def vault_index_stop(vault_id: str, tenant_id: str = DomainRouter.default_tenant()):
 
     """vault_index_stop。
 
