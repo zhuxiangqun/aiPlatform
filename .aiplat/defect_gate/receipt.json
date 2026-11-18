@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T08:33:36+08:00",
+  "reviewed_at": "2026-11-18T18:10:49+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "4faa844d21ddbdf2b73ee41cebb9c2e9181d6048d276964bf23c8e1d74d7a506",
-  "head_sha": "b2bebb48447616b11c88affdcdafa8781238baaa",
+  "diff_sha256": "bbe19c9af182603f9d84460dc1635b7c1a319eba0775c7719e6afa2b033fc5e3",
+  "head_sha": "7a67c0bb7018b4c621486da19f721ab6b63e94d2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K35 scripts GraphIndex ctor tenant. Residual: domain-id hardcodes; branch registry keys without tenant; N09 certified false. Production GraphIndex.load/ctor bare inventory essentially cleared."
+  "note": "Cascade cherry-pick CI unblock onto K35 (PR #835)"
 }
