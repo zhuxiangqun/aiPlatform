@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T10:43:45+08:00",
+  "reviewed_at": "2026-11-18T18:32:25+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "cdfc8fd755c469b33ead95652924326ed3975b3440b50e09d983d364d5d1f483",
-  "head_sha": "3bee8cf20210cb44cb044731a10fb6a9fca4e10f",
+  "diff_sha256": "cac6c6b38d490f950a0d0ee8ba33a8ee009587433409b8de64caa9ba208279e9",
+  "head_sha": "8e80bdaf3ac96dcb6481f31ac6b1b3c76adb019a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K44 KB signature defaults via PLATFORM_KB_DOMAIN. Five checks: 16 ai-knowledge signature defaults cleared; FDE ask/export SSOT; DomainRouter seed fallbacks use PLATFORM_*; residual default/it-ops defaults. certified false. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K44 (PR #845)"
 }
