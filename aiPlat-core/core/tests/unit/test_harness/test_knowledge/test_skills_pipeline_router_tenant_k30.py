@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 _FILES = (
     "aiPlat-core/core/apps/skills/registry.py",
     "aiPlat-core/core/apps/org/service/org_kpi.py",
@@ -26,7 +34,7 @@ def test_k30_sources_wire_tenant():
         text = Path(rel).read_text(encoding="utf-8")
         assert "tenant_id=" in text, rel
         _assert_no_bare_loads(rel)
-    skills = Path("aiPlat-core/core/apps/skills/registry.py").read_text(
+    skills = (_repo_root() / "aiPlat-core/core/apps/skills/registry.py").read_text(
         encoding="utf-8"
     )
     assert "def _skills_graph_tenant(" in skills
@@ -68,7 +76,7 @@ def test_org_kpi_loads_tenant(monkeypatch):
         ok.weekly_kpi_report(domain_id="demo-domain")
     except Exception:
         pass
-    text = Path("aiPlat-core/core/apps/org/service/org_kpi.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/apps/org/service/org_kpi.py").read_text(
         encoding="utf-8"
     )
     assert "tenant_id=_resolve_graph_tenant()" in text
