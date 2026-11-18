@@ -18,16 +18,39 @@ _sys.path.insert(0, str(_PROJECT / "aiPlat-core"))
 _sys.path.insert(0, str(_PROJECT / "aiPlat-infra"))
 
 
-def build_test_graph(node_count: int, edge_density: float = 2.0):
+
+def _script_graph_tenant(tenant_id: str = "") -> str:
+    """Resolve tenant for script GraphIndex writes (N09 K35).
+
+    Args:
+        tenant_id: 显式租户；空则 CoreFacade resolve_graph_tenant，失败回落 default。
+    """
+    tid = (tenant_id or "").strip()
+    if tid:
+        return tid
+    try:
+        from core.api.core_facade import resolve_graph_tenant
+        return resolve_graph_tenant()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug(
+            "script resolve_graph_tenant failed; using default",
+            exc_info=True,
+        )
+        return "default"
+
+
+def build_test_graph(node_count: int, edge_density: float = 2.0, *, tenant_id: str = ""):
     """Build a synthetic graph with node_count nodes and approximate edge_density edges/node.
 
     Args:
         node_count: node_count 参数。
         edge_density: edge_density 参数。
+        tenant_id: 租户；空则 resolve（N09 K35）。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
-    g = GraphIndex("bench")
+    g = GraphIndex("bench", tenant_id=_script_graph_tenant(tenant_id))
     for i in range(node_count):
         g.add_entity(f"n{i}", f"Node_{i}", "Entity")
     # Add edges in a star-like pattern
@@ -77,6 +100,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Graph traversal benchmark")
     parser.add_argument("--runs", type=int, default=100, help="Number of traversal runs per size")
+    parser.add_argument("--tenant", default="", help="GraphIndex tenant id (N09 K35)")
     args = parser.parse_args()
 
     sizes = [10, 50, 200, 1000]
@@ -85,7 +109,7 @@ def main():
     print(f"{'Graph Size':15s} {'avg':>8s} {'P50':>8s} {'P95':>8s} {'P99':>8s} {'min':>8s}")
     print("-" * 65)
     for size in sizes:
-        graph = build_test_graph(size)
+        graph = build_test_graph(size, tenant_id=args.tenant)
         times = benchmark_traversal(graph, args.runs)
         sv = sorted(times)
         p50 = sv[len(sv)//2]

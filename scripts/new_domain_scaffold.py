@@ -144,7 +144,7 @@ def aiplat_home(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_scaffold_assign_executed_and_blocked(aiplat_home):
-    g = GraphIndex(DOMAIN)
+    g = GraphIndex(DOMAIN, tenant_id="default")  # N09 K35 scaffold smoke
     g.add_entity("WO-1", "demo", "工单", source_doc_id="scaffold")
     g.add_entity_property("WO-1", "state", "pending")
     g.save()

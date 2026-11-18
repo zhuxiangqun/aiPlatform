@@ -41,6 +41,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- scripts 侧 `GraphIndex(`（benchmark / seed_lock_service_orders 等）— 可后续 K35
+- scripts 侧 `GraphIndex(` — 已由 K35 覆盖（见 `phase2-cross-tenant-scripts-ctor-evidence.md`）
 - FDE/平台业务域名硬编码消除
 - N09 / 附录 N 全量认证（certified 仍 false）
