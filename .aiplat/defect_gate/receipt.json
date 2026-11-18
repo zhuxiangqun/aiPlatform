@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:17:13+08:00",
+  "reviewed_at": "2026-11-18T16:48:49+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "d08344f873cba1ae31a38c2cb350cdc02caab049a6d750e69f44b66c6f3a90a1",
-  "head_sha": "042037430842fd805babb104c94dbf49b8bdbb6c",
+  "diff_sha256": "ce6fce8893edeccd72c965a5e181721dc78111e5b93347bc949ca70301e63e19",
+  "head_sha": "a90e4007416f7d19ba57f924151c300df41b38cc",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K19 threads tenant_id through run_cycle/run_all_domains, DomainRouter.refresh_domain_maturity, and compute_domain_maturity (GraphIndex.load + state_changes filter). Residual: other GraphIndex.load call sites (context_bus/completeness/evolver). certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K19 (PR #819)"
 }
