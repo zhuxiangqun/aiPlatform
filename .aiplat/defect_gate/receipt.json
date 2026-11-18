@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T11:41:45+08:00",
+  "reviewed_at": "2026-11-18T18:55:28+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "f506705797560f6883abca805a152e0838c804efbfafa118cc44df698337c20c",
-  "head_sha": "b5cce83893690e7e195aabdf5091850cf8ca5a11",
+  "diff_sha256": "e2dbdf9b806c02654c38fb98d9a712e372b3ae43f6f1e5bfe63e62871a245745",
+  "head_sha": "c000ff146431dbe6127b6709432d809bf0d9487f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K51: tenant SQL/assignment literals -> default_tenant(); collection/profile DEFAULT remain; N09 not certified. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K51 (PR #852)"
 }
