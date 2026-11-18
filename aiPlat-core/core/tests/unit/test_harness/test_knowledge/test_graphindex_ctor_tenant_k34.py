@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 TARGETS = [
     "aiPlat-core/core/harness/ontology_engine/ontology_branch.py",
@@ -61,7 +69,7 @@ def test_branch_resolve_prefers_explicit(monkeypatch):
 
 
 def test_fde_api_branch_okf_pass_tenant():
-    text = Path("aiPlat-platform/apps/fde/api/fde.py").read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-platform/apps/fde/api/fde.py").read_text(encoding="utf-8")
     assert "tenant_id=fde_graph_tenant()" in text
     assert "exporter.export(" in text
     # fork / diff / merge / delete / export all pass tenant

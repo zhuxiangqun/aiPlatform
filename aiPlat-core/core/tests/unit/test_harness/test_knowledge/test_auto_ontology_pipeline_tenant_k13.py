@@ -2,6 +2,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
 from types import SimpleNamespace
 
 import pytest
@@ -58,11 +66,11 @@ async def test_auto_ontology_pipeline_passes_tenant(monkeypatch, tmp_path):
 
 
 def test_routes_and_watch_source_wire_tenant():
-    routes = Path("aiPlat-platform/api/rest/routes.py").read_text(encoding="utf-8")
+    routes = (_repo_root() / "aiPlat-platform/api/rest/routes.py").read_text(encoding="utf-8")
     assert 'tenant_id=str(identity.tenant_id or "default")' in routes
     assert (
         "auto_ontology_pipeline_for_doc(doc_id, file_path, collection_id, tenant_id=tenant_id)"
         in routes
     )
-    kb = Path("aiPlat-platform/kb/service.py").read_text(encoding="utf-8")
+    kb = (_repo_root() / "aiPlat-platform/kb/service.py").read_text(encoding="utf-8")
     assert "tenant_id=tenant_id," in kb
