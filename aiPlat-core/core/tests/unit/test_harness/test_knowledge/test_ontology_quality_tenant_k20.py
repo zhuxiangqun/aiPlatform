@@ -2,31 +2,33 @@
 from __future__ import annotations
 
 from pathlib import Path
+
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
 from types import SimpleNamespace
 
 
 def test_completeness_audit_validator_source_wire_tenant():
-    c = Path(
-        "aiPlat-core/core/harness/knowledge/ontology_completeness.py"
-    ).read_text(encoding="utf-8")
+    c = (_repo_root() / "aiPlat-core/core/harness/knowledge/ontology_completeness.py").read_text(encoding="utf-8")
     assert "GraphIndex.load(domain_id, tenant_id=tid)" in c
     assert "tenant_id: str = \"default\"" in c
 
-    a = Path(
-        "aiPlat-core/core/harness/knowledge/ontology_audit.py"
-    ).read_text(encoding="utf-8")
+    a = (_repo_root() / "aiPlat-core/core/harness/knowledge/ontology_audit.py").read_text(encoding="utf-8")
     assert "GraphIndex.load(domain_id, tenant_id=tid)" in a
     assert "audit_all_domains(self, *, tenant_id" in a
 
-    v = Path(
-        "aiPlat-core/core/harness/knowledge/ontology_validator.py"
-    ).read_text(encoding="utf-8")
+    v = (_repo_root() / "aiPlat-core/core/harness/knowledge/ontology_validator.py").read_text(encoding="utf-8")
     assert "GraphIndex.load(domain_id, tenant_id=tid)" in v
     assert "tenant_id: str = \"default\"" in v
 
 
 def test_diagnostics_ontology_audit_uses_actor_from_http():
-    text = Path("aiPlat-core/core/api/routers/diagnostics.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/api/routers/diagnostics.py").read_text(
         encoding="utf-8"
     )
     block = text[
