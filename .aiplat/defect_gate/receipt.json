@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T09:49:09+08:00",
+  "reviewed_at": "2026-11-18T18:25:11+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "60d9922f42311e5f5b46df7fa2dc30a3d14c327e0d6ab737b7c522442395f91c",
-  "head_sha": "97489f3e75a5c83b1d31d6682847d31130889f8b",
+  "diff_sha256": "86d49449c4c6d18aba7199446f68bd9ca675ce44df93684fb9da3b144b60077e",
+  "head_sha": "fb888db898f8595a90b5dea915e130b617b14633",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K41 competition domain SSOT. Five checks: rapid_insight load/membership/icebreaker via DomainRouter.competition_domain; production GraphIndex.load literals empty; K40 inventory ratchet updated. Residual: icebreaker other domain keys; GraphIndex ctor literals. certified false. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K41 (PR #841)"
 }
