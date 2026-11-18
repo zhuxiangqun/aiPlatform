@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 def _assert_no_bare_loads(rel: str) -> None:
     text = Path(rel).read_text(encoding="utf-8")
@@ -15,7 +23,7 @@ def _assert_no_bare_loads(rel: str) -> None:
 
 
 def test_wiki_router_source_wires_tenant():
-    text = Path("aiPlat-core/core/api/routers/wiki.py").read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/api/routers/wiki.py").read_text(encoding="utf-8")
     assert "_resolve_graph_tenant" in text
     assert 'GraphIndex.load("ai-knowledge", tenant_id=_resolve_graph_tenant())' in text
     assert "GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())" in text
@@ -23,7 +31,7 @@ def test_wiki_router_source_wires_tenant():
 
 
 def test_sys_graph_neighbors_source_wires_tenant():
-    text = Path("aiPlat-core/core/harness/syscalls/graph.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/harness/syscalls/graph.py").read_text(
         encoding="utf-8"
     )
     assert "tenant_id: str = \"\"" in text
@@ -32,7 +40,7 @@ def test_sys_graph_neighbors_source_wires_tenant():
 
 
 def test_sys_graph_validate_source_wires_tenant():
-    text = Path("aiPlat-core/core/harness/syscalls/graph_validate.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/harness/syscalls/graph_validate.py").read_text(
         encoding="utf-8"
     )
     assert "tenant_id: str = \"\"" in text
