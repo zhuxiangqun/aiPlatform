@@ -1828,7 +1828,7 @@ async def auto_ontology_pipeline_for_doc(
     if not engine_chunks:
         return {"status": "skipped", "reason": "chunks too small"}
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     # 为什么：N09 K13 — 自动本体流水线必须带 ingest 租户，禁止静默落到匿名 default 写库
     engine = load_engine(domain_id, tenant_id=tid)
     if engine is None:
@@ -7271,7 +7271,7 @@ def update_ontology_domain_meta(
 
     if name:
         _register_domain_in_registry(domain_id, name, raw.get("description", ""))
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     # 为什么：N09 K10 — domain meta 变更后须按租户清 GraphIndex 缓存
     _invalidate_domain_caches(domain_id, tenant_id=tid)
     return {"id": domain_id, "tenant_id": tid, "status": "updated"}
@@ -7327,7 +7327,7 @@ def upsert_ontology_class(
     assert_live_yaml_write()
     Path(file_path).write_text(yaml_str, encoding="utf-8")
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     # 为什么：N09 K9 — class CRUD 后须清对应租户 GraphIndex 缓存
     _invalidate_domain_caches(domain_id, tenant_id=tid)
     return {
@@ -7350,7 +7350,7 @@ def delete_ontology_class(
     """
     import asyncio
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     async def _via_proposal() -> Dict[str, Any]:
         store = VersionedOntologyStore(domain_id)
@@ -7442,7 +7442,7 @@ async def delete_ontology_class_async(
     receipt = await store.apply_proposal(proposal_id)
     if not receipt.get("ok"):
         raise RuntimeError(receipt.get("reason") or "apply_failed")
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     _invalidate_domain_caches(domain_id, tenant_id=tid)
     return {
         "domain_id": domain_id,
@@ -7471,7 +7471,7 @@ def publish_ontology_domain(
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
     from core.harness.ontology_engine.graph_index import GraphIndex
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     domain = load_ontology_from_yaml(file_path)
     try:
         # 为什么：N09 K7 — publish 快照按租户分库，避免写到他租户 ABox
@@ -7501,7 +7501,7 @@ def list_rule_versions(
         tenant_id: 租户；读取对应 GraphIndex 分库快照（N09 K7）。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     try:
         graph = GraphIndex.load(domain_id, tenant_id=tid)
         snaps = graph.list_snapshots(limit=50)
@@ -7521,7 +7521,7 @@ def rollback_rule_version(
         tenant_id: 租户；恢复对应 GraphIndex 分库快照（N09 K7）。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     try:
         graph = GraphIndex.load(domain_id, tenant_id=tid)
         result = graph.restore_snapshot(int(version_id))
@@ -7543,7 +7543,7 @@ def _save_rule_version(
     u"""Save a version snapshot of the domain YAML after publish."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        tid = (tenant_id or "").strip() or "default"
+        tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
         graph = GraphIndex.load(domain_id, tenant_id=tid)
         yaml_text = Path(file_path).read_text(encoding="utf-8")
         graph.snapshot(
@@ -7605,7 +7605,7 @@ def upsert_view_for_domain(
     raw["views"][role] = view_data
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
     Path(file_path).write_text(dict_to_yaml(raw), encoding="utf-8")
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     # 为什么：N09 K10 — view 变更影响角色投影，须清对应租户 GraphIndex 缓存
     _invalidate_domain_caches(domain_id, tenant_id=tid)
     return {"domain_id": domain_id, "tenant_id": tid, "role": role, "status": "upserted"}
@@ -7629,7 +7629,7 @@ def delete_view_for_domain(
     raw.get("views", {}).pop(role, None)
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
     Path(file_path).write_text(dict_to_yaml(raw), encoding="utf-8")
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     _invalidate_domain_caches(domain_id, tenant_id=tid)
     return {"domain_id": domain_id, "tenant_id": tid, "role": role, "status": "deleted"}
 
@@ -7798,7 +7798,7 @@ def _invalidate_domain_caches(domain_id: str, *, tenant_id: str = DomainRouter.d
         domain_id: domain 标识。
         tenant_id: 租户；须与 GraphIndex 分库键一致（N09 K9）。
     """
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     try:
         from core.harness.knowledge.domain_router import DomainRouter
         DomainRouter()._built = False
@@ -8799,7 +8799,7 @@ def query_session_archive(
         query,
         limit=limit,
         session_id=session_id,
-        tenant_id=tenant_id or "default",
+        tenant_id=tenant_id or DomainRouter.default_tenant(),
     )
 
 
@@ -8906,7 +8906,7 @@ def upsert_pinned_memory(
         write_memory,
     )
 
-    tid = (tenant_id or "default").strip() or "default"
+    tid = (tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
     body = (content or "").strip()
     needle = (old_text or "").strip()
     if needle:
