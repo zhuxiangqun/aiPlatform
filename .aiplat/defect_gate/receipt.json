@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T09:05:45+08:00",
+  "reviewed_at": "2026-11-18T18:18:02+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "1fc85ae830d770553f023838a90624edeaa1b41809577d0cc2c5b290cb175d7a",
-  "head_sha": "53e5c0796d593324758fbaa9198abade1a48aa54",
+  "diff_sha256": "44fea1d152e33df8189647fc9dcc2a3e873db4d7b21aa80acc634afbd05d5cf3",
+  "head_sha": "5bfad570b7debbe9b9bd0f7f5a2b2f991bd14222",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K38 FDE tracking domain via DomainRouter. Residual: enterprise-terms/knowledge-atom hardcodes; core fde service literals; PLATFORM_TRACKING_DOMAIN SSOT; N09 certified false."
+  "note": "Cascade cherry-pick CI unblock onto K38 (PR #838)"
 }
