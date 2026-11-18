@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T15:28:57+08:00",
+  "reviewed_at": "2026-11-18T19:57:34+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "78dc6d65bc9bda9f8e6a044a7d1734e1b76725532c676465bdb41776722e955e",
-  "head_sha": "c7ef07763bdb84067ccd202c1cfad90e8ab1128d",
+  "diff_sha256": "5874b3ffa658f8ec31bec201cb2125f22fea82957511c3efb6fab7ba01b81c2f",
+  "head_sha": "67510ec5b5d970087e8327b09d637fa48bd02d63",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CI unblock for #854: FactLedger probe via CoreFacade; DOCUMENT_SYSTEM LOC; §40.2 noqa for WIKI_READ_MODEL_COLLECTIONS; clause-sync row 128. Not N09 certified."
+  "note": "Fix N09 unit tests Path cwd for tip K53"
 }
