@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T18:34:46+08:00",
+  "reviewed_at": "2026-11-18T19:22:38+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "58687833dd52d548989b9385e2d30d56cfa9025562f1df99099ad5ddd55211fa",
-  "head_sha": "229817dc446a9ca67653f255f54e73e53edf4a21",
+  "diff_sha256": "b8e294d002db6cdd67d648f3d9a0700df0eba5b781b770d752279243d5c552d5",
+  "head_sha": "8e50d87a64ee4aae083871cb0d99e88b478a9268",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Cascade cherry-pick CI unblock onto K45 (PR #846)"
+  "note": "Cascade LOC/DomainRouter CI unblock onto K45 (PR #846)"
 }
