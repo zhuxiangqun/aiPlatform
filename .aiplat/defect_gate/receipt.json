@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T22:04:41+08:00",
+  "reviewed_at": "2026-11-19T07:32:53+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "a7c3ca9124ac12eea5064f05cc26c4afc65fc70156a31f7986d053281fcb2666",
-  "head_sha": "10b3a9ccff6503efa674ddee8e5464730236ebcd",
+  "diff_sha256": "0d91b210164f3ef63f22483af083ca198744a60c91b3523be63e6cb1524b83d3",
+  "head_sha": "83f856d92821d8bf184ce859a680963c28c3abed",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Tip Path(rel)/DomainRouter N09 test fix (#854)"
+  "note": "K54: memory/retrieval/pipeline/agents/store tenant or \"default\" → DomainRouter.default_tenant(); facade/platform leftovers deferred (honesty). Local lock only; CI unlock is non-author Approve."
 }
