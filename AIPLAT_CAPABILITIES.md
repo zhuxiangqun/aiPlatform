@@ -955,6 +955,7 @@ scan_hash: 8f9548ec24f4
 | fail_open_governance_status | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
 | coerce_execution_type | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
 | execution_type_fail_closed | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
+| load_agent_types / load_entity_registry（registry_loader） | `core/harness/registry/registry_loader.py` | ✅ | Entity Registry 单一真相源（agent/skill/mcp/workflow/tool/domain types）；arch_guard §87/§88。生成物适用：已接线（Harness 横切） | 已合入 |
 | load_repo_health_thresholds_from_duty | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
 | list_health_snapshots | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
 | default_scan_roots | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
