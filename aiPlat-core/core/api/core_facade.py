@@ -23,6 +23,7 @@ from core.harness.utils.model_injection import best_model_for_purpose
 from core.harness.knowledge.ontology_yaml_gate import LiveYamlDirectWriteDenied, assert_live_yaml_write
 from core.harness.knowledge.ontology_case_learning import OntologyCase  # noqa: F401 — facade re-export / wiring
 from core.harness.evaluation.code_review_gold import GoldCase, GoldFinding  # noqa: F401 — facade re-export / wiring
+from core.harness.knowledge.domain_router import DomainRouter  # noqa: F401 — facade re-export / signature SSOT
 
 
 # ═══════════════════════════════════════════════════════════════
