@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T11:27:32+08:00",
+  "reviewed_at": "2026-11-18T18:50:24+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "8ca40d916cf60996bcb0b9e817dd89ce8822ddc5bbc88fd6369bffb34f8d0ecb",
-  "head_sha": "0f52aa5f2880b00cb705944785f8ba3421f50588",
+  "diff_sha256": "5deb86fa1e86d4dcc728c50fb39da105eaf26b7d17b7a3142667ffcf8def5339",
+  "head_sha": "b25b38afa52421a882952623ddcd295778a6ec72",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K49: knowledge-layer tenant SSOT via PLATFORM_DEFAULT_TENANT; facade/syscalls/platform tenant defaults + SQL literals remain; N09 not certified. Local lock only."
+  "note": "Cascade cherry-pick CI unblock onto K49 (PR #850)"
 }
