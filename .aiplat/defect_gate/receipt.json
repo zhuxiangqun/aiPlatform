@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T22:58:40+08:00",
+  "reviewed_at": "2026-11-18T16:19:16+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "ff7cd24524375c7c0bace0730a5bbbe99a09089fa77d4317ccf8cb40c0ebad9c",
-  "head_sha": "cb6cd0cb61e6c703e08ce05cc11297800b5a39e8",
+  "diff_sha256": "3d903b83306274aee557482f8caeed78f776eac57c9548d49c78a1bba786f865",
+  "head_sha": "d8ee1011da0f83015561fd5ad7ec624941b1c9a7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K8 injects resolve_request_tenant (via _resolve_identity, not spoofable X-AIPLAT-TENANT-ID) into ontology_editor publish + list_rule_versions. Remaining ontology_editor CRUD tenant coverage is intentional out-of-scope (K9). certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K8 (PR #808)"
 }
