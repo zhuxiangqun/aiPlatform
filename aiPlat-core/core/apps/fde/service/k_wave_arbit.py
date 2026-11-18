@@ -347,7 +347,7 @@ def _read_cross_domain(
 ) -> Any:
     from core.api.core_facade import GraphIndex
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     # 为什么：N09 K7 — 读边快照必须与 resolve 写入同租户分库
     node = GraphIndex.load(domain_id, tenant_id=tid).get_node(entity_id)
     if node is None or not isinstance(getattr(node, "metadata", None), dict):
@@ -482,7 +482,7 @@ def _restore_cross_domain(
 ) -> bool:
     from core.api.core_facade import GraphIndex
 
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     graph = GraphIndex.load(domain_id, tenant_id=tid)
     if graph.get_node(entity_id) is None:
         return value is None

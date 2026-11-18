@@ -62,6 +62,7 @@ import os
 from core.utils.paths import get_aiplat_data_dir
 
 from typing import List, Optional, Dict, Any
+from core.harness.knowledge.domain_router import DomainRouter
 
 from dataclasses import dataclass, field
 
@@ -342,7 +343,7 @@ class MemoryManager:
 
             store_type=self._config.vector_store_type,
 
-            tenant_id=self._tenant_id or "default",
+            tenant_id=self._tenant_id or DomainRouter.default_tenant(),
 
         )
 
@@ -709,7 +710,7 @@ class MemoryManager:
                 from core.harness.memory.file_store import pinned_memory_text
 
                 pinned = pinned_memory_text(
-                    tenant_id=str(self._tenant_id or "default"),
+                    tenant_id=str(self._tenant_id or DomainRouter.default_tenant()),
                 )
 
                 if pinned:
@@ -787,7 +788,7 @@ class MemoryManager:
                         current_query,
                         limit=3,
                         session_id=str(self._session_id or ""),
-                        tenant_id=str(self._tenant_id or "default"),
+                        tenant_id=str(self._tenant_id or DomainRouter.default_tenant()),
                     )
                     if query_asks_about_past(current_query)
                     else []
@@ -1042,7 +1043,7 @@ class MemoryManager:
                 messages,
                 state,
                 session_id=str(self._session_id or ""),
-                tenant_id=str(self._tenant_id or "default"),
+                tenant_id=str(self._tenant_id or DomainRouter.default_tenant()),
             )
 
         

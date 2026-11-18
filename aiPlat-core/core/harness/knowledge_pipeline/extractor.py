@@ -1010,7 +1010,7 @@ class PendingExtractionStore:
         if write_graph and entities:
             try:
                 # 为什么：pending 行可能无 tenant 列；缺省 default 仍显式传入，禁止省略
-                write_tenant = str(row_d.get("tenant_id") or "default").strip() or "default"
+                write_tenant = str(row_d.get("tenant_id") or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
                 receipt["graph_write"] = write_extraction_to_graph_index(
                     domain_id,
                     entities,

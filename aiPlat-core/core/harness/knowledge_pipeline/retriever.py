@@ -139,7 +139,7 @@ class GraphRAGRetriever:
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
             # 为什么：N09 K5 — 关键字回退也必须按租户加载，避免扫到 default 图
-            g = GraphIndex.load(domain_id, tenant_id=(tenant_id or "default").strip() or "default")
+            g = GraphIndex.load(domain_id, tenant_id=(tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant())
             for node in g._nodes.values():
                 name = (
                     getattr(node, "entity_name", "")
@@ -173,7 +173,7 @@ class GraphRAGRetriever:
         """
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            tid = (tenant_id or "").strip() or "default"
+            tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
             g = GraphIndex.load(domain_id, tenant_id=tid)
             # Try exact match first
             for node_id, node in g._nodes.items():
@@ -223,7 +223,7 @@ class GraphRAGRetriever:
         """
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            tid = (tenant_id or "").strip() or "default"
+            tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
             g = GraphIndex.load(domain_id, tenant_id=tid)
         except Exception:
             return {"nodes": [], "edges": []}

@@ -390,7 +390,7 @@ def compose_sticky_memory(
     """
     from core.harness.memory.file_store import memory_char_budget, pinned_memory_text
 
-    tid = (tenant_id or "default").strip() or "default"
+    tid = (tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
     budget = memory_char_budget() if max_chars is None else max(0, int(max_chars))
     profile_cap = min(600, max(0, budget // 2)) if budget else 0
     profile = (
@@ -432,7 +432,7 @@ def user_profile_sticky_text(max_chars: int = 600, *, tenant_id: str = DomainRou
         from core.harness.memory.semantic import SemanticMemory
         import json as _json
 
-        store = SemanticMemory(store_type="sqlite", tenant_id=tenant_id or "default")
+        store = SemanticMemory(store_type="sqlite", tenant_id=tenant_id or DomainRouter.default_tenant())
         item = store.latest_by_tag(MEMORY_PROFILE_TAG)
         if item is None:
             return ""

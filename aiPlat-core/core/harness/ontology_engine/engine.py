@@ -199,7 +199,7 @@ class OntologyEngine:
         """
         self._domain = domain
 
-        self._tenant_id = (tenant_id or "").strip() or "default"
+        self._tenant_id = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
         self._mapper = ClassMapper(domain)
 
