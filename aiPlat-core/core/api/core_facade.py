@@ -1798,10 +1798,11 @@ async def auto_ontology_pipeline_for_doc(
     from core.api.core_facade import kb_parse_document, kb_chunk_elements
 
     router = DomainRouter()
-    domain_id = router.resolve(collection_id) or "ai-knowledge"
+    kb_fallback = router.default_kb_domain()
+    domain_id = router.resolve(collection_id) or kb_fallback
     # If the resolved domain doesn't have a valid engine, try the fallback
     if load_engine(domain_id) is None:
-        domain_id = "ai-knowledge"
+        domain_id = kb_fallback
 
     kind = _os.path.splitext(file_path)[1].lstrip(".") or "txt"
     try:

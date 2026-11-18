@@ -5,7 +5,7 @@ Mounted at: /api/platform/apps/fde/actions
 """
 from __future__ import annotations
 
-from apps.fde.api.graph_tenant import fde_graph_tenant
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -105,7 +105,7 @@ async def list_actions(
         from core.api.core_facade import get_action_registry
         reg = get_action_registry()
         actions = reg.list_for_class(
-            domain_id=domain or "fde-delivery",
+            domain_id=domain or fde_graph_domain(),
             class_name=class_name,
             state=state,
             role=role,

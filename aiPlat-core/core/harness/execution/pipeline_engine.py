@@ -5968,7 +5968,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
             state["_hitl_grilling_available"] = True
 
-            state["_hitl_domain_id"] = state.get("domain_id") or "ai-knowledge"
+            from core.harness.knowledge.domain_router import get_domain_router
+
+            state["_hitl_domain_id"] = state.get("domain_id") or get_domain_router().default_kb_domain()
 
             state["_hitl_output_artifact"] = getattr(stage, 'output_artifact', '') or ''
 
