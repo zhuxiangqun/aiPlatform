@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T07:16:30+08:00",
+  "reviewed_at": "2026-11-18T17:56:43+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "a0c35932b2a58d1e5e984eae1ba77eca8c23dd0955864d030a4c787fff665c2c",
-  "head_sha": "10b93f1b798f9c89c151dfca767e1fb87a9e9009",
+  "diff_sha256": "2c6abd91ea17ebe1b8c55e577bfa5fcf540c9b047ea18ba149baaf8368093dbf",
+  "head_sha": "3fa808a6d80194538881e73b8113a4f55756bbda",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K29 CoreFacade residual + system/wiki_ontology_domains/diagnostics + constraint_validator + dynamic_mapper/RuleValidator/SemanticGate GraphIndex via tenant_id/_resolve_graph_tenant. Residual: skills/registry/pipeline_engine bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K29 (PR #829)"
 }
