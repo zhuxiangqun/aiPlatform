@@ -3004,7 +3004,7 @@ def backfill_evidence_batch_sync(collection_id: str = "default",
     return result
 
 
-def _sync_synthesis_pages(updated_title: str, *, collection_id: str = "default", domain_id: str = "ai-knowledge") -> int:
+def _sync_synthesis_pages(updated_title: str, *, collection_id: str = "default", domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN) -> int:
     """When a source page is updated, find synthesis pages that reference it and create review entries.
 
     Synthesis pages have frontmatter.source_instances listing their source entities.
@@ -3046,7 +3046,7 @@ def recommend_knowledge(
     department: str = "",
     recent_queries: list = None,
     *,
-    domain_id: str = "ai-knowledge",
+    domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN,
     limit: int = 5,
     collection_id: str = "default",
 ) -> List[Dict[str, Any]]:

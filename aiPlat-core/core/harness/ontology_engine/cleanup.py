@@ -11,6 +11,8 @@ graph nodes/edges may become orphaned. This module provides:
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -18,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_entity_trace(
-    *, doc_id: str, domain_id: str = "ai-knowledge", tenant_id: str = ""
+    *, doc_id: str, domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN, tenant_id: str = ""
 ) -> List[Dict[str, Any]]:
     """Return all graph entities that were extracted from a specific KB document.
 
@@ -50,7 +52,7 @@ def get_entity_trace(
 
 
 def cleanup_stale_entities_by_doc(
-    *, doc_id: str, domain_id: str = "ai-knowledge", dry_run: bool = True, tenant_id: str = ""
+    *, doc_id: str, domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN, dry_run: bool = True, tenant_id: str = ""
 ) -> Dict[str, Any]:
     """Remove all graph entities sourced from a specific KB document.
 
@@ -99,7 +101,7 @@ def cleanup_stale_entities_by_doc(
 
 
 def cleanup_stale_entities(
-    *, domain_id: str = "ai-knowledge", dry_run: bool = True, tenant_id: str = ""
+    *, domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN, dry_run: bool = True, tenant_id: str = ""
 ) -> Dict[str, Any]:
     """Scan for orphaned graph nodes (0 incoming + 0 outgoing edges).
 

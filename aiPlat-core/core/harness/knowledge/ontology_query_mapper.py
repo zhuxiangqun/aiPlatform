@@ -290,7 +290,7 @@ def enrich_query_for_retrieval(
 def parse_to_logic_form(
     question: str,
     *,
-    domain_id: str = "ai-knowledge",
+    domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN,
 ) -> Dict[str, Any]:
     """NL2LF: Parse natural language question to structured Logic Form.
 

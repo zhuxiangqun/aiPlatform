@@ -10,6 +10,8 @@ This is the first step from L4 (passive response) toward L5 (active perception).
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 
 from dataclasses import dataclass, field
@@ -43,7 +45,7 @@ class KnowledgeGap:
 def detect_knowledge_gaps(
     queries: List[str],
     *,
-    domain_id: str = "ai-knowledge",
+    domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN,
     min_frequency: int = 2,
     max_gaps: int = 20,
     tenant_id: str = "",

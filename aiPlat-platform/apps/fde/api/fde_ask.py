@@ -53,7 +53,11 @@ async def fde_ask(req: FdeAskRequest):
         from core.api.core_facade import DomainRouter
         from core.api.core_facade import GraphIndex
 
-        did = DomainRouter().classify(domain_hint) if domain_hint else "ai-knowledge"
+        did = (
+            DomainRouter().classify(domain_hint)
+            if domain_hint
+            else DomainRouter.PLATFORM_KB_DOMAIN
+        )
 
         context_blocks = [f"领域：{did}", f"行业：{industry}", f"公司：{company}"]
 

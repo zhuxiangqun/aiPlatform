@@ -583,7 +583,8 @@ class DomainRouter:
         u"""LLM binary classification across registered domains."""
         domains = self.list_domains()
         if len(domains) <= 1:
-            return domains[0] if domains else "ai-knowledge"
+            return domains[0] if domains else self.PLATFORM_KB_DOMAIN
+
 
         domain_names = ", ".join(
             f"{did}({self.domain_config(did).get('name', did)})"
@@ -594,7 +595,9 @@ class DomainRouter:
             f"判断以下问题属于哪个领域，只输出领域ID名称：\n{query[:500]}"
         )
 
-        fallback = self._load_registry().get("fallback_domain", "ai-knowledge")
+        fallback = self._load_registry().get(
+            "fallback_domain", self.PLATFORM_KB_DOMAIN
+        )
         try:
             import asyncio
             from core.harness.syscalls.llm import sys_llm_generate
@@ -656,7 +659,10 @@ class DomainRouter:
                 "name": dom.name,
                 "description": dom.description,
                 "ontology_file": f"{did}.yaml",
-                "collection_id": "default" if did == "ai-knowledge" else did,
+                "collection_id": (
+                    "default" if did == self.PLATFORM_KB_DOMAIN else did
+                ),
+
                 "namespace": dom.namespace,
                 "min_wiki_score": 0.25,
                 "expand_subclasses": True,
@@ -668,8 +674,8 @@ class DomainRouter:
         return {
             "version": "1.0.0",
             "domains": domains,
-            "fallback_domain": "ai-knowledge",
-            "fallback_domains": ["default"],
+            "fallback_domain": self.PLATFORM_KB_DOMAIN,
+            "fallback_domains": [self.PLATFORM_DEFAULT_GRAPH_DOMAIN],
             "routing": {
                 "tiers": ["label_match", "embedding", "llm"],
                 "embedding": {"min_confidence": 0.4, "min_margin": 0.08},
