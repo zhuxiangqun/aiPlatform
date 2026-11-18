@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:30:33+08:00",
+  "reviewed_at": "2026-11-18T16:53:13+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "ba3bd4dd1c91c17bcd242845a95261ae5c9300f7b7f1ccaec3864a453bf6a5c6",
-  "head_sha": "f8060455f631a430fca6f7e1b47cb5a52c250eed",
+  "diff_sha256": "b5bb89da58cc6aae4c4f01af6e79ca6092ee0f51adf616943acabac326a304e4",
+  "head_sha": "dab25d4612ff806e76130033c9818568c635c053",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K21 context_bus uses _resolve_graph_tenant(params|ActiveRequestContext); system_health aggregates audit/gap via list_kb_tenant_ids. Residual: evolver/SECI/orchestrated_retrieval/path_planner/candidate_pool bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K21 (PR #821)"
 }
