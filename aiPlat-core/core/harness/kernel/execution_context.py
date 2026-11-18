@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, List
 import time
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 
 @dataclass
 class ActiveReleaseContext:
@@ -238,7 +240,7 @@ class ActiveRequestContext:
     """
 
     user_id: str = "system"
-    session_id: str = "default"
+    session_id: str = DomainRouter.default_session()
     channel: Optional[str] = None
     # PR-01: tenant/actor context (platformization)
     tenant_id: Optional[str] = None

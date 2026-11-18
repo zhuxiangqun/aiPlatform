@@ -24,6 +24,7 @@ from core.harness.interfaces import ToolResult
 from core.harness.kernel.execution_context import get_active_workspace_context
 from core.harness.kernel.execution_context import get_active_release_context
 from core.harness.kernel.execution_context import get_active_tenant_policy_context
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 def _tool_approval_provenance(pr: Any, *, default_source: str) -> Dict[str, Any]:
@@ -57,7 +58,7 @@ async def sys_tool_call(
     tool_args: Dict[str, Any],
     *,
     user_id: str = "system",
-    session_id: str = "default",
+    session_id: str = DomainRouter.default_session(),
     timeout_seconds: Optional[float] = None,
     trace_context: Optional[Dict[str, Any]] = None,
 ) -> Any:

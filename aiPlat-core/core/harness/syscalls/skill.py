@@ -37,6 +37,7 @@ from core.harness.interfaces.skill import SkillStreamEvent
 
 from ..interfaces import SkillContext, SkillResult
 
+from core.harness.knowledge.domain_router import DomainRouter
 from core.harness.infrastructure.gates import TraceGate, ContextGate, ResilienceGate, PolicyGate, PolicyDecision
 
 from core.harness.kernel.runtime import get_kernel_runtime
@@ -67,7 +68,7 @@ async def sys_skill_call(
 
     user_id: str = "system",
 
-    session_id: str = "default",
+    session_id: str = DomainRouter.default_session(),
 
     timeout_seconds: Optional[float] = None,
 
@@ -2142,7 +2143,7 @@ async def sys_skill_call_stream(
 
     user_id: str = "system",
 
-    session_id: str = "default",
+    session_id: str = DomainRouter.default_session(),
 
     timeout_seconds: Optional[float] = None,
 

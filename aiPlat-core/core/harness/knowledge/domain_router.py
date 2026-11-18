@@ -77,10 +77,11 @@ class DomainRouter:
     PLATFORM_IT_OPS_DOMAIN = "it-ops"
     PLATFORM_DATA_GOV_DOMAIN = "data-gov"
     PLATFORM_SYSTEM_DOMAIN = "aiplat-system"
-    # Tenant / collection / profile fallback SSOT (N09 K49/K52) — not ontology domain ids.
+    # Tenant / collection / profile / session fallback SSOT (N09 K49/K52/K53) — not ontology domain ids.
     PLATFORM_DEFAULT_TENANT = "default"
     PLATFORM_DEFAULT_COLLECTION = "default"
     PLATFORM_DEFAULT_PROFILE = "default"
+    PLATFORM_DEFAULT_SESSION = "default"
 
     @staticmethod
     def _home() -> str:
@@ -448,6 +449,15 @@ class DomainRouter:
         signature defaults / DDL.
         """
         return cls.PLATFORM_DEFAULT_PROFILE
+
+    @classmethod
+    def default_session(cls) -> str:
+        """Return platform default session id fallback (N09 K53).
+
+        Prefer this over hardcoding ``\"default\"`` in ``session_id``
+        signature defaults (kernel / syscall / FDE voice).
+        """
+        return cls.PLATFORM_DEFAULT_SESSION
 
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).

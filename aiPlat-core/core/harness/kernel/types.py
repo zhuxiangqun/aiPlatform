@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 
 ExecutionKind = Literal["agent", "skill", "tool", "graph"]
 PlanStepKind = Literal["instruction", "tool", "skill", "llm"]
@@ -163,7 +165,7 @@ class ExecutionRequest:
     target_id: str
     payload: Dict[str, Any] = field(default_factory=dict)
     user_id: str = "system"
-    session_id: str = "default"
+    session_id: str = DomainRouter.default_session()
     request_id: Optional[str] = None
     run_id: Optional[str] = None
     execution_plan: Optional[ExecutionPlan] = None
