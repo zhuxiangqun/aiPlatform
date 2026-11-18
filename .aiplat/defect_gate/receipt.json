@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-17T22:10:03+08:00",
+  "reviewed_at": "2026-11-18T16:17:39+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "cbff4f407e554e54fa0a1cfb5e5b80fa9eb451e5bb8901a84ea73fb81fa84990",
-  "head_sha": "e473ab8c7746354dc0ca4df3a3033599a1d53779",
+  "diff_sha256": "1ece3a24c473473362862bde7eee2932dc483ca09060808a16e0284f93418014",
+  "head_sha": "dbba5189cbfb27cf4848a65821d2599b058953e0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K5 threads tenant_id through GraphRAG graph layer into GraphIndex.load and adds graphindex_no_leak (11 probes). Full graph write-path tenant enforcement remains intentional out-of-scope. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K5 (#805)"
 }
