@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T09:34:07+08:00",
+  "reviewed_at": "2026-11-18T09:37:39+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "9418e5092b4a400a07d1061a4a42c7991a05f84a0c0083eb4d41c14ea83495e2",
-  "head_sha": "d7873d5824d2434cb2e856b8ee72007d131117f0",
+  "diff_sha256": "2f58f733dffa5ff59232583fdd1051d3f897f610d02100e48fba81e1e43981d0",
+  "head_sha": "8868a0f3f86969f0a5403d7a3fc50885dd8e654b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K40 + proxy listen probe. Five checks on merge diff: TCP/lsof supersedes ps --port for gunicorn; signature set[str] unchanged; old ps path additive; proxy_dead_target verified 0 with start.sh up. Residual: TCP accept != correct service identity. Local lock only."
+  "note": "K40 + proxy listen probe + ui barrel. Five checks: ChatWidget/ProjectSelector pages imports via components/ui; ProjectSelector re-exported from barrel; no deep ui/ paths under pages/. Residual: non-pages ui deep imports remain. Local lock only."
 }
