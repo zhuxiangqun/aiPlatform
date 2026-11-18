@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T02:50:31+08:00",
+  "reviewed_at": "2026-11-18T17:00:57+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "313d364ccb9aad4aecaa931200f3924f3f710a971157b12952f6946550fdd711",
-  "head_sha": "dd9eb712aedcf0105378c6a20d3841be59a9183e",
+  "diff_sha256": "01202730dba65863e78cf80008daf83b796afe842beeb45484daf33bf208c46e",
+  "head_sha": "22a904814c33fc652aa3eb4aa74b2c5d83d884ab",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K24 wiki.py GraphIndex + sys_graph_neighbors/sys_graph_validate via tenant_id/_resolve_graph_tenant. Residual: wiki_ontology_engine/engine/FDE bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K24 (PR #824)"
 }
