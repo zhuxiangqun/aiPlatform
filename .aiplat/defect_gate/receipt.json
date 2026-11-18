@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T07:06:18+08:00",
+  "reviewed_at": "2026-11-18T17:08:50+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "7cb75d8b6cff9f3271cbde24705a96d35304dad7f6954a18bd22cc41717f942e",
-  "head_sha": "bbcec6af0795c4e9bbb203217c716defaa554025",
+  "diff_sha256": "54ac5591521f64a98b12bf451b6684076b8f53e0de2d2277b8747777ee937e07",
+  "head_sha": "3a4f19455c99045c86cf48b4fefaeff9248e39c9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K27 builtin_handlers 11x GraphIndex via _graph_tenant(params)/_resolve_graph_tenant. Residual: FDE service bare loads. certified stays false. Local lock only; CI needs non-author Approve."
+  "note": "Cascade cherry-pick CI unblock onto K27 (PR #827)"
 }
