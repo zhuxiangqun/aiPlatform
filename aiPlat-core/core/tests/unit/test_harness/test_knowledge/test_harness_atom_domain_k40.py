@@ -29,7 +29,7 @@ HARD = ("knowledge-atom", "ai-knowledge", "enterprise-terms")
 def test_harness_targets_no_hardcoded_graphindex_domain_loads():
     bare = []
     for rel in TARGETS:
-        for i, ln in enumerate(Path(rel).read_text(encoding="utf-8").splitlines(), 1):
+        for i, ln in enumerate((_repo_root() / rel).read_text(encoding="utf-8").splitlines(), 1):
             if "GraphIndex.load(" not in ln:
                 continue
             if any(f'GraphIndex.load("{d}"' in ln for d in HARD):

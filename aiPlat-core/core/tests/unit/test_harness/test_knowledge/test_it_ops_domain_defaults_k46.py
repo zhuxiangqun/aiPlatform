@@ -47,7 +47,7 @@ def test_platform_constants_and_helpers():
 
 def test_targets_use_platform_it_ops_or_data_gov():
     for rel in TARGETS:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert (
             "it_ops_domain()" in text or "data_gov_domain()" in text
         ), rel
