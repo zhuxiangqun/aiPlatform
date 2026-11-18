@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T06:38:14+08:00",
+  "reviewed_at": "2026-11-19T06:52:41+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "b4f23813caca4bf4142bb50d5743dea91030db52e6fb812c127da5a81521d5f1",
-  "head_sha": "bf6439ab33cb207c6d22677b282945e9251086bd",
+  "diff_sha256": "f9abf6531eb9237822ff7a48d3e0a12f16efefea3f8c9a5d5653695366baa6c5",
+  "head_sha": "2ecc5bce389915f5379d0e314d3276320a6791c1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "DomainRouter module import cascade. Five checks clean."
+  "note": "CoreFacade DomainRouter import for signature defaults. Five checks clean."
 }
