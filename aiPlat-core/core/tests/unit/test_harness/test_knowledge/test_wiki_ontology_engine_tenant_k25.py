@@ -13,7 +13,7 @@ def _repo_root() -> Path:
 
 
 def _assert_no_bare_loads(rel: str) -> None:
-    text = Path(rel).read_text(encoding="utf-8")
+    text = (_repo_root() / rel).read_text(encoding="utf-8")
     bare = [
         ln
         for ln in text.splitlines()
