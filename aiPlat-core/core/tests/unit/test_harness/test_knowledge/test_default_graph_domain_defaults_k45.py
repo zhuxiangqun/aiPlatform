@@ -42,7 +42,7 @@ TARGETS = [
 
 def test_targets_use_platform_default_graph_domain():
     for rel in TARGETS:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert "PLATFORM_DEFAULT_GRAPH_DOMAIN" in text, rel
         assert 'domain_id: str = "default"' not in text, rel
 

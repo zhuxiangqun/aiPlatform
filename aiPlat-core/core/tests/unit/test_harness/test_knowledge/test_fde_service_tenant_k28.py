@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 _FILES = (
     "aiPlat-core/core/apps/fde/service/k_wave_reason.py",
     "aiPlat-core/core/apps/fde/service/abox_connector.py",
@@ -14,7 +22,7 @@ _FILES = (
 
 
 def _assert_no_bare_loads(rel: str) -> None:
-    text = Path(rel).read_text(encoding="utf-8")
+    text = (_repo_root() / rel).read_text(encoding="utf-8")
     bare = [
         ln
         for ln in text.splitlines()
@@ -25,7 +33,7 @@ def _assert_no_bare_loads(rel: str) -> None:
 
 def test_fde_service_sources_wire_tenant():
     for rel in _FILES:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert "tenant_id=" in text, rel
         assert (
             "_resolve_graph_tenant" in text or "_ri_graph_tenant" in text

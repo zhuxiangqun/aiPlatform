@@ -29,7 +29,7 @@ def test_helper_stable():
 
 def test_targets_use_ssot_not_sql_literal():
     for rel in TARGETS:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert "default_tenant()" in text, rel
         assert "tenant_id = 'default'" not in text, rel
         assert "tenant_id='default'" not in text, rel
