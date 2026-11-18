@@ -22,6 +22,7 @@ from pathlib import Path as _Path
 from typing import Any, Dict, List, Optional
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 def _db_path() -> str:
     home = _Path(get_aiplat_home())
     db_dir = home / "state_history"
@@ -392,7 +393,7 @@ def record_feedback(
     query_text: str = "",
     rating: int = 0,
     is_helpful: Optional[bool] = None,
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
 ) -> None:
     """Record user feedback on an answer.
 
@@ -413,7 +414,7 @@ def record_feedback(
         get_conn().commit()
 
 
-def get_feedback_stats(domain_id: str = "default") -> Dict[str, Any]:
+def get_feedback_stats(domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> Dict[str, Any]:
     """Get aggregated feedback statistics.
 
     Args:
@@ -447,7 +448,7 @@ def get_feedback_stats(domain_id: str = "default") -> Dict[str, Any]:
 
 
 def get_feedback_driven_thresholds(
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
     *,
     base_threshold: float = 0.5,
     min_samples: int = 5,

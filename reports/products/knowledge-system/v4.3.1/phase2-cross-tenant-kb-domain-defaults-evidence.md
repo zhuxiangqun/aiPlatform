@@ -39,6 +39,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- `domain_id: str = "default"` / `"it-ops"` / `"data-gov"` 等其它业务域签名默认
+- `domain_id: str = "default"` → 见 Batch K45；`"it-ops"` / `"data-gov"` 等其它业务域签名默认仍开放
 - icebreaker_map 业务域键
 - N09 / 附录 N 全量认证（certified 仍 false）

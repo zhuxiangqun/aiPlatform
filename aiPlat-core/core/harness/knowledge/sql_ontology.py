@@ -34,6 +34,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 logger = logging.getLogger("aiplat.sql_ontology")
 
 
@@ -54,7 +56,7 @@ class SqlOntologyTranslator:
     SQL queries that respect the ontology's class/property structure.
     """
 
-    def __init__(self, domain_id: str = "default"):
+    def __init__(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN):
         """初始化。
 
         Args:
@@ -214,7 +216,7 @@ _MAX_DOMAINS = 64
 _translators: Dict[str, SqlOntologyTranslator] = {}
 
 
-def get_sql_ontology(domain_id: str = "default") -> SqlOntologyTranslator:
+def get_sql_ontology(domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> SqlOntologyTranslator:
     # Validate against registered domains — client-controlled domain_id from
     # HTTP params must not create unbounded translator entries.
     """获取 sql_ontology。

@@ -14,13 +14,14 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger("aiplat.syscalls.graph_extract")
 
 
 async def sys_graph_extract(
     text: str,
     *,
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
     operation: str = "auto",
     source_type: str = "kb_document",
     run_id: str = "",

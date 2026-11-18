@@ -103,5 +103,6 @@ authority: supporting
 | [phase2-cross-tenant-graphindex-ctor-domain-evidence.md](./phase2-cross-tenant-graphindex-ctor-domain-evidence.md) | Batch K42 N09 GraphIndex ctor domain 去硬编码（非 certified） |
 | [phase2-cross-tenant-kb-domain-fallbacks-evidence.md](./phase2-cross-tenant-kb-domain-fallbacks-evidence.md) | Batch K43 N09 KB/tracking request fallbacks 去硬编码（非 certified） |
 | [phase2-cross-tenant-kb-domain-defaults-evidence.md](./phase2-cross-tenant-kb-domain-defaults-evidence.md) | Batch K44 N09 KB domain 签名默认去硬编码（非 certified） |
+| [phase2-cross-tenant-default-graph-domain-defaults-evidence.md](./phase2-cross-tenant-default-graph-domain-defaults-evidence.md) | Batch K45 N09 default graph domain 签名默认去硬编码（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

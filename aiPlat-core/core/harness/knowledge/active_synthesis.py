@@ -48,6 +48,7 @@ from typing import Any, Dict, List, Optional
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger("aiplat.active_synthesis")
 
 
@@ -66,7 +67,7 @@ async def detect_synthesis_gaps(
 
     *,
 
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
 
     min_frequency: int = 2,
 
@@ -135,7 +136,7 @@ async def detect_synthesis_gaps(
 
 
 
-def _get_recent_queries(domain_id: str = "default") -> List[str]:
+def _get_recent_queries(domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> List[str]:
 
     """Read recent queries from kb_retrieval logs or search history."""
 
@@ -295,7 +296,7 @@ def retrieve_source_documents(
 
     *,
 
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
 
     top_k: int = 8,
 
@@ -671,7 +672,7 @@ async def run_active_synthesis(
 
     *,
 
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
 
     collection_id: str = "default",
 
@@ -865,7 +866,7 @@ def trigger_active_synthesis(
 
     *,
 
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
 
     max_gaps: int = 5,
 

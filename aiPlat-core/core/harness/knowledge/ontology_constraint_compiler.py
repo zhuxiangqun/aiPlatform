@@ -18,6 +18,7 @@ from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 from typing import List, Optional, Tuple
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger(__name__)
 
 _HEADER = "[本体业务约束（生成前强制）] 以下规则由本领域本体编译，回答时 MUST 遵守："
@@ -87,7 +88,7 @@ def _rules_from_wiki_global(max_rules: int) -> List[str]:
     return rules
 
 
-def compile_ontology_constraints(domain_id: str = "default",
+def compile_ontology_constraints(domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
                                  max_rules: int = 10) -> str:
     """Compile ontology axioms + class constraints into a prompt hard-rules block.
 
@@ -112,7 +113,7 @@ def compile_ontology_constraints(domain_id: str = "default",
     return _HEADER + "\n" + "\n".join(rules)
 
 
-def compile_axiom_rules(domain_id: str = "default") -> List[str]:
+def compile_axiom_rules(domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> List[str]:
     """Return axiom constraints as a plain list (for JSON-Schema-style use).
 
     Args:

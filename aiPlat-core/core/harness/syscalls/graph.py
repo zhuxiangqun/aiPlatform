@@ -11,12 +11,13 @@ from typing import Any, Dict, List, Optional
 
 from ._trace import trace_syscall_entry
 
+from core.harness.knowledge.domain_router import DomainRouter
 _log = logging.getLogger(__name__)
 
 
 async def sys_graph_neighbors(
     entity_name: str,
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
     max_hops: int = 1,
     include_edges: bool = False,
     *,

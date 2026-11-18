@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 from collections import defaultdict
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 @dataclass
 class SynthesisResult:
     """SynthesisResult。"""
@@ -48,7 +49,7 @@ class KnowledgeSynthesizer:
         """
         self._graph = graph
 
-    def synthesize(self, *, domain_id: str = "default", write_to_wiki: bool = True) -> SynthesisResult:
+    def synthesize(self, *, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, write_to_wiki: bool = True) -> SynthesisResult:
         """Run all four synthesis types.
 
         Args:

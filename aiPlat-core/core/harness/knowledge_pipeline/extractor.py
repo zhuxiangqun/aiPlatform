@@ -22,6 +22,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Literal
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger(__name__)
 
 # Factory extraction: avoid thousands of LLM calls on large decks/PDFs.
@@ -563,7 +564,7 @@ class ExtractionPipeline:
         self.writer = DraftYamlWriter()
 
     async def run(self, text: str, doc_name: str = "uploaded_doc",
-                  domain_id: str = "default") -> List[ExtractionResult]:
+                  domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> List[ExtractionResult]:
         """Run full extraction pipeline on a document. Returns results by confidence tier.
 
         Args:

@@ -44,6 +44,7 @@ from xml.etree import ElementTree as ET
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger("aiplat.graph_import")
 
 
@@ -64,7 +65,7 @@ class GraphFileImporter:
 
         *,
 
-        domain_id: str = "default",
+        domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
 
         format: str = "auto",
 

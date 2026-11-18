@@ -46,6 +46,7 @@ import logging
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 router = APIRouter()
 
 
@@ -1753,7 +1754,7 @@ async def submit_agent_feedback(body: dict, request: Request):
 
 @router.get("/agents/hallucination/dashboard", response_model=Dict[str, Any])
 
-async def get_hallucination_dashboard(domain_id: str = "default"):
+async def get_hallucination_dashboard(domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN):
 
     """Phase 3.1: Get hallucination tracking dashboard.
 

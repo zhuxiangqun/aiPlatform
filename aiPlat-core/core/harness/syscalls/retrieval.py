@@ -45,6 +45,7 @@ import concurrent.futures as _cfutures
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 def _run_async_in_sync(coro):
 
     """Safely run an async coroutine from sync context.
@@ -1050,7 +1051,7 @@ class WikiCircuitBreaker:
 
 
 
-    def _get(self, domain_id: str = "default", tenant_id: str = "default"):
+    def _get(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = "default"):
 
         from core.harness.infrastructure.circuit_breaker import BaseCircuitBreaker
 
@@ -1074,7 +1075,7 @@ class WikiCircuitBreaker:
 
 
 
-    def allow_request(self, domain_id: str = "default", tenant_id: str = "default") -> bool:
+    def allow_request(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = "default") -> bool:
 
         """allow_request。
 
@@ -1086,7 +1087,7 @@ class WikiCircuitBreaker:
 
 
 
-    def record_success(self, domain_id: str = "default", tenant_id: str = "default"):
+    def record_success(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = "default"):
 
         """record_success。
 
@@ -1098,7 +1099,7 @@ class WikiCircuitBreaker:
 
 
 
-    def record_failure(self, domain_id: str = "default", tenant_id: str = "default"):
+    def record_failure(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = "default"):
 
         """record_failure。
 

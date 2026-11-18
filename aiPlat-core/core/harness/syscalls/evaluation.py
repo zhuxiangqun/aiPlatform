@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
+from core.harness.knowledge.domain_router import DomainRouter
 _log = logging.getLogger(__name__)
 
 
@@ -16,7 +17,7 @@ async def sys_evaluate_answer(
     answer: str,
     question: str,
     retrieved_docs: str = "",
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
     mode: str = "self_review",
 ) -> Dict[str, Any]:
     """Unified evaluation gateway for all agents.
