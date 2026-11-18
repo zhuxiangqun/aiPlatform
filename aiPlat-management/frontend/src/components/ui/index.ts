@@ -17,3 +17,4 @@ export { extractGateEnvelope, toastGateError } from './gateError';
 export { Drawer } from './Drawer';
 export { NotificationProvider, useNotifications, NotificationBellButton, notify } from './NotificationCenter';
 export { ChatWidget } from './ChatWidget';
+export { default as ProjectSelector } from './ProjectSelector';

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, ChevronRight, Check } from 'lucide-react';
-import { Card } from '../../components/ui';
+import { Card, ChatWidget } from '../../components/ui';
 import { resolveStageComponent } from '../../components/AppStages';
-import { ChatWidget } from '../../components/ui/ChatWidget';
 import { projectApi } from '../../services';
 
 interface StageConfig {

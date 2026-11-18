@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Copy, ExternalLink, Share2 } from 'lucide-react';
 
-import { Badge, Button, Card, CardContent, CardHeader, Input, Pagination, Table } from '../../../components/ui';
+import { Badge, Button, Card, CardContent, CardHeader, Input, Pagination, ProjectSelector, Table } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
-import ProjectSelector from '../../../components/ui/ProjectSelector';
 import { useProjectId } from '../../../hooks/useProjectId';
 
 const toBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
