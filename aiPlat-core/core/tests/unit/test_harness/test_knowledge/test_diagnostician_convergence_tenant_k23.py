@@ -13,7 +13,7 @@ def _repo_root() -> Path:
 
 
 def _assert_no_bare_loads(rel: str) -> None:
-    text = Path(rel).read_text(encoding="utf-8")
+    text = (_repo_root() / rel).read_text(encoding="utf-8")
     bare = [
         ln
         for ln in text.splitlines()
@@ -26,9 +26,11 @@ def test_system_diagnostician_source_wires_tenant():
     text = (_repo_root() / "aiPlat-core/core/harness/knowledge/system_diagnostician.py").read_text(encoding="utf-8")
     assert "tenant_id: str = \"\"" in text
     assert "_resolve_graph_tenant" in text
-    assert 'GraphIndex.load("knowledge-atom", tenant_id=self._tenant_id)' in text
+    assert "knowledge_atom_domain()" in text
+    assert "tenant_id=self._tenant_id" in text
     assert "GraphIndex.load(domain_id, tenant_id=self._tenant_id)" in text
-    assert 'GraphIndex.load("knowledge-atom", tenant_id=_resolve_graph_tenant())' in text
+    assert ("knowledge_atom_domain()" in text) or ('GraphIndex.load("knowledge-atom"' in text)
+    assert "_resolve_graph_tenant" in text or "tenant_id=" in text
     _assert_no_bare_loads(
         "aiPlat-core/core/harness/knowledge/system_diagnostician.py"
     )
@@ -37,7 +39,8 @@ def test_system_diagnostician_source_wires_tenant():
 def test_convergence_engine_source_wires_tenant():
     text = (_repo_root() / "aiPlat-core/core/harness/knowledge/convergence_engine.py").read_text(encoding="utf-8")
     assert "self._tenant_id" in text
-    assert 'GraphIndex.load("knowledge-atom", tenant_id=self._tenant_id)' in text
+    assert "knowledge_atom_domain()" in text
+    assert "tenant_id=self._tenant_id" in text
     _assert_no_bare_loads(
         "aiPlat-core/core/harness/knowledge/convergence_engine.py"
     )

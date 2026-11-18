@@ -34,7 +34,7 @@ def test_platform_default_session_helper():
 
 def test_targets_use_default_session_ssot():
     for rel in TARGETS:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert "DomainRouter.default_session()" in text, rel
         assert 'session_id: str = "default"' not in text, rel
 

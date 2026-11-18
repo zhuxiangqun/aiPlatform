@@ -32,7 +32,7 @@ def test_platform_collection_profile_helpers():
 
 def test_targets_use_collection_or_profile_ssot():
     for rel in TARGETS:
-        text = Path(rel).read_text(encoding="utf-8")
+        text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert (
             "default_collection()" in text or "default_profile()" in text
         ), rel

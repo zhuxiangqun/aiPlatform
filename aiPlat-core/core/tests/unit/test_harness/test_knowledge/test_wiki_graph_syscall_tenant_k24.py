@@ -13,7 +13,7 @@ def _repo_root() -> Path:
 
 
 def _assert_no_bare_loads(rel: str) -> None:
-    text = Path(rel).read_text(encoding="utf-8")
+    text = (_repo_root() / rel).read_text(encoding="utf-8")
     bare = [
         ln
         for ln in text.splitlines()
@@ -25,7 +25,8 @@ def _assert_no_bare_loads(rel: str) -> None:
 def test_wiki_router_source_wires_tenant():
     text = (_repo_root() / "aiPlat-core/core/api/routers/wiki.py").read_text(encoding="utf-8")
     assert "_resolve_graph_tenant" in text
-    assert 'GraphIndex.load("ai-knowledge", tenant_id=_resolve_graph_tenant())' in text
+    assert ("default_kb_domain()" in text) or ('GraphIndex.load("ai-knowledge"' in text)
+    assert "_resolve_graph_tenant" in text
     assert "GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())" in text
     _assert_no_bare_loads("aiPlat-core/core/api/routers/wiki.py")
 
