@@ -1251,10 +1251,13 @@ def sys_knowledge_retrieve(
 
 
     def _fetch_wiki():
+        from core.harness.knowledge.domain_router import get_domain_router
+
+        _cb_domain = domain_id or get_domain_router().default_graph_domain()
 
         if not _wiki_circuit_breaker.allow_request(
 
-            domain_id=domain_id or "default", tenant_id=tenant_id or "default"):
+            domain_id=_cb_domain, tenant_id=tenant_id or "default"):
 
             return []
 
@@ -1276,7 +1279,7 @@ def sys_knowledge_retrieve(
 
             _wiki_circuit_breaker.record_success(
 
-                domain_id=domain_id or "default", tenant_id=tenant_id or "default")
+                domain_id=_cb_domain, tenant_id=tenant_id or "default")
 
             for wr in out:
 
@@ -1288,7 +1291,7 @@ def sys_knowledge_retrieve(
 
             _wiki_circuit_breaker.record_failure(
 
-                domain_id=domain_id or "default", tenant_id=tenant_id or "default")
+                domain_id=_cb_domain, tenant_id=tenant_id or "default")
 
             logging.getLogger("retrieval").warning(
 

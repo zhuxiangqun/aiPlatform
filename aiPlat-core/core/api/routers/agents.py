@@ -1899,7 +1899,13 @@ async def resolve_pipeline_hitl(pipeline_id: str, request: dict):
 
         if action == "grilling":
 
-            domain_id = engine._state.get("_hitl_domain_id", "") or engine._state.get("domain_id", "ai-knowledge")
+            from core.harness.knowledge.domain_router import get_domain_router
+
+            domain_id = (
+                engine._state.get("_hitl_domain_id", "")
+                or engine._state.get("domain_id", "")
+                or get_domain_router().default_kb_domain()
+            )
 
             from core.api.core_facade import start_grilling
 
