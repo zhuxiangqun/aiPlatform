@@ -16,6 +16,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
