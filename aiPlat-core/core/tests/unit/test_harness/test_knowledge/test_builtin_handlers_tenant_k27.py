@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 def _assert_no_bare_loads(rel: str) -> None:
     text = Path(rel).read_text(encoding="utf-8")
@@ -15,9 +23,7 @@ def _assert_no_bare_loads(rel: str) -> None:
 
 
 def test_builtin_handlers_source_wires_tenant():
-    text = Path(
-        "aiPlat-core/core/harness/ontology_engine/builtin_handlers.py"
-    ).read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/harness/ontology_engine/builtin_handlers.py").read_text(encoding="utf-8")
     assert "def _graph_tenant(" in text
     assert "GraphIndex.load(domain_id, tenant_id=_graph_tenant(params))" in text
     assert (

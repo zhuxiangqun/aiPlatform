@@ -4,10 +4,18 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 from core.harness.knowledge.context_bus import _resolve_graph_tenant
 from core.harness.knowledge.domain_router import DomainRouter
 
-KNOWLEDGE = Path("aiPlat-core/core/harness/knowledge")
+KNOWLEDGE = (_repo_root() / "aiPlat-core/core/harness/knowledge")
 TARGETS = [
     "aiPlat-core/core/harness/knowledge/domain_router.py",
     "aiPlat-core/core/harness/knowledge/context_bus.py",

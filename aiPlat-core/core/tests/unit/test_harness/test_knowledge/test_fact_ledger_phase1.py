@@ -5,6 +5,15 @@ import pytest
 
 from pathlib import Path
 
+
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 from core.harness.knowledge_pipeline.fact_ledger import (
     FactLedger,
     FactLedgerError,
@@ -136,7 +145,7 @@ def test_load_object_type_bindings_from_seed():
     )
     # parents: test file → test_knowledge → test_harness → unit → tests → core → aiPlat-core
     if not seed.is_file():
-        seed = Path("aiPlat-core/workspace_seeds/ontologies/lock-service-object-types.json")
+        seed = (_repo_root() / "aiPlat-core/workspace_seeds/ontologies/lock-service-object-types.json")
     types = load_object_type_bindings(seed)
     ids = {t["object_type_id"] for t in types}
     assert "InstallOrder" in ids
