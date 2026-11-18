@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T10:20:20+08:00",
+  "reviewed_at": "2026-11-18T10:23:46+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "533bc15c702cabd7a1bb59536f2f2dc35c1bbc48a2624612b91f48e540114abf",
-  "head_sha": "8a01005eef388c0c6956bf58adf12de1acf3e217",
+  "diff_sha256": "1a421bae699ec01b62dd255b204f8bdaaad5292797a873c464c4c7e0e5fc3263",
+  "head_sha": "bf5059d296980ee3869a4ffbf848703b73361206",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K43 KB/tracking request fallbacks + list_domains probe. Five checks: _req_domain_id/_kb_domain; facade/pipeline/agents default_kb_domain; action_routes fde_graph_domain; retrieval default_graph_domain; no ship-design literal. certified false. Local lock only."
+  "note": "K43 + cherry-pick capability_guard cleanup (#843). Guard 0 errors/0 warnings. certified false. Local lock only."
 }
