@@ -39,5 +39,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 ## 明确未做
 
 - `consultant_knowledge._DEFAULT_WIKI_COLLECTIONS` 中的 `"aiplat-system"` 集合名（wiki collection，非 domain_id 签名）
-- icebreaker_map 业务域键 / `tenant_id="default"`
+- icebreaker_map 业务域键 → 见 Batch K48；`tenant_id="default"` 仍开放
 - N09 / 附录 N 全量认证（certified 仍 false）
