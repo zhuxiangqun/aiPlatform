@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+def _repo_root() -> Path:
+    """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
+    for p in Path(__file__).resolve().parents:
+        if (p / "aiPlat-core").is_dir() and (p / "aiPlat-platform").is_dir():
+            return p
+    raise RuntimeError("repo root not found from test file")
+
+
 
 def _assert_no_bare_loads(rel: str) -> None:
     text = Path(rel).read_text(encoding="utf-8")
@@ -15,7 +23,7 @@ def _assert_no_bare_loads(rel: str) -> None:
 
 
 def test_system_evolver_source_wires_tenant():
-    text = Path("aiPlat-core/core/harness/knowledge/system_evolver.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/system_evolver.py").read_text(
         encoding="utf-8"
     )
     assert "tenant_id: str = \"\"" in text
@@ -25,7 +33,7 @@ def test_system_evolver_source_wires_tenant():
 
 
 def test_seci_engine_source_wires_tenant():
-    text = Path("aiPlat-core/core/harness/knowledge/seci_engine.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/seci_engine.py").read_text(
         encoding="utf-8"
     )
     assert "self._tenant_id" in text
@@ -35,9 +43,7 @@ def test_seci_engine_source_wires_tenant():
 
 
 def test_orchestrated_retrieval_source_wires_tenant():
-    text = Path(
-        "aiPlat-core/core/harness/knowledge/orchestrated_retrieval.py"
-    ).read_text(encoding="utf-8")
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/orchestrated_retrieval.py").read_text(encoding="utf-8")
     assert "tenant_id: str = \"\"" in text
     assert "GraphIndex.load(domain_id, tenant_id=tid)" in text
     assert 'GraphIndex.load("ai-knowledge", tenant_id=tid)' in text
@@ -47,7 +53,7 @@ def test_orchestrated_retrieval_source_wires_tenant():
 
 
 def test_path_planner_source_wires_tenant():
-    text = Path("aiPlat-core/core/harness/knowledge/path_planner.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/path_planner.py").read_text(
         encoding="utf-8"
     )
     assert "tenant_id: str = \"\"" in text
@@ -56,7 +62,7 @@ def test_path_planner_source_wires_tenant():
 
 
 def test_candidate_pool_source_wires_tenant():
-    text = Path("aiPlat-core/core/harness/knowledge/candidate_pool.py").read_text(
+    text = (_repo_root() / "aiPlat-core/core/harness/knowledge/candidate_pool.py").read_text(
         encoding="utf-8"
     )
     assert "_resolve_graph_tenant" in text
