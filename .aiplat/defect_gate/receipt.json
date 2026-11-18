@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-18T08:33:36+08:00",
+  "reviewed_at": "2026-11-18T08:43:23+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "4faa844d21ddbdf2b73ee41cebb9c2e9181d6048d276964bf23c8e1d74d7a506",
-  "head_sha": "b2bebb48447616b11c88affdcdafa8781238baaa",
+  "diff_sha256": "7b45b9e6baf17ead3e94f89729affee20cee9518fed58f9f06679f46639492ba",
+  "head_sha": "1304962a15f5e138c3d9cf75feb4fd4fbb55a8ce",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K35 scripts GraphIndex ctor tenant. Residual: domain-id hardcodes; branch registry keys without tenant; N09 certified false. Production GraphIndex.load/ctor bare inventory essentially cleared."
+  "note": "K36 branch registry tenant keys. Residual: branch YAML path tenant prefix; domain-id hardcodes; N09 certified false."
 }
