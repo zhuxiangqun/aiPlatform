@@ -41,5 +41,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 ## 明确未做
 
 - icebreaker_map 中其他业务域字面量键（supply-chain / bell-* 等）— 非 GraphIndex.load
-- `GraphIndex("ai-knowledge")` 等 **ctor** 字面量（非 `.load`）
+- `GraphIndex("ai-knowledge")` 等 **ctor** 字面量 → 见 Batch K42
 - N09 / 附录 N 全量认证（certified 仍 false）

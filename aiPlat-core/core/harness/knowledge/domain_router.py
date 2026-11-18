@@ -73,6 +73,7 @@ class DomainRouter:
     PLATFORM_ATOM_DOMAIN = "knowledge-atom"
     PLATFORM_KB_DOMAIN = "ai-knowledge"
     PLATFORM_COMPETITION_DOMAIN = "bell-competition"
+    PLATFORM_DEFAULT_GRAPH_DOMAIN = "default"
 
     @staticmethod
     def _home() -> str:
@@ -381,6 +382,14 @@ class DomainRouter:
         """
         return self.PLATFORM_COMPETITION_DOMAIN
 
+    def default_graph_domain(self) -> str:
+        """Return catch-all / default ontology graph domain id (N09 K42).
+
+        Distinct from ``default_kb_domain()`` (``ai-knowledge``). Prefer this
+        over hardcoding ``\"default\"`` in GraphIndex constructors.
+        """
+        return self.PLATFORM_DEFAULT_GRAPH_DOMAIN
+
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).
 
@@ -400,7 +409,9 @@ class DomainRouter:
 
     def fallback_domains(self) -> List[str]:
         u"""Supplementary domains for cross-domain fallback."""
-        return self._load_registry().get("fallback_domains", ["default"])
+        return self._load_registry().get(
+            "fallback_domains", [self.PLATFORM_DEFAULT_GRAPH_DOMAIN]
+        )
 
     def register_domain(self, domain_id: str, config: dict, auto_rebuild: bool = True, tenant_id: str = "default"):
         """Hot-register a new domain at runtime (no restart).

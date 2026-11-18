@@ -100,5 +100,6 @@ authority: supporting
 | [phase2-cross-tenant-fde-terms-atom-domain-evidence.md](./phase2-cross-tenant-fde-terms-atom-domain-evidence.md) | Batch K39 N09 FDE terms/atom/kb domain 去硬编码（非 certified） |
 | [phase2-cross-tenant-harness-atom-domain-evidence.md](./phase2-cross-tenant-harness-atom-domain-evidence.md) | Batch K40 N09 harness atom/kb/terms domain 去硬编码（非 certified） |
 | [phase2-cross-tenant-competition-domain-evidence.md](./phase2-cross-tenant-competition-domain-evidence.md) | Batch K41 N09 competition domain 去硬编码（非 certified） |
+| [phase2-cross-tenant-graphindex-ctor-domain-evidence.md](./phase2-cross-tenant-graphindex-ctor-domain-evidence.md) | Batch K42 N09 GraphIndex ctor domain 去硬编码（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

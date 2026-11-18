@@ -332,7 +332,11 @@ class HallucinationTracker:
             from core.harness.ontology_engine.graph_index import GraphIndex
             # Search for nodes by name
             from core.harness.knowledge.context_bus import _resolve_graph_tenant
-            graph = GraphIndex("ai-knowledge", tenant_id=_resolve_graph_tenant())
+            from core.harness.knowledge.domain_router import get_domain_router
+            graph = GraphIndex(
+                get_domain_router().default_kb_domain(),
+                tenant_id=_resolve_graph_tenant(),
+            )
             node_a = graph.find_by_name(entity_a)
             node_b = graph.find_by_name(entity_b)
             if node_a and node_b:
