@@ -11,7 +11,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 # Phase 2 / 例外 ADR 包（Batch F1）
 
 > 实施权威：附录 N 认证证据包 `certification_slots.exception_adr` 最小填空。  
-> **集中登记当前例外**；**非**全量 ADR 体系；**未宣称** 试点 Core 已签字认证（见 `pilot-core-approval-record.pending.json`）。  
+> **集中登记当前例外**；**非**全量 ADR 体系；试点 Core 已由非作者 **朱鸿林** 批准（`pilot-core-approval-record.approved.json` → `pilot_certified`）；**未宣称** 24/24 / Extended / Operational。  
 > 2026-11-19：Core 12 项按附录 N.2 标为 Core-scoped `exists`；N09 **探针集冻结**（不再以 default 字面量 mop 为 Core 条件）；深度缺口记为 Extended/Operational 后续，不阻塞 `core_ready`。
 
 ## 例外清单（范围 / 期限 / 补偿）
