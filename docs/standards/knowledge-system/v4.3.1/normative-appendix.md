@@ -879,7 +879,15 @@ Function ticket.priority_score -> ticket.priorityScore({ticket_id})
 - **N09**：以已登记跨租户隔离套件探针为 Core 足够条件；不以无限清扫 `"default"` 字面量为加深条件。
 - 结构门 `core_ready` ≠ `certified` / `pilot_certified`；后者仅可由批准记录置真。
 
-### N.3 勾选摘要
+### N.3 Extended 最小符合集（MUST）
+
+试点域宣称 **Extended 符合** 时，下列 6 项必须全部为目录 `status: exists`（或已登记 ADR 例外且未过期），且 Core（N.2）已可宣称（`core_ready` + 非作者批准）：
+
+`N05, N07, N08, N19, N20, N22`
+
+- 结构门 `extended_ready` ≠ `certified` / `pilot_extended_certified`；后者仅可由批准记录置真。
+
+### N.4 勾选摘要
 
 - [ ] N01 Raw 不可变（core）
 - [ ] N02 语义模型版本化（core）

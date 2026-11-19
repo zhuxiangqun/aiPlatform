@@ -1,8 +1,8 @@
 """W10 Conformance / 认证证据包最小切片（附录 N + 计划 §9.4）。
 
 职责：加载 N24 目录；校验证据路径；组装认证槽位；门槛门（结构完整 ≠ 24/24 认证）；
-      按 level 的 core_ready 门；试点 N01/N06/N09 就绪包；人工批准后才可 pilot_certified。
-非目标：不自动改写差距表；无批准记录时不宣称 Core/认证通过；不做生产 SLO 采集。
+      按 level 的 core_ready / extended_ready 门；试点就绪包；人工批准后才可徽章。
+非目标：不自动改写差距表；无批准记录时不宣称 Core/Extended/认证通过；不做生产 SLO 采集。
 """
 from __future__ import annotations
 
@@ -40,6 +40,10 @@ CORE_MINIMUM_IDS = frozenset(
         "N18",
         "N21",
     }
+)
+# 附录 N.3 Extended 最小符合集
+EXTENDED_MINIMUM_IDS = frozenset(
+    {"N05", "N07", "N08", "N19", "N20", "N22"}
 )
 
 
@@ -373,8 +377,8 @@ def _load_approval_record(path: Path) -> Dict[str, Any]:
         return {"error": f"approval_invalid:{e}"}
 
 
-def _approval_allows_pilot_core(rec: Dict[str, Any]) -> Tuple[bool, List[str]]:
-    """非作者批准记录是否足以开启 pilot Core 徽章。
+def _approval_allows_non_author(rec: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """非作者批准记录是否足以开启等级徽章。
 
     Args:
         rec: 批准记录对象。
@@ -410,6 +414,15 @@ def _approval_allows_pilot_core(rec: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return not issues, issues
 
 
+def _approval_allows_pilot_core(rec: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """兼容别名：非作者批准是否足以开启 pilot Core 徽章。
+
+    Args:
+        rec: 批准记录对象。
+    """
+    return _approval_allows_non_author(rec)
+
+
 def evaluate_pilot_core_certification(
     *,
     catalog_path: Optional[str] = None,
@@ -421,8 +434,7 @@ def evaluate_pilot_core_certification(
     Args:
         catalog_path: 可选 N24 catalog。
         pilot_domain: 试点域覆盖。
-        approval_record_path: 批准记录 JSON；默认标准包 approved 记录不自动用于试点 Core
-            （须显式传入试点 Core 批准文件）。
+        approval_record_path: 批准记录 JSON；须显式传入试点 Core 批准文件。
 
     Returns:
         仅当 core_ready 且批准有效时 ``pilot_certified=True``；否则恒 false。
@@ -441,7 +453,7 @@ def evaluate_pilot_core_certification(
         approval_issues.append("approval_record_path_required")
     else:
         rec = _load_approval_record(Path(approval_record_path))
-        ok, approval_issues = _approval_allows_pilot_core(rec)
+        ok, approval_issues = _approval_allows_non_author(rec)
         approved = ok
 
     issues.extend(approval_issues)
@@ -465,6 +477,170 @@ def evaluate_pilot_core_certification(
             "never auto without approval"
         ),
         "core_gate": core,
+    }
+
+
+def _extended_exception_ids(cat: Dict[str, Any]) -> frozenset:
+    """catalog 中登记的 Extended ADR 例外项 id。
+
+    Args:
+        cat: 已加载 catalog。
+    """
+    out = set()
+    for row in list(cat.get("extended_adr_exceptions") or []):
+        iid = str((row or {}).get("id") or "").strip()
+        if iid:
+            out.add(iid)
+    return frozenset(out)
+
+
+def evaluate_extended_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """按 level=extended 的结构门：Extended 子集 exists 或 ADR 例外 + 槽位齐。
+
+    Args:
+        catalog_path: 可选目录路径。
+        pilot_domain: 试点域覆盖。
+
+    Returns:
+        ``extended_ready`` 可 true；徽章字段恒 false。
+    """
+    pack = build_conformance_pack(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    issues: List[str] = []
+    if not pack.get("ok"):
+        return {
+            "gate": "extended_ready",
+            "pass": False,
+            "extended_ready": False,
+            "issues": ["catalog_missing"],
+            "certified": False,
+            "pilot_extended_certified": False,
+            "extended_claim": False,
+            "pack": pack,
+        }
+
+    cat = load_conformance_catalog(catalog_path)
+    ext_ids = [
+        str(x)
+        for x in (cat.get("extended_minimum_ids") or sorted(EXTENDED_MINIMUM_IDS))
+    ]
+    exc = _extended_exception_ids(cat)
+    by_id = {
+        str(it.get("id")): it for it in ((pack.get("n24") or {}).get("items") or [])
+    }
+    missing_ext: List[str] = []
+    for eid in ext_ids:
+        it = by_id.get(eid)
+        if it is None:
+            missing_ext.append(eid)
+            issues.append(f"{eid}:extended_item_missing")
+            continue
+        if str(it.get("level") or "") != "extended":
+            issues.append(f"{eid}:level_not_extended")
+        st = str(it.get("status") or "")
+        if st == "exists":
+            continue
+        if eid in exc:
+            continue
+        missing_ext.append(eid)
+        issues.append(f"{eid}:extended_not_exists_or_excepted")
+        for iss in it.get("issues") or []:
+            issues.append(f"{eid}:{iss}")
+
+    slots = (pack.get("certification") or {}).get("slots") or []
+    have = {s.get("id") for s in slots}
+    for req in REQUIRED_CERT_SLOTS:
+        if req not in have:
+            issues.append(f"cert_slot_missing:{req}")
+    for s in slots:
+        for iss in s.get("issues") or []:
+            if iss == "slot_path_missing":
+                issues.append(f"{s.get('id')}:{iss}")
+
+    blocking = sorted(
+        {
+            i
+            for i in issues
+            if not str(i).endswith(":slot_explicitly_missing")
+        }
+    )
+    ready = not blocking
+    return {
+        "gate": "extended_ready",
+        "pass": ready,
+        "extended_ready": ready,
+        "issues": blocking,
+        "extended_ids": ext_ids,
+        "extended_pending": missing_ext,
+        "extended_adr_exceptions": sorted(exc),
+        "certified": False,
+        "pilot_extended_certified": False,
+        "n24_full_conformance": False,
+        "accuracy_claim": False,
+        "extended_claim": False,
+        "note": "extended_ready ≠ certified / pilot_extended_certified",
+        "pack": pack,
+    }
+
+
+def evaluate_pilot_extended_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Extended 认证：extended_ready + 非作者批准 → pilot_extended_certified。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 试点域覆盖。
+        approval_record_path: Extended 批准记录路径。
+
+    Returns:
+        仅当 extended_ready 且批准有效时徽章为 true；全量 certified 恒 false。
+    """
+    ext = evaluate_extended_ready_gate(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    issues: List[str] = list(ext.get("issues") or [])
+    if not ext.get("extended_ready"):
+        issues.append("extended_ready_required")
+
+    approved = False
+    approval_issues: List[str] = []
+    rec: Dict[str, Any] = {}
+    if not approval_record_path:
+        approval_issues.append("approval_record_path_required")
+    else:
+        rec = _load_approval_record(Path(approval_record_path))
+        ok, approval_issues = _approval_allows_non_author(rec)
+        approved = ok
+
+    issues.extend(approval_issues)
+    badge = bool(ext.get("extended_ready")) and approved
+    return {
+        "gate": "pilot_extended_certification",
+        "pass": badge,
+        "extended_ready": bool(ext.get("extended_ready")),
+        "approval_ok": approved,
+        "issues": sorted(set(issues)),
+        "approval_record_path": approval_record_path,
+        "approval_status": rec.get("status") if rec else None,
+        "certified": False,
+        "pilot_extended_certified": badge,
+        "n24_full_conformance": False,
+        "accuracy_claim": False,
+        "extended_claim": badge,
+        "note": (
+            "pilot_extended_certified requires extended_ready + non-author approval; "
+            "never auto without approval"
+        ),
+        "extended_gate": ext,
     }
 
 

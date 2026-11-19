@@ -652,11 +652,19 @@ certified / pilot_certified 不由代码自动置真
 N09 按 Core 探针集收口（停止无等级 default mop）
 ```
 
-### 14.2 后续 DoD — Extended / Operational（Core 之后另开）
+### 14.2 近端 DoD — 试点 Extended（Core 签字后）
 
 ```text
-Extended 关键能力可用（对应 extended level 项）
-Operational 证据完整（含 OCS 阈值预注册、生产 SLO）
+附录 N.3 Extended 6 项 status=exists（或 ADR 例外）
+extended_ready 结构门 pass
+非作者批准后才可 pilot_extended_certified
+全量 certified 仍 false
+```
+
+### 14.3 后续 DoD — Operational（Extended 之后另开）
+
+```text
+Operational 6 项 exists（含 OCS 阈值预注册、生产 SLO）
 24 项 conformance 全量 exists（全等级，非近端）
 迁移/回滚演练通过
 KPI 达标

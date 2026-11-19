@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2994
+total_capabilities: 2998
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 528
+    caps_count: 532
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4787,6 +4787,22 @@ domains:
       - symbol: "evaluate_pilot_core_certification_route"
         type: "function"
         signature: "GET /fde/conformance-pack/pilot-core-cert via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_extended_ready_gate"
+        type: "function"
+        signature: "Extended minimum set structural gate (extended_ready≠certified)"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_pilot_extended_certification"
+        type: "function"
+        signature: "pilot Extended badge only with non-author approval+extended_ready"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_extended_ready_gate_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/extended-ready via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_pilot_extended_certification_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/pilot-extended-cert via Facade"
         module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
       - symbol: "default_catalog_path"
         type: "function"

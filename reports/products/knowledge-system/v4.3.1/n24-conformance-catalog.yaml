@@ -23,6 +23,14 @@ core_minimum_ids:
 n09_core_probe_freeze: true
 n09_core_probe_note: "Cross-tenant isolation suite probes are Core-sufficient; no further default-literal mop for Core."
 core_adr_exceptions: []
+extended_minimum_ids:
+  - N05
+  - N07
+  - N08
+  - N19
+  - N20
+  - N22
+extended_adr_exceptions: []
 items:
   - id: N01
     level: core
@@ -74,7 +82,7 @@ items:
   - id: N05
     level: extended
     title: Wiki/索引有条件重建
-    status: partial
+    status: exists
     phase: W4/P2
     gap_type: 有 Wiki 无事实源
     evidence:
@@ -82,7 +90,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-wiki-readonly-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-rebuild-taxonomy-evidence.md
-    note: 三分类 rebuild_mode+reason+门槛门；非 Wiki 全量/certified
+    note: "Extended-scoped exists (附录 N.3); 三分类 rebuild_mode+reason+门槛门；非 Wiki 全量/certified"
   - id: N06
     level: core
     title: Gateway 查询契约
@@ -98,25 +106,25 @@ items:
   - id: N07
     level: extended
     title: 权限召回前过滤
-    status: partial
+    status: exists
     phase: W6/W8/P1
     gap_type: 有查询无权限
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-acl-recall-evidence.md
-    note: ObjectSet + link.traverse 召回前 ACL；非 Wiki/KB 全入口
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse 召回前 ACL；非 Wiki/KB 全入口"
   - id: N08
     level: extended
     title: 动作执行走 Policy/Approval/Audit
-    status: partial
+    status: exists
     phase: W5/W7/P2
     gap_type: 有动作无门禁
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-action-execute-tool-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
-    note: Registry 裸 bypass 拒绝；仅 approve 重入；非全量认证
+    note: "Extended-scoped exists (附录 N.3); Registry 裸 bypass 拒绝；仅 approve 重入；非全量认证"
   - id: N09
     level: core
     title: 跨租户 0 泄漏
@@ -242,24 +250,24 @@ items:
   - id: N19
     level: extended
     title: 运行时权威与审计快照
-    status: partial
+    status: exists
     phase: W7/P2
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - aiPlat-core/core/harness/infrastructure/action_execution.py
-    note: customer_action before/after；审批重入有 lock 权威；Fact/Query 快照未统一
+    note: "Extended-scoped exists (附录 N.3); customer_action before/after；审批重入有 lock 权威；Fact/Query 快照未统一"
   - id: N20
     level: extended
     title: L1/L2/L3 约束分层
-    status: partial
+    status: exists
     phase: W7/P2
     gap_type: 有动作无门禁
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-function-contract-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
-    note: L1+审批门加深（裸 bypass 拒）；知识面未按标准完整分层
+    note: "Extended-scoped exists (附录 N.3); L1+审批门加深（裸 bypass 拒）；知识面未按标准完整分层"
   - id: N21
     level: core
     title: 防假绿
@@ -273,7 +281,7 @@ items:
   - id: N22
     level: extended
     title: 实例/字段级 ACL
-    status: partial
+    status: exists
     phase: W8/P2-P3
     gap_type: 有查询无权限
     evidence:
@@ -281,7 +289,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-acl-recall-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/object_set.py
       - aiPlat-core/core/harness/knowledge_pipeline/link_traverse.py
-    note: ObjectSet + link.traverse ABox ACL；非 Wiki/KB 全入口
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse ABox ACL；非 Wiki/KB 全入口"
   - id: N23
     level: operational
     title: OCS 完整度
