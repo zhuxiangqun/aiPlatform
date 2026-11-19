@@ -14,6 +14,8 @@ callers: hook_manager POST_LOOP, skill_routing Canary callback, EvolutionEngine 
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 import time as _time
 from typing import Any, Dict, List, Optional
@@ -470,7 +472,7 @@ def register_seci_hook() -> bool:
         try:
             # 1. Get MemoryManager
             from core.harness.memory.manager import get_memory_manager
-            ns = getattr(context, 'session_id', '') or 'default'
+            ns = getattr(context, 'session_id', '') or DomainRouter.default_session()
             mgr = get_memory_manager(namespace=ns)
 
             # 2. Extract high-scored episodic entries

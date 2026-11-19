@@ -321,7 +321,7 @@ async def set_unattended_attendance_route(
         return deny
     from core.api.core_facade import set_unattended_attendance
 
-    session_id = str((body or {}).get("session_id") or "default")
+    session_id = str((body or {}).get("session_id") or DomainRouter.default_session())
     mode = str((body or {}).get("attendance") or (body or {}).get("mode") or "attended")
     return set_unattended_attendance(session_id, mode)
 
@@ -683,7 +683,7 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
             target_id=str(tool_name),
             payload=payload,
             user_id=str(ctx.get("actor_id") or "system"),
-            session_id=str(ctx.get("session_id") or "default"),
+            session_id=str(ctx.get("session_id") or DomainRouter.default_session()),
             run_id=str(meta.get("run_id") or new_prefixed_id("run")),
         )
         result = await get_harness().execute(exec_req)
@@ -716,7 +716,7 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
             target_id=str(skill_id),
             payload=payload,
             user_id=str(ctx.get("actor_id") or "system"),
-            session_id=str(ctx.get("session_id") or "default"),
+            session_id=str(ctx.get("session_id") or DomainRouter.default_session()),
             run_id=str(meta.get("run_id") or new_prefixed_id("run")),
         )
         result = await get_harness().execute(exec_req)

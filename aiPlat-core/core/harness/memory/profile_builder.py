@@ -524,7 +524,7 @@ async def extract_and_persist_profile(
     if memory_manager is None:
         try:
             from core.harness.memory.manager import get_memory_manager
-            ns = str((state or {}).get("session_id") or (state or {}).get("_session_id") or "default")
+            ns = str((state or {}).get("session_id") or (state or {}).get("_session_id") or DomainRouter.default_session())
             memory_manager = get_memory_manager(namespace=ns)
         except Exception:
             memory_manager = None

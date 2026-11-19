@@ -11,6 +11,8 @@ Until fully migrated, NO NEW reverse imports should be added to this file.
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 import json
 import logging
 
@@ -1047,7 +1049,7 @@ class HarnessIntegration:
                     tool_obj,
                     args,
                     user_id=str(getattr(req, "user_id", None) or "system"),
-                    session_id=str(getattr(req, "session_id", None) or "default"),
+                    session_id=str(getattr(req, "session_id", None) or DomainRouter.default_session()),
                     trace_context={"trace_id": trace_id, "run_id": run_id, "tenant_id": project_id},
                 )
                 if getattr(res0, "error", None) == "approval_required":
@@ -1547,7 +1549,7 @@ class HarnessIntegration:
                                     "tenant_id": str(project_id) if project_id else None,
                                     "actor_id": str(getattr(req, "user_id", None) or "system"),
                                     "actor_role": "system",
-                                    "session_id": str(getattr(req, "session_id", None) or "default"),
+                                    "session_id": str(getattr(req, "session_id", None) or DomainRouter.default_session()),
                                     "run_id": run_id,
                                 }
                             )
@@ -1610,7 +1612,7 @@ class HarnessIntegration:
                             "target_id": change_id,
                             "approval_request_id": approval_rc_id or approval_repo_id,
                             "user_id": str(getattr(req, "user_id", None) or "system"),
-                            "session_id": str(getattr(req, "session_id", None) or "default"),
+                            "session_id": str(getattr(req, "session_id", None) or DomainRouter.default_session()),
                             "tenant_id": str(project_id) if project_id else None,
                         }
                     )
@@ -1631,7 +1633,7 @@ class HarnessIntegration:
                                     "target_id": str(repo_change_id),
                                     "approval_request_id": approval_repo_id,
                                     "user_id": str(getattr(req, "user_id", None) or "system"),
-                                    "session_id": str(getattr(req, "session_id", None) or "default"),
+                                    "session_id": str(getattr(req, "session_id", None) or DomainRouter.default_session()),
                                     "tenant_id": str(project_id) if project_id else None,
                                 }
                             )
@@ -1657,7 +1659,7 @@ class HarnessIntegration:
                                     "target_id": rc_change_id,
                                     "approval_request_id": approval_rc_id,
                                     "user_id": str(getattr(req, "user_id", None) or "system"),
-                                    "session_id": str(getattr(req, "session_id", None) or "default"),
+                                    "session_id": str(getattr(req, "session_id", None) or DomainRouter.default_session()),
                                     "tenant_id": str(project_id) if project_id else None,
                                 }
                             )

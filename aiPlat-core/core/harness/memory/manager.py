@@ -2695,7 +2695,7 @@ def _wire_persist_callback(mgr: MemoryManager) -> None:
             await store.add_long_term_memory(
                 user_id=str(interaction.get("user_id", "system")),
                 content=str(interaction.get("summary", ""))[:5000],
-                key=str(interaction.get("session_id", "default")),
+                key=str(interaction.get("session_id") or DomainRouter.default_session()),
                 metadata={"raw_user_message": str(interaction.get("metadata", ""))[:2000]},
             )
         except Exception as e:
