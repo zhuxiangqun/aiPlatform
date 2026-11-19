@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T11:16:00+08:00",
+  "reviewed_at": "2026-11-19T11:18:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "3500847d36c1b30dee38cafca1fb41c3a677de122d69f2469c89647b1b7b5c53",
-  "head_sha": "bbfaf04b7d2ab22ccfba5cf7c34b271c53a51d8e",
+  "diff_sha256": "2ff726c6054a40d45ef1b77382bf19054043f7b540d4bd703dd06a6c1b37ff7e",
+  "head_sha": "d5ba3b0a89efe222d9addddb05b8832ee2c85182",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Pilot Core approval recorded for \u6731\u9e3f\u6797; pilot_certified true; full certified still false."
+  "note": "\u6731\u9e3f\u6797 confirmed pilot Core approval; pilot_certified true; full certified false."
 }
