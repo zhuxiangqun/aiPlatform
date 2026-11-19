@@ -303,7 +303,7 @@ def _billing_snapshot(tenant_id: str = DomainRouter.default_tenant()) -> Dict[st
 
         now = _dt.now()
         db = get_platform_db()
-        breakdown = db.get_monthly_breakdown(tenant_id or "default", now.year, now.month)
+        breakdown = db.get_monthly_breakdown(tenant_id or DomainRouter.default_tenant(), now.year, now.month)
         total_cents = sum(int(r.get("cost") or r.get("cost_cents") or 0) for r in (breakdown or []))
         tokens = sum(int(r.get("tokens") or r.get("tokens_used") or 0) for r in (breakdown or []))
         return {
@@ -503,7 +503,7 @@ def build_delivery_cost_report(
     return {
         "ok": True,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "tenant_id": tenant_id or "default",
+        "tenant_id": tenant_id or DomainRouter.default_tenant(),
         "project_id": project_id or "",
         "window_hours": window_hours,
         "api_calls": {

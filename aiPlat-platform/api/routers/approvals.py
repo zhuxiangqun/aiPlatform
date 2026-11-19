@@ -5,6 +5,7 @@ Migrated from aiPlat-core/core/api/routers/approvals.py per architecture contrac
 """
 from __future__ import annotations
 import logging
+from core.api.core_facade import DomainRouter
 from datetime import datetime, timezone
 
 
@@ -779,7 +780,7 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
             raise HTTPException(status_code=400, detail="missing_operation_context")
         asset_type = str(opctx.get("asset_type") or "")
         scope = str(opctx.get("scope") or "workspace").strip().lower()
-        tenant_id = str(opctx.get("tenant_id") or meta.get("tenant_id") or "default")
+        tenant_id = str(opctx.get("tenant_id") or meta.get("tenant_id") or DomainRouter.default_tenant())
         channel = str(opctx.get("channel") or "stable").strip().lower()
         version = str(opctx.get("version") or "") or None
         to_version = str(opctx.get("to_version") or "") or None

@@ -23,7 +23,7 @@ def test_routes_source_whoami_and_batches_use_resolve_identity():
     # whoami must not invent auth_type from raw API-key presence alone
     assert 'auth_type = "api_key" if request.headers.get("X-AIPLAT-API-KEY")' not in _ROUTES
     # analysis-batches tenant isolation via gated identity
-    assert _ROUTES.count('tenant_id = _resolve_identity(request).tenant_id or "default"') >= 3
+    assert _ROUTES.count('tenant_id = _resolve_identity(request).tenant_id or DomainRouter.default_tenant()') >= 3
     assert 'tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")' not in _ROUTES
     # governance audit middleware already routed (no raw ACTOR default outside _resolve_identity body)
     assert 'actor_id = request.headers.get("X-AIPLAT-ACTOR-ID", "anonymous")' not in _ROUTES

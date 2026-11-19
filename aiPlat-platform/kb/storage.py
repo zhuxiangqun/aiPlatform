@@ -1,6 +1,8 @@
 """storage：模块接口。"""
 
 from __future__ import annotations
+
+from core.api.core_facade import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import os
@@ -54,7 +56,7 @@ def get_tenant_storage(tenant_id: str) -> TenantStorage:
     Args:
         tenant_id: 租户 ID。
     """
-    tid = str(tenant_id or "").strip() or "default"
+    tid = str(tenant_id or "").strip() or DomainRouter.default_tenant()
     base = get_aiplat_home() / "kb" / "tenants" / tid
     base.mkdir(parents=True, exist_ok=True)
     (base / "assets").mkdir(parents=True, exist_ok=True)

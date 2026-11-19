@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from auth.deps import require_auth, require_admin
 from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, ui_url
-from core.api.core_facade import record_changeset, RequestStatus, ApprovalContext, ApprovalRule, RuleType
+from core.api.core_facade import record_changeset, RequestStatus, ApprovalContext, ApprovalRule, RuleType, DomainRouter
 from core.api.facades.runtime_facade import get_kernel_runtime
 from core.schemas_onboarding import (
     OnboardingAutosmokeConfigRequest,
@@ -155,7 +155,7 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     actor0 = actor_from_http(http_request, None)
-    tid = actor0.get("tenant_id") or "default"
+    tid = actor0.get("tenant_id") or DomainRouter.default_tenant()
 
     step_key = str((request or {}).get("step_key") or "")
     action = str((request or {}).get("action") or "")
@@ -257,7 +257,7 @@ async def list_onboarding_evidence(http_request: Request, step_key: Optional[str
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     actor0 = actor_from_http(http_request, None)
-    tid = actor0.get("tenant_id") or "default"
+    tid = actor0.get("tenant_id") or DomainRouter.default_tenant()
     return await store.list_onboarding_evidence(tenant_id=str(tid), step_key=step_key, limit=limit, offset=offset)
 
 
@@ -274,7 +274,7 @@ async def get_onboarding_evidence(evidence_id: str, http_request: Request, _auth
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     actor0 = actor_from_http(http_request, None)
-    tid = actor0.get("tenant_id") or "default"
+    tid = actor0.get("tenant_id") or DomainRouter.default_tenant()
     row = await store.get_onboarding_evidence(tenant_id=str(tid), evidence_id=str(evidence_id))
     if not row:
         raise HTTPException(status_code=404, detail="not_found")
@@ -1032,7 +1032,7 @@ async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Dep
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
 
-    tenant_id = str(request.tenant_id or "default")
+    tenant_id = str(request.tenant_id or DomainRouter.default_tenant())
     enabled = bool(request.enabled)
 
     if request.require_approval:
