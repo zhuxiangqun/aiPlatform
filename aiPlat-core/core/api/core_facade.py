@@ -7344,6 +7344,33 @@ def remove_graph_field_acl(domain_id: str, entity_id: str, field_name: str) -> b
     return remove_field_acl(domain_id, entity_id, field_name)
 
 
+def preview_graph_abox_acl(
+    domain_id: str,
+    entity_id: str,
+    payload: Any = None,
+    *,
+    role: str = "",
+    action: str = "read",
+) -> Dict[str, Any]:
+    """Dry-run ABox ACL for a role（薄 UI 预览；certified 恒 false）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        payload: 可选样例载荷 dict。
+        role: 预览角色。
+        action: 预览动作。
+    """
+    from core.policy.graph_abox_acl import preview_abox_acl
+    return preview_abox_acl(
+        domain_id,
+        entity_id,
+        payload if isinstance(payload, dict) else None,
+        role=role or "",
+        action=action or "read",
+    )
+
+
 # ── Growth & Obsidian Facade (Phase E + Phase F) ──
 
 def get_growth_stats(days: int = 30, *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:

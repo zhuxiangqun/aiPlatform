@@ -1086,6 +1086,35 @@ async def delete_graph_field_acl(domain_id: str, entity_id: str, field_name: str
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
+@router.post("/graph/acl/{domain_id}/preview")
+async def preview_graph_acl(domain_id: str, body: Dict[str, Any]):
+    """Dry-run ABox ACL as a role（薄 UI 预览；非 certified）。
+
+    Args:
+        domain_id: domain 标识。
+        body: 含 entity_id / role / action / 可选 payload。
+    """
+    try:
+        from core.api.core_facade import preview_graph_abox_acl
+
+        entity_id = str(body.get("entity_id") or "").strip()
+        if not entity_id:
+            raise HTTPException(status_code=400, detail="entity_id_required")
+        payload = body.get("payload")
+        return preview_graph_abox_acl(
+            domain_id,
+            entity_id,
+            payload if isinstance(payload, dict) else None,
+            role=str(body.get("role") or ""),
+            action=str(body.get("action") or "read"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("preview_graph_acl failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
 @router.post("/actions/from-yaml")
 async def register_from_yaml(body: Dict[str, Any]):
     """Register actions from a YAML file (business expert entry point).
