@@ -8,6 +8,7 @@ visibility constraints and redaction strategies per entity field.
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["wiki-field-security"])
 
@@ -21,7 +22,7 @@ class FieldPermissionRequest(BaseModel):
 
 
 @router.get("/field-permissions/{entity_uri:path}", response_model=Dict[str, Any])
-async def get_field_permissions(entity_uri: str, collection: str = "default"):
+async def get_field_permissions(entity_uri: str, collection: str = DomainRouter.default_collection()):
     """Get field-level permission rules for an entity.
 
     Args:
@@ -35,7 +36,7 @@ async def get_field_permissions(entity_uri: str, collection: str = "default"):
 
 
 @router.put("/field-permissions", response_model=Dict[str, Any])
-async def set_field_permission_endpoint(req: FieldPermissionRequest, collection: str = "default"):
+async def set_field_permission_endpoint(req: FieldPermissionRequest, collection: str = DomainRouter.default_collection()):
     """Set a field-level permission rule (visibility + redaction strategy).
 
     Args:
@@ -57,7 +58,7 @@ async def set_field_permission_endpoint(req: FieldPermissionRequest, collection:
 async def remove_field_permission_endpoint(
     entity_uri: str = Body(...),
     field_name: str = Body(default=""),
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
 ):
     """Remove field-level permission(s). Pass empty field_name to clear all for entity.
 

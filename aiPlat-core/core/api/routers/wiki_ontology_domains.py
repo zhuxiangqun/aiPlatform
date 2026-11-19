@@ -937,7 +937,7 @@ async def list_instances_by_class(domain_id: str, class_label: str = ""):
 
 @router.get("/class-by-category", response_model=Dict[str, Any])
 
-async def get_ontology_class_by_category(category: str = "entities", collection: str = "default"):
+async def get_ontology_class_by_category(category: str = "entities", collection: str = DomainRouter.default_collection()):
 
     """Return the OntologyClass matching a category name, with required/optional/template fields.
 

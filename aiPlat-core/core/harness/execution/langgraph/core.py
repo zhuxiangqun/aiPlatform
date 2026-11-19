@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from enum import Enum
 import asyncio
 import uuid
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 class GraphState(TypedDict, total=False):
@@ -147,7 +148,7 @@ class ExecutionTrace:
 class GraphBuilder:
     """Builder for creating execution graphs"""
     
-    def __init__(self, name: str = "default"):
+    def __init__(self, name: str = DomainRouter.default_label()):
         """初始化。
 
         Args:
@@ -401,7 +402,7 @@ class CompiledGraph:
         return dict(self._edges)
 
 
-def create_graph_builder(name: str = "default") -> GraphBuilder:
+def create_graph_builder(name: str = DomainRouter.default_label()) -> GraphBuilder:
     """创建 graph_builder。
 
     Args:

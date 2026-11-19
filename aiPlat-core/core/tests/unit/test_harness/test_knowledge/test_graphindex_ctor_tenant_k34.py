@@ -26,18 +26,31 @@ TARGETS = [
 
 
 def _bare_ctors(rel: str) -> list[str]:
+    """找出未带 tenant_id 的 GraphIndex(...) 构造（支持跨行参数）。"""
     text = (_repo_root() / rel).read_text(encoding="utf-8")
     out = []
-    for ln in text.splitlines():
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
         if "GraphIndex(" not in ln or "GraphIndex.load" in ln:
+            i += 1
             continue
         if ln.strip().startswith("#"):
-            continue
-        if "tenant_id" in ln:
+            i += 1
             continue
         if any(x in ln for x in ("def ", "class ", "Type[", "Optional[", "ShardedGraphIndex")):
+            i += 1
             continue
-        out.append(ln.strip())
+        # 合并到匹配右括号（多行 ctor），再判断是否含 tenant_id
+        block = ln
+        j = i
+        while block.count("(") > block.count(")") and j + 1 < len(lines):
+            j += 1
+            block += "\n" + lines[j]
+        if "tenant_id" not in block:
+            out.append(ln.strip())
+        i = j + 1
     return out
 
 

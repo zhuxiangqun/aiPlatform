@@ -5,13 +5,14 @@ Wiki Ontology Export API — OWL/RDF export and inference engine.
 from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["wiki-ontology-export"])
 
 # ── OWL/RDF Export (Phase 5) ─────────────────────────────────────
 
 @router.get("/export", response_model=Dict[str, Any])
-async def export_ontology_rdf(format: str = "turtle", collection: str = "default"):
+async def export_ontology_rdf(format: str = "turtle", collection: str = DomainRouter.default_collection()):
     """Export T-Box + A-Box as OWL/RDF.
 
     Args:
@@ -39,7 +40,7 @@ async def export_ontology_rdf(format: str = "turtle", collection: str = "default
 
 
 @router.get("/export/learned", response_model=Dict[str, Any])
-async def export_learned_ontology(format: str = "turtle", collection: str = "default"):
+async def export_learned_ontology(format: str = "turtle", collection: str = DomainRouter.default_collection()):
     """Ontology learning output: pending suggestions -> OWL/Turtle.
 
     Args:
@@ -62,7 +63,7 @@ async def export_learned_ontology(format: str = "turtle", collection: str = "def
 
 
 @router.get("/infer", response_model=Dict[str, Any])
-async def run_inference_engine(collection: str = "default"):
+async def run_inference_engine(collection: str = DomainRouter.default_collection()):
     """Run full inference engine and return suggested edges.
 
     Args:

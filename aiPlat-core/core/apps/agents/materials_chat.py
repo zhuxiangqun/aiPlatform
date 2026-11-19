@@ -369,7 +369,7 @@ class MaterialsChatAgent(BaseAgent):
             if os.getenv("AIPLAT_SEMANTIC_CACHE_ENABLED", "true").lower() in ("true", "1", "yes"):
                 try:
                     from core.harness.knowledge.semantic_cache_hook import try_cache_hit
-                    collection_id_pre = str(scope.get("collection_id") or vars0.get("collection_id") or "default")
+                    collection_id_pre = str(scope.get("collection_id") or vars0.get("collection_id") or DomainRouter.default_collection())
                     cached = await try_cache_hit(question, collection_id_pre)
                     if cached:
                         _trace("缓存命中", f"语义缓存L1/L2", cached=True)
@@ -380,7 +380,7 @@ class MaterialsChatAgent(BaseAgent):
                         )
                 except Exception:
                     logging.getLogger(__name__).debug("Semantic cache check skipped", exc_info=True)
-            collection_id = str(scope.get("collection_id") or vars0.get("collection_id") or "default")
+            collection_id = str(scope.get("collection_id") or vars0.get("collection_id") or DomainRouter.default_collection())
             # D7: ControlProfile 知识域过滤 — 画像驱动的 collection 覆盖
             try:
                 from core.harness.meta.profile_registry import get_active_profile

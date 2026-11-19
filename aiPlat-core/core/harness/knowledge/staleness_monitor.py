@@ -475,7 +475,7 @@ class StalenessMonitor:
 
                 title = page["title"]
 
-                cid = report.collection_id or "default"
+                cid = report.collection_id or DomainRouter.default_collection()
 
 
 

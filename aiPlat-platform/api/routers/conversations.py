@@ -276,7 +276,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
     )
     doc_ids = [str(x).strip() for x in (scope_applied.get("doc_ids") or []) if str(x).strip()]
     wiki_titles = [str(x).strip() for x in (scope_applied.get("wiki_titles") or []) if str(x).strip()]
-    collection_id = str(scope_applied.get("collection_id") or "default")
+    collection_id = str(scope_applied.get("collection_id") or DomainRouter.default_collection())
     question = str(request.message or "").strip()
 
     # Domain routing (multi-domain support)

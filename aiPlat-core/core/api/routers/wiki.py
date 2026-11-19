@@ -3671,7 +3671,7 @@ async def get_model_selection_log():
 
 @router.post("/active-synthesis", response_model=Dict[str, Any])
 async def run_active_synthesis(
-    domain: str = "default",
+    domain: str = DomainRouter.default_graph_domain(),
     collection: str = DomainRouter.default_collection(),
     max_gaps: int = 5,
     auto_submit: bool = False,

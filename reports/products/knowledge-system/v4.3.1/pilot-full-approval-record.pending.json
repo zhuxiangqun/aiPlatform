@@ -1,0 +1,12 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "pilot lock-service full N24 certification (附录 N 全量)",
+  "status": "pending",
+  "approvers": [],
+  "approval_date": null,
+  "effective_date": null,
+  "exceptions": [],
+  "decision": null,
+  "record_id": "PILOT-FULL-lock-service-pending",
+  "note": "Superseded by pilot-full-approval-record.approved.json (approver: 朱向群)."
+}

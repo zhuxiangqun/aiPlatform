@@ -9,20 +9,21 @@ relation inference).
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["wiki-semantic-suggestions"])
 
 
 class SemanticSuggestRequest(BaseModel):
     """SemanticSuggestRequest。"""
-    collection: str = "default"
+    collection: str = DomainRouter.default_collection()
     max_suggestions: int = 5
     confidence_threshold: float = 0.7
     include_llm: bool = True
 
 
 @router.get("/suggestions", response_model=Dict[str, Any])
-async def list_pending_suggestions(collection: str = "default"):
+async def list_pending_suggestions(collection: str = DomainRouter.default_collection()):
     """List pending ontology learning suggestions (new_class / new_property /。
 
     Args:
@@ -66,7 +67,7 @@ async def generate_semantic_suggestions_endpoint(req: SemanticSuggestRequest = B
 
 
 @router.post("/suggestions/{suggestion_id}/impact", response_model=Dict[str, Any])
-async def predict_suggestion_impact(suggestion_id: str, collection: str = "default"):
+async def predict_suggestion_impact(suggestion_id: str, collection: str = DomainRouter.default_collection()):
     """Predict the impact scope of accepting an evolution suggestion.
 
     Args:

@@ -40,12 +40,13 @@ class TestL4Service:
 
     def test_import_repo_module_id(self):
         content = _service_sources()
-        assert "module_id: str = \"default\"" in content
+        # N09 K68：module_id 默认走 DomainRouter.default_module_id()，禁止字面量 "default"
+        assert "DomainRouter.default_module_id()" in content
         assert "proj.setdefault(\"module_repos\", {})" in content
 
     def test_rebuild_module_param(self):
         content = _service_sources()
-        assert "module_id: str = \"default\"" in content
+        assert "module_id: str = DomainRouter.default_module_id()" in content
         assert "self._module_repo(project_id, module_id)" in content
 
     def test_cross_module_caller(self):

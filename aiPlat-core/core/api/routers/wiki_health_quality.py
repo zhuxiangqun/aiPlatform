@@ -8,12 +8,13 @@ and per-entity quality signal tracking.
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["wiki-health-quality"])
 
 
 @router.get("/health/triggers", response_model=Dict[str, Any])
-async def get_health_triggers(collection: str = "default"):
+async def get_health_triggers(collection: str = DomainRouter.default_collection()):
     """Get triggered curation tasks from ontology health checks.
 
     Args:
@@ -25,7 +26,7 @@ async def get_health_triggers(collection: str = "default"):
 
 
 @router.get("/health/score", response_model=Dict[str, Any])
-async def get_ontology_health_score(collection: str = "default"):
+async def get_ontology_health_score(collection: str = DomainRouter.default_collection()):
     """Get composite ontology health score from axiom validation + quality signals.
 
     Args:
@@ -48,7 +49,7 @@ async def get_ontology_health_score(collection: str = "default"):
 
 
 @router.get("/quality/{entity_uri:path}", response_model=Dict[str, Any])
-async def get_entity_quality(entity_uri: str, collection: str = "default"):
+async def get_entity_quality(entity_uri: str, collection: str = DomainRouter.default_collection()):
     """Get quality score and signal history for an ontology entity.
 
     Args:

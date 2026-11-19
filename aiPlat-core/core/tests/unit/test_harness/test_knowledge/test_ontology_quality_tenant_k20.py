@@ -16,7 +16,8 @@ from types import SimpleNamespace
 def test_completeness_audit_validator_source_wire_tenant():
     c = (_repo_root() / "aiPlat-core/core/harness/knowledge/ontology_completeness.py").read_text(encoding="utf-8")
     assert "GraphIndex.load(domain_id, tenant_id=tid)" in c
-    assert "tenant_id: str = \"default\"" in c
+    # N09 后续：默认租户走 DomainRouter SSOT，禁止字面量 "default"
+    assert "tenant_id: str = DomainRouter.default_tenant()" in c
 
     a = (_repo_root() / "aiPlat-core/core/harness/knowledge/ontology_audit.py").read_text(encoding="utf-8")
     assert "GraphIndex.load(domain_id, tenant_id=tid)" in a
@@ -24,7 +25,7 @@ def test_completeness_audit_validator_source_wire_tenant():
 
     v = (_repo_root() / "aiPlat-core/core/harness/knowledge/ontology_validator.py").read_text(encoding="utf-8")
     assert "GraphIndex.load(domain_id, tenant_id=tid)" in v
-    assert "tenant_id: str = \"default\"" in v
+    assert "tenant_id: str = DomainRouter.default_tenant()" in v
 
 
 def test_diagnostics_ontology_audit_uses_actor_from_http():

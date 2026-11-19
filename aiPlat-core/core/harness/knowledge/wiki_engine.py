@@ -90,7 +90,7 @@ def _wiki_root(collection_id: str = DomainRouter.default_collection()) -> Path:
     home = get_aiplat_home()
     root = Path(home) / "wiki"
     _migrate_legacy_wiki(root)
-    return root / "collections" / (collection_id or "default")
+    return root / "collections" / (collection_id or DomainRouter.default_collection())
 
 
 def _migrate_legacy_wiki(root: Path) -> None:

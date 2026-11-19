@@ -316,7 +316,7 @@ async def get_rag_quality(
         from core.harness.evaluation.rag_diagnostics_collector import RAGDiagnosticsCollector
         collector = RAGDiagnosticsCollector()
         dash = await collector.collect_quality_dashboard(
-            domain_id=domain or "default",
+            domain_id=domain or DomainRouter.default_graph_domain(),
             lookback_hours=hours or 24,
         )
         overall = collector.compute_overall_score(dash)

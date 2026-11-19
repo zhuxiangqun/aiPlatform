@@ -372,7 +372,7 @@ async def upsert_gateway_pairing(http_request: Request, body: Dict[str, Any], rt
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     require_gateway_admin(http_request)
-    channel = str(body.get("channel") or "default")
+    channel = str(body.get("channel") or DomainRouter.default_label())
     channel_user_id = str(body.get("channel_user_id") or "").strip()
     user_id = str(body.get("user_id") or "").strip()
     if not channel_user_id or not user_id:

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T10:15:43+08:00",
+  "reviewed_at": "2026-11-19T13:23:28+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "b520764000ae46dcd3b24ff255fd15ac9e5f64f7a72000d54779a4fa2d42363f",
-  "head_sha": "e354da144dd776f5568f9f8991d9c7459d10df94",
+  "diff_sha256": "80f766d2c4f11de4419bb1f2aa0308cdc9271616f6fb324e006b74c90da0d247",
+  "head_sha": "53ebed9e97bbef4ea85777def0a4752e95d74e81",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K69: channel/agent_type/benchmark/output_style → default_label(). Five checks clean. Honesty: not N09 certified; model purpose=\"default\" intentionally deferred."
+  "note": "Test-only SSOT/async/path alignment for #873 tip\u2192main; no product behavior change. Local lock only."
 }

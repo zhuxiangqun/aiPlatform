@@ -19,7 +19,12 @@ def test_context_bus_source_wires_tenant():
     assert "def _resolve_graph_tenant" in text
     assert "GraphIndex.load(did, tenant_id=tid)" in text
     assert "GraphIndex.load(domain_id, tenant_id=tid)" in text
-    assert "GraphIndex.load(\"knowledge-atom\", tenant_id=tid)" in text
+    # N09 K39+：atom 域走 DomainRouter，禁止硬编码 knowledge-atom
+    assert "knowledge_atom_domain()" in text
+    assert (
+        "GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=tid)"
+        in text
+    )
     bare = [
         ln
         for ln in text.splitlines()

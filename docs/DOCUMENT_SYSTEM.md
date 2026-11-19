@@ -531,7 +531,7 @@ review_cycle:
 
 | 真相类型 | 唯一出处 | doc_id |
 |---|---|---|
-| 知识体系标准 | `docs/standards/knowledge-system/v4.3.1/` | `KS_V431_INDEX`（包入口） |
+| 知识体系标准 | `docs/standards/knowledge-system/v4.3.1/` | `KS_V431_INDEX`（包入口）；正文 `technical-whitepaper.md` / 附录 `normative-appendix.md` 为 `authority: canonical`（2026-11-19） |
 | 文档治理 | `docs/DOCUMENT_SYSTEM.md` | `DOCUMENT_SYSTEM` |
 | 文档入口 | `docs/README.md` | `DOCS_INDEX` |
 | 非规范解释材料 | `docs/reference/explanatory/` | （目录级，逐篇待铺） |

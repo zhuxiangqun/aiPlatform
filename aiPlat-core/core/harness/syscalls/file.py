@@ -43,6 +43,7 @@ from core.harness.infrastructure.gates import PolicyGate, TraceGate, ResilienceG
 from core.harness.kernel.runtime import get_kernel_runtime
 
 from core.harness.kernel.execution_context import get_active_workspace_context
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -520,7 +521,7 @@ async def _check_hallucination_on_write(
 
             "severity": result.get("risk", "medium"),
 
-            "tenant_id": tid or "default",
+            "tenant_id": tid or DomainRouter.default_tenant(),
 
         })
 

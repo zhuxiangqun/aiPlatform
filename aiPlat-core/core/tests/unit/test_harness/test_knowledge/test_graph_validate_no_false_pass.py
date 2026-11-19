@@ -10,7 +10,7 @@ from core.harness.knowledge.ontology_validator import ValidationReport, Validati
 
 @pytest.mark.asyncio
 async def test_load_failure_is_error_not_valid(monkeypatch):
-    def _boom(cls, domain_id):
+    def _boom(cls, domain_id, tenant_id="default"):
         raise RuntimeError("no graph")
 
     monkeypatch.setattr(GraphIndex, "load", classmethod(_boom))
@@ -30,7 +30,11 @@ async def test_validator_failure_is_unchecked_not_green(monkeypatch):
         def get_node(self, _eid):
             return None
 
-    monkeypatch.setattr(GraphIndex, "load", classmethod(lambda cls, d: _FakeGraph()))
+    monkeypatch.setattr(
+        GraphIndex,
+        "load",
+        classmethod(lambda cls, d, tenant_id="default": _FakeGraph()),
+    )
     monkeypatch.setattr(
         "core.harness.knowledge.ontology_validator.validate_domain",
         lambda domain_id, **kw: (_ for _ in ()).throw(RuntimeError("yaml missing")),
@@ -52,7 +56,11 @@ async def test_successful_domain_check_sets_checks_run(monkeypatch):
         def get_node(self, _eid):
             return None
 
-    monkeypatch.setattr(GraphIndex, "load", classmethod(lambda cls, d: _FakeGraph()))
+    monkeypatch.setattr(
+        GraphIndex,
+        "load",
+        classmethod(lambda cls, d, tenant_id="default": _FakeGraph()),
+    )
 
     report = ValidationReport(domain_id="lock-service")
     report.add(ValidationItem("orphan_node", "warning", "bad class", entity_name="e1", class_name="X"))
@@ -75,7 +83,11 @@ async def test_unsupported_operation_unchecked(monkeypatch):
         def stats(self):
             return {"nodes": 0, "edges": 0}
 
-    monkeypatch.setattr(GraphIndex, "load", classmethod(lambda cls, d: _FakeGraph()))
+    monkeypatch.setattr(
+        GraphIndex,
+        "load",
+        classmethod(lambda cls, d, tenant_id="default": _FakeGraph()),
+    )
 
     result = await sys_graph_validate("lock-service", operation="not-a-real-op")
     assert result["valid"] is False

@@ -8,6 +8,7 @@ from __future__ import annotations
 import hmac
 import os
 from typing import Any, Mapping, Optional
+from core.api.core_facade import DomainRouter
 
 
 def _flag(name: str) -> bool:
@@ -143,4 +144,4 @@ def resolve_request_tenant(request: Any) -> str:
     # 为什么：N09 K8 — ontology_editor 等写 GraphIndex 的 HTTP 入口须经身份解析取租户
     ident = _resolve_identity(request)
     tid = str(getattr(ident, "tenant_id", "") or "").strip()
-    return tid or "default"
+    return tid or DomainRouter.default_tenant()

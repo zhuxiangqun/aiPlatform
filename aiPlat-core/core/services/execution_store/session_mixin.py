@@ -42,7 +42,7 @@ class SessionMixin:
                 "id": sid,
                 "tenant_id": str(tenant_id) if tenant_id is not None else None,
                 "user_id": str(user_id or "system"),
-                "agent_type": str(agent_type or "default"),
+                "agent_type": str(agent_type or DomainRouter.default_label()),
                 "session_type": str(session_type or "session"),
                 "status": "active",
                 "metadata_json": _json_dumps(metadata or {}),
