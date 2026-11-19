@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-20T00:12:00+08:00",
+  "reviewed_at": "2026-11-20T00:22:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "01670a0f1d440bf3016992ff939af7878874ed5b906253a44f080280ba42793b",
-  "head_sha": "593ff216e4dfda2e176f8ba0ce8d707e887df848",
+  "diff_sha256": "54f795dd82f623af7a2dce1674208d214e52a7cf13af64b63f7c5257e656ee71",
+  "head_sha": "263b1056fd7c35c0f96c5e0cdecc09793c24f60e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "AboxAclPanel + FDE graph/acl certified=false. Complements FieldAclPanel. Not full permissions product / not N07 certified. Local lock only."
+  "note": "ABox ACL DELETE + AboxAclPanel remove. certified=false. Not full H.1 editor / not N07 certified. Local lock only."
 }
