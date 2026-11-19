@@ -698,6 +698,8 @@ class MaterialsChatAgent(BaseAgent):
                     top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
                     time_filters=time_filters or None,
                     enable_deep_research=os.getenv("AIPLAT_DEEP_RESEARCH_ENABLED", "false").lower() in ("true", "1", "yes"),
+                    actor_scopes=options.get("actor_scopes") or (run_context or {}).get("actor_scopes"),
+                    actor_role=str(options.get("actor_role") or (run_context or {}).get("actor_role") or ""),
                 )
             except Exception as e:
                 logging.debug(str(e), exc_info=True)

@@ -96,6 +96,8 @@ def sys_kb_retrieve(
 
     actor_scopes: List[str] = None,
 
+    actor_role: str = "",
+
 ) -> List[Dict[str, Any]]:
 
     """Retrieve relevant text from KB documents via unified KnowledgeRetriever.
@@ -285,6 +287,22 @@ def sys_kb_retrieve(
     if actor_scopes is not None and results:
 
         results = _filter_by_security(results, actor_scopes, collection_id)
+
+
+
+    if (actor_role or actor_scopes is not None) and results:
+
+        results = _apply_field_acl_to_results(
+
+            results,
+
+            actor_role=actor_role or "",
+
+            actor_scopes=actor_scopes,
+
+            collection_id=collection_id,
+
+        )
 
 
 
@@ -1163,6 +1181,8 @@ def sys_knowledge_retrieve(
 
     actor_scopes: List[str] = None,
 
+    actor_role: str = "",
+
 ) -> List[Dict[str, Any]]:
 
     """Unified knowledge retrieval — parallel Wiki + KB via RRF fusion.
@@ -1612,6 +1632,24 @@ def sys_knowledge_retrieve(
 
 
 
+    # ── N07/N22 deepen: Wiki/KB field ACL on unified retrieve ──
+
+    if actor_role or actor_scopes is not None:
+
+        results = _apply_field_acl_to_results(
+
+            results,
+
+            actor_role=actor_role or "",
+
+            actor_scopes=actor_scopes,
+
+            collection_id=collection_id,
+
+        )
+
+
+
     # ── Latency tracking ──
 
     try:
@@ -1680,9 +1718,63 @@ def sys_knowledge_retrieve(
 
     return results[:top_k]
 
+def _apply_field_acl_to_results(
+    results: List[Dict[str, Any]],
+    *,
+    actor_role: str = "",
+    actor_scopes: List[str] = None,
+    collection_id: str = DomainRouter.default_collection(),
+) -> List[Dict[str, Any]]:
+    """Apply collection field_permissions.json redaction to retrieve hits.
 
+    Args:
+        results: 检索命中列表。
+        actor_role: 调用方角色（admin 旁路）。
+        actor_scopes: 调用方 scopes；admin 旁路。
+        collection_id: Wiki/KB collection。
 
+    Returns:
+        脱敏后的命中列表；无规则或失败时原样返回。
+    """
 
+    if not results:
+        return results
+
+    scopes = list(actor_scopes or [])
+    if actor_role == "admin" or "admin" in scopes:
+        return results
+
+    try:
+        from core.policy.field_level_security import apply_field_level_security
+        from core.harness.knowledge.knowledge_abox_builder import _safe_uri
+        AI = "http://aiplat.local/knowledge#"
+        out: List[Dict[str, Any]] = []
+        for item in results:
+            if not isinstance(item, dict):
+                out.append(item)
+                continue
+            title = str(
+                item.get("title")
+                or item.get("source")
+                or item.get("doc_id")
+                or item.get("id")
+                or ""
+            )
+            entity_uri = f"{AI}{_safe_uri(title)}" if title else ""
+            safe = apply_field_level_security(
+                item,
+                entity_uri,
+                actor_role=actor_role or "",
+                actor_scopes=scopes,
+                collection_id=collection_id,
+            )
+            out.append(safe)
+        return out
+    except Exception:
+        logging.getLogger("retrieval").debug(
+            "field ACL soft-fail; returning unfiltered", exc_info=True
+        )
+        return results
 
 def _filter_by_security(
 
