@@ -3558,7 +3558,7 @@ async def voice_brainstorm(payload: dict = Body(...)):
     return await _brainstorm(
         transcript=str(payload.get("transcript", "")),
         duration_seconds=int(payload.get("duration_seconds", 0)),
-        session_id=str(payload.get("session_id", "default")),
+        session_id=str(payload.get("session_id") or DomainRouter.default_session()),
     )
 
 

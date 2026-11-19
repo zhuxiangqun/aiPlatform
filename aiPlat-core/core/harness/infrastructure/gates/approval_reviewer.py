@@ -13,6 +13,8 @@ Enable via ``AIPLAT_APPROVAL_REVIEWER=1`` and ``_auto_approve`` (or
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import json
 import logging
 import os
@@ -265,12 +267,12 @@ class _ReviewerCircuit:
         return max(1, int(os.getenv("AIPLAT_APPROVAL_REVIEWER_CIRCUIT", "3") or "3"))
 
     def is_open(self, session_id: str) -> bool:
-        sid = str(session_id or "default")
+        sid = str(session_id or DomainRouter.default_session())
         with self._lock:
             return self._non_allow.get(sid, 0) >= self.threshold
 
     def record(self, session_id: str, verdict: ReviewerVerdict) -> None:
-        sid = str(session_id or "default")
+        sid = str(session_id or DomainRouter.default_session())
         with self._lock:
             if verdict == ReviewerVerdict.ALLOW:
                 self._non_allow[sid] = 0
@@ -384,7 +386,7 @@ async def review_proposed_action(
             source=APPROVAL_SOURCE_REVIEWER_UNSURE,
         )
 
-    sid = str(session_id or (tool_args or {}).get("_session_id") or "default")
+    sid = str(session_id or (tool_args or {}).get("_session_id") or DomainRouter.default_session())
     if _circuit.is_open(sid):
         return ReviewerResult(
             reason="reviewer_circuit_open",

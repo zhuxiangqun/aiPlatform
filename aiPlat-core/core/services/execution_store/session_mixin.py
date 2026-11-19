@@ -1,6 +1,8 @@
 """
 SessionMixin — extracted from ExecutionStore global_mixin.py.
 """
+
+from core.harness.knowledge.domain_router import DomainRouter
 from typing import Any, Dict, List, Optional, Tuple
 import json, time, sqlite3, logging
 import anyio
@@ -120,7 +122,7 @@ class SessionMixin:
             mid = f"msg-{uuid.uuid4().hex[:12]}"
             rec = {
                 "id": mid,
-                "session_id": str(session_id or "default"),
+                "session_id": str(session_id or DomainRouter.default_session()),
                 "tenant_id": str(tenant_id) if tenant_id is not None else None,
                 "user_id": str(user_id or "system"),
                 "role": str(role or "user"),

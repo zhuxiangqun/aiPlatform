@@ -4904,7 +4904,7 @@ async def api_v1_agent_execute(agent_id: str, req: AgentExecuteRequest, request:
 
     payload_ctx.setdefault("tenant_id", identity.tenant_id)
 
-    payload_ctx.setdefault("session_id", req.session_id or "default")
+    payload_ctx.setdefault("session_id", req.session_id or DomainRouter.default_session())
 
     # Execute workspace agent via core workspace agent endpoint (not gateway/execute),
 
@@ -4918,7 +4918,7 @@ async def api_v1_agent_execute(agent_id: str, req: AgentExecuteRequest, request:
 
         "user_id": identity.actor_id,
 
-        "session_id": req.session_id or "default",
+        "session_id": req.session_id or DomainRouter.default_session(),
 
     }
 
@@ -5404,7 +5404,7 @@ async def gateway_execute(body: Dict[str, Any], request: Request):
 
     payload.setdefault("user_id", identity.actor_id)
 
-    payload.setdefault("session_id", payload.get("session_id") or "default")
+    payload.setdefault("session_id", payload.get("session_id") or DomainRouter.default_session())
 
     result = await _core_request("POST", "/api/core/gateway/execute", identity=identity, json_body=payload)
 
