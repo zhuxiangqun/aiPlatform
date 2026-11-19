@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T09:29:23+08:00",
+  "reviewed_at": "2026-11-19T09:35:07+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "ee15e18e13d9f4460d92878f88ec234538ada4708723a9dd5f3ec43f1b42b009",
-  "head_sha": "5c67274002fbe143df0998a04e76aba0d90db1dd",
+  "diff_sha256": "ab12ecdd83980751e2bde3b25bde810797396aaa26915623d61fac75d9ee21e7",
+  "head_sha": "8db472cb6bec51db949644dda3ac5596fe11713d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K63 follow-up: DOCUMENT_SYSTEM ontology_engine lines 13784→13788 (Docs Verify). Prior domain SSOT unchanged. Honesty: not N09 certified."
+  "note": "K64: view_name → default_view_name(); k_wave_arbit ticket tenant mop. Five checks clean. Honesty: not N09 certified; workspace_id/ProfileConfig/AIPLAT_DEFAULT_TENANT deferred."
 }

@@ -220,7 +220,7 @@ def propose_ticket(
         "status": status,
         "suggested": sug,
         "decision": sug if status == "rejected" else "",
-        "view_name": (view_name or "").strip() or "default",
+        "view_name": (view_name or "").strip() or DomainRouter.default_view_name(),
         "left_id": lid,
         "right_id": rid,
         "left_domain": ld,
@@ -336,9 +336,9 @@ def _ticket_tenant_id(ticket: Dict[str, Any]) -> str:
             ticket.get("tenant_id")
             or ticket.get("left_tenant")
             or ticket.get("right_tenant")
-            or "default"
+            or DomainRouter.default_tenant()
         ).strip()
-        or "default"
+        or DomainRouter.default_tenant()
     )
 
 
@@ -438,7 +438,7 @@ def apply_ticket(ticket_id: str, *, actor: str = "") -> Dict[str, Any]:
 
     # 为什么：N09 K7 — apply 写跨域边必须显式透传租户到 GraphIndex
     ok = CrossDomainResolver.resolve(
-        str(found.get("view_name") or "default"),
+        str(found.get("view_name") or DomainRouter.default_view_name()),
         str(found.get("left_id") or ""),
         str(found.get("right_id") or ""),
         str(found.get("left_domain") or ""),

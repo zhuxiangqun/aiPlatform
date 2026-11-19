@@ -42,7 +42,7 @@ def _normalize_cross_domain_views(raw: Any) -> Dict[str, Any]:
         # Already keyed by view name — still normalize each value
         return {str(k): _normalize_one_view(str(k), v) for k, v in raw.items() if isinstance(v, dict)}
     if isinstance(raw, dict) and _looks_like_single_view(raw):
-        name = str(raw.get("view_name") or "default")
+        name = str(raw.get("view_name") or DomainRouter.default_view_name())
         return {name: _normalize_one_view(name, raw)}
     if isinstance(raw, list):
         out: Dict[str, Any] = {}

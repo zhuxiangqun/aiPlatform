@@ -77,11 +77,12 @@ class DomainRouter:
     PLATFORM_IT_OPS_DOMAIN = "it-ops"
     PLATFORM_DATA_GOV_DOMAIN = "data-gov"
     PLATFORM_SYSTEM_DOMAIN = "aiplat-system"
-    # Tenant / collection / profile / session fallback SSOT (N09 K49/K52/K53) — not ontology domain ids.
+    # Tenant / collection / profile / session / view fallback SSOT (N09 K49/K52/K53/K64) — not ontology domain ids.
     PLATFORM_DEFAULT_TENANT = "default"
     PLATFORM_DEFAULT_COLLECTION = "default"
     PLATFORM_DEFAULT_PROFILE = "default"
     PLATFORM_DEFAULT_SESSION = "default"
+    PLATFORM_DEFAULT_VIEW = "default"
 
     @staticmethod
     def _home() -> str:
@@ -460,6 +461,15 @@ class DomainRouter:
         signature defaults (kernel / syscall / FDE voice).
         """
         return cls.PLATFORM_DEFAULT_SESSION
+
+    @classmethod
+    def default_view_name(cls) -> str:
+        """Return platform default cross-domain view name (N09 K64).
+
+        Prefer this over hardcoding ``\"default\"`` in ``view_name``
+        runtime fallbacks (CrossDomainResolver / K-wave arbit).
+        """
+        return cls.PLATFORM_DEFAULT_VIEW
 
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).
