@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T10:23:00+08:00",
+  "reviewed_at": "2026-11-19T12:13:20+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "24cbea828c2066fc90e16b412846fcef02997c1b73bbf7b7a709c9c92706fded",
-  "head_sha": "fcabf9b89e5fc281a3f056782e7a4be661f7d5b9",
+  "diff_sha256": "e4ceba209578de779cdc5bb3aaf454caea11b670d61e84512e132d0dedb191bc",
+  "head_sha": "5388ab97b3e54bbd84977b93e48e0eb2a4958307",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K70: mop leftover wiki_* collection / builder module_id / gateway channel / tenant·domain onto existing DomainRouter.default_*. Five checks clean. Honesty: not N09 certified; purpose=\"default\" intentionally deferred."
+  "note": "Docs-only sync after full N24 approval; no product code change. Cert path closed; PR await CI + non-author Approve."
 }

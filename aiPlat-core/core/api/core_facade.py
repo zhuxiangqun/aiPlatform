@@ -5488,6 +5488,183 @@ def evaluate_pilot_cert_readiness_gate(
     return _gate(readiness)
 
 
+def evaluate_core_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """附录 N Core 最小符合集结构门（core_ready ≠ certified）。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_core_ready_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_pilot_core_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Core 认证：core_ready + 非作者批准记录才可 pilot_certified。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+        approval_record_path: 试点 Core 批准记录 JSON 路径（必填才可能徽章）。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_pilot_core_certification as _gate,
+    )
+
+    return _gate(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+    )
+
+
+def evaluate_extended_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """附录 N Extended 最小符合集结构门（extended_ready ≠ certified）。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_extended_ready_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_pilot_extended_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Extended 认证：extended_ready + 非作者批准才可 pilot_extended_certified。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+        approval_record_path: Extended 批准记录路径。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_pilot_extended_certification as _gate,
+    )
+
+    return _gate(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+    )
+
+
+def evaluate_operational_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """附录 N Operational 最小符合集结构门（operational_ready ≠ certified）。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_operational_ready_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_pilot_operational_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Operational 认证：operational_ready + 非作者批准才可徽章。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+        approval_record_path: Operational 批准记录路径。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_pilot_operational_certification as _gate,
+    )
+
+    return _gate(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+    )
+
+
+def evaluate_full_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """附录 N 全量结构门（full_ready ≠ certified）。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_full_ready_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_full_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+    core_approval_record_path: Optional[str] = None,
+    extended_approval_record_path: Optional[str] = None,
+    operational_approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """全量认证：full_ready + 三级徽章 + 独立全量非作者批准才可 certified。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+        approval_record_path: 全量批准记录路径。
+        core_approval_record_path: Core 批准；空则默认 approved。
+        extended_approval_record_path: Extended 批准；空则默认 approved。
+        operational_approval_record_path: Operational 批准；空则默认 approved。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_full_certification as _gate,
+    )
+
+    return _gate(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+        core_approval_record_path=core_approval_record_path,
+        extended_approval_record_path=extended_approval_record_path,
+        operational_approval_record_path=operational_approval_record_path,
+    )
+
+
 async def run_implementer_semantics_suite(
     *,
     work_dir: Optional[str] = None,

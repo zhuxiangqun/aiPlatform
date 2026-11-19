@@ -9,7 +9,8 @@ authority: supporting
 
 > 实施权威：[`docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md`](../../../../docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md)  
 > 标准包：[`docs/standards/knowledge-system/v4.3.1/`](../../../../docs/standards/knowledge-system/v4.3.1/)  
-> **本目录是测量证据，不是第二份标准或实施方案。**
+> **本目录是测量证据，不是第二份标准或实施方案。**  
+> **试点认证状态（lock-service，2026-11-19）**：Core 朱鸿林 / Extended 朱莹 / Operational 朱莹 / Full 朱向群（conditional，SLO 非生产遥测）；未宣称准确率。
 
 | 文件 | 内容 |
 |------|------|
@@ -128,5 +129,10 @@ authority: supporting
 | [phase2-cross-tenant-query-form-signature-defaults-evidence.md](./phase2-cross-tenant-query-form-signature-defaults-evidence.md) | Batch K67 N09 Query/Form/签名默认参数（非 certified） |
 | [phase2-cross-tenant-builder-module-defaults-evidence.md](./phase2-cross-tenant-builder-module-defaults-evidence.md) | Batch K68 N09 builder module_id 默认（非 certified） |
 | [phase2-cross-tenant-misc-label-defaults-evidence.md](./phase2-cross-tenant-misc-label-defaults-evidence.md) | Batch K69 N09 杂项 label 默认（非 certified） |
+| [phase2-cross-tenant-runtime-default-mop-evidence.md](./phase2-cross-tenant-runtime-default-mop-evidence.md) | Batch K70 N09 运行时 default 漏网清扫（非 certified；本线终点） |
+| [phase2-core-cert-path-evidence.md](./phase2-core-cert-path-evidence.md) | Core 可认证路径：等级映射 + core_ready + 人工徽章（朱鸿林已确认） |
+| [phase2-extended-cert-path-evidence.md](./phase2-extended-cert-path-evidence.md) | Extended 可认证路径：N.3 六项 + extended_ready + 人工徽章（朱莹已确认） |
+| [phase2-operational-cert-path-evidence.md](./phase2-operational-cert-path-evidence.md) | Operational 可认证路径：N.4 六项 + operational_ready + 人工徽章（朱莹已确认） |
+| [phase2-full-cert-path-evidence.md](./phase2-full-cert-path-evidence.md) | 全量可认证路径：full_ready + 三级徽章 + 人工全量徽章（朱向群已确认，conditional） |
 
-试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
+试点域：`lock-service` · 目标等级：Core（`core_ready` 可判定；**签字认证**见 `pilot-core-approval-record.pending.json`）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。
