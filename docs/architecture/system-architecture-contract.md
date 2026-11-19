@@ -97,6 +97,7 @@ review_cycle: 90d
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen suggestions OWL / offline_owl_review 身份透传（export_suggestions_to_owl + review_domain_owl_offline）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen EvolutionRunner suggestions OWL 落盘身份透传（evolve HTTP + wiki_auto_update）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen platform ingest/watch/vault → wiki_auto_update 身份透传（有启动身份则透传；无身份不伪造）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-19：知识系统 v4.3.1 N07/N22 deepen 字段 ACL 管理端薄 UI（FieldAclPanel + list API；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 
 ---
 

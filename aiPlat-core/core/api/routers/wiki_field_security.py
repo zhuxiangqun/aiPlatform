@@ -21,6 +21,24 @@ class FieldPermissionRequest(BaseModel):
     redaction_strategy: str = "mask"
 
 
+@router.get("/field-permissions", response_model=Dict[str, Any])
+async def list_field_permissions(collection: str = DomainRouter.default_collection()):
+    """List all field-level permission rules for a collection（管理端薄 UI 列表）。
+
+    Args:
+        collection: collection 参数。
+    """
+    from core.policy.field_level_security import load_field_permissions
+    perms = load_field_permissions(collection_id=collection)
+    return {
+        "collection": collection,
+        "permissions": [p.to_dict() for p in perms],
+        "total": len(perms),
+        # 为什么：诚实锁 — 本列表仅管理规则，不宣称 N07/N22 certified
+        "certified": False,
+    }
+
+
 @router.get("/field-permissions/{entity_uri:path}", response_model=Dict[str, Any])
 async def get_field_permissions(entity_uri: str, collection: str = DomainRouter.default_collection()):
     """Get field-level permission rules for an entity.
