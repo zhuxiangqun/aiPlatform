@@ -17,7 +17,7 @@ class SessionMixin:
         *,
         tenant_id: Optional[str] = None,
         user_id: str,
-        agent_type: str = "default",
+        agent_type: str = DomainRouter.default_label(),
         session_type: str = "session",
         metadata: Optional[Dict[str, Any]] = None,
         session_id: Optional[str] = None,
