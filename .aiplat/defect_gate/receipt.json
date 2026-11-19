@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T22:36:00+08:00",
+  "reviewed_at": "2026-11-19T22:45:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "9890f2e64ef3d38cb0259f31eb81560b36189ca3cf1efca35c49decafe573c70",
-  "head_sha": "95db20ee935eb7916ac91a25a2b610ab32723f9a",
+  "diff_sha256": "8c077d4a1c91f61899145ccac0f8edf9230ec3f789f4756c828a8670330b1b2b",
+  "head_sha": "7ef2c131c8eab6773d339d76704ba8951593cb92",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N07/N22 deepen bare Wiki+GraphRAG field ACL; export path still open; certified false. clause-sync. Local lock only."
+  "note": "N07/N22 deepen OKF export field ACL; OWL/RDF still open; certified false. clause-sync. Local lock only."
 }
