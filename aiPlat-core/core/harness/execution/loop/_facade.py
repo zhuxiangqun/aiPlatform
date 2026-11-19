@@ -18,6 +18,8 @@ Heavy lifting delegated to sub-modules (extracted for SRP per §5.75):
 
 """
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 from typing import Any, Dict, List, Optional, Tuple
 
 import asyncio
@@ -793,7 +795,7 @@ class ReActLoop(BaseLoop):
 
             user_id = context.get("user_id", "system")
 
-            session_id = context.get("session_id", "default")
+            session_id = context.get("session_id") or DomainRouter.default_session()
 
             approval_ctx = ApprovalContext(
 
@@ -2277,7 +2279,7 @@ class ReActLoop(BaseLoop):
 
                     await pfb.record(
 
-                        session_id=state.context.get("session_id", "default"),
+                        session_id=state.context.get("session_id") or DomainRouter.default_session(),
 
                         feedback_type="interaction",
 
@@ -2321,9 +2323,9 @@ class ReActLoop(BaseLoop):
 
                 tracker = get_emotion_tracker()
 
-                tenant = state.context.get("tenant_id", "default")
+                tenant = state.context.get("tenant_id") or DomainRouter.default_tenant()
 
-                sid = state.context.get("session_id", "default")
+                sid = state.context.get("session_id") or DomainRouter.default_session()
 
                 duration = state.context.get("_loop_duration_s", 0.0)
 
@@ -4719,7 +4721,7 @@ class ReActLoop(BaseLoop):
 
                     skill_context = SkillContext(
 
-                        session_id=state.context.get("session_id", "default"),
+                        session_id=state.context.get("session_id") or DomainRouter.default_session(),
 
                         user_id=state.context.get("user_id", "system"),
 
@@ -5149,7 +5151,7 @@ class ReActLoop(BaseLoop):
 
                         user_id=state.context.get("user_id", "system"),
 
-                        session_id=state.context.get("session_id", "default"),
+                        session_id=state.context.get("session_id") or DomainRouter.default_session(),
 
                         trace_context={
 
@@ -5440,7 +5442,7 @@ class ReActLoop(BaseLoop):
 
                                 user_id=state.context.get("user_id", "system"),
 
-                                session_id=state.context.get("session_id", "default"),
+                                session_id=state.context.get("session_id") or DomainRouter.default_session(),
 
                                 trace_context={
 
@@ -6174,7 +6176,7 @@ class PlanExecuteLoop(BaseLoop):
 
                                 user_id=state.context.get("user_id", "system"),
 
-                                session_id=state.context.get("session_id", "default"),
+                                session_id=state.context.get("session_id") or DomainRouter.default_session(),
 
                                 trace_context={
 
