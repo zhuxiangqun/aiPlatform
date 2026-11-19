@@ -43,6 +43,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- 导出全路径（OKF / dump）字段 ACL
+- 导出全路径（OKF / dump）字段 ACL → 见 `phase2-okf-export-field-acl-evidence.md`（本批 deepen）
 - N07/N22 certified 或关闭 ADR 例外
 - 字段 ACL 管理 UI 大改
+- OWL/RDF 等其他导出格式全量字段 ACL
