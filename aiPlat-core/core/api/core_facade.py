@@ -4053,14 +4053,28 @@ def get_ontology_pillars_view(domain_id: str) -> Dict[str, Any]:
     return get_ontology_pillars(domain_id)
 
 
-def review_ontology_owl_offline(domain_id: str) -> Dict[str, Any]:
-    """review_ontology_owl_offline。
+def review_ontology_owl_offline(
+    domain_id: str,
+    *,
+    actor_role: str = "",
+    actor_scopes: Optional[List[str]] = None,
+    collection_id: str = "",
+) -> Dict[str, Any]:
+    """离线 OWL 审稿；透传身份供导出字段 ACL。
 
     Args:
         domain_id: domain 标识。
+        actor_role: 调用方角色。
+        actor_scopes: 调用方 scopes。
+        collection_id: field_permissions collection。
     """
     from core.apps.fde.service.offline_owl_review import review_domain_owl_offline
-    return review_domain_owl_offline(domain_id)
+    return review_domain_owl_offline(
+        domain_id,
+        actor_role=actor_role,
+        actor_scopes=actor_scopes,
+        collection_id=collection_id,
+    )
 
 
 def get_governance_scenario_loop() -> Dict[str, Any]:

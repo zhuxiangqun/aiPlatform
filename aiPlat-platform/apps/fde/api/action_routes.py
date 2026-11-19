@@ -11,7 +11,7 @@ from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Header, HTTPException, Query, Request
 
 router = APIRouter(tags=["fde-actions"])
 
@@ -599,16 +599,30 @@ async def ontology_governance_write_preview(body: Dict[str, Any]):
 
 
 @router.post("/ontology/owl-review/{domain_id}")
-async def ontology_owl_review(domain_id: str):
+async def ontology_owl_review(
+    domain_id: str,
+    body: Optional[Dict[str, Any]] = Body(default=None),
+):
     """Offline OWL consistency review — suggestion only; unchecked ≠ valid.
 
     Args:
         domain_id: domain 标识。
+        body: 可选载荷；可含 actor_role / actor_scopes / collection_id。
     """
     try:
         from core.apps.fde.service.offline_owl_review import review_domain_owl_offline
 
-        result = review_domain_owl_offline(domain_id)
+        payload = body if isinstance(body, dict) else {}
+        scopes = payload.get("actor_scopes")
+        if isinstance(scopes, str):
+            scopes = [s.strip() for s in scopes.split(",") if s.strip()]
+        # 为什么：离线审稿经 export_to_owl_rdf，须透传身份做 A-Box 字段 ACL
+        result = review_domain_owl_offline(
+            domain_id,
+            actor_role=str(payload.get("actor_role") or ""),
+            actor_scopes=scopes if isinstance(scopes, list) else None,
+            collection_id=str(payload.get("collection_id") or ""),
+        )
         if result.get("status") in ("unchecked", "error"):
             result["valid"] = False
         return result

@@ -94,6 +94,7 @@ review_cycle: 90d
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen 裸 Wiki + GraphRAG chunks 字段 ACL（sys_wiki_retrieve / GraphRAGRetriever / CRAG L0）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen OKF 导出写盘字段 ACL（OKFExporter + FDE export-okf）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen OWL/RDF 导出 A-Box 字段 ACL（export_to_owl_rdf + wiki-ontology-export）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-19：知识系统 v4.3.1 N07/N22 deepen suggestions OWL / offline_owl_review 身份透传（export_suggestions_to_owl + review_domain_owl_offline）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 
 ---
 
