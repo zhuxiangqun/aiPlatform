@@ -187,6 +187,78 @@ def match_abox_condition(
     return True
 
 
+def _normalize_masked_properties(props: Optional[List[Any]]) -> List[str]:
+    """规范化 H.1 masked_properties 列表（去空、去重保序）。
+
+    Args:
+        props: 原始属性名列表；None → 空列表。
+    """
+    out: List[str] = []
+    seen = set()
+    for p in props or []:
+        name = str(p).strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        out.append(name)
+    return out
+
+
+def list_masked_properties(domain_id: str, entity_id: str) -> List[str]:
+    """读取实体上登记的 H.1 masked_properties。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    acl = load_abox_acl(domain_id)
+    entry = (acl.get("entities") or {}).get(entity_id) or {}
+    if not isinstance(entry, dict):
+        return []
+    return _normalize_masked_properties(entry.get("masked_properties"))
+
+
+def entity_acl_to_h1(domain_id: str, entity_id: str) -> Dict[str, Any]:
+    """将存储态投影为附录 H.1 只读形状（非完整策略编辑器 / certified=false）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    acl = load_abox_acl(domain_id)
+    entry = (acl.get("entities") or {}).get(entity_id) or {}
+    if not isinstance(entry, dict):
+        entry = {}
+    deny = entry.get("deny_roles") or {}
+    allow = entry.get("allow_roles") or {}
+    # 为什么：deny 优先投影 effect；多角色时 principals 取 deny 键，否则 allow 键
+    if deny:
+        effect = "deny"
+        principals = [f"role:{r}" for r in deny.keys()]
+        actions_src = deny
+    else:
+        effect = "allow"
+        principals = [f"role:{r}" for r in allow.keys()]
+        actions_src = allow
+    acts: List[str] = []
+    seen_a = set()
+    for lst in actions_src.values():
+        for a in lst or []:
+            s = str(a).strip()
+            if s and s not in seen_a:
+                seen_a.add(s)
+                acts.append(s)
+    return {
+        "resource": entity_id,
+        "effect": effect,
+        "principals": principals,
+        "condition": entry.get("condition") or None,
+        "masked_properties": list_masked_properties(domain_id, entity_id),
+        "actions": acts,
+        "certified": False,
+    }
+
+
 def set_entity_acl(
     domain_id: str,
     entity_id: str,
@@ -194,6 +266,7 @@ def set_entity_acl(
     deny_roles: Optional[Dict[str, List[str]]] = None,
     allow_roles: Optional[Dict[str, List[str]]] = None,
     condition: Optional[Dict[str, Any]] = None,
+    masked_properties: Optional[List[Any]] = None,
 ) -> Dict[str, Any]:
     """Set per-instance ACL. deny wins over allow when both match.
 
@@ -203,6 +276,8 @@ def set_entity_acl(
         deny_roles: deny_roles 参数。
         allow_roles: allow_roles 参数。
         condition: 可选 H.1 等值条件；仅匹配时本条 deny/allow 生效。
+        masked_properties: 可选 H.1 脱敏字段名列表；同步 fields 为 visibility=none；
+            空列表清除；None 表示不改动。
     """
     acl = load_abox_acl(domain_id)
     entry = dict(acl["entities"].get(entity_id) or {})
@@ -216,6 +291,29 @@ def set_entity_acl(
             entry["condition"] = {str(k): v for k, v in condition.items()}
         else:
             entry.pop("condition", None)
+    if masked_properties is not None:
+        prev = _normalize_masked_properties(entry.get("masked_properties"))
+        new = _normalize_masked_properties(masked_properties)
+        # 为什么：先写 entry 再落盘字段 ACL，避免半写入
+        if new:
+            entry["masked_properties"] = new
+        else:
+            entry.pop("masked_properties", None)
+        acl["entities"][entity_id] = entry
+        save_abox_acl(domain_id, acl)
+        for fname in new:
+            set_field_acl(
+                domain_id,
+                entity_id,
+                fname,
+                visibility="none",
+                redaction="mask",
+                replace_with="[REDACTED]",
+            )
+        for fname in prev:
+            if fname not in new:
+                remove_field_acl(domain_id, entity_id, fname)
+        return dict((load_abox_acl(domain_id).get("entities") or {}).get(entity_id) or entry)
     acl["entities"][entity_id] = entry
     save_abox_acl(domain_id, acl)
     return entry
@@ -433,6 +531,7 @@ def preview_abox_acl(
     cond_matched = match_abox_condition(cond, sample if sample else None)
     allowed = check_entity_acl(domain_id, entity_id, role, action, attrs=sample if sample else None)
     redacted = redact_entity_fields(domain_id, entity_id, sample, role) if allowed else {}
+    h1 = entity_acl_to_h1(domain_id, entity_id)
     return {
         "domain_id": domain_id,
         "entity_id": entity_id,
@@ -441,6 +540,8 @@ def preview_abox_acl(
         "allowed": bool(allowed),
         "condition": cond or None,
         "condition_matched": bool(cond_matched) if cond else None,
+        "masked_properties": list(h1.get("masked_properties") or []),
+        "h1_policy": h1,
         "redacted": redacted,
         # 为什么：预览仅辅助排障，结构门 ≠ certified
         "certified": False,

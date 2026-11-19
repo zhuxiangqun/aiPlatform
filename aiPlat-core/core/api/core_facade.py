@@ -7283,6 +7283,7 @@ def set_graph_entity_acl(
     deny_roles: Any = None,
     allow_roles: Any = None,
     condition: Any = None,
+    masked_properties: Any = None,
 ) -> Dict[str, Any]:
     """set_graph_entity_acl。
 
@@ -7292,15 +7293,18 @@ def set_graph_entity_acl(
         deny_roles: deny_roles 参数。
         allow_roles: allow_roles 参数。
         condition: 可选 H.1 等值条件 dict；空 dict 清除。
+        masked_properties: 可选 H.1 脱敏字段名列表；空列表清除；None 不改。
     """
     from core.policy.graph_abox_acl import set_entity_acl
     cond = condition if isinstance(condition, dict) else None
+    masks = masked_properties if isinstance(masked_properties, list) else None
     return set_entity_acl(
         domain_id,
         entity_id,
         deny_roles=deny_roles,
         allow_roles=allow_roles,
         condition=cond,
+        masked_properties=masks,
     )
 
 

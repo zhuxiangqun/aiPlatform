@@ -982,23 +982,25 @@ async def get_graph_acl(domain_id: str):
 
 @router.put("/graph/acl/{domain_id}/entities/{entity_id}")
 async def put_graph_entity_acl(domain_id: str, entity_id: str, body: Dict[str, Any]):
-    """Upsert instance ACL (deny_roles / allow_roles / optional condition).
+    """Upsert instance ACL (deny/allow / condition / masked_properties)。
 
     Args:
         domain_id: domain 标识。
         entity_id: entity 标识。
-        body: 请求体；可含 condition（H.1 等值条件；{} 清除）。
+        body: 请求体；可含 condition（{} 清除）、masked_properties（[] 清除）。
     """
     try:
         from core.api.core_facade import set_graph_entity_acl
 
         cond = body.get("condition")
+        masks = body.get("masked_properties")
         entry = set_graph_entity_acl(
             domain_id,
             entity_id,
             deny_roles=body.get("deny_roles"),
             allow_roles=body.get("allow_roles"),
             condition=cond if isinstance(cond, dict) else None,
+            masked_properties=masks if isinstance(masks, list) else None,
         )
         return {"domain_id": domain_id, "entity_id": entity_id, "entry": entry}
     except Exception as e:
