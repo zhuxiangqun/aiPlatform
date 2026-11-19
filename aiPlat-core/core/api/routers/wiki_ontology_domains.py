@@ -15,6 +15,8 @@ from pydantic import BaseModel
 
 import logging
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 
 
 router = APIRouter(tags=["wiki-ontology-domains"])

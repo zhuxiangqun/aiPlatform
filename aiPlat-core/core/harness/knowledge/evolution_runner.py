@@ -80,16 +80,27 @@ class PageFitness:
 class EvolutionRunner:
     """Orchestrates generation-based knowledge evolution."""
 
-    def __init__(self, collection_id: str = DomainRouter.default_collection(),
-                 max_mutations: int = 5):
+    def __init__(
+        self,
+        collection_id: str = DomainRouter.default_collection(),
+        max_mutations: int = 5,
+        *,
+        actor_role: str = "",
+        actor_scopes: Optional[List[str]] = None,
+    ):
         """初始化。
 
         Args:
             collection_id: collection 标识。
             max_mutations: max_mutations 参数。
+            actor_role: 调用方角色；落盘 learned TTL 时透传字段 ACL。
+            actor_scopes: 调用方 scopes；落盘 learned TTL 时透传字段 ACL。
         """
         self.collection_id = collection_id
         self.max_mutations = max_mutations
+        # 为什么：自动落盘 suggestions OWL 旁路 HTTP，须在 runner 持有运行时身份
+        self.actor_role = actor_role or ""
+        self.actor_scopes = list(actor_scopes) if actor_scopes is not None else None
         self.generation_id = self._load_last_generation_id()
         self._recent_deltas: List[float] = []
         self.auto_apply_previous_onto_mutations()  # Restore in-memory ontology state
@@ -419,7 +430,11 @@ class EvolutionRunner:
             # (file: ~/.aiplat/ontologies/{collection_id}.learned.ttl).
             try:
                 from core.harness.knowledge.knowledge_ontology import write_suggestions_owl_file
-                write_suggestions_owl_file(self.collection_id)
+                write_suggestions_owl_file(
+                    self.collection_id,
+                    actor_role=self.actor_role,
+                    actor_scopes=self.actor_scopes,
+                )
             except Exception:
                 logging.getLogger(__name__).debug(
                     "write_suggestions_owl_file failed", exc_info=True)

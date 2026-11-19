@@ -3599,8 +3599,14 @@ async def rebuild_fts_index(collection: str = DomainRouter.default_collection())
 
 
 @router.post("/evolve", response_model=Dict[str, Any])
-async def evolve_knowledge(collection: str = DomainRouter.default_collection(), generations: int = 1,
-                            max_mutations: int = 5, force: bool = False):
+async def evolve_knowledge(
+    collection: str = DomainRouter.default_collection(),
+    generations: int = 1,
+    max_mutations: int = 5,
+    force: bool = False,
+    actor_role: str = "",
+    actor_scopes: str = "",
+):
     """Run knowledge evolution — event-driven, not timer-driven.
 
     Args:
@@ -3608,12 +3614,17 @@ async def evolve_knowledge(collection: str = DomainRouter.default_collection(), 
         generations: generations 参数。
         max_mutations: max_mutations 参数。
         force: 是否强制。
+        actor_role: 调用方角色；透传到 suggestions OWL 落盘字段 ACL。
+        actor_scopes: 逗号分隔 scopes；透传到 suggestions OWL 落盘字段 ACL。
     """
     try:
         from core.harness.knowledge.evolution_runner import EvolutionRunner
+        scopes = [s.strip() for s in (actor_scopes or "").split(",") if s.strip()] or None
         runner = EvolutionRunner(
             collection_id=collection,
             max_mutations=max_mutations,
+            actor_role=actor_role or "",
+            actor_scopes=scopes,
         )
         results = []
         for _ in range(generations):

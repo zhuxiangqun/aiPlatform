@@ -1571,13 +1571,22 @@ def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
     return sys_wiki_retrieve(query, wiki_titles, **kwargs)
 
 
-async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "") -> Dict[str, Any]:
+async def wiki_auto_update(
+    doc_id: str,
+    file_path: str,
+    collection_id: str = "",
+    *,
+    actor_role: str = "",
+    actor_scopes: list = None,
+) -> Dict[str, Any]:
     """Convert a newly ingested KB document into Wiki knowledge pages.
 
     Args:
         doc_id: doc 标识。
         file_path: file_path 参数。
         collection_id: collection 标识。
+        actor_role: 调用方角色；透传到 EvolutionRunner suggestions OWL 落盘 ACL。
+        actor_scopes: 调用方 scopes；透传到 EvolutionRunner suggestions OWL 落盘 ACL。
     """
     import os, re
     from core.harness.knowledge.wiki_engine import write_page
@@ -1728,7 +1737,12 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     # ── Evolution: auto-trigger if enough new pages accumulated ──
     try:
         from core.harness.knowledge.evolution_runner import EvolutionRunner
-        runner = EvolutionRunner(collection_id=collection_id or DomainRouter.default_collection(), max_mutations=3)
+        runner = EvolutionRunner(
+            collection_id=collection_id or DomainRouter.default_collection(),
+            max_mutations=3,
+            actor_role=actor_role or "",
+            actor_scopes=actor_scopes,
+        )
         if runner.can_evolve():
             await runner.run_one_generation(force=False)
     except Exception as e:
