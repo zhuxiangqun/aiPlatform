@@ -186,7 +186,7 @@ async def _governance_middleware(request: Request, call_next):
             # Spoofable headers only via _resolve_identity (DEV_MODE / identity secret / JWT / API key).
             ident = _resolve_identity(request)
 
-            tenant_id = ident.tenant_id or "default"
+            tenant_id = ident.tenant_id or DomainRouter.default_tenant()
 
             actor_id = ident.actor_id or "anonymous"
 
@@ -550,7 +550,7 @@ def _resolve_identity(request: Request) -> Identity:
 
         if dev_allow_any:
 
-            tid = request.headers.get("X-AIPLAT-TENANT-ID") or "default"
+            tid = request.headers.get("X-AIPLAT-TENANT-ID") or DomainRouter.default_tenant()
 
             return Identity(
 
@@ -576,7 +576,7 @@ def _resolve_identity(request: Request) -> Identity:
 
         claims = _decode_jwt_claims(token)
 
-        tid = claims.get("tid") or claims.get("tenant_id") or "default"
+        tid = claims.get("tid") or claims.get("tenant_id") or DomainRouter.default_tenant()
 
         sub = claims.get("sub") or claims.get("actor_id") or "anonymous"
 
@@ -726,7 +726,7 @@ def _kb_tenant_dir(tenant_id: str) -> str:
 
 
 
-    tid = str(tenant_id or "").strip() or "default"
+    tid = str(tenant_id or "").strip() or DomainRouter.default_tenant()
 
     p = Path(_platform_home()).expanduser() / "kb" / "tenants" / tid
 
@@ -1661,7 +1661,7 @@ async def platform_whoami(request: Request):
 
     return {
 
-        "tenant_id": ident.tenant_id or "default",
+        "tenant_id": ident.tenant_id or DomainRouter.default_tenant(),
 
         "actor_id": ident.actor_id or "anonymous",
 
@@ -3344,7 +3344,7 @@ async def documents_ingest(request: Request):
 
         if doc_id:
 
-            _asyncio.create_task(_auto_ontology_pipeline(doc_id, str(file_path), collection_id, tenant_id=str(identity.tenant_id or "default")))
+            _asyncio.create_task(_auto_ontology_pipeline(doc_id, str(file_path), collection_id, tenant_id=str(identity.tenant_id or DomainRouter.default_tenant())))
 
     except Exception as e:
 
@@ -4607,7 +4607,7 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
     out = await execute_platform_kb_query(
 
-        tenant_id=str(getattr(identity, "tenant_id", "") or "default"),
+        tenant_id=str(getattr(identity, "tenant_id", "") or DomainRouter.default_tenant()),
 
         collection_id=str(getattr(req, "collection_id", "") or "default"),
 
@@ -4677,7 +4677,7 @@ async def collection_query(request: Request):
 
     out = await execute_platform_kb_query(
 
-        tenant_id=str(getattr(identity, "tenant_id", "") or "default"),
+        tenant_id=str(getattr(identity, "tenant_id", "") or DomainRouter.default_tenant()),
 
         collection_id=str(body.get("collection_id") or "default"),
 
@@ -6189,7 +6189,7 @@ async def tenant_dashboard(request: Request):
 
     identity = _resolve_identity(request)
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     return {
 
@@ -6221,7 +6221,7 @@ async def tenant_list_api_keys(request: Request):
 
     identity = _resolve_identity(request)
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     try:
 
@@ -6253,7 +6253,7 @@ async def tenant_create_api_key(request: Request):
 
     body = await request.json()
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     expires_days = min(int(body.get("expires_days", 365)), 365)
 
@@ -6333,7 +6333,7 @@ async def tenant_usage(request: Request):
 
     identity = _resolve_identity(request)
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     try:
 
@@ -6369,7 +6369,7 @@ async def tenant_billing(request: Request, year: int = None, month: int = None):
 
     identity = _resolve_identity(request)
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     from datetime import datetime as _dt
 
@@ -6526,7 +6526,7 @@ async def marketplace_publish(request: Request):
 
     row = marketplace_create_submission(
         submission_id=submission_id,
-        tenant_id=identity.tenant_id or "default",
+        tenant_id=identity.tenant_id or DomainRouter.default_tenant(),
         skill_id=skill_id,
         test_result=test_result if isinstance(test_result, dict) else {"raw": test_result},
     )
@@ -7652,7 +7652,7 @@ async def vault_connect(body: dict):
     """
     from kb.service import vault_connect
 
-    return vault_connect(tenant_id=body.get("tenant_id", "default"), vault_path=body["path"],
+    return vault_connect(tenant_id=body.get("tenant_id") or DomainRouter.default_tenant(), vault_path=body["path"],
 
                          label=body.get("label", ""), auto_index=body.get("auto_index", True))
 
@@ -7671,7 +7671,7 @@ async def vault_disconnect(body: dict):
     """
     from kb.service import vault_disconnect
 
-    return vault_disconnect(tenant_id=body.get("tenant_id", "default"), vault_id=body["vault_id"])
+    return vault_disconnect(tenant_id=body.get("tenant_id") or DomainRouter.default_tenant(), vault_id=body["vault_id"])
 
 
 
@@ -7791,7 +7791,7 @@ async def vault_send_to_wiki(body: dict):
 
                                vault_id=body.get("vault_id", ""),
 
-                               tenant_id=body.get("tenant_id", "default"))
+                               tenant_id=body.get("tenant_id") or DomainRouter.default_tenant())
 
 
 
@@ -7839,7 +7839,7 @@ async def create_analysis_batch(request: Request):
     Args:
         request: FastAPI Request。
     """
-    tenant_id = _resolve_identity(request).tenant_id or "default"
+    tenant_id = _resolve_identity(request).tenant_id or DomainRouter.default_tenant()
 
     body = await request.json()
 
@@ -7873,7 +7873,7 @@ async def list_analysis_batches(request: Request, collection_id: Optional[str] =
         request: FastAPI Request。
         collection_id: collection 标识。
     """
-    tenant_id = _resolve_identity(request).tenant_id or "default"
+    tenant_id = _resolve_identity(request).tenant_id or DomainRouter.default_tenant()
 
     batches = _list_analysis_batches(tenant_id=tenant_id, collection_id=collection_id)
 
@@ -7893,7 +7893,7 @@ async def delete_analysis_batch(batch_id: str, request: Request):
         batch_id: batch 标识。
         request: FastAPI Request。
     """
-    tenant_id = _resolve_identity(request).tenant_id or "default"
+    tenant_id = _resolve_identity(request).tenant_id or DomainRouter.default_tenant()
 
     ok = _delete_analysis_batch(tenant_id=tenant_id, batch_id=batch_id)
 

@@ -15,6 +15,8 @@ import os
 import re
 from typing import Any, Callable, Dict, List, Optional
 
+from core.api.core_facade import DomainRouter
+
 logger = logging.getLogger(__name__)
 
 
@@ -105,7 +107,7 @@ def _retrieve_local(
         try:
             with db.connect() as conn:
                 like_clauses = " OR ".join(["e.text LIKE ?" for _ in keywords[:5]])
-                params: List[Any] = [tenant_id, collection_id or "default"]
+                params: List[Any] = [tenant_id, collection_id or DomainRouter.default_collection()]
                 for k in keywords[:5]:
                     params.append(f"%{k}%")
                 params.append(top_k * 3)
@@ -140,7 +142,7 @@ def _retrieve_local(
                         ORDER BY created_at DESC
                         LIMIT ?
                         """,
-                        (tenant_id, collection_id or "default", top_k),
+                        (tenant_id, collection_id or DomainRouter.default_collection(), top_k),
                     ).fetchall()
                 for d in docs:
                     dd = dict(d)
@@ -233,8 +235,8 @@ async def execute_platform_kb_query(
         doc_id: doc 标识。
         normalize_citations: normalize_citations 参数。
     """
-    tid = str(tenant_id or "default").strip() or "default"
-    cid = str(collection_id or "default").strip() or "default"
+    tid = str(tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
+    cid = str(collection_id or DomainRouter.default_collection()).strip() or DomainRouter.default_collection()
     q = str(question or "").strip()
     top_k = max(1, min(int(limit or 10), 50))
 

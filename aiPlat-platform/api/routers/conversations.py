@@ -16,7 +16,7 @@ from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.facades.runtime_facade import KernelRuntime, ExecutionRequest, get_kernel_runtime
 from core.api.facades.service_facade import create_conversation_service
 from core.api.facades.service_facade import normalize_conversation_scope
-from core.api.core_facade import best_model_for_purpose  # v2.5
+from core.api.core_facade import best_model_for_purpose, DomainRouter  # v2.5
 from core.schemas_conversations import (
     ConversationCreateRequest,
     ConversationQueryRequest,
@@ -103,7 +103,7 @@ async def create_conversation(request: ConversationCreateRequest, http_request: 
         rt: rt 参数。
     """
     actor = actor_from_http(http_request, request.model_dump())
-    tenant_id = str(request.tenant_id or actor.get("tenant_id") or "default")
+    tenant_id = str(request.tenant_id or actor.get("tenant_id") or DomainRouter.default_tenant())
     user_id = str(request.user_id or actor.get("actor_id") or "system")
     out = await _svc(rt).create_conversation_session(
         tenant_id=tenant_id,
@@ -128,7 +128,7 @@ async def list_conversations(http_request: Request, user_id: Optional[str] = Non
         rt: rt 参数。
     """
     actor = actor_from_http(http_request, {})
-    tenant_id = str(actor.get("tenant_id") or "default")
+    tenant_id = str(actor.get("tenant_id") or DomainRouter.default_tenant())
     uid = str(user_id or actor.get("actor_id") or "system")
     return await _svc(rt).list_conversation_sessions(tenant_id=tenant_id, user_id=uid, limit=limit, offset=offset)
 
@@ -158,7 +158,7 @@ async def update_conversation_scope(session_id: str, request: ConversationScopeU
         rt: rt 参数。
     """
     actor = actor_from_http(http_request, request.model_dump())
-    tenant_id = str(actor.get("tenant_id") or "default")
+    tenant_id = str(actor.get("tenant_id") or DomainRouter.default_tenant())
     user_id = str(actor.get("actor_id") or "system")
     current = await _svc(rt).get_conversation_session(session_id=session_id)
     scope = normalize_conversation_scope(request.model_dump(exclude_none=True), fallback=current.get("scope") or {})
@@ -184,7 +184,7 @@ async def query_conversation(session_id: str, request: ConversationQueryRequest,
         rt: rt 参数。
     """
     actor = actor_from_http(http_request, request.model_dump())
-    tenant_id = str(actor.get("tenant_id") or "default")
+    tenant_id = str(actor.get("tenant_id") or DomainRouter.default_tenant())
     user_id = str(request.user_id or actor.get("actor_id") or "system")
     svc = _svc(rt)
     convo = await svc.get_conversation_session(session_id=session_id)
@@ -266,7 +266,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
     import json as _json
 
     actor = actor_from_http(http_request, request.model_dump())
-    tenant_id = str(actor.get("tenant_id") or "default")
+    tenant_id = str(actor.get("tenant_id") or DomainRouter.default_tenant())
     user_id = str(request.user_id or actor.get("actor_id") or "system")
     svc = _svc(rt)
     convo = await svc.get_conversation_session(session_id=session_id)

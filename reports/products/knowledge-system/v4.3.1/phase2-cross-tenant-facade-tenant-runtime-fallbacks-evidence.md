@@ -39,6 +39,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- platform routes / kb / delivery 大量 `tenant_id or "default"` → 后续批次
+- platform routes / kb / delivery 大量 `tenant_id or "default"` → 见 K56
 - facade 内 collection/session 字面量回退（已有 K52/K53 签名 SSOT）
 - N09 / 附录 N 全量认证（certified 仍 false）

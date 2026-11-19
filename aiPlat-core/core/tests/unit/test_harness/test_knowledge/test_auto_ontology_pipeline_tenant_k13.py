@@ -67,7 +67,7 @@ async def test_auto_ontology_pipeline_passes_tenant(monkeypatch, tmp_path):
 
 def test_routes_and_watch_source_wire_tenant():
     routes = (_repo_root() / "aiPlat-platform/api/rest/routes.py").read_text(encoding="utf-8")
-    assert 'tenant_id=str(identity.tenant_id or "default")' in routes
+    assert 'tenant_id=str(identity.tenant_id or DomainRouter.default_tenant())' in routes
     assert (
         "auto_ontology_pipeline_for_doc(doc_id, file_path, collection_id, tenant_id=tenant_id)"
         in routes

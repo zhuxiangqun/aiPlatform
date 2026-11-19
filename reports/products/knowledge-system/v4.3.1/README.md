@@ -114,5 +114,6 @@ authority: supporting
 | [phase2-cross-tenant-default-session-ssot-evidence.md](./phase2-cross-tenant-default-session-ssot-evidence.md) | Batch K53 N09 default session SSOT（非 certified） |
 | [phase2-cross-tenant-default-tenant-runtime-fallbacks-evidence.md](./phase2-cross-tenant-default-tenant-runtime-fallbacks-evidence.md) | Batch K54 N09 default tenant 运行时回退（非 certified） |
 | [phase2-cross-tenant-facade-tenant-runtime-fallbacks-evidence.md](./phase2-cross-tenant-facade-tenant-runtime-fallbacks-evidence.md) | Batch K55 N09 facade/diagnostics tenant 运行时回退（非 certified） |
+| [phase2-cross-tenant-platform-tenant-runtime-fallbacks-evidence.md](./phase2-cross-tenant-platform-tenant-runtime-fallbacks-evidence.md) | Batch K56 N09 platform routes/kb/delivery tenant 运行时回退（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

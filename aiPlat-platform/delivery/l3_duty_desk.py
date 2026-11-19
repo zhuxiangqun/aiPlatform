@@ -187,7 +187,7 @@ def build_l3_duty_desk(
     return {
         "ok": True,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "tenant_id": tenant_id or "default",
+        "tenant_id": tenant_id or DomainRouter.default_tenant(),
         "project_id": project_id or "",
         "window_hours": window_hours,
         "period": quarter,

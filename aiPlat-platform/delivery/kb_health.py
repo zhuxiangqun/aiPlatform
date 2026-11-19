@@ -133,7 +133,7 @@ def _kb_sqlite_path(tenant_id: str) -> str:
     import os
     from pathlib import Path
 
-    tid = str(tenant_id or "").strip() or "default"
+    tid = str(tenant_id or "").strip() or DomainRouter.default_tenant()
     home = (
         os.environ.get("AIPLAT_PLATFORM_HOME")
         or os.environ.get("AIPLAT_HOME")
@@ -147,7 +147,7 @@ def _kb_stats(tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
     import os
     import sqlite3
 
-    tid = tenant_id or "default"
+    tid = tenant_id or DomainRouter.default_tenant()
     dbp = _kb_sqlite_path(tid)
     if not os.path.exists(dbp):
         return {
@@ -191,7 +191,7 @@ def _docs_this_week(
     import os
     import sqlite3
 
-    tid = tenant_id or "default"
+    tid = tenant_id or DomainRouter.default_tenant()
     cid = collection_id or "default"
     dbp = _kb_sqlite_path(tid)
     if not os.path.exists(dbp):
@@ -584,7 +584,7 @@ def build_kb_health_report(
     return {
         "ok": True,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "tenant_id": tenant_id or "default",
+        "tenant_id": tenant_id or DomainRouter.default_tenant(),
         "project_id": project_id or "",
         "collection_id": collection_id or "default",
         "window_hours": window_hours,
