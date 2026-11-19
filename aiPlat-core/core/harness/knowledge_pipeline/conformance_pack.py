@@ -45,6 +45,10 @@ CORE_MINIMUM_IDS = frozenset(
 EXTENDED_MINIMUM_IDS = frozenset(
     {"N05", "N07", "N08", "N19", "N20", "N22"}
 )
+# 附录 N.4 Operational 最小符合集
+OPERATIONAL_MINIMUM_IDS = frozenset(
+    {"N10", "N11", "N13", "N14", "N23", "N24"}
+)
 
 
 def _repo_root() -> Path:
@@ -641,6 +645,174 @@ def evaluate_pilot_extended_certification(
             "never auto without approval"
         ),
         "extended_gate": ext,
+    }
+
+
+def _operational_exception_ids(cat: Dict[str, Any]) -> frozenset:
+    """catalog 中登记的 Operational ADR 例外项 id。
+
+    Args:
+        cat: 已加载 catalog。
+    """
+    out = set()
+    for row in list(cat.get("operational_adr_exceptions") or []):
+        iid = str((row or {}).get("id") or "").strip()
+        if iid:
+            out.add(iid)
+    return frozenset(out)
+
+
+def evaluate_operational_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """按 level=operational 的结构门：Operational 子集 exists 或 ADR 例外 + 槽位齐。
+
+    Args:
+        catalog_path: 可选目录路径。
+        pilot_domain: 试点域覆盖。
+
+    Returns:
+        ``operational_ready`` 可 true；徽章字段恒 false。
+    """
+    pack = build_conformance_pack(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    issues: List[str] = []
+    if not pack.get("ok"):
+        return {
+            "gate": "operational_ready",
+            "pass": False,
+            "operational_ready": False,
+            "issues": ["catalog_missing"],
+            "certified": False,
+            "pilot_operational_certified": False,
+            "operational_claim": False,
+            "pack": pack,
+        }
+
+    cat = load_conformance_catalog(catalog_path)
+    op_ids = [
+        str(x)
+        for x in (
+            cat.get("operational_minimum_ids") or sorted(OPERATIONAL_MINIMUM_IDS)
+        )
+    ]
+    exc = _operational_exception_ids(cat)
+    by_id = {
+        str(it.get("id")): it for it in ((pack.get("n24") or {}).get("items") or [])
+    }
+    missing_op: List[str] = []
+    for oid in op_ids:
+        it = by_id.get(oid)
+        if it is None:
+            missing_op.append(oid)
+            issues.append(f"{oid}:operational_item_missing")
+            continue
+        if str(it.get("level") or "") != "operational":
+            issues.append(f"{oid}:level_not_operational")
+        st = str(it.get("status") or "")
+        if st == "exists":
+            continue
+        if oid in exc:
+            continue
+        missing_op.append(oid)
+        issues.append(f"{oid}:operational_not_exists_or_excepted")
+        for iss in it.get("issues") or []:
+            issues.append(f"{oid}:{iss}")
+
+    slots = (pack.get("certification") or {}).get("slots") or []
+    have = {s.get("id") for s in slots}
+    for req in REQUIRED_CERT_SLOTS:
+        if req not in have:
+            issues.append(f"cert_slot_missing:{req}")
+    for s in slots:
+        for iss in s.get("issues") or []:
+            if iss == "slot_path_missing":
+                issues.append(f"{s.get('id')}:{iss}")
+
+    blocking = sorted(
+        {
+            i
+            for i in issues
+            if not str(i).endswith(":slot_explicitly_missing")
+        }
+    )
+    ready = not blocking
+    return {
+        "gate": "operational_ready",
+        "pass": ready,
+        "operational_ready": ready,
+        "issues": blocking,
+        "operational_ids": op_ids,
+        "operational_pending": missing_op,
+        "operational_adr_exceptions": sorted(exc),
+        "certified": False,
+        "pilot_operational_certified": False,
+        "n24_full_conformance": False,
+        "accuracy_claim": False,
+        "operational_claim": False,
+        "note": "operational_ready ≠ certified / pilot_operational_certified",
+        "pack": pack,
+    }
+
+
+def evaluate_pilot_operational_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Operational 认证：operational_ready + 非作者批准 → 徽章。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 试点域覆盖。
+        approval_record_path: Operational 批准记录路径。
+
+    Returns:
+        仅当 operational_ready 且批准有效时徽章为 true；全量 certified 恒 false
+        （全量 certified 仍须独立人工全量流程，本门不自动置真）。
+    """
+    op = evaluate_operational_ready_gate(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    issues: List[str] = list(op.get("issues") or [])
+    if not op.get("operational_ready"):
+        issues.append("operational_ready_required")
+
+    approved = False
+    approval_issues: List[str] = []
+    rec: Dict[str, Any] = {}
+    if not approval_record_path:
+        approval_issues.append("approval_record_path_required")
+    else:
+        rec = _load_approval_record(Path(approval_record_path))
+        ok, approval_issues = _approval_allows_non_author(rec)
+        approved = ok
+
+    issues.extend(approval_issues)
+    badge = bool(op.get("operational_ready")) and approved
+    return {
+        "gate": "pilot_operational_certification",
+        "pass": badge,
+        "operational_ready": bool(op.get("operational_ready")),
+        "approval_ok": approved,
+        "issues": sorted(set(issues)),
+        "approval_record_path": approval_record_path,
+        "approval_status": rec.get("status") if rec else None,
+        # 为什么：Operational 徽章 ≠ 附录 N 全量 certified
+        "certified": False,
+        "pilot_operational_certified": badge,
+        "n24_full_conformance": False,
+        "accuracy_claim": False,
+        "operational_claim": badge,
+        "note": (
+            "pilot_operational_certified requires operational_ready + non-author "
+            "approval; never auto full certified"
+        ),
+        "operational_gate": op,
     }
 
 

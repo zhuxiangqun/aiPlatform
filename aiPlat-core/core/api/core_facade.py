@@ -5572,6 +5572,48 @@ def evaluate_pilot_extended_certification(
     )
 
 
+def evaluate_operational_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """附录 N Operational 最小符合集结构门（operational_ready ≠ certified）。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_operational_ready_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_pilot_operational_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Operational 认证：operational_ready + 非作者批准才可徽章。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+        approval_record_path: Operational 批准记录路径。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_pilot_operational_certification as _gate,
+    )
+
+    return _gate(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+    )
+
+
 async def run_implementer_semantics_suite(
     *,
     work_dir: Optional[str] = None,

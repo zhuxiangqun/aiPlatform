@@ -128,3 +128,46 @@ async def evaluate_pilot_extended_certification_route(
         pilot_domain=pilot_domain,
         approval_record_path=approval_record_path,
     )
+
+
+@router.get("/conformance-pack/operational-ready")
+async def evaluate_operational_ready_gate_route(
+    pilot_domain: Optional[str] = Query(None),
+    catalog_path: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """Operational 最小符合集结构门（operational_ready ≠ certified）。
+
+    Args:
+        pilot_domain: 可选试点域。
+        catalog_path: 可选目录路径。
+    """
+    from core.api.core_facade import evaluate_operational_ready_gate
+
+    return evaluate_operational_ready_gate(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+
+
+@router.get("/conformance-pack/pilot-operational-cert")
+async def evaluate_pilot_operational_certification_route(
+    pilot_domain: Optional[str] = Query(None),
+    catalog_path: Optional[str] = Query(None),
+    approval_record_path: Optional[str] = Query(
+        None,
+        description="path to Operational approval JSON; omit → badge false",
+    ),
+) -> Dict[str, Any]:
+    """试点 Operational 认证裁决；无非作者批准时徽章恒 false。
+
+    Args:
+        pilot_domain: 可选试点域。
+        catalog_path: 可选目录路径。
+        approval_record_path: 批准记录路径；缺省则不徽章。
+    """
+    from core.api.core_facade import evaluate_pilot_operational_certification
+
+    return evaluate_pilot_operational_certification(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+    )

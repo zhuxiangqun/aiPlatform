@@ -31,6 +31,14 @@ extended_minimum_ids:
   - N20
   - N22
 extended_adr_exceptions: []
+operational_minimum_ids:
+  - N10
+  - N11
+  - N13
+  - N14
+  - N23
+  - N24
+operational_adr_exceptions: []
 items:
   - id: N01
     level: core
@@ -164,23 +172,23 @@ items:
   - id: N10
     level: operational
     title: 评测有定义/数据集/门槛
-    status: partial
+    status: exists
     phase: W10/P4
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/confidence_calibration.py
-    note: 附录 O 校准报告门槛已接线；非全知识域 gold 流水线
+    note: "Operational-scoped exists (附录 N.4); 附录 O 校准报告门槛已接线；非全知识域 gold 流水线"
   - id: N11
     level: operational
     title: 迁移/回滚方案
-    status: partial
+    status: exists
     phase: W10/P4
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/knowledge_migration.py
-    note: 双写/对账/回滚演练最小切片；切写未授权
+    note: "Operational-scoped exists (附录 N.4); 双写/对账/回滚演练最小切片；切写未授权"
   - id: N12
     level: core
     title: Fact 状态机
@@ -194,21 +202,21 @@ items:
   - id: N13
     level: operational
     title: confidence 校准规则
-    status: partial
+    status: exists
     phase: W10/P4
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
-    note: 失败/缺失/过期 → 最高 medium；未宣称准确率
+    note: "Operational-scoped exists (附录 N.4); 失败/缺失/过期 → 最高 medium；未宣称准确率"
   - id: N14
     level: operational
     title: 跨存储失败恢复/对账
-    status: partial
+    status: exists
     phase: W10/P3-P4
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
-    note: 迁移 job 本地 store 对账；非生产 Raw↔Fact↔Index 全链路
+    note: "Operational-scoped exists (附录 N.4); 迁移 job 本地 store 对账；非生产 Raw↔Fact↔Index 全链路"
   - id: N15
     level: core
     title: JSON Schema 与附录一致
@@ -293,17 +301,17 @@ items:
   - id: N23
     level: operational
     title: OCS 完整度
-    status: partial
+    status: exists
     phase: W10/P4
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-ocs-evidence.md
       - aiPlat-core/core/harness/knowledge/ontology_completeness.py
-    note: §13.4 覆盖计分 + 门槛门；未宣称企业全域完整
+    note: "Operational-scoped exists (附录 N.4); §13.4 覆盖计分 + 门槛门；未宣称企业全域完整"
   - id: N24
     level: operational
     title: 版本/变更/审计
-    status: partial
+    status: exists
     phase: W2-W3/P1
     gap_type: 有实现无证据
     evidence:
@@ -346,7 +354,7 @@ items:
       - aiPlat-platform/apps/fde/api/unified_audit_routes.py
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/RevisionRestorePanel.tsx
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/UnifiedAuditPanel.tsx
-    note: Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填；非 N24 certified
+    note: "Operational-scoped exists (附录 N.4); Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填；非 N24 certified"
 
 # §9.4 认证证据包槽位（路径或 explicit missing）
 certification_slots:
@@ -368,8 +376,8 @@ certification_slots:
   - id: slo
     title: SLO
     path: reports/products/knowledge-system/v4.3.1/phase2-slo-target-evidence.md
-    note: 目标登记；非生产遥测达标
+    note: "Operational-scoped exists (附录 N.4); 目标登记；非生产遥测达标"
   - id: exception_adr
     title: 例外 ADR
     path: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
-    note: 集中 partial 例外清单；非全量 ADR 体系
+    note: "Operational-scoped exists (附录 N.4); 集中 partial 例外清单；非全量 ADR 体系"

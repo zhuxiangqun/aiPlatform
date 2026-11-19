@@ -887,7 +887,16 @@ Function ticket.priority_score -> ticket.priorityScore({ticket_id})
 
 - 结构门 `extended_ready` ≠ `certified` / `pilot_extended_certified`；后者仅可由批准记录置真。
 
-### N.4 勾选摘要
+### N.4 Operational 最小符合集（MUST）
+
+试点域宣称 **Operational 符合** 时，下列 6 项必须全部为目录 `status: exists`（或已登记 ADR 例外且未过期），且 Core（N.2）与 Extended（N.3）已可宣称：
+
+`N10, N11, N13, N14, N23, N24`
+
+- 结构门 `operational_ready` ≠ `certified` / `pilot_operational_certified`；后者仅可由批准记录置真。
+- **全量 `certified` / 24/24** 仍须独立人工全量认证流程；本子集徽章不自动置 `certified=true`。
+
+### N.5 勾选摘要
 
 - [ ] N01 Raw 不可变（core）
 - [ ] N02 语义模型版本化（core）

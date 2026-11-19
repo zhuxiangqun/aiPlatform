@@ -661,13 +661,21 @@ extended_ready 结构门 pass
 全量 certified 仍 false
 ```
 
-### 14.3 后续 DoD — Operational（Extended 之后另开）
+### 14.3 近端 DoD — 试点 Operational（Extended 签字后）
 
 ```text
-Operational 6 项 exists（含 OCS 阈值预注册、生产 SLO）
-24 项 conformance 全量 exists（全等级，非近端）
-迁移/回滚演练通过
-KPI 达标
+附录 N.4 Operational 6 项 status=exists（或 ADR 例外）
+operational_ready 结构门 pass
+非作者批准后才可 pilot_operational_certified
+全量 certified 仍 false（另需全量人工认证）
+```
+
+### 14.4 后续 DoD — 全量 certified（另开）
+
+```text
+三级徽章齐 + 独立全量批准记录
+certified / n24_full_conformance 仅可由全量批准置真
+KPI / 生产 SLO 达标证据
 ```
 
 ## 15. 明确不做
