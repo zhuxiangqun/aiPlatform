@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3835
+total_capabilities: 3853
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -3301,6 +3301,24 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| diagnosis_fixture_metrics | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| diagnosis_run_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| diagnosis_collect | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| diagnosis_health | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fixture_metrics_by_subset | `core/apps/diagnosis/service/metrics.py` | ✅ | 自动同步 | 已合入 |
+| diagnose_case | `core/apps/diagnosis/service/engine.py` | ✅ | 自动同步 | 已合入 |
+| build_recommendations | `core/apps/diagnosis/service/engine.py` | ✅ | 自动同步 | 已合入 |
+| infer_root_causes | `core/apps/diagnosis/service/engine.py` | ✅ | 自动同步 | 已合入 |
+| read_ontology_refs | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| read_evaluation_refs | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| collect_live_stubs | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| collect_from_fixture | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| load_fixture | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| resolve_fixture_id | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| fixture_root | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| default_db_path | `core/apps/diagnosis/service/store.py` | ✅ | 自动同步 | 已合入 |
+| get_diagnosis_store | `core/apps/diagnosis/service/store.py` | ✅ | 自动同步 | 已合入 |
+| DiagnosisStore | `core/apps/diagnosis/service/store.py` | ✅ | 自动同步 | 已合入 |
 | get_suite_exam_summary | `core/apps/eval/service/suite_exam_summary_store.py` | ✅ | 自动同步 | 已合入 |
 | record_suite_exam_summary | `core/apps/eval/service/suite_exam_summary_store.py` | ✅ | 自动同步 | 已合入 |
 | eval_freeze_all_subject_seed_pack_meta | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4749,7 +4767,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 177 | 1 | 178 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 583 | 0 | 583 |
+| 评估系统 | 601 | 0 | 601 |
 | MCP 协议 | 11 | 0 | 11 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4781,7 +4799,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3824** | **11** | **3835** |
+| **总计** | **3842** | **11** | **3853** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
