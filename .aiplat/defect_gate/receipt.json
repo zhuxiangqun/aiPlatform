@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T13:23:28+08:00",
+  "reviewed_at": "2026-11-19T14:16:24+08:00",
   "base_ref": "origin/main",
-  "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "80f766d2c4f11de4419bb1f2aa0308cdc9271616f6fb324e006b74c90da0d247",
-  "head_sha": "53ebed9e97bbef4ea85777def0a4752e95d74e81",
+  "merge_base": "1e2318c09a51f0f2a4ea0ca284aafe98d9a9c5bb",
+  "diff_sha256": "14093f6d0d1fa67564deb11363d69595e69703d9822f697539a3dd7717401fae",
+  "head_sha": "1b6aa134b8130bf75e07f7bb2570f00313e40741",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Test-only SSOT/async/path alignment for #873 tip\u2192main; no product behavior change. Local lock only."
+  "note": "W6 SDK min rebased onto main after #873; Facade-only clients + FDE sdk routes; whitepapers/matrix synced. Local lock only."
 }
