@@ -136,7 +136,7 @@ async def dependency_check(body: Dict[str, Any]):
 
 
 @router.get("/flagged-sessions", response_model=ItemResponse)
-async def flagged_sessions(tenant_id: str = Query("default")):
+async def flagged_sessions(tenant_id: str = Query(DomainRouter.default_tenant())):
     """List all safety-flagged sessions.
 
     Args:

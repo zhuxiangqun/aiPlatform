@@ -6,6 +6,7 @@ GET /api/core/diagnostics/capability-boundary?domain=supply-chain
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json, logging, os, time
 from typing import Any, Dict, List, Optional, Tuple
@@ -303,7 +304,7 @@ async def get_capability_boundary(
 @router.get("/diagnostics/rag-quality", response_model=ItemResponse)
 async def get_rag_quality(
     hours: Optional[int] = Query(24, ge=1, le=168),
-    domain: Optional[str] = Query("default"),
+    domain: Optional[str] = Query(DomainRouter.default_graph_domain()),
 ):
     """Return RAG quality dashboard: faithfulness, hallucination risk, user signals, retrieval quality.
 

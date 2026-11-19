@@ -150,7 +150,7 @@ async def list_pages(
     source: str = "",
     limit: int = 100,
     offset: int = 0,
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
 ):
     """列出 pages。
 
@@ -186,7 +186,7 @@ async def list_pages(
 
 
 @router.get("/pages/{title}", response_model=Dict[str, Any])
-async def read_page(title: str, category: str = "entities", collection: str = "default"):
+async def read_page(title: str, category: str = "entities", collection: str = DomainRouter.default_collection()):
     """read_page。
 
     Args:
@@ -231,7 +231,7 @@ async def read_page(title: str, category: str = "entities", collection: str = "d
 
 
 @router.delete("/pages/{title}", response_model=DeleteResponse)
-async def delete_page(title: str, collection: str = "default"):
+async def delete_page(title: str, collection: str = DomainRouter.default_collection()):
     """删除 page。
 
     Args:
@@ -255,7 +255,7 @@ async def delete_page(title: str, collection: str = "default"):
 
 
 @router.delete("/pages-all", response_model=WikiDeleteAllResponse)
-async def delete_all_pages(collection: str = "default"):
+async def delete_all_pages(collection: str = DomainRouter.default_collection()):
     """删除 all_pages。
 
     Args:
@@ -276,7 +276,7 @@ async def delete_all_pages(collection: str = "default"):
 
 
 @router.post("/cleanup-ghosts", response_model=Dict[str, Any])
-async def cleanup_ghost_pages(collection: str = "default", dry_run: bool = True):
+async def cleanup_ghost_pages(collection: str = DomainRouter.default_collection(), dry_run: bool = True):
     """Batch-clean ghost pages (search index entries with no stored page data).
 
     Args:
@@ -289,7 +289,7 @@ async def cleanup_ghost_pages(collection: str = "default", dry_run: bool = True)
 
 
 @router.get("/unprocessed-docs", response_model=Dict[str, Any])
-async def get_unprocessed_docs(tenant_id: str = DomainRouter.default_tenant(), collection: str = "default"):
+async def get_unprocessed_docs(tenant_id: str = DomainRouter.default_tenant(), collection: str = DomainRouter.default_collection()):
     """Return KB documents that don't have corresponding wiki pages.
 
     Args:
@@ -761,7 +761,7 @@ def _check_session_notes(pipeline_id: str) -> bool:
 
 
 @router.get("/proposals", response_model=Dict[str, Any])
-async def get_proposals(status: str = "", collection: str = "default"):
+async def get_proposals(status: str = "", collection: str = DomainRouter.default_collection()):
     """List pending wiki knowledge proposals (merge/update/supplement/contradict).
 
     Args:
@@ -776,7 +776,7 @@ async def get_proposals(status: str = "", collection: str = "default"):
 
 
 @router.put("/proposals/{proposal_id}", response_model=Dict[str, Any])
-async def handle_proposal(proposal_id: str, body: Dict[str, Any], collection: str = "default"):
+async def handle_proposal(proposal_id: str, body: Dict[str, Any], collection: str = DomainRouter.default_collection()):
     """Approve/reject a proposal. Body: {status: 'approved'|'rejected'}.
 
     Args:
@@ -799,7 +799,7 @@ async def handle_proposal(proposal_id: str, body: Dict[str, Any], collection: st
 
 
 @router.post("/pages", response_model=Dict[str, Any])
-async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
+async def create_wiki_page(body: WikiPageWrite, collection: str = DomainRouter.default_collection()):
     """创建 wiki_page。
 
     Args:
@@ -890,7 +890,7 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
 
 
 @router.get("/traverse/{title}", response_model=Dict[str, Any])
-async def traverse_links(title: str, depth: int = 2, collection: str = "default"):
+async def traverse_links(title: str, depth: int = 2, collection: str = DomainRouter.default_collection()):
     """traverse_links。
 
     Args:
@@ -904,7 +904,7 @@ async def traverse_links(title: str, depth: int = 2, collection: str = "default"
 
 
 @router.get("/lint", response_model=Dict[str, Any])
-async def lint_wiki(collection: str = "default"):
+async def lint_wiki(collection: str = DomainRouter.default_collection()):
     """lint_wiki。
 
     Args:
@@ -920,7 +920,7 @@ async def wiki_graph(
     keyword: str = "",
     source: str = "",
     max_nodes: int = 300,
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
 ):
     # core_facade.build_graph is the code-symbol graph (repo roots), not this view.
     """wiki_graph。
@@ -1073,7 +1073,7 @@ async def get_reparse_queue_stats():
 
 
 @router.post("/atomize-document", response_model=Dict[str, Any])
-async def atomize_document(body: AtomizeRequest, collection: str = "default"):
+async def atomize_document(body: AtomizeRequest, collection: str = DomainRouter.default_collection()):
     """Ontology-driven atom extraction: raw document → KnowledgeAtoms with evidence.
 
     Args:
@@ -1283,7 +1283,7 @@ async def generate_domain(
 
 
 @router.post("/convert-from-kb", response_model=Dict[str, Any])
-async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection: str = "default"):
+async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection: str = DomainRouter.default_collection()):
     """Convert existing KB documents into Wiki pages.
 
     Args:
@@ -1583,7 +1583,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
 
 
 @router.post("/curate", response_model=Dict[str, Any])
-async def curate_wiki(collection: str = "default"):
+async def curate_wiki(collection: str = DomainRouter.default_collection()):
     """LLM 深度策展：遍历所有 Wiki 页面，用 LLM 重写标题/分类/标签/摘要/关联。
 
     Args:
@@ -1676,7 +1676,7 @@ async def curate_wiki(collection: str = "default"):
 
 
 @router.post("/index-md", response_model=Dict[str, Any])
-async def regenerate_wiki_index(collection: str = "default"):
+async def regenerate_wiki_index(collection: str = DomainRouter.default_collection()):
     """Generate a human-readable wiki index page (index.md) from index.json.
 
     Args:
@@ -1750,7 +1750,7 @@ async def wiki_structured_query(q: str = ""):
 
 
 @router.post("/ontology/rebuild", response_model=Dict[str, Any])
-async def ontology_rebuild(collection: str = "default"):
+async def ontology_rebuild(collection: str = DomainRouter.default_collection()):
     """Full rebuild of the knowledge ontology A-Box from current Wiki+KB data.
 
     Args:
@@ -1767,7 +1767,7 @@ async def ontology_rebuild(collection: str = "default"):
 
 
 @router.get("/ontology/validate", response_model=Dict[str, Any])
-async def ontology_validate(collection: str = "default"):
+async def ontology_validate(collection: str = DomainRouter.default_collection()):
     """Run all ontology axioms (A1-A7) against the current A-Box.
 
     Args:
@@ -1800,7 +1800,7 @@ async def ontology_validate(collection: str = "default"):
 
 
 @router.get("/ontology/network/{title:path}", response_model=Dict[str, Any])
-async def ontology_network(title: str, collection: str = "default"):
+async def ontology_network(title: str, collection: str = DomainRouter.default_collection()):
     """Get the transitive knowledge network from a starting Wiki page.
 
     Args:
@@ -1821,7 +1821,7 @@ async def ontology_network(title: str, collection: str = "default"):
 
 
 @router.get("/ontology/source-impact", response_model=Dict[str, Any])
-async def ontology_source_impact(collection: str = "default"):
+async def ontology_source_impact(collection: str = DomainRouter.default_collection()):
     """Rank KB documents by how many Wiki pages cite them.
 
     Args:
@@ -1841,7 +1841,7 @@ async def ontology_source_impact(collection: str = "default"):
 
 
 @router.get("/changelog", response_model=Dict[str, Any])
-async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str = "default"):
+async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str = DomainRouter.default_collection()):
     """Get wiki changelog entries, optionally filtered by page title.
 
     Args:
@@ -1869,7 +1869,7 @@ async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str =
 
 
 @router.post("/rollback/{title}", response_model=Dict[str, Any])
-async def wiki_rollback(title: str, index: int = -1, collection: str = "default"):
+async def wiki_rollback(title: str, index: int = -1, collection: str = DomainRouter.default_collection()):
     """Rollback a wiki page to a previous version from changelog.
     
     Args:
@@ -1884,7 +1884,7 @@ async def wiki_rollback(title: str, index: int = -1, collection: str = "default"
 
 
 @router.get("/page/{page_id}", response_model=Dict[str, Any])
-async def wiki_page_by_id(page_id: str, collection: str = "default"):
+async def wiki_page_by_id(page_id: str, collection: str = DomainRouter.default_collection()):
     """Get a wiki page by its stable page_id (UUID). Survives title renames.
 
     Args:
@@ -1904,7 +1904,7 @@ async def wiki_page_by_id(page_id: str, collection: str = "default"):
 
 
 @router.get("/duplicates", response_model=Dict[str, Any])
-async def detect_wiki_duplicates(collection: str = "default"):
+async def detect_wiki_duplicates(collection: str = DomainRouter.default_collection()):
     """Detect potentially duplicate wiki pages using embedding similarity.
 
     Args:
@@ -1982,7 +1982,7 @@ async def delete_wiki_collection(collection_id: str):
 # ── Schema API ─────────────────────────────────────────────────
 
 @router.get("/schema", response_model=Dict[str, Any])
-async def get_wiki_schema(collection: str = "default", domain: str = ""):
+async def get_wiki_schema(collection: str = DomainRouter.default_collection(), domain: str = ""):
     """Return T-Box class schemas, with per-collection extensions + domain ontologies applied.
 
     Args:
@@ -3359,7 +3359,7 @@ async def register_inference_rule(body: Dict[str, Any]):
 # ── Ontology Suggestions (Layer 3) ───────────────────────────────
 
 @router.get("/ontology/suggestions", response_model=Dict[str, Any])
-async def list_suggestions(status: str = "", collection: str = "default"):
+async def list_suggestions(status: str = "", collection: str = DomainRouter.default_collection()):
     """List ontology evolution suggestions.
 
     Args:
@@ -3379,7 +3379,7 @@ async def list_suggestions(status: str = "", collection: str = "default"):
 
 
 @router.post("/ontology/suggestions", response_model=Dict[str, Any])
-async def generate_suggestions(collection: str = "default"):
+async def generate_suggestions(collection: str = DomainRouter.default_collection()):
     """Scan wiki data and generate ontology evolution suggestions.
 
     Args:
@@ -3397,7 +3397,7 @@ async def generate_suggestions(collection: str = "default"):
 
 
 @router.post("/ontology/suggestions/{suggestion_id}/accept", response_model=Dict[str, Any])
-async def accept_suggestion(suggestion_id: str, reviewer: str = "", collection: str = "default"):
+async def accept_suggestion(suggestion_id: str, reviewer: str = "", collection: str = DomainRouter.default_collection()):
     """Accept an ontology evolution suggestion (marks for implementation).
 
     Args:
@@ -3418,7 +3418,7 @@ async def accept_suggestion(suggestion_id: str, reviewer: str = "", collection: 
 
 
 @router.post("/ontology/suggestions/{suggestion_id}/reject", response_model=Dict[str, Any])
-async def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str = "", collection: str = "default"):
+async def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str = "", collection: str = DomainRouter.default_collection()):
     """Reject an ontology evolution suggestion.
 
     Args:
@@ -3440,7 +3440,7 @@ async def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str 
 
 
 @router.post("/ontology/suggestions/{suggestion_id}/generate-code", response_model=Dict[str, Any])
-async def generate_code(suggestion_id: str, collection: str = "default"):
+async def generate_code(suggestion_id: str, collection: str = DomainRouter.default_collection()):
     """Generate implementation code for an accepted suggestion.
 
     Args:
@@ -3458,7 +3458,7 @@ async def generate_code(suggestion_id: str, collection: str = "default"):
 
 
 @router.get("/ontology/schema-readiness", response_model=Dict[str, Any])
-async def check_schema_readiness(collection: str = "default"):
+async def check_schema_readiness(collection: str = DomainRouter.default_collection()):
     """Check how many wiki pages would pass ERROR-mode schema validation.
 
     Args:
@@ -3474,7 +3474,7 @@ async def check_schema_readiness(collection: str = "default"):
 
 
 @router.post("/clean-stale-references", response_model=Dict[str, Any])
-async def clean_stale_references_endpoint(collection: str = "default"):
+async def clean_stale_references_endpoint(collection: str = DomainRouter.default_collection()):
     """Scan wiki pages, move stale kb: references from source_articles to stale_references.
 
     Args:
@@ -3498,7 +3498,7 @@ async def clean_stale_references_endpoint(collection: str = "default"):
 
 
 @router.post("/seed-instances", response_model=Dict[str, Any])
-async def seed_instances_endpoint(collection: str = "default"):
+async def seed_instances_endpoint(collection: str = DomainRouter.default_collection()):
     """Create seed instances for empty T-Box categories (atoms, contradictions).
 
     Args:
@@ -3520,7 +3520,7 @@ async def seed_instances_endpoint(collection: str = "default"):
 
 
 @router.post("/backfill-evidence", response_model=Dict[str, Any])
-async def backfill_evidence_endpoint(limit: int = 50, collection: str = "default"):
+async def backfill_evidence_endpoint(limit: int = 50, collection: str = DomainRouter.default_collection()):
     """Backfill evidence annotations for wiki pages without them.
 
     Args:
@@ -3543,7 +3543,7 @@ async def backfill_evidence_endpoint(limit: int = 50, collection: str = "default
 
 
 @router.post("/batch-atomize", response_model=Dict[str, Any])
-async def batch_atomize_endpoint(limit: int = 10, category: str = "topics", collection: str = "default"):
+async def batch_atomize_endpoint(limit: int = 10, category: str = "topics", collection: str = DomainRouter.default_collection()):
     """Batch atomize pages of a given category using LLM sub-concept extraction.
 
     Args:
@@ -3582,7 +3582,7 @@ async def batch_atomize_endpoint(limit: int = 10, category: str = "topics", coll
 
 
 @router.post("/maintain/fts-rebuild", response_model=Dict[str, Any])
-async def rebuild_fts_index(collection: str = "default"):
+async def rebuild_fts_index(collection: str = DomainRouter.default_collection()):
     """Rebuild FTS5 full-text search index for wiki pages.
 
     Args:
@@ -3599,7 +3599,7 @@ async def rebuild_fts_index(collection: str = "default"):
 
 
 @router.post("/evolve", response_model=Dict[str, Any])
-async def evolve_knowledge(collection: str = "default", generations: int = 1,
+async def evolve_knowledge(collection: str = DomainRouter.default_collection(), generations: int = 1,
                             max_mutations: int = 5, force: bool = False):
     """Run knowledge evolution — event-driven, not timer-driven.
 
@@ -3630,7 +3630,7 @@ async def evolve_knowledge(collection: str = "default", generations: int = 1,
 
 
 @router.get("/evolution-history", response_model=Dict[str, Any])
-async def get_evolution_history(collection: str = "default"):
+async def get_evolution_history(collection: str = DomainRouter.default_collection()):
     """Get evolution generation history.
 
     Args:
@@ -3672,7 +3672,7 @@ async def get_model_selection_log():
 @router.post("/active-synthesis", response_model=Dict[str, Any])
 async def run_active_synthesis(
     domain: str = "default",
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
     max_gaps: int = 5,
     auto_submit: bool = False,
 ):

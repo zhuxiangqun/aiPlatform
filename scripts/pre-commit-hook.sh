@@ -81,8 +81,10 @@ if [ -n "$NEW_HARNESS_HARDCODES" ]; then
 fi
 
 # ── Step 2: Auto-sync CAPABILITIES.md ──
-CAPS_CHANGED=$(echo "$STAGED_PY" | grep -c "AIPLAT_CAPABILITIES.md\|AIPLAT_ROADMAP.md" || echo 0)
-NONCAPS_CHANGED=$(echo "$STAGED_PY" | grep -cv "AIPLAT_CAPABILITIES.md\|AIPLAT_ROADMAP.md\|__pycache__" || echo 0)
+CAPS_CHANGED=$(echo "$STAGED_PY" | grep -c "AIPLAT_CAPABILITIES.md\|AIPLAT_ROADMAP.md" || true)
+CAPS_CHANGED=${CAPS_CHANGED:-0}
+NONCAPS_CHANGED=$(echo "$STAGED_PY" | grep -cv "AIPLAT_CAPABILITIES.md\|AIPLAT_ROADMAP.md\|__pycache__" || true)
+NONCAPS_CHANGED=${NONCAPS_CHANGED:-0}
 
 if [ "$NONCAPS_CHANGED" -gt 0 ]; then
     echo ""
@@ -150,7 +152,9 @@ if echo "$STAGED_PY" | grep -q "CLAUDE.md" || git diff --cached --name-only | gr
 fi
 
 # ── Step 4: 接线完成度快速检查 (harness/management files only) ──
-HARNESS_CHANGED=$(echo "$STAGED_PY" | grep -c "harness/\|management/\|infrastructure/\|execution/\|evaluation/\|coordination/\|memory/\|knowledge/\|syscalls/\|context/\|routing/\|learning/\|scheduler/\|training/\|monitoring/" || echo 0)
+# 为什么：grep -c 无匹配时打印 0 且 exit 1；再 || echo 0 会得到 "0\n0"，[ 整数比较报错
+HARNESS_CHANGED=$(echo "$STAGED_PY" | grep -c "harness/\|management/\|infrastructure/\|execution/\|evaluation/\|coordination/\|memory/\|knowledge/\|syscalls/\|context/\|routing/\|learning/\|scheduler/\|training/\|monitoring/" || true)
+HARNESS_CHANGED=${HARNESS_CHANGED:-0}
 if [ "$HARNESS_CHANGED" -gt 0 ]; then
     echo ""
     echo "  Checking caller wiring for harness/management changes..."
@@ -164,7 +168,8 @@ if [ "$HARNESS_CHANGED" -gt 0 ]; then
 fi
 
 # ── Step 5: 路由重复检测 (routers/*.py files only) ──
-ROUTER_CHANGED=$(echo "$STAGED_PY" | grep -c "routers/" || echo 0)
+ROUTER_CHANGED=$(echo "$STAGED_PY" | grep -c "routers/" || true)
+ROUTER_CHANGED=${ROUTER_CHANGED:-0}
 if [ "$ROUTER_CHANGED" -gt 0 ]; then
     echo ""
     echo "  Checking route duplication for router changes..."

@@ -33,7 +33,7 @@ _store = PendingExtractionStore()
 async def extract_document(
     text: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
-    domain_id: str = Form("default"),
+    domain_id: str = Form(DomainRouter.default_graph_domain()),
     doc_name: str = Form("uploaded_doc"),
 ):
     """Extract entities + relations from text or uploaded file.

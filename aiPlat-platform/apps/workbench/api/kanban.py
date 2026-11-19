@@ -34,7 +34,7 @@ class StatusUpdate(BaseModel):
 
 
 @router.get("/kanban/tasks", response_model=ItemResponse)
-async def get_kanban_tasks(profile: str = Query("default"), status: Optional[str] = None):
+async def get_kanban_tasks(profile: str = Query(DomainRouter.default_profile()), status: Optional[str] = None):
     """List tasks for a profile, optionally filtered by status. Returns tasks。
 
     Args:
@@ -88,7 +88,7 @@ async def update_kanban_task_status(task_id: str, body: StatusUpdate):
 
 
 @router.get("/health/kanban", response_model=ItemResponse)
-async def kanban_health(profile: str = Query("default")):
+async def kanban_health(profile: str = Query(DomainRouter.default_profile())):
     """Kanban health summary: total/todo/blocked/overdue counts.
 
     Args:
