@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 SCHEMA_VERSION = 1
 _ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$")
 _DEFAULT_ENTRY: Dict[str, Any] = {
-    "id": "default",
+    "id": DomainRouter.PLATFORM_DEFAULT_WORKSPACE,
     "label": "Default",
     "kind": "local",
     "root": "",  # empty → legacy AIPLAT_HOME/agents + eval_results
@@ -86,7 +87,7 @@ def load_registry() -> Dict[str, Any]:
         raise RuntimeError("workspace registry corrupt: empty workspaces")
     # Ensure default exists
     ids = {str(x.get("id") or "") for x in items if isinstance(x, dict)}
-    if "default" not in ids:
+    if DomainRouter.default_workspace_id() not in ids:
         raise RuntimeError("workspace registry corrupt: missing default")
     return doc
 
@@ -156,9 +157,9 @@ def create_local_workspace(
         allowed_tenants: allowed_tenants 参数。
     """
     wid = validate_workspace_id(workspace_id)
-    if wid == "default":
+    if wid == DomainRouter.default_workspace_id():
         ensure_registry()
-        return get_registry_entry("default") or dict(_DEFAULT_ENTRY)
+        return get_registry_entry(DomainRouter.default_workspace_id()) or dict(_DEFAULT_ENTRY)
 
     ensure_registry()
     existing = get_registry_entry(wid)
@@ -202,7 +203,7 @@ def create_remote_workspace(
     from core.harness.named_workspace.remote_proxy import normalize_remote_base_url
 
     wid = validate_workspace_id(workspace_id)
-    if wid == "default":
+    if wid == DomainRouter.default_workspace_id():
         raise ValueError("default workspace cannot be remote")
     base = normalize_remote_base_url(base_url)
 
@@ -229,7 +230,7 @@ def create_remote_workspace(
 
 def _ensure_local_dirs(workspace_id: str) -> None:
     home = Path(get_aiplat_home())
-    if workspace_id == "default":
+    if workspace_id == DomainRouter.default_workspace_id():
         agents = home / "agents"
         evals = home / "eval_results"
     else:

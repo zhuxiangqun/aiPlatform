@@ -13,6 +13,7 @@ from core.harness.named_workspace.errors import (
     WorkspaceNotFound,
     WorkspaceRequired,
 )
+from core.harness.knowledge.domain_router import DomainRouter
 from core.harness.named_workspace.registry import (
     ensure_registry,
     get_registry_entry,
@@ -135,7 +136,7 @@ def _paths_for_entry(entry: Dict[str, Any]) -> Tuple[str, str, str]:
     if kind != "local":
         raise WorkspaceNotFound(f"workspace kind={kind} not available")
 
-    if wid == "default" or not str(entry.get("root") or "").strip():
+    if wid == DomainRouter.default_workspace_id() or not str(entry.get("root") or "").strip():
         agents = (home / "agents").resolve()
         evals = (home / "eval_results").resolve()
         root = str(home)
@@ -213,11 +214,11 @@ def resolve_named_workspace(
                     "falling back to default (audit)",
                     m,
                 )
-                raw = "default"
+                raw = DomainRouter.default_workspace_id()
             else:
                 raise WorkspaceRequired("write requires X-Aiplat-Workspace-Id")
         else:
-            raw = "default"
+            raw = DomainRouter.default_workspace_id()
 
     try:
         wid = validate_workspace_id(raw)
