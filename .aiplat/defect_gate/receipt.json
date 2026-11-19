@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T08:17:07+08:00",
+  "reviewed_at": "2026-11-19T08:25:13+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "67266a1a6e62792fa0d0f6f65ce31618ae3b28222ac5b517fc391840167ec6d9",
-  "head_sha": "1ae47cdcffb9ac77e915813092fa69640750bf1c",
+  "diff_sha256": "01584238fc3e9b50362c89074a2a6d152d05171135ef16b3e5ad6a3e17402c7f",
+  "head_sha": "497520a015ff4ab4a6a66d8e5eb2ed4d9a6e3c6c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K57: ontology_branch/state_history/code_review_gold + apps org/value/fde/prompt tenant runtime fallbacks → DomainRouter.default_tenant(). Five checks clean. Honesty: not N09 certified."
+  "note": "K58: loop/_facade + operator_agent + integration/agent tenant/session runtime fallbacks → DomainRouter.default_tenant()/default_session(). Five checks clean. Honesty: not N09 certified. Left: AIPLAT_DEFAULT_TENANT env in tenants/manager."
 }

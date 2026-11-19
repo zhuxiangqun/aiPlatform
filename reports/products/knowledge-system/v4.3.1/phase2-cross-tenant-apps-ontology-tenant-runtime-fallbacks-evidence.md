@@ -41,4 +41,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 ## 明确未做
 
 - 其它 apps 模块零星 `domain_id or "default"`（非 tenant）
+- loop/`_facade` / operator / integration agent 残留 → 见 K58
 - N09 / 附录 N 全量认证（certified 仍 false）
