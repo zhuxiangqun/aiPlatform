@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T11:28:00+08:00",
+  "reviewed_at": "2026-11-19T11:36:12+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "bd4479c8c232b28accaac527c7aa475afebd068637bbee8bc8d022d431a7057f",
-  "head_sha": "1548d3bb4a7472b2e2cd8faf0dfb5b2cc447b7b2",
+  "diff_sha256": "1ea4528bfb5aa854c1a4cb738c6a071d61b443c168ca949c65603698735cea2d",
+  "head_sha": "22b4a2dd0afd54815c8b51f6d7672b41bfd73e5a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Extended approval by \u6731\u83b9; pilot_extended_certified true; full certified false."
+  "note": "Operational path: operational_ready true; pilot_operational_certified false until non-author approval; certified/n24_full remain false. five checks: no old_fallback undoes honesty; Facade/route signatures match Extended pattern; pending≠badge; single Facade path; ready≠certified."
 }
