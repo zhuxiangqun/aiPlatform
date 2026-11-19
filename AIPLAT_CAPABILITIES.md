@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3854
+total_capabilities: 3855
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1289,7 +1289,8 @@ scan_hash: 8f9548ec24f4
 | **跨租户 view_name 运行时回退（v4.3.1 N09 K64）** | CrossDomainResolver + K-wave arbit → `default_view_name()` | ✅ | 证据 `phase2-cross-tenant-view-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；workspace 见 K65。生成物适用：已接线（view_name runtime fallback SSOT） | 本批 |
 | **跨租户 workspace_id 运行时回退（v4.3.1 N09 K65）** | named_workspace + eval external targets → `default_workspace_id()` | ✅ | 证据 `phase2-cross-tenant-workspace-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；profile/tenant-env 见 K66。生成物适用：已接线（workspace runtime fallback SSOT） | 本批 |
 | **跨租户 profile + AIPLAT_DEFAULT_TENANT 运行时回退（v4.3.1 N09 K66）** | ProfileConfig/kanban/cron/inference/diagnostics/judge + tenants manager → `default_profile()`/`default_tenant()` | ✅ | 证据 `phase2-cross-tenant-profile-tenant-env-fallbacks-evidence.md`。**未宣称** N09 certified；Query/Form 签名见 K67。生成物适用：已接线（profile/tenant-env fallback SSOT） | 本批 |
-| **跨租户 Query/Form/签名默认参数（v4.3.1 N09 K67）** | workbench/FDE/wiki/server/org/value + MemoryManager namespace → `default_*()` | ✅ | 证据 `phase2-cross-tenant-query-form-signature-defaults-evidence.md`。**未宣称** N09 certified；builder module_id 等非隔离字面量见后续。生成物适用：已接线（HTTP signature default SSOT） | 本批 |
+| **跨租户 Query/Form/签名默认参数（v4.3.1 N09 K67）** | workbench/FDE/wiki/server/org/value + MemoryManager namespace → `default_*()` | ✅ | 证据 `phase2-cross-tenant-query-form-signature-defaults-evidence.md`。**未宣称** N09 certified；builder module_id 见 K68。生成物适用：已接线（HTTP signature default SSOT） | 本批 |
+| **跨租户 builder module_id 默认（v4.3.1 N09 K68）** | builder L2–L5 / project_service / schema_migration → `default_module_id()` | ✅ | 证据 `phase2-cross-tenant-builder-module-defaults-evidence.md`。**未宣称** N09 certified；channel/agent_type/purpose 等见后续。生成物适用：已接线（builder module SSOT） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
 | **Claim 证据硬门+冲突（v4.3.1 N03 F2）** | `put_claim` / `record_claim_conflict` / `run_claim_evidence_suite` / `evaluate_claim_evidence_gate` + Facade `fact_ledger_run_claim_evidence_suite` | ✅ | published 无证据拒；同 conflict_key 不同主张记 open 冲突；门槛门 certified 恒 false。证据 `phase2-claim-evidence-evidence.md`。**未宣称** Claim 全量状态机 / N03 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -1427,6 +1428,7 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| DomainRouter.default_module_id | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
 | DomainRouter.default_workspace_id | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
 | DomainRouter.default_view_name | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
 | DomainRouter.default_session | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
@@ -4755,7 +4757,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 748 | 1 | 749 |
+| Harness 执行引擎 | 749 | 1 | 750 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 611 | 9 | 620 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4800,7 +4802,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3843** | **11** | **3854** |
+| **总计** | **3844** | **11** | **3855** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
