@@ -32,6 +32,7 @@ from core.api.core_facade import create_pipeline_session, apply_agent_md_to_stag
 from builder.builder_team_service import BuilderTeamService
 
 import re
+from core.api.core_facade import DomainRouter
 
 _DANGEROUS_PATTERNS = [
     (re.compile(r"rm\s+-rf", re.IGNORECASE), "attempts to run rm -rf"),
@@ -997,7 +998,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             "created_at": now,
             "updated_at": now,
             "factory_profile": getattr(req, "factory_profile", "standard") or "standard",
-            "output_style": getattr(req, "output_style", "default") or "default",
+            "output_style": getattr(req, "output_style", "default") or DomainRouter.default_module_id(),
             "writing_profile": getattr(req, "writing_profile", "concise_v1") or "concise_v1",
             "factory_mode": getattr(req, "factory_mode", "") or "",
             "coding_intensity": getattr(req, "coding_intensity", "") or "",
@@ -3544,7 +3545,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         _asyncio.create_task(self.rebuild_project(project_id))
         return {"status": "accepted", "run_id": project_id, "detail": "后台构建已触发"}
 
-    async def rebuild_project(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+    async def rebuild_project(self, project_id: str, module_id: str = DomainRouter.default_module_id()) -> Dict[str, Any]:
         """Re-run the pipeline with the existing confirmed PRD. Re-recommends team to pick up latest config changes.
 
         Args:
@@ -3734,7 +3735,7 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             ],
         }
 
-    async def _rebuild_via_core(self, project_id: str, proj: dict, module_id: str = "default",
+    async def _rebuild_via_core(self, project_id: str, proj: dict, module_id: str = DomainRouter.default_module_id(),
                                pm_messages: list = None) -> Dict[str, Any]:
         """Trigger pipeline execution via Core server HTTP API."""
         from builder.pipeline_orchestrator_client import PipelineOrchestratorClient

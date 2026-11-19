@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T10:03:08+08:00",
+  "reviewed_at": "2026-11-19T10:10:09+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "78a4badedf8e0cc15e5f6356a280a3052e4a635a3b84f774d10b1e5607ad8cc5",
-  "head_sha": "dbb0cffca09e8f846762e083b207c54cfa8370f1",
+  "diff_sha256": "b045d92928d9a40c179a8ed1b2f70430c97ebc234c9d7cce4d8b74af1d4d99b1",
+  "head_sha": "2e8129ae63c2db1d731e4ba6529d3545d3882df5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K67: Query/Form/signature defaults → default_*(); MemoryManager namespace; pre-commit grep -c fix. Five checks clean. Honesty: not N09 certified; builder module_id deferred."
+  "note": "K68: builder module_id → default_module_id(). Five checks clean. Honesty: not N09 certified; channel/agent_type/purpose deferred."
 }
