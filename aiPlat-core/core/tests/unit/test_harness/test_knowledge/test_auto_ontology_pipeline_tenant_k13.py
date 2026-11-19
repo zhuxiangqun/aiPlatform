@@ -28,6 +28,10 @@ async def test_auto_ontology_pipeline_passes_tenant(monkeypatch, tmp_path):
         def resolve(self, _cid):
             return "dom-k13"
 
+        def default_kb_domain(self):
+            # 与 DomainRouter.default_kb_domain 对齐，供 facade 回退域使用
+            return "ai-knowledge"
+
     monkeypatch.setattr(
         "core.harness.knowledge.domain_router.DomainRouter", lambda: _Router()
     )

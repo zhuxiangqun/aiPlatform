@@ -35,7 +35,9 @@ def test_k32_wave_sources_wire_tenant():
     for rel in _FILES:
         text = (_repo_root() / rel).read_text(encoding="utf-8")
         assert "fde_graph_tenant" in text, rel
-        assert "from apps.fde.api.graph_tenant import fde_graph_tenant" in text, rel
+        # 允许同模块合并 import（含 fde_graph_domain 等），禁止旁路
+        assert "from apps.fde.api.graph_tenant import" in text, rel
+        assert "fde_graph_tenant" in text.split("from apps.fde.api.graph_tenant import", 1)[1].split("\n", 1)[0], rel
         _assert_no_bare_loads(rel)
 
 

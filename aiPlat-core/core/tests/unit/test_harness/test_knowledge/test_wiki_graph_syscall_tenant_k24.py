@@ -3,6 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+
 def _repo_root() -> Path:
     """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
     for p in Path(__file__).resolve().parents:
@@ -49,8 +52,8 @@ def test_sys_graph_validate_source_wires_tenant():
     _assert_no_bare_loads("aiPlat-core/core/harness/syscalls/graph_validate.py")
 
 
-def test_sys_graph_neighbors_loads_tenant(monkeypatch):
-    import asyncio
+@pytest.mark.asyncio
+async def test_sys_graph_neighbors_loads_tenant(monkeypatch):
     from core.harness.syscalls import graph as gmod
 
     seen = {}
@@ -75,36 +78,16 @@ def test_sys_graph_neighbors_loads_tenant(monkeypatch):
     monkeypatch.setattr(
         "core.harness.ontology_engine.graph_index.GraphIndex.load", _fake_load
     )
-    asyncio.get_event_loop().run_until_complete(
-        gmod.sys_graph_neighbors("E1", domain_id="demo", tenant_id="n09-t24")
-    )
+    await gmod.sys_graph_neighbors("E1", domain_id="demo", tenant_id="n09-t24")
     assert seen.get("tenant_id") == "n09-t24"
     assert seen.get("domain_id") == "demo"
 
 
-def test_sys_graph_validate_loads_tenant(monkeypatch):
-    import asyncio
+@pytest.mark.asyncio
+async def test_sys_graph_validate_loads_tenant(monkeypatch):
     from core.harness.syscalls import graph_validate as gv
 
     seen = {}
-
-    class _G:
-        pass
-
-    def _fake_load(domain_id, tenant_id="default"):
-        seen["domain_id"] = domain_id
-        seen["tenant_id"] = tenant_id
-        return _G()
-
-    monkeypatch.setattr(
-        "core.harness.ontology_engine.graph_index.GraphIndex.load", _fake_load
-    )
-    # short-circuit after load by making subsequent ops fail softly via finalize
-    monkeypatch.setattr(
-        gv,
-        "_finalize",
-        lambda **kw: {"status": "ok", "tenant_seen": seen.get("tenant_id"), **kw},
-    )
 
     # After load, code continues with graph ops — stub graph attrs used
     class _G2:
@@ -119,8 +102,13 @@ def test_sys_graph_validate_loads_tenant(monkeypatch):
     monkeypatch.setattr(
         "core.harness.ontology_engine.graph_index.GraphIndex.load", _fake_load2
     )
-    out = asyncio.get_event_loop().run_until_complete(
-        gv.sys_graph_validate("demo", operation="consistency", tenant_id="n09-t24")
+    monkeypatch.setattr(
+        gv,
+        "_finalize",
+        lambda **kw: {"status": "ok", "tenant_seen": seen.get("tenant_id"), **kw},
+    )
+    out = await gv.sys_graph_validate(
+        "demo", operation="consistency", tenant_id="n09-t24"
     )
     assert seen.get("tenant_id") == "n09-t24"
     assert isinstance(out, dict)

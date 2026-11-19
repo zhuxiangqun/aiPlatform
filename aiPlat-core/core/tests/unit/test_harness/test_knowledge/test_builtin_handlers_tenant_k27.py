@@ -3,6 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+
 def _repo_root() -> Path:
     """定位工作区根（兼容 CI working-directory=aiPlat-core）。"""
     for p in Path(__file__).resolve().parents:
@@ -50,8 +53,8 @@ def test_graph_tenant_prefers_params(monkeypatch):
     assert bh._graph_tenant(None) == "ctx-default"
 
 
-def test_approve_diagnosis_loads_tenant(monkeypatch):
-    import asyncio
+@pytest.mark.asyncio
+async def test_approve_diagnosis_loads_tenant(monkeypatch):
     from core.harness.ontology_engine import builtin_handlers as bh
 
     seen = {}
@@ -68,12 +71,10 @@ def test_approve_diagnosis_loads_tenant(monkeypatch):
     monkeypatch.setattr(
         "core.harness.ontology_engine.graph_index.GraphIndex.load", _fake_load
     )
-    out = asyncio.get_event_loop().run_until_complete(
-        bh.approve_diagnosis(
-            {"id": "e1", "domain_id": "demo"},
-            {"tenant_id": "n09-t27", "assigned_engineer": "a"},
-            actor="tester",
-        )
+    out = await bh.approve_diagnosis(
+        {"id": "e1", "domain_id": "demo"},
+        {"tenant_id": "n09-t27", "assigned_engineer": "a"},
+        actor="tester",
     )
     assert seen.get("tenant_id") == "n09-t27"
     assert seen.get("domain_id") == "demo"

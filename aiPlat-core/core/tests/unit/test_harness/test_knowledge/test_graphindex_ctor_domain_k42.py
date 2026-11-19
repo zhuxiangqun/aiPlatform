@@ -29,15 +29,16 @@ def test_domain_router_default_graph_domain():
 
 
 def test_targets_use_domain_router_helpers():
-    ht = Path(TARGETS[0]).read_text(encoding="utf-8")
+    # CI working-directory=aiPlat-core 时相对路径会丢仓库根前缀
+    ht = (_repo_root() / TARGETS[0]).read_text(encoding="utf-8")
     assert "default_kb_domain()" in ht
     assert 'GraphIndex("ai-knowledge"' not in ht
 
-    dq = Path(TARGETS[1]).read_text(encoding="utf-8")
+    dq = (_repo_root() / TARGETS[1]).read_text(encoding="utf-8")
     assert "default_graph_domain()" in dq
     assert 'GraphIndex("default"' not in dq
 
-    ret = Path(TARGETS[2]).read_text(encoding="utf-8")
+    ret = (_repo_root() / TARGETS[2]).read_text(encoding="utf-8")
     assert "default_graph_domain()" in ret
     assert "domain_id or get_domain_router().default_graph_domain()" in ret
     # GraphIndex early-exit must not keep bare domain fallback (tenant "default" OK)
