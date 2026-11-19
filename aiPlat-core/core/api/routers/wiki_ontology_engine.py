@@ -55,7 +55,7 @@ def _req_domain_id(req: Any, *, default: str = "") -> str:
 
 @router.post("/engine/process", response_model=Dict[str, Any])
 
-async def ontology_engine_process(req: dict, collection: str = "default"):
+async def ontology_engine_process(req: dict, collection: str = DomainRouter.default_collection()):
 
     """本体引擎处理：单文档 → 本体实例。
 
@@ -100,7 +100,7 @@ async def ontology_engine_process(req: dict, collection: str = "default"):
 
 @router.post("/engine/process-and-write", response_model=Dict[str, Any])
 
-async def ontology_engine_process_and_write(req: dict, collection: str = "default"):
+async def ontology_engine_process_and_write(req: dict, collection: str = DomainRouter.default_collection()):
 
     """本体引擎 → 实例 → 自动写 Wiki 页面。
 
@@ -1381,7 +1381,7 @@ async def ontology_engine_parse(req: dict):
 
 @router.post("/engine/parse-and-process", response_model=Dict[str, Any])
 
-async def ontology_engine_parse_and_process(req: dict, collection: str = "default"):
+async def ontology_engine_parse_and_process(req: dict, collection: str = DomainRouter.default_collection()):
 
     """解析文档 → 结构化Chunk → 本体引擎 → 自动写Wiki页面。
 

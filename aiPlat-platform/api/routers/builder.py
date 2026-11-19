@@ -29,6 +29,7 @@ _log = logging.getLogger(__name__)
 _APP_BASE_URL = os.getenv("AIPLAT_APP_BASE_URL", "http://localhost:8004").rstrip("/")
 from builder.builder_team_service import BuilderTeamService
 from builder.builder_auth import require_builder_access, require_admin_access
+from core.api.core_facade import DomainRouter
 from core.schemas_builder import (
     BuilderChatRequest,
     BuilderSessionCreateRequest,
@@ -822,7 +823,7 @@ async def project_merge_preview(project_id: str, body: Dict[str, Any] = {}, _aut
         body: 请求体。
         _auth: 鉴权依赖注入（通常未使用）。
     """
-    module_id = str(body.get("module_id") or "default")
+    module_id = str(body.get("module_id") or DomainRouter.default_module_id())
     return await _get_svc().merge_preview(project_id, module_id=module_id)
 
 
@@ -924,7 +925,7 @@ async def project_cross_module_impact(project_id: str, body: Dict[str, Any], _au
         body: 请求体。
         _auth: 鉴权依赖注入（通常未使用）。
     """
-    module_id = str(body.get("module_id") or "default")
+    module_id = str(body.get("module_id") or DomainRouter.default_module_id())
     return await _get_svc().cross_module_impact(project_id, module_id)
 
 
@@ -952,7 +953,7 @@ async def project_migration_preview(project_id: str, body: Dict[str, Any] = {}, 
         body: 请求体。
         _auth: 鉴权依赖注入（通常未使用）。
     """
-    module_id = str(body.get("module_id") or "default")
+    module_id = str(body.get("module_id") or DomainRouter.default_module_id())
     return await _get_svc().migration_preview(project_id, module_id=module_id)
 
 
@@ -1004,7 +1005,7 @@ async def project_create_release(project_id: str, body: Dict[str, Any] = {}, _au
         body: 请求体。
         _auth: 鉴权依赖注入（通常未使用）。
     """
-    module_id = str(body.get("module_id") or "default")
+    module_id = str(body.get("module_id") or DomainRouter.default_module_id())
     return await _get_svc().create_release(project_id, module_id=module_id)
 
 

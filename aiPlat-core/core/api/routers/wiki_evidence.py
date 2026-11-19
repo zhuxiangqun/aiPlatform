@@ -5,13 +5,14 @@ Wiki Evidence Chain API — full evidence trace for a Wiki claim/atom.
 from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["wiki-evidence"])
 
 # ── Evidence Chain API (Phase 4) ──────────────────────────────────
 
 @router.get("/claim/{title}/evidence-chain", response_model=Dict[str, Any])
-async def get_claim_evidence_chain(title: str, collection: str = "default"):
+async def get_claim_evidence_chain(title: str, collection: str = DomainRouter.default_collection()):
     """Return full evidence chain for a Wiki claim/atom.
 
     Args:

@@ -8,6 +8,7 @@ that push ontology changes to external systems on trigger actions.
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["wiki-writeback"])
 
@@ -22,7 +23,7 @@ class WritebackRegisterRequest(BaseModel):
 
 
 @router.get("/writebacks", response_model=Dict[str, Any])
-async def list_writebacks(collection: str = "default"):
+async def list_writebacks(collection: str = DomainRouter.default_collection()):
     """List all registered writeback configurations.
 
     Args:
@@ -34,7 +35,7 @@ async def list_writebacks(collection: str = "default"):
 
 
 @router.post("/writebacks", response_model=Dict[str, Any])
-async def register_writeback_endpoint(req: WritebackRegisterRequest, collection: str = "default"):
+async def register_writeback_endpoint(req: WritebackRegisterRequest, collection: str = DomainRouter.default_collection()):
     """Register a new writeback target.
 
     Args:
@@ -61,7 +62,7 @@ async def register_writeback_endpoint(req: WritebackRegisterRequest, collection:
 
 
 @router.delete("/writebacks", response_model=Dict[str, Any])
-async def unregister_writeback_endpoint(target_endpoint: str, collection: str = "default"):
+async def unregister_writeback_endpoint(target_endpoint: str, collection: str = DomainRouter.default_collection()):
     """Remove a writeback target.
 
     Args:

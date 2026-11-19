@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Request
 
 from auth.deps import require_auth
 from api.schemas_response import StatusResponse
+from core.api.core_facade import DomainRouter
 
 router = APIRouter(prefix="/platform", tags=["memory"])
 
@@ -25,7 +26,7 @@ def _tenant_from_request(request: Request) -> str:
     from api.rest.routes import _resolve_identity
 
     tid = str(_resolve_identity(request).tenant_id or "").strip()
-    return tid or "default"
+    return tid or DomainRouter.default_tenant()
 
 
 @router.post("/memory/import", response_model=StatusResponse)

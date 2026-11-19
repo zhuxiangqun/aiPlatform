@@ -802,7 +802,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     @staticmethod
 
-    def _load_default_model(model_name: str = "", *, category: str = "default") -> Any:
+    def _load_default_model(model_name: str = "", *, category: str = DomainRouter.default_label()) -> Any:
 
         import os
 
@@ -1366,7 +1366,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                     'kb_query',
 
-                    {'collection_id': kb_name or 'default', 'question': kb_query, 'limit': kb_top_k},
+                    {'collection_id': kb_name or DomainRouter.default_collection(), 'question': kb_query, 'limit': kb_top_k},
 
                     trace_context={"source": f"workflow_knowledge_{stage.id}"}
 

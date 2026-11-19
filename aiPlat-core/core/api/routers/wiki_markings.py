@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["wiki-markings"])
 
@@ -35,7 +36,7 @@ class MarkingDeleteRequest(BaseModel):
 # ══════════════════════════════════════════════════════════════
 
 @router.put("/markings", response_model=Dict[str, Any])
-async def set_entity_marking(req: MarkingSetRequest, collection: str = "default"):
+async def set_entity_marking(req: MarkingSetRequest, collection: str = DomainRouter.default_collection()):
     """Set a marking on an ontology entity.
 
     Args:
@@ -59,7 +60,7 @@ async def set_entity_marking(req: MarkingSetRequest, collection: str = "default"
 
 
 @router.delete("/markings", response_model=Dict[str, Any])
-async def remove_entity_marking(req: MarkingDeleteRequest, collection: str = "default"):
+async def remove_entity_marking(req: MarkingDeleteRequest, collection: str = DomainRouter.default_collection()):
     """Remove a marking from an entity (or all if label is empty).
 
     Args:
@@ -78,7 +79,7 @@ async def remove_entity_marking(req: MarkingDeleteRequest, collection: str = "de
 @router.get("/markings/{entity_uri:path}", response_model=Dict[str, Any])
 async def get_entity_marking_info(
     entity_uri: str,
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
     resolve_effective: bool = True,
 ):
     """Get explicit + effective markings for an entity, with propagation traces.
@@ -108,7 +109,7 @@ async def grant_entity_permission(
     entity_uri: str = Body(...),
     role: str = Body(...),
     actions: List[str] = Body(...),
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
 ):
     """Grant per-object permission on an ontology entity.
 
@@ -133,7 +134,7 @@ async def revoke_entity_permission(
     entity_uri: str = Body(...),
     role: str = Body(default=""),
     action: str = Body(default=""),
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
 ):
     """Revoke a per-object permission.
 
@@ -156,7 +157,7 @@ async def revoke_entity_permission(
 @router.get("/permissions/{entity_uri:path}", response_model=Dict[str, Any])
 async def list_entity_permissions(
     entity_uri: str,
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
 ):
     """List all effective permissions for an ontology entity.
 

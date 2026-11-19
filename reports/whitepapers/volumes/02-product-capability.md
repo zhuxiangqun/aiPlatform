@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-19T02:14:33Z"
+generated_at: "2026-11-19T02:20:55Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "5751247d096fdc0b0f2fda2d66e5caafd092c65963783d412a16531c1b556fc0"
+caps_sha256: "5e159fbc2630382dcd98f3b526cb25c880ee05cc46f16b748c637b984b9137ff"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=5751247d096fdc0b0f2fda2d66e5caafd092c65963783d412a16531c1b556fc0 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=5e159fbc2630382dcd98f3b526cb25c880ee05cc46f16b748c637b984b9137ff scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-19T02:14:33Z` |
-| CAPABILITIES sha256 | `5751247d096f…` |
+| 生成时间 (UTC) | `2026-11-19T02:20:55Z` |
+| CAPABILITIES sha256 | `5e159fbc2630…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1314,9 +1314,9 @@ _(节选；全文见权威源)_
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 750 | 1 | 751 |
+| Harness 执行引擎 | 751 | 1 | 752 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 612 | 9 | 621 |
+| 知识引擎（本体） | 613 | 9 | 622 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -1359,7 +1359,7 @@ _(节选；全文见权威源)_
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3846** | **11** | **3857** |
+| **总计** | **3848** | **11** | **3859** |
 
 ### 3.2 上手路径（节选）
 

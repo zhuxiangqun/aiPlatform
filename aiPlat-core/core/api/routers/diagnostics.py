@@ -2146,7 +2146,7 @@ async def get_doc_quality(limit: int = 20):
 
 
 @router.get("/diagnostics/wiki-quality", response_model=Dict[str, Any])
-async def get_wiki_content_quality(limit: int = 20, collection: str = "default"):
+async def get_wiki_content_quality(limit: int = 20, collection: str = DomainRouter.default_collection()):
     """Returns Wiki page content quality vs original source documents.
 
     Args:
@@ -2823,7 +2823,7 @@ _KHEALTH_CACHE_TTL = 300  # 5 minutes
 
 @router.get("/diagnostics/knowledge-base-health", response_model=Dict[str, Any])
 async def get_kb_health(
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
     days: int = 30,
     format: str = "json",
 ):
