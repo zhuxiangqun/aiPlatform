@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-20T06:55:00+08:00",
+  "reviewed_at": "2026-11-20T07:00:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "8d3d9e6686c3933a0a516cbb82342b635edf20a47203fa766b326764e59a9de4",
-  "head_sha": "0b2a4055aae16718795390207a34b3a2a5302976",
+  "diff_sha256": "9c329113e55699538f87b7e08ae4ab82ea1a26f2e2bcf9512c7877380236fdbc",
+  "head_sha": "65ec4d410eb39ce04bad1aa16d9cd9e222cd5c5c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "GET …/entities/{id}/h1 + load into editor. Not full H.1 editor / not N07 certified. Local lock only."
+  "note": "H.1 thin form fields sync with JSON; still PUT h1_policy. Not matrix editor / not N07 certified. Local lock only."
 }
