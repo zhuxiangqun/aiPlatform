@@ -972,6 +972,8 @@ async def get_graph_acl(domain_id: str):
             "domain_id": domain_id,
             "acl": get_abox_acl_doc(domain_id),
             "crud_matrix": get_abox_crud_matrix(),
+            # 为什么：诚实锁 — 管理端薄 UI 可读 ACL，不宣称 N07/N22 certified
+            "certified": False,
         }
     except Exception as e:
         logger.error("get_graph_acl failed: %s", e, exc_info=True)
