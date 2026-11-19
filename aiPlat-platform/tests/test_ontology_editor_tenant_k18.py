@@ -10,7 +10,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-_ROOT = Path(__file__).resolve().parents[1] / "apps/ontology_editor/api"
+_PLATFORM = Path(__file__).resolve().parents[1]
+_REPO = _PLATFORM.parent
+_ROOT = _PLATFORM / "apps/ontology_editor/api"
 
 
 def _src(name: str) -> str:
@@ -33,8 +35,8 @@ def test_metric_scoring_scenario_governance_source_wires_tenant():
 def test_scoring_engine_source_loads_tenant_graph():
     import re
 
-    text = Path(
-        "aiPlat-core/core/harness/knowledge/scoring_engine.py"
+    text = (
+        _REPO / "aiPlat-core/core/harness/knowledge/scoring_engine.py"
     ).read_text(encoding="utf-8")
     loads = re.findall(r"GraphIndex\.load\(([^)]*)\)", text)
     assert loads
@@ -42,11 +44,12 @@ def test_scoring_engine_source_loads_tenant_graph():
 
 
 def test_metric_engine_source_filters_tenant_sql():
-    text = Path(
-        "aiPlat-core/core/harness/knowledge/metric_engine.py"
+    text = (
+        _REPO / "aiPlat-core/core/harness/knowledge/metric_engine.py"
     ).read_text(encoding="utf-8")
     assert "tenant_id = ?" in text
-    assert "tenant_id: str = \"default\"" in text
+    # N09 后续：默认租户走 DomainRouter SSOT，禁止字面量 "default"
+    assert "DomainRouter.default_tenant()" in text
 
 
 @pytest.mark.asyncio
