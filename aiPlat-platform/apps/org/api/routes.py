@@ -9,6 +9,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from auth.request_identity import resolve_request_role
+from core.api.core_facade import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -566,7 +567,7 @@ async def org_value_baseline_get_route(
     try:
         from core.api.core_facade import org_value_baseline_get
 
-        out = org_value_baseline_get(role=role, tenant_id=tenant_id or "default")
+        out = org_value_baseline_get(role=role, tenant_id=tenant_id or DomainRouter.default_tenant())
         if not out.get("ok"):
             code = 403 if out.get("reason") == "identity_missing" else 400
             raise HTTPException(status_code=code, detail=out)
@@ -592,7 +593,7 @@ async def org_value_baseline_put_route(request: Request, body: Dict[str, Any]):
 
         out = org_value_baseline_put(
             role=role,
-            tenant_id=str(body.get("tenant_id") or "default"),
+            tenant_id=str(body.get("tenant_id") or DomainRouter.default_tenant()),
             baseline_minutes_per_incident=float(body.get("baseline_minutes_per_incident") or 0),
             baseline_mtta_seconds=float(body.get("baseline_mtta_seconds") or 0),
         )

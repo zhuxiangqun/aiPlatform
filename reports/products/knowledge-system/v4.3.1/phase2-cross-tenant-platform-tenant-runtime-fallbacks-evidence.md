@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- apps/org / value / prompt / fde rapid_insight 等其它 `body.get("tenant_id", "default")` → 后续批次
-- core `ontology_branch` `(tenant_id or "default").strip()` 残留 → 后续批次
+- apps/org / value / prompt / fde rapid_insight 等其它 `body.get("tenant_id", "default")` → 见 K57
+- core `ontology_branch` `(tenant_id or "default").strip()` 残留 → 见 K57
 - N09 / 附录 N 全量认证（certified 仍 false）
