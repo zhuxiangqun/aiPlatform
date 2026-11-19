@@ -64,6 +64,10 @@ const AboxAclPanel: React.FC = () => {
   const [previewAction, setPreviewAction] = useState('read');
   const [previewPayload, setPreviewPayload] = useState('{"ssn":"123-45-6789","name":"demo"}');
   const [previewOut, setPreviewOut] = useState('');
+  const [h1Entity, setH1Entity] = useState('');
+  const [h1Raw, setH1Raw] = useState(
+    '{\n  "effect": "deny",\n  "principals": ["role:viewer"],\n  "actions": ["read"],\n  "condition": {"status": "open"},\n  "masked_properties": ["ssn"]\n}',
+  );
 
   const reload = useCallback(async () => {
     if (!domainId.trim()) return;
@@ -211,6 +215,44 @@ const AboxAclPanel: React.FC = () => {
       await reload();
     } catch (e: unknown) {
       toast?.error?.((e as Error)?.message || '删除失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyH1 = async () => {
+    if (!h1Entity.trim()) {
+      toast?.error?.('H.1 entity_id 必填');
+      return;
+    }
+    let policy: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(h1Raw || '{}') as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        toast?.error?.('h1_policy 须为 JSON 对象');
+        return;
+      }
+      policy = parsed as Record<string, unknown>;
+    } catch {
+      toast?.error?.('h1_policy 须为合法 JSON');
+      return;
+    }
+    setLoading(true);
+    try {
+      const r = await fetch(
+        API(`/graph/acl/${encodeURIComponent(domainId.trim())}/entities/${encodeURIComponent(h1Entity.trim())}`),
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ h1_policy: policy }),
+        },
+      );
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(d.detail));
+      toast?.success?.(d.h1_applied ? '已应用 H.1 策略（非 certified）' : '已保存');
+      await reload();
+    } catch (e: unknown) {
+      toast?.error?.((e as Error)?.message || 'H.1 应用失败');
     } finally {
       setLoading(false);
     }
@@ -444,6 +486,31 @@ const AboxAclPanel: React.FC = () => {
               </ul>
             )}
           </div>
+        </div>
+
+        <div className="border-t border-gray-800 pt-3 space-y-2">
+          <div className="text-[12px] text-gray-300">
+            应用 H.1 策略 JSON（薄导入 · 非完整策略编辑器 · 非 certified）
+          </div>
+          <label className="text-[11px] text-gray-400 space-y-1 block">
+            entity_id
+            <input
+              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
+              value={h1Entity}
+              onChange={(e) => setH1Entity(e.target.value)}
+            />
+          </label>
+          <label className="text-[11px] text-gray-400 space-y-1 block">
+            h1_policy（effect / principals / actions / condition / masked_properties）
+            <textarea
+              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono min-h-[120px]"
+              value={h1Raw}
+              onChange={(e) => setH1Raw(e.target.value)}
+            />
+          </label>
+          <Button type="button" size="sm" disabled={loading} onClick={() => void applyH1()}>
+            应用 H.1
+          </Button>
         </div>
 
         <div className="border-t border-gray-800 pt-3 space-y-2">

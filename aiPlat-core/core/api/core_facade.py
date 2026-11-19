@@ -7308,6 +7308,24 @@ def set_graph_entity_acl(
     )
 
 
+def apply_graph_h1_policy(
+    domain_id: str,
+    entity_id: str,
+    policy: Any,
+) -> Dict[str, Any]:
+    """Apply appendix H.1 policy shape onto ABox entity ACL（薄导入；certified=false）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        policy: H.1 策略 dict。
+    """
+    from core.policy.graph_abox_acl import apply_h1_policy
+    if not isinstance(policy, dict):
+        raise ValueError("h1_policy_must_be_object")
+    return apply_h1_policy(domain_id, entity_id, policy)
+
+
 def set_graph_field_acl(
     domain_id: str,
     entity_id: str,

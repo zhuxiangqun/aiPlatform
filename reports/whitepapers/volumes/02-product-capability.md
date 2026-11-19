@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-19T17:10:48Z"
+generated_at: "2026-11-19T17:34:54Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "99491597929077b42a581a779b352117e4d8aace9fd183b8731aa22bc96a84f2"
+caps_sha256: "4e7f23349169d818f2da00eee87c19ea1fe040c8c2af9c85a6a8f97fc4c7e0dc"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=99491597929077b42a581a779b352117e4d8aace9fd183b8731aa22bc96a84f2 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=4e7f23349169d818f2da00eee87c19ea1fe040c8c2af9c85a6a8f97fc4c7e0dc scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-19T17:10:48Z` |
-| CAPABILITIES sha256 | `994915979290…` |
+| 生成时间 (UTC) | `2026-11-19T17:34:54Z` |
+| CAPABILITIES sha256 | `4e7f23349169…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1316,7 +1316,7 @@ _(节选；全文见权威源)_
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 758 | 1 | 759 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 645 | 9 | 654 |
+| 知识引擎（本体） | 647 | 9 | 656 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -1359,7 +1359,7 @@ _(节选；全文见权威源)_
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3887** | **11** | **3898** |
+| **总计** | **3889** | **11** | **3900** |
 
 ### 3.2 上手路径（节选）
 
@@ -1490,7 +1490,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3032 capabilities (caps_count) | 3032 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3034 capabilities (caps_count) | 3034 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1570,7 +1570,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 566 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 568 | FDE 能力自描述 |
 
 ##### aiPlat-platform/apps/fde/api/fde_pipeline.py
 

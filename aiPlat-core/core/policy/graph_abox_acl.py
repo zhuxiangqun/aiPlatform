@@ -259,6 +259,87 @@ def entity_acl_to_h1(domain_id: str, entity_id: str) -> Dict[str, Any]:
     }
 
 
+def _principal_to_role(principal: Any) -> str:
+    """H.1 principal → ABox 角色名（支持 ``role:x`` / 裸名）。
+
+    Args:
+        principal: 主体字符串或可转 str 值。
+    """
+    s = str(principal or "").strip()
+    if not s:
+        return ""
+    if s.lower().startswith("role:"):
+        s = s[5:].strip()
+    return normalize_abox_role(s) or s
+
+
+def apply_h1_policy(
+    domain_id: str,
+    entity_id: str,
+    policy: Dict[str, Any],
+) -> Dict[str, Any]:
+    """将附录 H.1 形状写入存储态（薄导入；非完整策略编辑器 / certified=false）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识（优先；policy.resource 仅校验）。
+        policy: H.1 dict（effect/principals/actions/condition/masked_properties）。
+    """
+    if not isinstance(policy, dict):
+        raise ValueError("h1_policy_must_be_object")
+    res = str(policy.get("resource") or "").strip()
+    # 为什么：resource 若给出且与 path 不一致则拒绝，避免误写错实体
+    if res and res != entity_id:
+        raise ValueError("h1_resource_mismatch")
+    effect = str(policy.get("effect") or "allow").strip().lower()
+    if effect not in ("allow", "deny"):
+        raise ValueError("h1_effect_invalid")
+    principals = policy.get("principals") or []
+    if not isinstance(principals, list):
+        raise ValueError("h1_principals_must_be_list")
+    actions = policy.get("actions") or ["*"]
+    if not isinstance(actions, list):
+        raise ValueError("h1_actions_must_be_list")
+    act_list = [str(a).strip() for a in actions if str(a).strip()] or ["*"]
+    role_map: Dict[str, List[str]] = {}
+    for p in principals:
+        role = _principal_to_role(p)
+        if role:
+            role_map[role] = list(act_list)
+    cond = policy.get("condition")
+    if cond is None:
+        cond_arg: Optional[Dict[str, Any]] = {}
+    elif isinstance(cond, dict):
+        cond_arg = cond
+    else:
+        raise ValueError("h1_condition_must_be_object")
+    masks = policy.get("masked_properties")
+    if masks is None:
+        masks_arg: Optional[List[Any]] = []
+    elif isinstance(masks, list):
+        masks_arg = masks
+    else:
+        raise ValueError("h1_masked_properties_must_be_list")
+    # 为什么：单 effect 写入时清空对侧 roles，保证 to_h1 往返一致
+    if effect == "deny":
+        return set_entity_acl(
+            domain_id,
+            entity_id,
+            deny_roles=role_map,
+            allow_roles={},
+            condition=cond_arg,
+            masked_properties=masks_arg,
+        )
+    return set_entity_acl(
+        domain_id,
+        entity_id,
+        deny_roles={},
+        allow_roles=role_map,
+        condition=cond_arg,
+        masked_properties=masks_arg,
+    )
+
+
 def set_entity_acl(
     domain_id: str,
     entity_id: str,
