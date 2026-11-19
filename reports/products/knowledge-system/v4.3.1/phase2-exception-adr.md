@@ -11,8 +11,8 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 # Phase 2 / 例外 ADR 包（Batch F1）
 
 > 实施权威：附录 N 认证证据包 `certification_slots.exception_adr` 最小填空。  
-> **集中登记当前例外**；**非**全量 ADR 体系；试点 Core（朱鸿林）+ Extended（朱莹）已批准等级徽章；Operational `operational_ready` 已绿、签字仍 pending；**未宣称** 全量 `certified` / 24/24。  
-> 2026-11-19：Core 12 / Extended 6 / Operational 6 均按附录 N.2–N.4 标为等级 scoped `exists`；N09 **探针集冻结**；深度缺口记为后续全量加深，不阻塞等级 `*_ready`。
+> **集中登记当前例外**；**非**全量 ADR 体系；试点 Core（朱鸿林）+ Extended（朱莹）+ Operational（朱莹）已批准等级徽章；**未宣称** 全量 `certified` / 24/24。  
+> 2026-11-19：Core 12 / Extended 6 / Operational 6 均按附录 N.2–N.4 标为等级 scoped `exists`；N09 **探针集冻结**；深度缺口记为后续全量加深，不阻塞等级 `*_ready` / 等级徽章。
 
 ## 例外清单（范围 / 期限 / 补偿）
 

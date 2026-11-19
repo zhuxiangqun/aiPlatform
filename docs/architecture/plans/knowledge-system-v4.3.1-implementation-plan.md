@@ -666,9 +666,11 @@ extended_ready 结构门 pass
 ```text
 附录 N.4 Operational 6 项 status=exists（或 ADR 例外）
 operational_ready 结构门 pass
-非作者批准后才可 pilot_operational_certified
+非作者批准（朱莹）→ pilot_operational_certified
 全量 certified 仍 false（另需全量人工认证）
 ```
+
+（2026-11-19：Operational 徽章已开；全量 certified 仍另开。）
 
 ### 14.4 后续 DoD — 全量 certified（另开）
 

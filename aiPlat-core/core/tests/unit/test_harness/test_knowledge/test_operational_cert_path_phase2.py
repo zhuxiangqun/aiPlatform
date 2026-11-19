@@ -38,3 +38,13 @@ def test_pilot_operational_requires_approval():
     assert g1["operational_ready"] is True
     assert g1["pilot_operational_certified"] is False
     assert g1["certified"] is False
+
+    approved = (
+        Path(cp._repo_root())
+        / "reports/products/knowledge-system/v4.3.1/pilot-operational-approval-record.approved.json"
+    )
+    g2 = cp.evaluate_pilot_operational_certification(approval_record_path=str(approved))
+    assert g2["operational_ready"] is True
+    assert g2["pilot_operational_certified"] is True
+    assert g2["certified"] is False
+    assert g2["n24_full_conformance"] is False

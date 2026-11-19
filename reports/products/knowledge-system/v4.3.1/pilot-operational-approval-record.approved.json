@@ -1,0 +1,20 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "pilot lock-service Operational certification (附录 N.4)",
+  "status": "approved",
+  "decision": "conditional",
+  "approvers": [
+    {
+      "name": "朱莹",
+      "role": "Reviewer",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-19"
+    }
+  ],
+  "approval_date": "2026-11-19",
+  "effective_date": "2026-11-19",
+  "exceptions": [],
+  "record_id": "PILOT-OPERATIONAL-lock-service-2026-11-19",
+  "note": "Non-author 朱莹已复核确认。Conditional: Operational-scoped exists + operational_ready / pilot_operational_certified only; not full certified / 24/24."
+}

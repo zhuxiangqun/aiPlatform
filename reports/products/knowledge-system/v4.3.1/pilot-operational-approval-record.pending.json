@@ -8,5 +8,5 @@
   "exceptions": [],
   "decision": null,
   "record_id": "PILOT-OPERATIONAL-lock-service-pending",
-  "note": "Fill non-author approvers and set status=approved to unlock pilot_operational_certified via evaluate_pilot_operational_certification."
+  "note": "Superseded by pilot-operational-approval-record.approved.json (approver: 朱莹)."
 }
