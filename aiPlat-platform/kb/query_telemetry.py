@@ -68,6 +68,7 @@ async def record_kb_query_syscall(
     out: Optional[Dict[str, Any]] = None,
     error: Optional[str] = None,
     store: Any = None,
+    duration_ms: Optional[float] = None,
 ) -> bool:
     """Append knowledge_retrieve event. Returns True if persisted.
 
@@ -80,6 +81,7 @@ async def record_kb_query_syscall(
         out: out 参数。
         error: error 参数。
         store: store 参数。
+        duration_ms: 真实查询耗时（毫秒）；缺省记 0 并仍写事件。
     """
     try:
         if store is None:
@@ -91,14 +93,21 @@ async def record_kb_query_syscall(
         now = time.time()
         result = summarize_kb_query_result(out)
         status = "error" if error else "ok"
+        try:
+            dur = float(duration_ms) if duration_ms is not None else 0.0
+        except (TypeError, ValueError):
+            dur = 0.0
+        if dur < 0:
+            dur = 0.0
+        start = now - (dur / 1000.0) if dur else now
         await store.add_syscall_event(
             {
                 "kind": "knowledge_retrieve",
                 "name": "platform_kb_retrieve",
                 "status": status,
-                "start_time": now,
+                "start_time": start,
                 "end_time": now,
-                "duration_ms": 0,
+                "duration_ms": dur,
                 "created_at": now,
                 "tenant_id": tenant_id or None,
                 "user_id": actor_id or None,
@@ -113,6 +122,31 @@ async def record_kb_query_syscall(
                 "target_id": str(collection_id or DomainRouter.default_collection()),
             }
         )
+        # 为什么：F1 deepen — 查询路径同时写入 SLO 样本；软失败
+        tid = str(tenant_id or "").strip()
+        if tid:
+            try:
+                from core.api.core_facade import record_knowledge_slo_sample
+
+                if dur > 0:
+                    record_knowledge_slo_sample(
+                        "query_p95_ms",
+                        dur,
+                        tenant_id=tid,
+                        source="platform_kb_retrieve",
+                        ok=(status == "ok"),
+                    )
+                cites = result.get("citations") if isinstance(result, dict) else None
+                hit = 1.0 if (isinstance(cites, list) and cites) else 0.0
+                record_knowledge_slo_sample(
+                    "citation_coverage",
+                    hit,
+                    tenant_id=tid,
+                    source="platform_kb_retrieve",
+                    ok=(status == "ok"),
+                )
+            except Exception:
+                logger.debug("slo sample from kb query soft-fail", exc_info=True)
         return True
     except Exception as e:
         logger.debug("record_kb_query_syscall failed: %s", e, exc_info=True)

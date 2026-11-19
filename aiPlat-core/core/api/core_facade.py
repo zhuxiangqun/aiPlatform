@@ -6530,7 +6530,7 @@ async def execute_action(
 
     # 为什么：生产入口禁止 _bypass_approval；customer_action 另强制幂等键与快照账本
     if is_customer_action(action_id):
-        return await run_customer_action_with_execution(
+        out = await run_customer_action_with_execution(
             action_id=action_id,
             entity_ref=entity_ref,
             params=params or {},
@@ -6538,16 +6538,60 @@ async def execute_action(
             role=role or "",
             permissions=permissions,
         )
+    else:
+        reg = get_action_registry()
+        out = await reg.execute(
+            action_id=action_id,
+            entity_ref=entity_ref,
+            params=params or {},
+            actor=actor or "system",
+            role=role or "",
+            permissions=permissions,
+        )
+    # 为什么：F1 deepen — 薄记 action 成功率样本；失败不得影响执行回执
+    try:
+        from core.harness.knowledge_pipeline.slo_telemetry import record_slo_sample
 
-    reg = get_action_registry()
-    return await reg.execute(
-        action_id=action_id,
-        entity_ref=entity_ref,
-        params=params or {},
-        actor=actor or "system",
-        role=role or "",
-        permissions=permissions,
-    )
+        p = params or {}
+        tid = str(
+            p.get("tenant_id")
+            or (out.get("tenant_id") if isinstance(out, dict) else "")
+            or ""
+        ).strip()
+        if not tid and isinstance(entity_ref, dict):
+            tid = str(entity_ref.get("tenant_id") or "").strip()
+        domain = str(
+            p.get("domain_id")
+            or (out.get("domain_id") if isinstance(out, dict) else "")
+            or ""
+        ).strip()
+        status = ""
+        if isinstance(out, dict):
+            status = str(
+                out.get("result_status") or out.get("status") or out.get("decision") or ""
+            ).lower()
+        ok = status in {
+            "ok",
+            "success",
+            "executed",
+            "done",
+            "completed",
+            "idempotent_replay",
+        }
+        if tid:
+            record_slo_sample(
+                "action_success_rate",
+                1.0 if ok else 0.0,
+                tenant_id=tid,
+                domain_id=domain,
+                source="facade.execute_action",
+                ok=ok,
+            )
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "execute_action slo sample soft-fail", exc_info=True
+        )
+    return out
 
 
 def lookup_action_execution(
@@ -6679,6 +6723,106 @@ def list_knowledge_sdk_object_types(
 
     path = Path(bindings_path) if bindings_path else None
     return list_sdk_object_types(permissions=permissions, bindings_path=path)
+
+
+def record_knowledge_slo_sample(
+    metric: str,
+    value: float,
+    *,
+    tenant_id: str,
+    domain_id: str = "",
+    source: str = "",
+    ok: bool = True,
+    db_path: Any = None,
+) -> Dict[str, Any]:
+    """F1 deepen：记录知识系统 SLO 样本（租户隔离）。
+
+    Args:
+        metric: 指标 id（action_success_rate / query_p95_ms / citation_coverage）。
+        value: 样本值。
+        tenant_id: 租户。
+        domain_id: 可选域。
+        source: 来源标签。
+        ok: 业务是否成功。
+        db_path: 可选样本库路径。
+
+    Returns:
+        record_slo_sample 回执。
+    """
+    from core.harness.knowledge_pipeline.slo_telemetry import record_slo_sample
+
+    return record_slo_sample(
+        metric,
+        value,
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        source=source,
+        ok=ok,
+        db_path=str(db_path) if db_path else None,
+    )
+
+
+def get_knowledge_slo_snapshot(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    db_path: Any = None,
+    include_live: bool = True,
+) -> Dict[str, Any]:
+    """F1 deepen：知识系统 SLO 快照（目标 + 样本；非达标宣称）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 回溯窗口小时。
+        db_path: 可选样本库。
+        include_live: 是否合并 live 源。
+
+    Returns:
+        get_slo_snapshot 回执。
+    """
+    from core.harness.knowledge_pipeline.slo_telemetry import get_slo_snapshot
+
+    return get_slo_snapshot(
+        tenant_id,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        db_path=str(db_path) if db_path else None,
+        include_live=include_live,
+    )
+
+
+def evaluate_knowledge_slo_wiring_gate(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    db_path: Any = None,
+    include_live: bool = True,
+) -> Dict[str, Any]:
+    """F1 deepen：SLO 接线门（wiring_ok 可真；attainment/certified 恒假）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 窗口。
+        db_path: 可选样本库。
+        include_live: 是否计入 live 源。
+
+    Returns:
+        evaluate_slo_wiring_gate 回执。
+    """
+    from core.harness.knowledge_pipeline.slo_telemetry import evaluate_slo_wiring_gate
+
+    return evaluate_slo_wiring_gate(
+        tenant_id,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        db_path=str(db_path) if db_path else None,
+        include_live=include_live,
+    )
+
 
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.

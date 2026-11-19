@@ -25,7 +25,7 @@ pilot_domain: lock-service
 | FDE HTTP | pass | `/full-ready` `/full-cert` |
 | 无全量批准时 certified false | pass | pending 记录 |
 | 有独立全量批准时 certified | pass | `pilot-full-approval-record.approved.json`（朱向群） |
-| SLO | conditional | 目标登记（非生产遥测） |
+| SLO | conditional | 目标登记 + 遥测接线（非生产达标） |
 
 ## 命令
 
@@ -36,5 +36,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- 生产 SLO 遥测达标
+- 生产 SLO 遥测达标（接线见 `phase2-slo-telemetry-wiring-evidence.md`）
 - 准确率宣称

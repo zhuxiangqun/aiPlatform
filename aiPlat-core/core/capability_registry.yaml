@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3013
+total_capabilities: 3020
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 547
+    caps_count: 554
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3930,6 +3930,34 @@ domains:
         module: core/harness/knowledge_pipeline/sdk_generator.py
         type: function
         signature: "List ObjectType ids eligible for Knowledge SDK; kb:read L1"
+      - symbol: "record_slo_sample"
+        module: core/harness/knowledge_pipeline/slo_telemetry.py
+        type: function
+        signature: "F1 deepen: tenant-scoped knowledge SLO sample"
+      - symbol: "get_slo_snapshot"
+        module: core/harness/knowledge_pipeline/slo_telemetry.py
+        type: function
+        signature: "F1 deepen: SLO snapshot targets+samples; not attainment"
+      - symbol: "evaluate_slo_wiring_gate"
+        module: core/harness/knowledge_pipeline/slo_telemetry.py
+        type: function
+        signature: "F1 deepen: wiring_ok gate; attainment/certified false"
+      - symbol: "record_knowledge_slo_sample"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: record knowledge SLO sample"
+      - symbol: "get_knowledge_slo_snapshot"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: knowledge SLO snapshot"
+      - symbol: "evaluate_knowledge_slo_wiring_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: SLO wiring gate"
+      - symbol: "slo_snapshot_route"
+        module: aiPlat-platform/apps/fde/api/slo_routes.py
+        type: function
+        signature: "GET /fde/slo/snapshot via Facade"
       - symbol: "traverse_links_route"
         module: aiPlat-platform/apps/fde/api/link_traverse_routes.py
         type: function

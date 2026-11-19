@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T14:25:43+08:00",
+  "reviewed_at": "2026-11-19T17:23:46+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1e2318c09a51f0f2a4ea0ca284aafe98d9a9c5bb",
-  "diff_sha256": "decee0e64f7a3f9b4ec0caef357bdf9b7c05a00d306157286b081727cf3000e4",
-  "head_sha": "b98874fb6c621d60debfb83cb3c9c19e01b6d395",
+  "merge_base": "4d5c584aae1a8c63adbffce637bbc80e18d2dfed",
+  "diff_sha256": "882d9bd5968363009c0188e3b42b6bf13cec78b54e1f503ac6330049e3e3ff49",
+  "head_sha": "20e18a9a5508c082607b771dbd467980a58e46e7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "W6 SDK min rebased onto main; Facade-only + FDE sdk routes; clause-sync \u00a7150; whitepapers/matrix synced. Local lock only."
+  "note": "F1 deepen SLO telemetry wiring; Facade+FDE; wiring\u2260attainment; Full remains conditional; clause-sync \u00a7151. Local lock only."
 }
