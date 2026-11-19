@@ -42,5 +42,6 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- 完整 H.1 策略编辑器（矩阵式 effect/principals/actions UI）
+- H.1 薄表单字段 → 见 `phase2-abox-acl-h1-form-evidence.md`
+- 完整 H.1 矩阵编辑器（多角色×多动作网格）
 - `$gt` / `$regex` / 嵌套布尔表达式
