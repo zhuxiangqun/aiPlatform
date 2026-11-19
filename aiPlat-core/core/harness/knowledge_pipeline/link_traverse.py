@@ -24,19 +24,25 @@ logger = logging.getLogger(__name__)
 _REF_RE = re.compile(r"^[A-Za-z_][\w-]*:[^\s]+$")
 
 
-def _entity_readable(domain_id: str, entity_id: str, role: str) -> bool:
+def _entity_readable(
+    domain_id: str,
+    entity_id: str,
+    role: str,
+    attrs: Optional[Dict[str, Any]] = None,
+) -> bool:
     """实例读 ACL；无 domain/role/ACL 时放行（与 ObjectSet 一致）。
 
     Args:
         domain_id: 域 id。
         entity_id: 实体 id（不含 Type: 前缀）。
         role: 调用方角色。
+        attrs: 可选实例属性（H.1 condition）。
     """
     if not domain_id or not entity_id:
         return True
     from core.policy.graph_abox_acl import check_entity_acl
 
-    return bool(check_entity_acl(domain_id, entity_id, role, "read"))
+    return bool(check_entity_acl(domain_id, entity_id, role, "read", attrs=attrs))
 
 
 def _redact_node(
@@ -231,8 +237,9 @@ async def traverse_links(
     direction = req.direction
 
     cls0, eid0 = _parse_subject(start)
-    # 为什么：起点被 deny 时不得返回子图（召回前过滤）
-    if not _entity_readable(domain_id, eid0 or "", actor_role):
+    start_node = {"id": eid0 or start, "object_type": cls0 or "", "ref": start}
+    # 为什么：起点被 deny 时不得返回子图（召回前过滤）；attrs 供 H.1 condition
+    if not _entity_readable(domain_id, eid0 or "", actor_role, attrs=start_node):
         return {
             "status": "ok",
             "start_id": start,
@@ -249,7 +256,6 @@ async def traverse_links(
     # BFS：(node, hop)
     seen: Set[str] = {start}
     nodes: Dict[str, Dict[str, Any]] = {}
-    start_node = {"id": eid0 or start, "object_type": cls0 or "", "ref": start}
     nodes[start] = _redact_node(domain_id, eid0 or "", start_node, actor_role)
     edges: List[Dict[str, Any]] = []
     q: deque = deque([(start, 0)])
@@ -271,7 +277,8 @@ async def traverse_links(
 
         for nb, lt, ed in neighbors:
             _cls, eid = _parse_subject(nb)
-            if not _entity_readable(domain_id, eid or "", actor_role):
+            nb_attrs = {"id": eid or nb, "object_type": _cls or "", "ref": nb}
+            if not _entity_readable(domain_id, eid or "", actor_role, attrs=nb_attrs):
                 acl_dropped += 1
                 continue
             edges.append(

@@ -101,7 +101,7 @@ review_cycle: 90d
 > 2026-11-20：知识系统 v4.3.1 N07/N22 deepen ABox 实例 ACL 管理端薄 UI（AboxAclPanel + FDE graph/acl certified=false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-20：知识系统 v4.3.1 N07/N22 deepen ABox ACL DELETE（remove_* + FDE DELETE + AboxAclPanel 删除；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-20：知识系统 v4.3.1 N07/N22 deepen ABox ACL preview-as-role（preview_abox_acl + POST graph/acl/preview；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
-> 2026-11-20：知识系统 v4.3.1 N07/N22 deepen ABox ACL preview-as-role（preview_abox_acl + POST graph/acl/preview；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-20：知识系统 v4.3.1 N07/N22 deepen ABox ACL H.1 condition 等值匹配（match_abox_condition + ObjectSet/link.traverse attrs；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 
 ---
 

@@ -3947,6 +3947,8 @@ def check_graph_entity_acl(
     entity_id: str,
     role: str,
     action: str = "read",
+    *,
+    attrs: Any = None,
 ) -> bool:
     """GraphIndex ABox instance ACL (T9). Empty role → allow.
 
@@ -3955,9 +3957,16 @@ def check_graph_entity_acl(
         entity_id: entity 标识。
         role: role 参数。
         action: action 参数。
+        attrs: 可选实例属性（H.1 condition）。
     """
     from core.policy.graph_abox_acl import check_entity_acl
-    return check_entity_acl(domain_id, entity_id, role, action)
+    return check_entity_acl(
+        domain_id,
+        entity_id,
+        role,
+        action,
+        attrs=attrs if isinstance(attrs, dict) else None,
+    )
 
 
 def redact_graph_entity_fields(
@@ -7273,6 +7282,7 @@ def set_graph_entity_acl(
     *,
     deny_roles: Any = None,
     allow_roles: Any = None,
+    condition: Any = None,
 ) -> Dict[str, Any]:
     """set_graph_entity_acl。
 
@@ -7281,13 +7291,16 @@ def set_graph_entity_acl(
         entity_id: entity 标识。
         deny_roles: deny_roles 参数。
         allow_roles: allow_roles 参数。
+        condition: 可选 H.1 等值条件 dict；空 dict 清除。
     """
     from core.policy.graph_abox_acl import set_entity_acl
+    cond = condition if isinstance(condition, dict) else None
     return set_entity_acl(
         domain_id,
         entity_id,
         deny_roles=deny_roles,
         allow_roles=allow_roles,
+        condition=cond,
     )
 
 
