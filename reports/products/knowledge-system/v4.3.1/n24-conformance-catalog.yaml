@@ -139,7 +139,8 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-list-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-get-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-form-evidence.md
-    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse + retrieve/KB/CRAG + 裸 Wiki/GraphRAG + OKF/OWL/suggestions/offline 导出字段 ACL + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition 等值/$eq/$ne/$in + masked_properties + apply/list/get_h1 + 薄表单；非 certified/非表达式语言/非矩阵编辑器"
+      - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-exists-evidence.md
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse + retrieve/KB/CRAG + 裸 Wiki/GraphRAG + OKF/OWL/suggestions/offline 导出字段 ACL + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition 等值/$eq/$ne/$in/$exists + masked_properties + apply/list/get_h1 + 薄表单；非 certified/非表达式语言/非矩阵编辑器"
   - id: N08
     level: extended
     title: 动作执行走 Policy/Approval/Audit
@@ -331,9 +332,10 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-list-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-get-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-form-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-exists-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/object_set.py
       - aiPlat-core/core/harness/knowledge_pipeline/link_traverse.py
-    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse ABox + retrieve + 裸 Wiki/GraphRAG + OKF/OWL/suggestions/offline 导出字段 ACL + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition 等值/$eq/$ne/$in + masked_properties + apply/list/get_h1 + 薄表单；非 certified/非表达式语言/非矩阵编辑器"
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse ABox + retrieve + 裸 Wiki/GraphRAG + OKF/OWL/suggestions/offline 导出字段 ACL + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition 等值/$eq/$ne/$in/$exists + masked_properties + apply/list/get_h1 + 薄表单；非 certified/非表达式语言/非矩阵编辑器"
   - id: N23
     level: operational
     title: OCS 完整度
