@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T10:56:00+08:00",
+  "reviewed_at": "2026-11-19T11:08:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "641078c5a6efc787c0944508a4585eb876f67f3da582a4bbd455d778af43438d",
-  "head_sha": "eb35009c7e32b231aab938bc0298cbf447298c4b",
+  "diff_sha256": "d9ca8cdcda5a691ed865d89220cb45706ff95b511315db94cb995341a8739f3f",
+  "head_sha": "a4534afd9f7c3c99d6d3f5d26cdebfa1b769f719",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Core cert path: level map + core_ready + approval-gated pilot_certified. Honesty: pending approval keeps pilot_certified false; certified never auto. N09 mop frozen."
+  "note": "Core cert path + FDE HTTP wiring. core_ready\u2260certified; pending approval keeps pilot_certified false."
 }
