@@ -130,13 +130,13 @@ def save_abox_acl(domain_id: str, data: Dict[str, Any]) -> None:
 
 
 def _match_condition_value(got: Any, want: Any) -> bool:
-    """单键条件值：标量等值；``{$eq}`` / ``{$ne}`` / ``{$in}`` 最小运算符。
+    """单键条件值：标量等值；``{$eq}`` / ``{$ne}`` / ``{$in}`` / ``{$exists}``。
 
     Args:
-        got: 实例属性值（可为 None）。
+        got: 实例属性值（可为 None；None 视为字段缺失）。
         want: 条件期望；标量或单运算符 dict。
     """
-    # 为什么：仅开放 $eq/$ne/$in，禁止表达式语言扩大攻击面与语义漂移
+    # 为什么：仅开放 $eq/$ne/$in/$exists，禁止 $gt/$regex/嵌套布尔扩大攻击面
     if isinstance(want, dict) and want:
         if len(want) != 1:
             return False
@@ -151,6 +151,10 @@ def _match_condition_value(got: Any, want: Any) -> bool:
                 return False
             got_s = str(got)
             return any(got_s == str(x) for x in arg)
+        if op_s == "$exists":
+            # 为什么：true→字段存在；false→字段缺失；arg 用 bool() 规范化
+            present = got is not None
+            return present if bool(arg) else (not present)
         return False
     return str(got) == str(want)
 
@@ -161,7 +165,7 @@ def match_abox_condition(
 ) -> bool:
     """H.1 最小 condition：全键匹配；空 condition 恒 True。
 
-    每键支持标量等值，或 ``{$eq|$ne|$in: …}``（非完整表达式语言）。
+    每键支持标量等值，或 ``{$eq|$ne|$in|$exists: …}``（非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。
