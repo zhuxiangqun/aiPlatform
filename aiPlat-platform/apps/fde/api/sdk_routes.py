@@ -99,3 +99,33 @@ async def sdk_list_object_types_route(
     if out.get("status") == "policy_denied":
         raise HTTPException(status_code=403, detail=out.get("reason") or "policy_denied")
     return out
+
+
+@router.post("/sdk/install/{object_type}")
+async def sdk_install_route(
+    request: Request,
+    object_type: str,
+    x_aiplat_scopes: Optional[str] = Header(None, alias="X-AIPLAT-SCOPES"),
+):
+    """写盘安装 Python Knowledge SDK 到 allowlist ``aiplat-sdk/aiplat/knowledge``。
+
+    Args:
+        request: FastAPI Request。
+        object_type: ObjectType id。
+        x_aiplat_scopes: 权限 scopes。
+    """
+    from core.api.core_facade import install_knowledge_sdk
+
+    permissions = _parse_scopes(x_aiplat_scopes)
+    if not permissions:
+        permissions = _parse_scopes(request.headers.get("X-AIPLAT-SCOPES"))
+
+    out = install_knowledge_sdk(object_type, permissions=permissions or None)
+    status = out.get("status")
+    if status == "not_found":
+        raise HTTPException(status_code=404, detail=out.get("reason") or "not_found")
+    if status == "policy_denied":
+        raise HTTPException(status_code=403, detail=out.get("reason") or "policy_denied")
+    if status == "error":
+        raise HTTPException(status_code=400, detail=out.get("reason") or "error")
+    return out
