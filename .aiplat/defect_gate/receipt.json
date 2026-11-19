@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T23:03:00+08:00",
+  "reviewed_at": "2026-11-19T23:14:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "6f39a9be156afd928fd530026b6db3afcd4acb224988cc5277d7c2e437b9ca74",
-  "head_sha": "f49f5ca584f9af79df033025bf32aa97b7b95ae1",
+  "diff_sha256": "87d5b035348187f6446e79d6dfdbfa912cc4bcaf976d018372333584fe4ff391",
+  "head_sha": "cf3df95b4dbb8a3fc962309de5557b0c41aae90f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N07/N22 deepen suggestions OWL + offline_owl_review ACL; evolution_runner identity still open; certified false. Local lock only."
+  "note": "EvolutionRunner identity passthrough only; empty actor at platform ingest/cron callers remains honesty residual. Not certified/UI. Local lock only."
 }
