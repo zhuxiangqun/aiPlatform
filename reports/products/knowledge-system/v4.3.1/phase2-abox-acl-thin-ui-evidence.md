@@ -45,4 +45,5 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 - N07/N22 certified 或关闭 ADR 例外
 - 完整权限产品（审批流 / 多租户策略中心 / 批量导入）
-- 删除实例 ACL / condition 选择器完整 H.1 策略编辑器
+- 删除实例 ACL → 见 `phase2-abox-acl-delete-evidence.md`
+- condition 选择器完整 H.1 策略编辑器
