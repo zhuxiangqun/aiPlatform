@@ -44,6 +44,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- 裸 `sys_wiki_retrieve` / GraphRAG 子图单独入口 / 导出全路径
+- 裸 `sys_wiki_retrieve` / GraphRAG 子图单独入口 → 见 `phase2-wiki-graphrag-field-acl-evidence.md`（本批 deepen）
+- 导出全路径（仍开放）
 - N07/N22 certified 或关闭 ADR 例外
 - 字段 ACL 管理 UI 大改

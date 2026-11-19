@@ -91,6 +91,7 @@ review_cycle: 90d
 > 2026-11-19：知识系统 v4.3.1 W6 Knowledge SDK 最小切片（ObjectType→Client 表面/源码经 Facade；L1 kb:read）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 F1 deepen 生产 SLO 遥测接线（三指标采集/快照/wiring 门经 Facade；attainment/certified 恒假）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen Wiki/KB 统一检索字段 ACL（sys_knowledge_retrieve/KB/CRAG）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-19：知识系统 v4.3.1 N07/N22 deepen 裸 Wiki + GraphRAG chunks 字段 ACL（sys_wiki_retrieve / GraphRAGRetriever / CRAG L0）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 
 ---
 

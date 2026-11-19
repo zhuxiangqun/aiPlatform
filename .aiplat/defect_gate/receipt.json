@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T19:08:26+08:00",
+  "reviewed_at": "2026-11-19T22:36:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "21e8bd8c7fdbe1f1b387d47bbfbfcd0ec3b044bae24dee5aa84d81a5d750f32d",
-  "head_sha": "d3713c58c731c21d1b97afa3ba3e487f3a587549",
+  "diff_sha256": "9890f2e64ef3d38cb0259f31eb81560b36189ca3cf1efca35c49decafe573c70",
+  "head_sha": "95db20ee935eb7916ac91a25a2b610ab32723f9a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N07/N22 Wiki/KB field ACL: soft-fail returns unfiltered; HyDE/GraphRAG early paths citation-only redaction; not full-entry certified. Local lock only."
+  "note": "N07/N22 deepen bare Wiki+GraphRAG field ACL; export path still open; certified false. clause-sync. Local lock only."
 }

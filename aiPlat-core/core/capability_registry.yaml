@@ -3957,7 +3957,7 @@ domains:
       - symbol: "_apply_field_acl_to_results"
         module: core/harness/syscalls/retrieval.py
         type: function
-        signature: "N07/N22 deepen: Wiki/KB/CRAG field ACL via field_level_security; not full-entry certified"
+        signature: "N07/N22 deepen: Wiki/KB/CRAG + bare wiki/GraphRAG chunk field ACL via field_level_security; not export/certified"
       - symbol: "slo_snapshot_route"
         module: aiPlat-platform/apps/fde/api/slo_routes.py
         type: function

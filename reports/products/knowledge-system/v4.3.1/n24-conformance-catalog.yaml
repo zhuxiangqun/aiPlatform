@@ -122,7 +122,8 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-acl-recall-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-wiki-kb-field-acl-evidence.md
-    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse + sys_knowledge_retrieve/KB/CRAG 字段 ACL；非 Wiki/KB 全入口 certified"
+      - reports/products/knowledge-system/v4.3.1/phase2-wiki-graphrag-field-acl-evidence.md
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse + retrieve/KB/CRAG + 裸 Wiki/GraphRAG chunks 字段 ACL；非导出全路径/非 certified"
   - id: N08
     level: extended
     title: 动作执行走 Policy/Approval/Audit
@@ -297,9 +298,10 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-acl-recall-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-wiki-kb-field-acl-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-wiki-graphrag-field-acl-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/object_set.py
       - aiPlat-core/core/harness/knowledge_pipeline/link_traverse.py
-    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse ABox + retrieve 字段 ACL；非 Wiki/KB 全入口 certified"
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse ABox + retrieve + 裸 Wiki/GraphRAG chunks 字段 ACL；非导出全路径/非 certified"
   - id: N23
     level: operational
     title: OCS 完整度

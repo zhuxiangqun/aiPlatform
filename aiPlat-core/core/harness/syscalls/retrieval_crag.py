@@ -197,11 +197,23 @@ async def sys_crag_retrieve(
                 top_k=_effective_top_k,
                 run_id=run_id,
                 tenant_id=tenant_id or "",
+                actor_role=actor_role or "",
+                actor_scopes=actor_scopes,
             )
             if g_result.get("mode") == "graphrag" and g_result.get("chunks"):
+                # 为什么：GraphRAG L0 早退前须对 chunks 字段 ACL，避免明文拼进 retrieved_docs
+                chunks = g_result["chunks"]
+                if actor_role or actor_scopes is not None:
+                    from core.harness.syscalls.retrieval import _apply_field_acl_to_results
+                    chunks = _apply_field_acl_to_results(
+                        chunks,
+                        actor_role=actor_role or "",
+                        actor_scopes=actor_scopes,
+                        collection_id=collection_id or domain_id,
+                    )
                 chunks_text = "\n\n".join(
                     f"[{c.get('title', '')}] {c.get('content', '')}"
-                    for c in g_result["chunks"] if c.get("content")
+                    for c in chunks if c.get("content")
                 )
                 paths = g_result.get("reasoning_paths", [])
                 if paths:

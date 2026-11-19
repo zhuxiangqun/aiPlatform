@@ -17,6 +17,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
                      top_k: int = 8, link_depth: int = 1,
                      collection_ids: List[str] = None,
                      tenant_id: str = "",
+                     actor_role: str = "",
                      actor_scopes: Optional[List[str]] = None,
                      filter_by_markings: bool = False) -> Dict[str, Any]:
     u"""Return knowledge context for a question from the Wiki knowledge graph.
@@ -28,7 +29,8 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
 
     Args:
         collection_ids: Wiki collections to search. Defaults to ["default"].
-        actor_scopes: optional scopes for marking-aware filtering.
+        actor_role: 调用方角色；透传到 wiki_retrieve 字段 ACL。
+        actor_scopes: optional scopes for marking-aware filtering / 字段 ACL。
         filter_by_markings: if True, exclude entities the actor cannot access.
 
     Returns:
@@ -64,10 +66,12 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
     except ImportError:
         pass  # noqa: optional-dependency
 
-    # Semantic search via wiki retriever
+    # Semantic search via wiki retriever（透传身份供字段 ACL）
     results = sys_wiki_retrieve(question, wiki_titles=wiki_titles, top_k=top_k,
                                  link_depth=link_depth, collection_ids=cids,
-                                 tenant_id=tenant_id)
+                                 tenant_id=tenant_id,
+                                 actor_role=actor_role,
+                                 actor_scopes=actor_scopes)
 
     # Link-graph traversed related pages for top results
     related_pages: List[Dict[str, Any]] = []
