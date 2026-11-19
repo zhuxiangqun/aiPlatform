@@ -43,6 +43,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做（后续）
 
-- SDK 生成；字段级 ACL；附录 N 全量符合
+- SDK 生成 → 见 `phase2-sdk-evidence.md`（本批另切片）
+- 字段级 ACL；附录 N 全量符合
 - ActionExecution 幂等账本 → 见 `phase2-action-execution-evidence.md`（W7）
 - 新动作合同设计（复用已有 ActionRegistry / confirm 等）

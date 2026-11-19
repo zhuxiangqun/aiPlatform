@@ -42,6 +42,7 @@ from .function_routes import router as _function_router
 from .interface_routes import router as _interface_router
 from .object_set_routes import router as _object_set_router
 from .link_traverse_routes import router as _link_traverse_router
+from .sdk_routes import router as _sdk_router
 from .scenario_routes import router as _scenario_router
 from .ontology_package_routes import router as _ontology_package_router
 from .confidence_calibration_routes import router as _confidence_calibration_router
@@ -91,6 +92,7 @@ router.include_router(_function_router, prefix="/fde")
 router.include_router(_interface_router, prefix="/fde")
 router.include_router(_object_set_router, prefix="/fde")
 router.include_router(_link_traverse_router, prefix="/fde")
+router.include_router(_sdk_router, prefix="/fde")
 router.include_router(_scenario_router, prefix="/fde")
 router.include_router(_ontology_package_router, prefix="/fde")
 router.include_router(_confidence_calibration_router, prefix="/fde")

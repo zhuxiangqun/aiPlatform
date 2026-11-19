@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3006
+total_capabilities: 3013
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 540
+    caps_count: 547
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3902,6 +3902,34 @@ domains:
         module: aiPlat-platform/apps/fde/api/knowledge_migration_routes.py
         type: function
         signature: "POST /fde/knowledge-migrations via Facade"
+      - symbol: "build_sdk_surface"
+        module: core/harness/knowledge_pipeline/sdk_generator.py
+        type: function
+        signature: "Appendix E.3 SDK surface from ObjectType; kb:read L1"
+      - symbol: "render_sdk_python"
+        module: core/harness/knowledge_pipeline/sdk_generator.py
+        type: function
+        signature: "Render Facade-only Python client source from surface"
+      - symbol: "ObjectClient"
+        module: core/harness/knowledge_pipeline/sdk_generator.py
+        type: class
+        signature: "Runtime ObjectClient; query/get/execute via CoreFacade"
+      - symbol: "create_object_client"
+        module: core/harness/knowledge_pipeline/sdk_generator.py
+        type: function
+        signature: "Build surface + ObjectClient or policy_denied"
+      - symbol: "generate_knowledge_sdk"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: generate Knowledge SDK python source"
+      - symbol: "build_knowledge_sdk_surface"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: build Knowledge SDK surface"
+      - symbol: "list_sdk_object_types"
+        module: core/harness/knowledge_pipeline/sdk_generator.py
+        type: function
+        signature: "List ObjectType ids eligible for Knowledge SDK; kb:read L1"
       - symbol: "traverse_links_route"
         module: aiPlat-platform/apps/fde/api/link_traverse_routes.py
         type: function

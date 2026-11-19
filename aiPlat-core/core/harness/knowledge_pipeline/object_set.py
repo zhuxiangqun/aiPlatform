@@ -2,7 +2,7 @@
 
 职责：按 object_type + filter 从 FactLedger 组装对象集合视图；
 经 ``role`` 应用实例级拒绝与字段脱敏（附录 H.1）。
-非目标：不实现 SDK、写路径、Scenario/Package、Wiki/KB 全入口字段 ACL。
+非目标：不实现写路径、Scenario/Package、Wiki/KB 全入口字段 ACL（SDK 见 sdk_generator）。
 """
 from __future__ import annotations
 
