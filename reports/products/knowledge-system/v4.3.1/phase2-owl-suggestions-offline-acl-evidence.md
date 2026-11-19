@@ -46,4 +46,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 - N07/N22 certified 或关闭 ADR 例外
 - 字段 ACL 管理 UI 大改
-- `evolution_runner` 自动落盘路径注入运行时身份
+- `evolution_runner` 自动落盘路径注入运行时身份 → 见 `phase2-evolution-runner-acl-evidence.md`（本批 deepen）
