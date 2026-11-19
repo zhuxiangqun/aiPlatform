@@ -40,7 +40,7 @@ DEFAULT_SLO_TARGETS: Dict[str, Dict[str, Any]] = {
 _METRIC_IDS = tuple(DEFAULT_SLO_TARGETS.keys())
 
 
-def default_slo_db_path() -> str:
+def _default_slo_db_path() -> str:
     """解析 SLO 样本库路径（尊重 AIPLAT_HOME / 测试隔离）。
 
     Returns:
@@ -58,7 +58,7 @@ def default_slo_db_path() -> str:
 
 
 def _connect(db_path: Optional[str] = None) -> sqlite3.Connection:
-    path = db_path or default_slo_db_path()
+    path = db_path or _default_slo_db_path()
     parent = os.path.dirname(os.path.abspath(path))
     if parent:
         os.makedirs(parent, exist_ok=True)
@@ -480,8 +480,7 @@ def evaluate_slo_wiring_gate(
 
 __all__ = [
     "DEFAULT_SLO_TARGETS",
-    "default_slo_db_path",
-    "record_slo_sample",
+        "record_slo_sample",
     "get_slo_snapshot",
     "evaluate_slo_wiring_gate",
 ]
