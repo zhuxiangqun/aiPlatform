@@ -3325,7 +3325,15 @@ async def documents_ingest(request: Request):
 
         if doc_id:
 
-            _asyncio.create_task(_auto_wiki_update(doc_id, str(file_path)))
+            # 为什么：ingest 有 Request identity，须透传到 wiki_auto_update→EvolutionRunner ACL
+            _asyncio.create_task(
+                _auto_wiki_update(
+                    doc_id,
+                    str(file_path),
+                    actor_role=str(identity.actor_role or ""),
+                    actor_scopes=list(identity.scopes or []),
+                )
+            )
 
     except Exception as e:
 
@@ -3435,6 +3443,7 @@ async def kb_watch_directory(request: Request):
 
     watch_id = str(uuid.uuid4())[:12]
 
+    # 为什么：watch 轮询无 Request；启动时捕获身份供后续 wiki_auto_update ACL
     result = watch_directory(
 
         tenant_id=identity.tenant_id,
@@ -3451,6 +3460,10 @@ async def kb_watch_directory(request: Request):
 
         kind=kind,
 
+        actor_role=str(identity.actor_role or ""),
+
+        actor_scopes=list(identity.scopes or []),
+
     )
 
     logging.getLogger("aiplat.platform").info(
@@ -3465,7 +3478,13 @@ async def kb_watch_directory(request: Request):
 
 
 
-async def _auto_wiki_update(doc_id: str, file_path: str):
+async def _auto_wiki_update(
+    doc_id: str,
+    file_path: str,
+    *,
+    actor_role: str = "",
+    actor_scopes: Optional[List[str]] = None,
+):
 
     u"""Background task: convert a newly ingested KB document into Wiki pages.
 
@@ -3473,6 +3492,11 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
 
     Delegates all wiki operations through CoreFacade (CLAUDE.md §5.1 compliance).
 
+    Args:
+        doc_id: 文档标识。
+        file_path: 本地文件路径。
+        actor_role: 调用方角色；透传到 wiki_auto_update → EvolutionRunner ACL。
+        actor_scopes: 调用方 scopes；透传到 wiki_auto_update → EvolutionRunner ACL。
     """
 
     try:
@@ -3481,7 +3505,12 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
 
         from core.api.facades.service_facade import llm_generate
 
-        result = await wiki_auto_update(doc_id, file_path)
+        result = await wiki_auto_update(
+            doc_id,
+            file_path,
+            actor_role=actor_role or "",
+            actor_scopes=actor_scopes,
+        )
 
     except Exception as e:
 
@@ -7750,20 +7779,33 @@ async def vault_index_status(vault_id: str, tenant_id: str = DomainRouter.defaul
 
 @app.post("/platform/kb/vault/{vault_id}/index/start")
 
-async def vault_index_start(vault_id: str, tenant_id: str = DomainRouter.default_tenant(), collection_id: str = DomainRouter.default_collection()):
+async def vault_index_start(
+    request: Request,
+    vault_id: str,
+    tenant_id: str = DomainRouter.default_tenant(),
+    collection_id: str = DomainRouter.default_collection(),
+):
 
     """vault_index_start。
 
     Args:
+        request: FastAPI Request（捕获启动时身份）。
         vault_id: vault 标识。
         tenant_id: 租户 ID。
         collection_id: collection 标识。
     """
     from kb.service import vault_start_indexer
 
-    return vault_start_indexer(vault_path=_resolve_vault_path(vault_id), tenant_id=tenant_id,
-
-                               collection_id=collection_id)
+    identity = _resolve_identity(request)
+    # 为什么：indexer auto_wiki 轮询无 Request；启动时捕获身份
+    return vault_start_indexer(
+        vault_path=_resolve_vault_path(vault_id),
+        tenant_id=tenant_id,
+        vault_id=vault_id,
+        collection_id=collection_id,
+        actor_role=str(identity.actor_role or ""),
+        actor_scopes=list(identity.scopes or []),
+    )
 
 
 
@@ -7789,14 +7831,23 @@ async def vault_index_stop(vault_id: str, tenant_id: str = DomainRouter.default_
 
 @app.post("/platform/kb/vault/wiki")
 
-async def vault_send_to_wiki(body: dict):
+async def vault_send_to_wiki(body: dict, request: Request):
 
     """vault_send_to_wiki。
 
     Args:
-        body: 请求体。
+        body: 请求体；可含 actor_role / actor_scopes。
+        request: FastAPI Request（解析调用方身份）。
     """
     from kb.service import vault_to_wiki
+
+    identity = _resolve_identity(request)
+    scopes = body.get("actor_scopes")
+    if isinstance(scopes, str):
+        scopes = [s.strip() for s in scopes.split(",") if s.strip()]
+    if not isinstance(scopes, list):
+        scopes = list(identity.scopes or [])
+    role = str(body.get("actor_role") or identity.actor_role or "")
 
     return await vault_to_wiki(file_path=body["file_path"],
 
@@ -7804,7 +7855,11 @@ async def vault_send_to_wiki(body: dict):
 
                                vault_id=body.get("vault_id", ""),
 
-                               tenant_id=body.get("tenant_id") or DomainRouter.default_tenant())
+                               tenant_id=body.get("tenant_id") or DomainRouter.default_tenant(),
+
+                               actor_role=role,
+
+                               actor_scopes=scopes)
 
 
 
