@@ -10,7 +10,8 @@ pilot_domain: lock-service
 # Phase 2 / Core cert path 证据
 
 > 实施权威：白皮书 §16.1 / 附录 N.1–N.2 / 实施方案 §1.1·§14.1。  
-> **未宣称** 试点已 certified（`pilot-core-approval-record.pending.json` 仍为 pending）。
+> 试点 Core：`pilot_certified=true`（批准人 **朱鸿林**，`pilot-core-approval-record.approved.json`）。  
+> **未宣称** 附录 N 24/24 / Extended / Operational；全量 `certified` 仍 false。
 
 ## 检查表
 
@@ -22,8 +23,9 @@ pilot_domain: lock-service
 | N09 探针冻结 | pass | `n09_core_probe_freeze: true` |
 | `core_ready` 门 | pass | `evaluate_core_ready_gate` |
 | FDE HTTP 接线 | pass | `GET …/conformance-pack/core-ready` / `pilot-core-cert` |
-| 无批准时 pilot_certified 恒 false | pass | pending 记录 + honesty 测 |
-| certified 不自动置真 | pass | honesty |
+| 无批准时 pilot_certified 恒 false | pass | 缺路径 / superseded pending + honesty 测 |
+| 有非作者批准时 pilot_certified | pass | `pilot-core-approval-record.approved.json`（朱鸿林） |
+| certified 不自动置真 | pass | honesty（全量 certified 仍 false） |
 
 ## 命令
 
@@ -35,6 +37,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- 非作者已签字的试点 Core 批准（仍 pending）
-- Extended / Operational 全量
-- 自动 `certified=true`（永久禁止无批准）
+- Extended / Operational 全量 / 附录 N 24/24
+- 自动 `certified=true`（全量徽章仍禁止无独立全量批准）

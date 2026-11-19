@@ -1,0 +1,18 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "pilot lock-service Core certification (附录 N.2)",
+  "status": "approved",
+  "decision": "conditional",
+  "approvers": [
+    {
+      "name": "朱鸿林",
+      "role": "Security",
+      "is_author": false
+    }
+  ],
+  "approval_date": "2026-11-19",
+  "effective_date": "2026-11-19",
+  "exceptions": [],
+  "record_id": "PILOT-CORE-lock-service-2026-11-19",
+  "note": "Non-author approver recorded per operator instruction (朱鸿林). Conditional: Core-scoped exists + core_ready only; not 24/24 / Extended / Operational."
+}

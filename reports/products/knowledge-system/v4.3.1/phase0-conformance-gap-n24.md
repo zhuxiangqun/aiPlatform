@@ -51,5 +51,5 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | partial | 12 | Extended 6 + Operational 6 |
 | missing | 0 | — |
 
-**目标等级（记录）**：Core — `core_ready` 结构门可判定；**签字**仍依赖 `pilot-core-approval-record.pending.json`（未宣称已认证）。  
-**禁止话术**：不得因 Core-scoped exists / `core_ready` 宣称「附录 N 已符合」或「试点 Core 已签字认证」。
+**目标等级（记录）**：Core — `core_ready` + 非作者批准（朱鸿林，`pilot-core-approval-record.approved.json`）→ 允许 `pilot_certified`。  
+**禁止话术**：不得因试点 Core / `pilot_certified` 宣称「附录 N 24/24」或 Extended/Operational 已认证。

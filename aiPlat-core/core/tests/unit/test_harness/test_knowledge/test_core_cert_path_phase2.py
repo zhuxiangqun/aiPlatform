@@ -38,7 +38,7 @@ def test_pilot_core_cert_requires_approval(tmp_path):
     assert g0["pilot_certified"] is False
     assert "approval_record_path_required" in g0["issues"]
 
-    # pending 记录 → 不徽章
+    # superseded/pending 记录 → 不徽章
     pending = (
         Path(cp._repo_root())
         / "reports/products/knowledge-system/v4.3.1/pilot-core-approval-record.pending.json"
@@ -48,15 +48,27 @@ def test_pilot_core_cert_requires_approval(tmp_path):
     assert g1["pilot_certified"] is False
     assert g1["certified"] is False
 
-    # 有效非作者批准 → 允许 pilot_certified
+    # 仓内已批准记录（非作者 朱鸿林）→ 允许 pilot_certified
+    approved = (
+        Path(cp._repo_root())
+        / "reports/products/knowledge-system/v4.3.1/pilot-core-approval-record.approved.json"
+    )
+    g2 = cp.evaluate_pilot_core_certification(approval_record_path=str(approved))
+    assert g2["pass"] is True, g2
+    assert g2["pilot_certified"] is True
+    assert g2["core_claim"] is True
+    # 全量 certified 仍 false
+    assert g2["certified"] is False
+    assert g2["n24_full_conformance"] is False
+
+    # 合成记录仍可徽章（回归）
     ok = {
         "standard_version": "4.3.1",
         "scope": "pilot lock-service Core",
         "status": "approved",
         "decision": "conditional",
         "approvers": [
-            {"name": "Reviewer A", "role": "Security", "is_author": False},
-            {"name": "Author", "role": "Architecture", "is_author": True},
+            {"name": "Reviewer A", "role": "Reviewer", "is_author": False},
         ],
         "effective_date": "2026-11-19",
         "exceptions": [],
@@ -64,13 +76,9 @@ def test_pilot_core_cert_requires_approval(tmp_path):
     }
     path = tmp_path / "pilot-core-approved.json"
     path.write_text(json.dumps(ok), encoding="utf-8")
-    g2 = cp.evaluate_pilot_core_certification(approval_record_path=str(path))
-    assert g2["pass"] is True, g2
-    assert g2["pilot_certified"] is True
-    assert g2["core_claim"] is True
-    # 全量 certified 仍 false
-    assert g2["certified"] is False
-    assert g2["n24_full_conformance"] is False
+    g3 = cp.evaluate_pilot_core_certification(approval_record_path=str(path))
+    assert g3["pilot_certified"] is True
+    assert g3["certified"] is False
 
 
 def test_core_ready_fails_when_core_item_partial(tmp_path):
