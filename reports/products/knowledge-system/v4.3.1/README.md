@@ -58,6 +58,7 @@ authority: supporting
 | [phase2-abox-acl-condition-ops-evidence.md](./phase2-abox-acl-condition-ops-evidence.md) | N07/N22 deepen：ABox ACL condition $eq/$ne/$in（非表达式语言 / 非 certified） |
 | [phase2-abox-acl-masked-props-evidence.md](./phase2-abox-acl-masked-props-evidence.md) | N07/N22 deepen：ABox ACL H.1 masked_properties + 只读投影（非完整策略编辑器） |
 | [phase2-abox-acl-h1-apply-evidence.md](./phase2-abox-acl-h1-apply-evidence.md) | N07/N22 deepen：ABox ACL H.1 薄导入 apply_h1_policy（非完整策略编辑器） |
+| [phase2-abox-acl-h1-list-evidence.md](./phase2-abox-acl-h1-list-evidence.md) | N07/N22 deepen：ABox ACL H.1 薄导出 list_h1_policies（非完整策略编辑器） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |

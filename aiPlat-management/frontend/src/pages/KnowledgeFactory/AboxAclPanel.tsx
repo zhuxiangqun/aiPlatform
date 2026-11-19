@@ -68,6 +68,8 @@ const AboxAclPanel: React.FC = () => {
   const [h1Raw, setH1Raw] = useState(
     '{\n  "effect": "deny",\n  "principals": ["role:viewer"],\n  "actions": ["read"],\n  "condition": {"status": "open"},\n  "masked_properties": ["ssn"]\n}',
   );
+  const [h1Policies, setH1Policies] = useState<Record<string, unknown>[]>([]);
+  const [h1ListOut, setH1ListOut] = useState('');
 
   const reload = useCallback(async () => {
     if (!domainId.trim()) return;
@@ -79,10 +81,15 @@ const AboxAclPanel: React.FC = () => {
       const acl = body.acl || {};
       setEntities((acl.entities as Record<string, EntityEntry>) || {});
       setFields((acl.fields as Record<string, FieldEntry>) || {});
+      const policies = Array.isArray(body.h1_policies)
+        ? (body.h1_policies as Record<string, unknown>[])
+        : [];
+      setH1Policies(policies);
       setCertified(Boolean(body.certified));
     } catch (e: unknown) {
       setEntities({});
       setFields({});
+      setH1Policies([]);
       toast?.error?.((e as Error)?.message || '加载失败');
     } finally {
       setLoading(false);
@@ -215,6 +222,27 @@ const AboxAclPanel: React.FC = () => {
       await reload();
     } catch (e: unknown) {
       toast?.error?.((e as Error)?.message || '删除失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadH1List = async () => {
+    if (!domainId.trim()) return;
+    setLoading(true);
+    try {
+      const r = await fetch(API(`/graph/acl/${encodeURIComponent(domainId.trim())}/h1`));
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(body.detail));
+      const policies = Array.isArray(body.h1_policies)
+        ? (body.h1_policies as Record<string, unknown>[])
+        : [];
+      setH1Policies(policies);
+      setH1ListOut(JSON.stringify(body, null, 2));
+      if (body.certified) toast?.error?.('异常：H.1 列表返回 certified=true');
+    } catch (e: unknown) {
+      setH1ListOut('');
+      toast?.error?.((e as Error)?.message || 'H.1 列表失败');
     } finally {
       setLoading(false);
     }
@@ -486,6 +514,34 @@ const AboxAclPanel: React.FC = () => {
               </ul>
             )}
           </div>
+        </div>
+
+        <div className="border-t border-gray-800 pt-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-[12px] text-gray-300">
+              H.1 策略列表（只读投影 · {h1Policies.length} · 非完整策略编辑器 · 非 certified）
+            </div>
+            <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={() => void loadH1List()}>
+              刷新 H.1 列表
+            </Button>
+          </div>
+          {h1Policies.length === 0 ? (
+            <div className="text-[11px] text-gray-500">暂无 H.1 投影</div>
+          ) : (
+            <ul className="space-y-1.5 max-h-32 overflow-auto text-[11px] font-mono text-gray-400">
+              {h1Policies.map((p, i) => (
+                <li key={`${String(p.resource || i)}-${i}`} className="rounded border border-gray-800 bg-gray-950/50 px-2 py-1.5">
+                  {String(p.resource || '?')} · {String(p.effect || '')} ·{' '}
+                  {JSON.stringify(p.principals || [])}
+                </li>
+              ))}
+            </ul>
+          )}
+          {h1ListOut ? (
+            <pre className="max-h-32 overflow-auto rounded border border-gray-800 bg-gray-950/70 p-2 text-[11px] text-gray-400 whitespace-pre-wrap">
+              {h1ListOut}
+            </pre>
+          ) : null}
         </div>
 
         <div className="border-t border-gray-800 pt-3 space-y-2">

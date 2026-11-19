@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3034
+total_capabilities: 3036
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 568
+    caps_count: 570
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4247,6 +4247,14 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "CoreFacade: apply H.1 policy onto ABox entity ACL"
+      - symbol: "list_h1_policies"
+        module: core/policy/graph_abox_acl.py
+        type: function
+        signature: "domain → list of H.1 policy projections (certified=false)"
+      - symbol: "list_graph_h1_policies"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: list domain ABox ACL as H.1 projections"
       - symbol: "resolve_abox_actor_role"
         module: core/policy/graph_abox_acl.py
         type: function
