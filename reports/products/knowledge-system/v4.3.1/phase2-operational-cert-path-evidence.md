@@ -12,7 +12,7 @@ pilot_domain: lock-service
 > 实施权威：附录 N.4 / 实施方案 §14.3。  
 > 前置：Core（朱鸿林）+ Extended（朱莹）已等级徽章。  
 > Operational：`pilot_operational_certified=true`（非作者 **朱莹** 已复核确认）。  
-> **未宣称** 全量 `certified` / 24/24。
+> 后续：全量见 `phase2-full-cert-path-evidence.md`；本门不自动置全量 `certified`。
 
 ## 检查表
 
@@ -23,7 +23,7 @@ pilot_domain: lock-service
 | FDE HTTP | pass | `/operational-ready` `/pilot-operational-cert` |
 | 无批准时徽章 false | pass | pending 记录 |
 | 有非作者批准时徽章 | pass | `pilot-operational-approval-record.approved.json`（朱莹） |
-| 全量 certified 恒 false | pass | honesty |
+| 本门不自动置全量 certified | pass | honesty |
 
 ## 命令
 

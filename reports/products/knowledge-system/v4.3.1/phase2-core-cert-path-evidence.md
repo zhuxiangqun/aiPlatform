@@ -11,7 +11,7 @@ pilot_domain: lock-service
 
 > 实施权威：白皮书 §16.1 / 附录 N.1–N.2 / 实施方案 §1.1·§14.1。  
 > 试点 Core：`pilot_certified=true`（非作者 **朱鸿林** 已复核确认，`pilot-core-approval-record.approved.json`）。  
-> **未宣称** 附录 N 24/24 / Extended / Operational；全量 `certified` 仍 false。
+> 后续：Extended/Operational/全量见各自证据；全量 `certified` 由独立全量批准置真（朱向群，conditional）。
 
 ## 检查表
 
@@ -25,7 +25,7 @@ pilot_domain: lock-service
 | FDE HTTP 接线 | pass | `GET …/conformance-pack/core-ready` / `pilot-core-cert` |
 | 无批准时 pilot_certified 恒 false | pass | 缺路径 / superseded pending + honesty 测 |
 | 有非作者批准时 pilot_certified | pass | `pilot-core-approval-record.approved.json`（朱鸿林） |
-| certified 不自动置真 | pass | honesty（全量 certified 仍 false） |
+| 本门不自动置全量 certified | pass | honesty（全量须独立批准） |
 
 ## 命令
 

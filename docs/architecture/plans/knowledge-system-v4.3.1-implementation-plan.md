@@ -670,7 +670,7 @@ operational_ready 结构门 pass
 全量 certified 仍 false（另需全量人工认证）
 ```
 
-（2026-11-19：Operational 徽章已开；全量 certified 仍另开。）
+（2026-11-19：Operational 徽章已开；全量见 §14.4。）
 
 ### 14.4 近端 DoD — 全量 certified（三级徽章后）
 

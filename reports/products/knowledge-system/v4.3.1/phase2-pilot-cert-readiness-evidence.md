@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / 试点认证就绪（Batch E4）证据
 
 > 实施权威：选项 1+2 — N01/N06/N09 加深后的试点就绪汇总。  
-> **未宣称** 试点 certified / Core 认证 / 附录 N 24/24；`pilot_certified` 恒 false。
+> 本包结构门仍不自动徽章；等级/全量徽章见 `phase2-*-cert-path-evidence.md`（2026-11-19 已闭合）。
 
 ## 检查表
 
@@ -19,7 +19,7 @@ pilot_domain: lock-service
 | N01/N06/N09 门槛均 ok | pass | `item_gates` |
 | catalog 焦点项证据路径齐 | pass | `focus_evidence_ok` |
 | 就绪门 pass ≠ certified | pass | honesty 断言 |
-| pilot_certified 恒 false | pass | pack / gate 字段 |
+| 本包不自动置徽章 | pass | pack / gate 字段（徽章另走批准） |
 
 ## 命令
 

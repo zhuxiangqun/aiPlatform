@@ -12,7 +12,7 @@ pilot_domain: lock-service
 > 实施权威：附录 N.3 / 实施方案 §14.2。  
 > 前置：试点 Core 已 `pilot_certified`（朱鸿林）。  
 > Extended：`pilot_extended_certified=true`（非作者 **朱莹** 已复核确认）。  
-> **未宣称** 24/24 / Operational；全量 `certified` 仍 false。
+> 后续：Operational/全量见各自证据；本门不自动置全量 `certified`。
 
 ## 检查表
 
@@ -23,7 +23,7 @@ pilot_domain: lock-service
 | FDE HTTP | pass | `/conformance-pack/extended-ready` `/pilot-extended-cert` |
 | 无批准时徽章 false | pass | superseded pending |
 | 有非作者批准时徽章 | pass | `pilot-extended-approval-record.approved.json`（朱莹） |
-| 全量 certified 恒 false | pass | honesty |
+| 本门不自动置全量 certified | pass | honesty |
 
 ## 命令
 
