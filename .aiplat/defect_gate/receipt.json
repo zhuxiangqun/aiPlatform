@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T10:23:00+08:00",
+  "reviewed_at": "2026-11-19T10:56:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "24cbea828c2066fc90e16b412846fcef02997c1b73bbf7b7a709c9c92706fded",
-  "head_sha": "fcabf9b89e5fc281a3f056782e7a4be661f7d5b9",
+  "diff_sha256": "641078c5a6efc787c0944508a4585eb876f67f3da582a4bbd455d778af43438d",
+  "head_sha": "eb35009c7e32b231aab938bc0298cbf447298c4b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K70: mop leftover wiki_* collection / builder module_id / gateway channel / tenant·domain onto existing DomainRouter.default_*. Five checks clean. Honesty: not N09 certified; purpose=\"default\" intentionally deferred."
+  "note": "Core cert path: level map + core_ready + approval-gated pilot_certified. Honesty: pending approval keeps pilot_certified false; certified never auto. N09 mop frozen."
 }
