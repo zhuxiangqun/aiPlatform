@@ -9,6 +9,7 @@ This module provides the declarative config layer to wire the three resource typ
 together under one profile name.
 """
 from __future__ import annotations
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
@@ -118,8 +119,11 @@ class ProfileManager:
         for cfg in self._profiles.values():
             if cfg.default:
                 return cfg
-        return ProfileConfig(name="default", namespace="default",
-                             description="Implicit default profile")
+        return ProfileConfig(
+            name=DomainRouter.default_profile(),
+            namespace=DomainRouter.default_session(),
+            description="Implicit default profile",
+        )
 
     def get_mcp_servers(self, name: str) -> List[str]:
         """Return MCP server IDs scoped to a profile (per-profile MCP isolation, A2.4 L3→L4).

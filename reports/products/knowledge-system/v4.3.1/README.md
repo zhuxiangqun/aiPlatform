@@ -124,5 +124,6 @@ authority: supporting
 | [phase2-cross-tenant-domain-runtime-fallbacks-evidence.md](./phase2-cross-tenant-domain-runtime-fallbacks-evidence.md) | Batch K63 N09 domain_id 运行时回退（非 certified） |
 | [phase2-cross-tenant-view-runtime-fallbacks-evidence.md](./phase2-cross-tenant-view-runtime-fallbacks-evidence.md) | Batch K64 N09 view_name 运行时回退（非 certified） |
 | [phase2-cross-tenant-workspace-runtime-fallbacks-evidence.md](./phase2-cross-tenant-workspace-runtime-fallbacks-evidence.md) | Batch K65 N09 workspace_id 运行时回退（非 certified） |
+| [phase2-cross-tenant-profile-tenant-env-fallbacks-evidence.md](./phase2-cross-tenant-profile-tenant-env-fallbacks-evidence.md) | Batch K66 N09 profile + AIPLAT_DEFAULT_TENANT 运行时回退（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

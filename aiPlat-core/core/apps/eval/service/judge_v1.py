@@ -195,7 +195,12 @@ def run_e4_calibration(
         # For ECE: treat deterministic F1 as confidence; correctness = pass threshold
         ece_pairs.append((float(last_result["confidence"]), bool(last_result["pass"])))
         tags = task.get("tags") or []
-        profile = next((t for t in tags if t not in ("code-review-gold",)), "default")
+        from core.harness.knowledge.domain_router import DomainRouter
+
+        profile = next(
+            (t for t in tags if t not in ("code-review-gold",)),
+            DomainRouter.default_profile(),
+        )
         profile_scores.setdefault(str(profile), []).append(mean_score)
         per_task.append(
             {

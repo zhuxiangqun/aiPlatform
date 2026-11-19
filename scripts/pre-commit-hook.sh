@@ -55,11 +55,14 @@ if [ -n "$NEW_CORE_ROUTERS" ]; then
 fi
 
 # ── Step 1.8: Detect new hardcoded business strings in harness (advisory) ──
-# 目标：抓住调用点字面量（如 GraphIndex.load("fde-delivery")）。
+# 目标：抓住 harness/engine 调用点字面量（如 GraphIndex.load("fde-delivery")）。
+# 范围：仅 core/harness + core/engine（apps/eval 等业务 tag 如 code-review-gold 不在此列）。
 # 豁免：DomainRouter.PLATFORM_*_DOMAIN SSOT 常量定义、测试文件。
 # 不把 SSOT 收敛点误报成「又引入了域名硬编码」。
 NEW_HARNESS_HARDCODES=$(
-  git diff --cached -U0 --diff-filter=AM -- '*.py' \
+  git diff --cached -U0 --diff-filter=AM -- \
+    'aiPlat-core/core/harness/**/*.py' \
+    'aiPlat-core/core/engine/**/*.py' \
     ':(exclude)**/tests/**' \
     ':(exclude)**/test_*.py' \
     ':(exclude)**/*_test.py' \

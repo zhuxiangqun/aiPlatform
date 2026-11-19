@@ -37,6 +37,8 @@ SECTION_ALIASES = {
     "extension-and-learning": "## 十一、扩展与学习",
     "gate-system": "## 十二、Gate 系统",
     "evaluation-system": "## 十三、评估系统",
+    # diagnosis-system（registry 十三-b）暂挂评估系统表，避免无映射永久漂移告警
+    "diagnosis-system": "## 十三、评估系统",
     "mcp-protocol": "## 十四、MCP 协议",
     "a2a-protocol": "## 十四附、A2A 协议 (Agent-to-Agent)",
     "document-intelligence": "## 十五、文档智能",
