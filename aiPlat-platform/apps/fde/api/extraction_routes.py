@@ -4,6 +4,8 @@ Mounted at /api/platform/apps/fde/extract
 """
 from __future__ import annotations
 
+from core.api.core_facade import DomainRouter
+
 import logging
 from typing import Any, Dict, Optional
 
@@ -504,7 +506,7 @@ async def get_entity_context(body: Dict[str, Any]):
         body: 请求体。
     """
     entity_id = str(body.get("entity_id", ""))
-    domain_id = str(body.get("domain_id", "default"))
+    domain_id = str(body.get("domain_id") or DomainRouter.default_graph_domain())
     action_context = str(body.get("context", ""))
 
     if not entity_id:

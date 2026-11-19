@@ -758,7 +758,7 @@ def write_extraction_to_graph_index(
         }
 
     GraphIndex._loaded_instances.clear()
-    did = (domain_id or "").strip() or "default"
+    did = (domain_id or "").strip() or DomainRouter.default_graph_domain()
     g = GraphIndex.load(did, tenant_id=tid)
 
     created: List[str] = []
@@ -981,7 +981,7 @@ class PendingExtractionStore:
                 return {"ok": False, "extraction_id": extraction_id, "reason": "update_failed"}
 
         row_d = dict(row)
-        domain_id = str(row_d.get("domain_id") or "default")
+        domain_id = str(row_d.get("domain_id") or DomainRouter.default_graph_domain())
         source_doc = str(row_d.get("source_doc") or "extract-confirm")
 
         def _parse_json_list(raw: Any) -> List[Any]:
@@ -1039,7 +1039,7 @@ class PendingExtractionStore:
 
     async def _enqueue_ontology_proposal(self, row: Dict[str, Any]) -> str:
         """Create a draft VersionedOntologyStore proposal from confirmed extraction entities."""
-        domain_id = str(row.get("domain_id") or "default")
+        domain_id = str(row.get("domain_id") or DomainRouter.default_graph_domain())
         entities_raw = row.get("entities_json") or row.get("entities") or "[]"
         if isinstance(entities_raw, str):
             import json as _json

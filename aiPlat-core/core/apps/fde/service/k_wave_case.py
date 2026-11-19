@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 from typing import Any, Dict
 
@@ -91,7 +93,7 @@ def record_case_from_tool_streak(
     try:
         from core.api.core_facade import OntologyCaseStore
 
-        did = (domain_id or "").strip() or "default"
+        did = (domain_id or "").strip() or DomainRouter.default_graph_domain()
         tool = (tool_name or "").strip() or "tool"
         err = (error_code or "").strip() or "error"
         store = OntologyCaseStore(did)

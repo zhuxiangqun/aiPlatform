@@ -15,6 +15,8 @@ Usage:
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -58,7 +60,7 @@ async def execute_decision_actions(
             "urgency": urgency,
             "severity": decision.get("severity", "normal"),
             "entity_id": ctx.get("entity_id", ""),
-            "domain_id": ctx.get("domain_id", "default"),
+            "domain_id": ctx.get("domain_id") or DomainRouter.default_graph_domain(),
             "can_continue": decision.get("can_continue", True),
             "decision_rationale": decision.get("decision_rationale", ""),
             "timestamp": ctx.get("timestamp", ""),

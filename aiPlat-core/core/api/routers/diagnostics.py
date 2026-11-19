@@ -3817,5 +3817,5 @@ async def run_cross_validation(payload: dict):
     """
     from core.api.core_facade import cross_validation_verify
     output = (payload or {}).get("output", {})
-    domain_id = str((payload or {}).get("domain_id", "default"))
+    domain_id = str((payload or {}).get("domain_id") or DomainRouter.default_graph_domain())
     return cross_validation_verify(output, domain_id=domain_id)

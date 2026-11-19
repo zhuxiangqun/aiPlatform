@@ -275,7 +275,7 @@ class ExperienceVectorCache:
                 for e in data.get("entries", [])[-500:]:  # 最多加载 500 条
                     self._entries[e["id"]] = ExperienceEntry(
                         id=e["id"], run_id=e["run_id"], summary=e["summary"],
-                        label=e.get("label", ""), domain_id=e.get("domain_id", "default"),
+                        label=e.get("label", ""), domain_id=e.get("domain_id") or DomainRouter.default_graph_domain(),
                         tags=e.get("tags", []), created_at=e.get("created_at", time.time()),
                     )
         except Exception as e:

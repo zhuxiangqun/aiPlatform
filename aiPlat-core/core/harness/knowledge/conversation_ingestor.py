@@ -12,6 +12,8 @@ ConversationIngestor — 对话→Wiki 自动管线 (CodeAlmanac sync 对齐)
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
@@ -275,7 +277,7 @@ class ConversationIngestor:
 
         # 1. 平台级 Wiki
         try:
-            wiki_dir = _Path(get_aiplat_data_dir(f"wiki/collections/{domain_id or 'default'}"))
+            wiki_dir = _Path(get_aiplat_data_dir(f"wiki/collections/{domain_id or DomainRouter.default_graph_domain()}"))
             wiki_dir.mkdir(parents=True, exist_ok=True)
             page_path = wiki_dir / f"{topic_slug}.md"
 

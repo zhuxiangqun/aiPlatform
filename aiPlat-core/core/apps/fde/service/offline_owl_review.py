@@ -6,6 +6,8 @@ False-green ban (same as graph_validate):
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
@@ -38,7 +40,7 @@ def review_domain_owl_offline(domain_id: str) -> Dict[str, Any]:
     Args:
         domain_id: domain 标识。
     """
-    did = (domain_id or "").strip() or "default"
+    did = (domain_id or "").strip() or DomainRouter.default_graph_domain()
     result: Dict[str, Any] = {
         "domain_id": did,
         "status": "unchecked",

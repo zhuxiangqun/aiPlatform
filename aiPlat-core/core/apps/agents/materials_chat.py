@@ -755,7 +755,7 @@ class MaterialsChatAgent(BaseAgent):
                         answer=str(answer_text)[:5000],
                         retrieved_context=[{"text": c.get("text", str(c)[:300])} for c in (citations or [])[:10]],
                         run_id=str(run_id or ""),
-                        domain_id=str(domain_id or "default"),
+                        domain_id=str(domain_id or DomainRouter.default_graph_domain()),
                     )
                     meta = {
                         "hallucination_risk": round(report.hallucination_risk, 3),

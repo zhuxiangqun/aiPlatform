@@ -5,6 +5,8 @@ callers that pass those flags. This path always turns them off.
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
@@ -34,7 +36,7 @@ def live_yaml_path(domain_id: str) -> Path:
     Args:
         domain_id: domain 标识。
     """
-    did = (domain_id or "").strip() or "default"
+    did = (domain_id or "").strip() or DomainRouter.default_graph_domain()
     return _home() / "ontologies" / f"{did}.yaml"
 
 
@@ -140,7 +142,7 @@ async def confirm_extraction_k1(
     pending = await _load_row(store, eid)
     if not pending:
         return {"ok": False, "extraction_id": eid, "reason": "not_found"}
-    domain_id = str(pending.get("domain_id") or "default")
+    domain_id = str(pending.get("domain_id") or DomainRouter.default_graph_domain())
     before = live_yaml_hash(domain_id)
 
     receipt = await store.confirm(eid, enqueue_proposal=False, write_graph=False)

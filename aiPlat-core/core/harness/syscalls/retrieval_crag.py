@@ -130,7 +130,7 @@ async def sys_crag_retrieve(
     # ── Cache lookup (transparent at syscall level, v3.1) ──
     try:
         from core.harness.knowledge.semantic_cache_hook import try_cache_hit
-        cache_id = collection_id if collection_id != "default" else domain_id or "default"
+        cache_id = collection_id if collection_id != DomainRouter.default_collection() else domain_id or DomainRouter.default_graph_domain()
         cached = await try_cache_hit(query, cache_id)
         if cached:
             text = cached.get("text", "") or cached.get("llm_answer", "")

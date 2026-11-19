@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T09:11:11+08:00",
+  "reviewed_at": "2026-11-19T09:29:23+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "895f3482814d3904284290a488e1c01a3861a8bf851ae238e6d8b15ca0642f91",
-  "head_sha": "fc32e3a40605382f5bd6d7c3de2ec26c575fba0a",
+  "diff_sha256": "ee15e18e13d9f4460d92878f88ec234538ada4708723a9dd5f3ec43f1b42b009",
+  "head_sha": "5c67274002fbe143df0998a04e76aba0d90db1dd",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K62: collection_id runtime fallbacks → default_collection(); MemoryManager namespace → default_session(). Five checks clean. Honesty: not N09 certified; domain_id/workspace_id/view_name/AIPLAT_DEFAULT_TENANT deferred."
+  "note": "K63 follow-up: DOCUMENT_SYSTEM ontology_engine lines 13784→13788 (Docs Verify). Prior domain SSOT unchanged. Honesty: not N09 certified."
 }

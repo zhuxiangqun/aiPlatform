@@ -5,6 +5,8 @@ Mounted at: /api/platform/apps/fde/actions
 """
 from __future__ import annotations
 
+from core.api.core_facade import DomainRouter
+
 from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 import logging
 from typing import Any, Dict, List, Optional
@@ -622,7 +624,7 @@ async def ontology_record_case(body: Dict[str, Any]):
     Args:
         body: 请求体。
     """
-    domain_id = str(body.get("domain_id") or "default").strip() or "default"
+    domain_id = str(body.get("domain_id") or DomainRouter.default_graph_domain()).strip() or DomainRouter.default_graph_domain()
     try:
         from core.api.core_facade import record_ontology_case
 

@@ -13,6 +13,8 @@ The bridge is best-effort: a failure never blocks the originating action.
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 from typing import Any, Dict
 
@@ -21,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def _apply_incremental_update(data: Dict[str, Any]) -> None:
     """Upsert the affected entity's latest action state into GraphIndex."""
-    domain_id = data.get("domain_id") or "default"
+    domain_id = data.get("domain_id") or DomainRouter.default_graph_domain()
     entity_id = str(data.get("entity_id") or "").strip()
     if not entity_id:
         return

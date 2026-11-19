@@ -2981,7 +2981,7 @@ domains:
       - symbol: "DomainRouter.default_graph_domain"
         module: core/harness/knowledge/domain_router.py
         type: method
-        signature: "default_graph_domain()→str platform default graph SSOT (N09 K42)"
+        signature: "default_graph_domain()→str platform default graph SSOT classmethod (N09 K42/K63)"
       - symbol: "DomainRouter.it_ops_domain"
         module: core/harness/knowledge/domain_router.py
         type: method

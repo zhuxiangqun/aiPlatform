@@ -1323,7 +1323,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
                     "entity_id": str((paused.get("request", {}) or {}).get("entity", "")),
 
-                    "domain_id": str((paused.get("request", {}) or {}).get("domain_id", "default")),
+                    "domain_id": str((paused.get("request", {}) or {}).get("domain_id") or DomainRouter.default_graph_domain()),
 
                     "timestamp": str(int(time.time())),
 
