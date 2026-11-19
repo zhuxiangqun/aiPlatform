@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T11:36:12+08:00",
+  "reviewed_at": "2026-11-19T11:50:42+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "1ea4528bfb5aa854c1a4cb738c6a071d61b443c168ca949c65603698735cea2d",
-  "head_sha": "22b4a2dd0afd54815c8b51f6d7672b41bfd73e5a",
+  "diff_sha256": "7888f93f973c4e674ca455f6c4936641954a92e021f5684164ca744432976650",
+  "head_sha": "add5ffe8d59f0fd701d883a53188159fdbe72db3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Operational path: operational_ready true; pilot_operational_certified false until non-author approval; certified/n24_full remain false. five checks: no old_fallback undoes honesty; Facade/route signatures match Extended pattern; pending≠badge; single Facade path; ready≠certified."
+  "note": "Operational approval 朱莹: pilot_operational_certified true; certified/n24_full false. Checks: approval path does not fall back to auto-badge; signatures unchanged; pending still fails; single approved record; ready≠full certified."
 }
