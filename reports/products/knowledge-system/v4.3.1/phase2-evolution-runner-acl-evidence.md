@@ -42,4 +42,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 - N07/N22 certified 或关闭 ADR 例外
 - 字段 ACL 管理 UI 大改
-- 无调用方身份时的后台 cron 自动推断身份
+- 无调用方身份时的后台 cron 自动推断身份（见 `phase2-wiki-auto-identity-passthrough-evidence.md`：有启动身份已透传；无身份不伪造）
