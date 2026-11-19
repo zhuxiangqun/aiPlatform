@@ -181,7 +181,9 @@ async def reason(
             if cmd:
                 # PR #4: /profile command — session-level profile override
                 if cmd.name == "profile":
-                    profile_name = cmd.args[0] if cmd.args else "default"
+                    from core.harness.knowledge.domain_router import DomainRouter
+
+                    profile_name = cmd.args[0] if cmd.args else DomainRouter.default_profile()
                     try:
                         from core.harness.meta.profile_registry import (
                             set_profile_override, ProfileRegistry, get_active_profile,

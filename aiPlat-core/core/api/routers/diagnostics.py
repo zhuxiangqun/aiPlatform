@@ -2771,7 +2771,7 @@ async def get_profile_status():
 
 
 @router.post("/diagnostics/profile/switch", response_model=Dict[str, Any])
-async def switch_profile(name: str = "default"):
+async def switch_profile(name: str = DomainRouter.default_profile()):
     """Switch active ControlProfile at session level.
 
     Args:

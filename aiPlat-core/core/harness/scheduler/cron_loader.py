@@ -146,7 +146,9 @@ def load_cron_from_profile(home_dir: str = "") -> int:
 
         goal = entry.get("goal", "")
 
-        profile = entry.get("profile", "default")
+        from core.harness.knowledge.domain_router import DomainRouter
+
+        profile = entry.get("profile", DomainRouter.default_profile())
 
 
 
