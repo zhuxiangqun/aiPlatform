@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T09:42:01+08:00",
+  "reviewed_at": "2026-11-19T09:51:47+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "84ba0d311e756e7efd9b39456e86d80e4812b406d4afce5daff765ad2591f1f2",
-  "head_sha": "c74938f51fb02ee02d40928ed8a296a2a6775786",
+  "diff_sha256": "20cb2a3cdd69df7d6c2d735066d65df3be46a4443db3b66395a02d0adc6b89b3",
+  "head_sha": "4daca0c6689eee1126b9fdbb3c1e647c2b6180f0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K65: workspace_id → default_workspace_id(); named_workspace + eval external. Five checks clean. Honesty: not N09 certified; ProfileConfig/AIPLAT_DEFAULT_TENANT deferred."
+  "note": "K66: profile defaults → default_profile()/default_session(); AIPLAT_DEFAULT_TENANT → default_tenant() (env override kept). Five checks clean. Honesty: not N09 certified; mid-stack residual isolation literals largely closed for planned slices."
 }
