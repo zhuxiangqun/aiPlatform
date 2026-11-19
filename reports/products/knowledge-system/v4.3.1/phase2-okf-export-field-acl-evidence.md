@@ -30,6 +30,8 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 # 预期：5 passed
 ```
 
+实测（2026-11-19，`.venv` Python 3.11）：`5 passed`。
+
 ## 接线
 
 | 入口 | 路径 |
