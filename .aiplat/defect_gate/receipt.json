@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-20T00:55:00+08:00",
+  "reviewed_at": "2026-11-20T01:10:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "05460f700b8523f18ba3267640ed1bb2738dd86b78d3e71722726c925431dbd6",
-  "head_sha": "791dd8ff43dc2baf11c3ee22e03ab10883114f2c",
+  "diff_sha256": "9b577ecbc3c922c3b41012d20571bd1e17e63e00b1993adb672e07f183a9201c",
+  "head_sha": "a2110d88fbe4c3329b996f186002bfe66416d8ed",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "H.1 condition $eq/$ne/$in only; scalar eq preserved. Not expression language / not N07 certified. Local lock only."
+  "note": "H.1 masked_properties syncs fields visibility=none; entity_acl_to_h1 read-only. Not full policy editor / not N07 certified. Local lock only."
 }

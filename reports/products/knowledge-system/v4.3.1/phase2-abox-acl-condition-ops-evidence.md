@@ -44,4 +44,5 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 - N07/N22 certified 或关闭 ADR 例外
 - `$gt` / `$regex` / 嵌套布尔表达式
+- H.1 `masked_properties` → 见 `phase2-abox-acl-masked-props-evidence.md`
 - 完整 H.1 策略编辑器

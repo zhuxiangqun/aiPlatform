@@ -50,6 +50,7 @@ const AboxAclPanel: React.FC = () => {
   const [denyRaw, setDenyRaw] = useState('viewer:read');
   const [allowRaw, setAllowRaw] = useState('');
   const [conditionRaw, setConditionRaw] = useState('{"status":{"$in":["open","pending"]}}');
+  const [maskedRaw, setMaskedRaw] = useState('ssn,customer_phone');
   const [fieldEntity, setFieldEntity] = useState('');
   const [fieldName, setFieldName] = useState('');
   const [visibility, setVisibility] = useState('role:admin');
@@ -108,6 +109,11 @@ const AboxAclPanel: React.FC = () => {
         return;
       }
     }
+    // H.1 masked_properties：逗号分隔；空串清除
+    const masked_properties = maskedRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     setLoading(true);
     try {
       const r = await fetch(
@@ -120,6 +126,7 @@ const AboxAclPanel: React.FC = () => {
             allow_roles: parseRoleMap(allowRaw),
             // 空对象清除 condition；省略则后端不改（此处有输入则总是传）
             condition: condition ?? {},
+            masked_properties,
           }),
         },
       );
@@ -311,6 +318,15 @@ const AboxAclPanel: React.FC = () => {
               value={conditionRaw}
               onChange={(e) => setConditionRaw(e.target.value)}
               placeholder='{"status":{"$in":["open","pending"]}}'
+            />
+          </label>
+          <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
+            masked_properties（H.1：逗号分隔字段名；空=清除；同步 fields visibility=none；非完整策略编辑器）
+            <input
+              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
+              value={maskedRaw}
+              onChange={(e) => setMaskedRaw(e.target.value)}
+              placeholder="ssn,customer_phone"
             />
           </label>
           <div className="flex items-end">
