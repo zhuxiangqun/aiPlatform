@@ -6,6 +6,8 @@ a traceable, auditable retrieval path instead of LLM simulation.
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -20,7 +22,7 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     """
     query = params.get("query", "")
     domain_id = params.get("domain_id", "")
-    collection_id = params.get("collection_id", "default")
+    collection_id = params.get("collection_id") or DomainRouter.default_collection()
     top_k = params.get("top_k", 10)
 
     try:

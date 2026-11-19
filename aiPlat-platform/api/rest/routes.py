@@ -35,6 +35,7 @@ What this file provides:
 
 
 from __future__ import annotations
+
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
@@ -2657,7 +2658,7 @@ async def kb_ingest_url(request: Request):
 
         raise HTTPException(status_code=400, detail="url is required")
 
-    collection_id = str(body.get("collection_id", "default"))
+    collection_id = str(body.get("collection_id") or DomainRouter.default_collection())
 
     name = str(body.get("name", ""))
 
@@ -2770,7 +2771,7 @@ async def kb_reingest_document(doc_id: str, request: Request):
 
         kind = d.get("kind") or "pdf"
 
-        collection_id = d.get("collection_id") or "default"
+        collection_id = d.get("collection_id") or DomainRouter.default_collection()
 
         ocr_lang = (meta.get("ocr_lang") or "zh") if isinstance(meta, dict) else "zh"
 
@@ -3002,7 +3003,7 @@ async def documents_preview(request: Request):
 
         kind = str(form.get("kind") or "").strip().lower()
 
-        collection_id = str(form.get("collection_id") or "default")
+        collection_id = str(form.get("collection_id") or DomainRouter.default_collection())
 
         safe_name = re.sub(r"[^A-Za-z0-9_.\u4e00-\u9fff-]+", "_", file.filename)
 
@@ -3026,7 +3027,7 @@ async def documents_preview(request: Request):
 
         url = body.get("url") if isinstance(body, dict) else None
 
-        collection_id = str(body.get("collection_id") or "default") if isinstance(body, dict) else "default"
+        collection_id = str(body.get("collection_id") or DomainRouter.default_collection()) if isinstance(body, dict) else DomainRouter.default_collection()
 
         if not url:
 
@@ -3140,7 +3141,7 @@ async def documents_ingest(request: Request):
 
         file = form.get("file")
 
-        collection_id = str(form.get("collection_id") or "default")
+        collection_id = str(form.get("collection_id") or DomainRouter.default_collection())
 
         if file is None or not getattr(file, "filename", None):
 
@@ -3202,7 +3203,7 @@ async def documents_ingest(request: Request):
 
             raise HTTPException(status_code=400, detail="json_body_required")
 
-        collection_id = str(body.get("collection_id") or "default")
+        collection_id = str(body.get("collection_id") or DomainRouter.default_collection())
 
         url = body.get("url")
 
@@ -3412,7 +3413,7 @@ async def kb_watch_directory(request: Request):
 
     directory = str(body.get("directory", "") or "").strip()
 
-    collection_id = str(body.get("collection_id", "default") or "default")
+    collection_id = str(body.get("collection_id") or DomainRouter.default_collection())
 
     recursive = bool(body.get("recursive", True))
 
@@ -4609,7 +4610,7 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
         tenant_id=str(getattr(identity, "tenant_id", "") or DomainRouter.default_tenant()),
 
-        collection_id=str(getattr(req, "collection_id", "") or "default"),
+        collection_id=str(getattr(req, "collection_id", "") or DomainRouter.default_collection()),
 
         question=str(getattr(req, "question", "") or ""),
 
@@ -4631,7 +4632,7 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
             question=str(getattr(req, "question", "") or ""),
 
-            collection_id=str(getattr(req, "collection_id", "") or "default"),
+            collection_id=str(getattr(req, "collection_id", "") or DomainRouter.default_collection()),
 
             tenant_id=str(getattr(identity, "tenant_id", "") or ""),
 
@@ -4679,7 +4680,7 @@ async def collection_query(request: Request):
 
         tenant_id=str(getattr(identity, "tenant_id", "") or DomainRouter.default_tenant()),
 
-        collection_id=str(body.get("collection_id") or "default"),
+        collection_id=str(body.get("collection_id") or DomainRouter.default_collection()),
 
         question=str(body.get("question") or ""),
 
@@ -4701,7 +4702,7 @@ async def collection_query(request: Request):
 
             question=str(body.get("question") or ""),
 
-            collection_id=str(body.get("collection_id") or "default"),
+            collection_id=str(body.get("collection_id") or DomainRouter.default_collection()),
 
             tenant_id=str(getattr(identity, "tenant_id", "") or ""),
 
@@ -7315,7 +7316,7 @@ async def kb_create_with_ai(request: Request):
 
     prompt = str(body.get("prompt", "")).strip()
 
-    collection_id = str(body.get("collection_id", "default"))
+    collection_id = str(body.get("collection_id") or DomainRouter.default_collection())
 
     if not prompt:
 

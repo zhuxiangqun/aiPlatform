@@ -120,5 +120,6 @@ authority: supporting
 | [phase2-cross-tenant-session-runtime-fallbacks-evidence.md](./phase2-cross-tenant-session-runtime-fallbacks-evidence.md) | Batch K59 N09 session 运行时回退加深（非 certified） |
 | [phase2-cross-tenant-agents-pipeline-session-fallbacks-evidence.md](./phase2-cross-tenant-agents-pipeline-session-fallbacks-evidence.md) | Batch K60 N09 agents/pipeline session 运行时回退（非 certified） |
 | [phase2-cross-tenant-integration-memory-session-fallbacks-evidence.md](./phase2-cross-tenant-integration-memory-session-fallbacks-evidence.md) | Batch K61 N09 integration/memory session 运行时回退（非 certified） |
+| [phase2-cross-tenant-collection-namespace-fallbacks-evidence.md](./phase2-cross-tenant-collection-namespace-fallbacks-evidence.md) | Batch K62 N09 collection/namespace 运行时回退（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

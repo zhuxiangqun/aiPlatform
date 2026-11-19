@@ -192,7 +192,7 @@ def _docs_this_week(
     import sqlite3
 
     tid = tenant_id or DomainRouter.default_tenant()
-    cid = collection_id or "default"
+    cid = collection_id or DomainRouter.default_collection()
     dbp = _kb_sqlite_path(tid)
     if not os.path.exists(dbp):
         return {"available": True, "count": 0, "collection_id": cid}
@@ -586,7 +586,7 @@ def build_kb_health_report(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "tenant_id": tenant_id or DomainRouter.default_tenant(),
         "project_id": project_id or "",
-        "collection_id": collection_id or "default",
+        "collection_id": collection_id or DomainRouter.default_collection(),
         "window_hours": window_hours,
         "health": score_info,
         "metrics": metrics,

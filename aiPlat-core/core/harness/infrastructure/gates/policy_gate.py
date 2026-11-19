@@ -1967,7 +1967,7 @@ class PolicyGate:
                 marking_max = trace_context.get("_max_marking_level", marking_level)
                 allowed, reason = check_tool_args_markings(
                     tool_args, max_allowed_level=marking_max,
-                    collection_id=trace_context.get("collection_id", "default"),
+                    collection_id=trace_context.get("collection_id") or DomainRouter.default_collection(),
                 )
                 if not allowed:
                     return PolicyResult(

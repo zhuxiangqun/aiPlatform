@@ -71,7 +71,7 @@ def write_session_wiki_page(
             body=body,
             category="topics",
             tags=tag_list[:16],
-            collection_id=collection_id or "default",
+            collection_id=collection_id or DomainRouter.default_collection(),
             status="draft",
             skip_validation=True,
             summary=(summary[:200] if summary else ""),

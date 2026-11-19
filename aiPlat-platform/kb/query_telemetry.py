@@ -104,13 +104,13 @@ async def record_kb_query_syscall(
                 "user_id": actor_id or None,
                 "args": {
                     "question": str(question or "")[:500],
-                    "collection_id": str(collection_id or "default"),
+                    "collection_id": str(collection_id or DomainRouter.default_collection()),
                     "request_id": str(request_id or "")[:80] or None,
                 },
                 "result": result,
                 "error": error,
                 "target_type": "kb_collection",
-                "target_id": str(collection_id or "default"),
+                "target_id": str(collection_id or DomainRouter.default_collection()),
             }
         )
         return True
