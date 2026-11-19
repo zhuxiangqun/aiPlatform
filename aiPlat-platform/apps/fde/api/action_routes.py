@@ -982,16 +982,27 @@ async def get_graph_acl(domain_id: str):
 
 @router.put("/graph/acl/{domain_id}/entities/{entity_id}")
 async def put_graph_entity_acl(domain_id: str, entity_id: str, body: Dict[str, Any]):
-    """Upsert instance ACL (deny/allow / condition / masked_properties)。
+    """Upsert instance ACL (deny/allow / condition / masked_properties / h1_policy)。
 
     Args:
         domain_id: domain 标识。
         entity_id: entity 标识。
-        body: 请求体；可含 condition（{} 清除）、masked_properties（[] 清除）。
+        body: 请求体；可含 condition（{} 清除）、masked_properties（[] 清除）；
+            若含 h1_policy 对象则走附录 H.1 薄导入（优先于 deny/allow 字段）。
     """
     try:
-        from core.api.core_facade import set_graph_entity_acl
+        from core.api.core_facade import apply_graph_h1_policy, set_graph_entity_acl
 
+        h1 = body.get("h1_policy")
+        if isinstance(h1, dict):
+            entry = apply_graph_h1_policy(domain_id, entity_id, h1)
+            return {
+                "domain_id": domain_id,
+                "entity_id": entity_id,
+                "entry": entry,
+                "h1_applied": True,
+                "certified": False,
+            }
         cond = body.get("condition")
         masks = body.get("masked_properties")
         entry = set_graph_entity_acl(
@@ -1003,6 +1014,8 @@ async def put_graph_entity_acl(domain_id: str, entity_id: str, body: Dict[str, A
             masked_properties=masks if isinstance(masks, list) else None,
         )
         return {"domain_id": domain_id, "entity_id": entity_id, "entry": entry}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)[:300])
     except Exception as e:
         logger.error("put_graph_entity_acl failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)[:300])

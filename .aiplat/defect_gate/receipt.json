@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-20T01:10:00+08:00",
+  "reviewed_at": "2026-11-20T01:35:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "9b577ecbc3c922c3b41012d20571bd1e17e63e00b1993adb672e07f183a9201c",
-  "head_sha": "a2110d88fbe4c3329b996f186002bfe66416d8ed",
+  "diff_sha256": "a8ee7b7f98bb9f35a19397bd4bc86aaa7421757d216623e02da483978125d21b",
+  "head_sha": "f9b1b72802c14a51e974e5c5ac80affcdc5c50a4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "H.1 masked_properties syncs fields visibility=none; entity_acl_to_h1 read-only. Not full policy editor / not N07 certified. Local lock only."
+  "note": "apply_h1_policy thin import + PUT h1_policy; round-trip entity_acl_to_h1. Not full H.1 editor / not N07 certified. Local lock only."
 }

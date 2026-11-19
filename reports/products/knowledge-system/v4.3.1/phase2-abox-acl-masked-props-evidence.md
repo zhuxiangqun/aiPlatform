@@ -44,5 +44,6 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
+- H.1 薄导入 `apply_h1_policy` → 见 `phase2-abox-acl-h1-apply-evidence.md`
 - 完整 H.1 策略编辑器（effect/principals/actions 矩阵 UI）
 - `$gt` / `$regex` / 嵌套布尔表达式
