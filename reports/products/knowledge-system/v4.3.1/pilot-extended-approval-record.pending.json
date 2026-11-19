@@ -1,12 +1,12 @@
 {
   "standard_version": "4.3.1",
   "scope": "pilot lock-service Extended certification (附录 N.3)",
-  "status": "pending",
+  "status": "superseded",
   "approvers": [],
   "approval_date": null,
   "effective_date": null,
   "exceptions": [],
   "decision": null,
   "record_id": "PILOT-EXTENDED-lock-service-pending",
-  "note": "Fill non-author approvers and set status=approved to unlock pilot_extended_certified via evaluate_pilot_extended_certification."
+  "note": "Superseded by pilot-extended-approval-record.approved.json (approver: 朱莹)."
 }

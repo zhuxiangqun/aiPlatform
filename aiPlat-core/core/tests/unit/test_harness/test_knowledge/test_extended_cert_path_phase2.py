@@ -37,3 +37,13 @@ def test_pilot_extended_requires_approval():
     assert g1["extended_ready"] is True
     assert g1["pilot_extended_certified"] is False
     assert g1["certified"] is False
+
+    approved = (
+        Path(cp._repo_root())
+        / "reports/products/knowledge-system/v4.3.1/pilot-extended-approval-record.approved.json"
+    )
+    g2 = cp.evaluate_pilot_extended_certification(approval_record_path=str(approved))
+    assert g2["pass"] is True, g2
+    assert g2["pilot_extended_certified"] is True
+    assert g2["extended_claim"] is True
+    assert g2["certified"] is False

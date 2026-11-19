@@ -50,5 +50,5 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | partial | 6 | Operational 6 |
 | missing | 0 | — |
 
-**目标等级**：Core `pilot_certified`（朱鸿林）；Extended `extended_ready`（签字仍 pending）。  
-**禁止话术**：不得因 scoped exists / ready 门宣称 24/24 或 Operational 已认证。
+**目标等级**：Core `pilot_certified`（朱鸿林）；Extended `pilot_extended_certified`（朱莹）。  
+**禁止话术**：不得因 scoped exists / 等级徽章宣称 24/24 或 Operational 已认证。
