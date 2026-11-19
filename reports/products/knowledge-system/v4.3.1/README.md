@@ -117,5 +117,6 @@ authority: supporting
 | [phase2-cross-tenant-platform-tenant-runtime-fallbacks-evidence.md](./phase2-cross-tenant-platform-tenant-runtime-fallbacks-evidence.md) | Batch K56 N09 platform routes/kb/delivery tenant 运行时回退（非 certified） |
 | [phase2-cross-tenant-apps-ontology-tenant-runtime-fallbacks-evidence.md](./phase2-cross-tenant-apps-ontology-tenant-runtime-fallbacks-evidence.md) | Batch K57 N09 apps/ontology tenant 运行时回退（非 certified） |
 | [phase2-cross-tenant-loop-agent-tenant-runtime-fallbacks-evidence.md](./phase2-cross-tenant-loop-agent-tenant-runtime-fallbacks-evidence.md) | Batch K58 N09 loop/agent tenant+session 运行时回退（非 certified） |
+| [phase2-cross-tenant-session-runtime-fallbacks-evidence.md](./phase2-cross-tenant-session-runtime-fallbacks-evidence.md) | Batch K59 N09 session 运行时回退加深（非 certified） |
 
 试点域：`lock-service` · 目标等级：Core（未达成）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

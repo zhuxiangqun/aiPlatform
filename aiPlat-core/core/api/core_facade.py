@@ -4521,8 +4521,8 @@ def set_unattended_attendance(session_id: str, mode: str) -> Dict[str, Any]:
     """
     from core.harness.infrastructure.gates.approval_inbox import get_approval_inbox
 
-    norm = get_approval_inbox().set_attendance(str(session_id or "default"), mode)
-    return {"session_id": str(session_id or "default"), "attendance": norm}
+    norm = get_approval_inbox().set_attendance(str(session_id or DomainRouter.default_session()), mode)
+    return {"session_id": str(session_id or DomainRouter.default_session()), "attendance": norm}
 
 
 def get_unattended_attendance(session_id: str) -> Dict[str, Any]:
@@ -4533,7 +4533,7 @@ def get_unattended_attendance(session_id: str) -> Dict[str, Any]:
     """
     from core.harness.infrastructure.gates.approval_inbox import get_approval_inbox
 
-    sid = str(session_id or "default")
+    sid = str(session_id or DomainRouter.default_session())
     return {"session_id": sid, "attendance": get_approval_inbox().get_attendance(sid)}
 
 
@@ -4552,7 +4552,7 @@ def list_session_write_provenance(session_id: str = "") -> Dict[str, Any]:
     )
 
     store: SessionWriteProvenance = get_session_write_provenance()
-    sid = str(session_id or "default")
+    sid = str(session_id or DomainRouter.default_session())
     records: List[OriginRecord] = []
     for path in sorted(store.known_paths(sid)):
         rec: Optional[OriginRecord] = store.lookup(sid, path)

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T08:25:13+08:00",
+  "reviewed_at": "2026-11-19T08:32:45+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "01584238fc3e9b50362c89074a2a6d152d05171135ef16b3e5ad6a3e17402c7f",
-  "head_sha": "497520a015ff4ab4a6a66d8e5eb2ed4d9a6e3c6c",
+  "diff_sha256": "008770daddcdc619819d5fcdbec9c76402cc909de1441a7b36f37103cf933aaa",
+  "head_sha": "8ef979d27d21c40249e81cbdc7318b1c8e5ebe55",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K58: loop/_facade + operator_agent + integration/agent tenant/session runtime fallbacks → DomainRouter.default_tenant()/default_session(). Five checks clean. Honesty: not N09 certified. Left: AIPLAT_DEFAULT_TENANT env in tenants/manager."
+  "note": "K59: facade/gates/checkpoint/session_mixin/platform routes/FDE session runtime fallbacks → DomainRouter.default_session(); consultant_personal tenant strip-or. Five checks clean. Honesty: not N09 certified; agents/jobs/pipeline leftovers deferred."
 }

@@ -8,6 +8,8 @@ contract (platform → core via facade only).
 """
 from __future__ import annotations
 
+from core.api.core_facade import DomainRouter
+
 from api.schemas_response import StatusResponse
 import logging
 from typing import Any, Dict
@@ -117,12 +119,12 @@ async def list_file_checkpoints(http_request: Request, session_id: str = "", pat
     """
     deny = await rbac_guard(
         http_request=http_request, payload=None,
-        action="file_checkpoint_list", resource_type="file_checkpoint", resource_id=str(session_id or "default"),
+        action="file_checkpoint_list", resource_type="file_checkpoint", resource_id=str(session_id or DomainRouter.default_session()),
     )
     if deny:
         return deny
     items = core_facade.list_file_checkpoints(session_id=str(session_id), path=str(path))
-    return {"session_id": str(session_id or "default"), "count": len(items), "items": items}
+    return {"session_id": str(session_id or DomainRouter.default_session()), "count": len(items), "items": items}
 
 
 @file_router.get("/{checkpoint_id}", response_model=StatusResponse)

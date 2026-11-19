@@ -9,6 +9,8 @@ Misses leave behaviour unchanged (fail toward caution when we *do* know).
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import os
 import re
 import threading
@@ -84,7 +86,7 @@ class SessionWriteProvenance:
         self._steps: Dict[str, int] = {}
 
     def _sid(self, session_id: str) -> str:
-        return str(session_id or "").strip() or "default"
+        return str(session_id or "").strip() or DomainRouter.default_session()
 
     def _norm(self, path: str) -> str:
         try:

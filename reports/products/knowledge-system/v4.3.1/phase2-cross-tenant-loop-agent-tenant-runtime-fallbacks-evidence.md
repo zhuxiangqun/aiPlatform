@@ -40,4 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 ## 明确未做
 
 - `aiPlat-platform/tenants/manager.py` 的 `AIPLAT_DEFAULT_TENANT` env 默认（运维配置面，非 DomainRouter 运行时字面量）
+- facade/gates/checkpoint/routes 等 session 运行时回退 → 见 K59
 - N09 / 附录 N 全量认证（certified 仍 false）
