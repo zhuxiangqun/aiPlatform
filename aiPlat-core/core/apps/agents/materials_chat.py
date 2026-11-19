@@ -348,7 +348,7 @@ class MaterialsChatAgent(BaseAgent):
             scope = dict(vars0.get("scope") or {})
             options = dict(vars0.get("options") or {})
             tenant_id = str(vars0.get("tenant_id") or DomainRouter.default_tenant())
-            session_id = str(context.session_id or "default")
+            session_id = str(context.session_id or DomainRouter.default_session())
             user_id = str(context.user_id or "system")
 
             # §5.63: Query sanitization

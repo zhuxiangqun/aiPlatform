@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import time
 from typing import Dict, Optional, Any
 
@@ -74,7 +76,7 @@ async def create_job(request: JobCreateRequest):
             "kind": request.kind,
             "target_id": request.target_id,
             "user_id": request.user_id or "system",
-            "session_id": request.session_id or "default",
+            "session_id": request.session_id or DomainRouter.default_session(),
             "payload": request.payload or {},
             "options": request.options or {},
             "delivery": request.delivery or {},

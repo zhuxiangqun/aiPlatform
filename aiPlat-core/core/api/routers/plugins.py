@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -296,7 +298,7 @@ async def _require_plugin_run_approval(
     )
     approval_manager.register_rule(rule)
     ctx = ApprovalContext(
-        session_id=str(session_id or "default"),
+        session_id=str(session_id or DomainRouter.default_session()),
         user_id=str(actor_id or "system"),
         operation="plugin:run",
         operation_context={"plugin_id": plugin_id, "details": details or f"run plugin {plugin_id}", "input": input or {}},

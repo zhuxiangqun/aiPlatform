@@ -546,7 +546,7 @@ class PolicyGate:
         if not reviewer_enabled(args):
             return None, None, ""
 
-        session_id = str(args.get("_session_id") or args.get("_run_id") or "default")
+        session_id = str(args.get("_session_id") or args.get("_run_id") or DomainRouter.default_session())
         try:
             result = await review_proposed_action(
                 tool_name=tool_name,
@@ -609,7 +609,7 @@ class PolicyGate:
     ) -> PolicyResult:
         """Build APPROVAL_REQUIRED and park to Unattended Inbox when attendance≠attended."""
         args = tool_args if isinstance(tool_args, dict) else {}
-        session_id = str(args.get("_session_id") or args.get("_run_id") or user_id or "default")
+        session_id = str(args.get("_session_id") or args.get("_run_id") or user_id or DomainRouter.default_session())
         attendance_raw = args.get("_attendance") or args.get("attendance")
         inbox_item_id: Optional[str] = None
         attendance: Optional[str] = None

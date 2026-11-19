@@ -9,6 +9,8 @@ Phase 9: node functions inline the syscall channel, no longer depending on the p
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 
 import os
@@ -198,7 +200,7 @@ def create_compiled_react_graph(
                         tool,
                         tool_args,
                         user_id=str(ctx.get("user_id", "system")),
-                        session_id=str(ctx.get("session_id", "default")),
+                        session_id=str(ctx.get("session_id") or DomainRouter.default_session()),
                         trace_context={
                             "trace_id": ctx.get("_trace_id") or ctx.get("trace_id"),
                             "run_id": ctx.get("_run_id") or ctx.get("run_id"),

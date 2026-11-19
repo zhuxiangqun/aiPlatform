@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- agents/jobs/plugins/materials_chat/pipeline_engine/compressor/langgraph 等其它 session 字面量 → 后续批次
+- agents/jobs/plugins/materials_chat/pipeline_engine/compressor/langgraph 等其它 session 字面量 → 见 K60
 - collection/domain_id/workspace_id 字面量回退（非 session/tenant）
 - N09 / 附录 N 全量认证（certified 仍 false）
