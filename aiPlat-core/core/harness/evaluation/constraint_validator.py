@@ -237,6 +237,7 @@ class ConstraintValidator:
         try:
             ORPHAN_DAYS = int(os.getenv("AIPLAT_CONSTRAINT_ORPHAN_DAYS", "30"))
             from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
             ont_dir = self._home / "ontologies"
             if not ont_dir.exists():
                 return issues
@@ -248,7 +249,7 @@ class ConstraintValidator:
                     classes = data.get("classes", {})
                     if not classes:
                         continue
-                    graph = GraphIndex.load(domain_id)
+                    graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())  # N09 K29
                     for cls_name, cls_def in classes.items():
                         label = cls_def.get("label", cls_name)
                         count = sum(1 for n in graph._nodes.values() if n.class_name in (cls_name, label))
@@ -329,6 +330,7 @@ class ConstraintValidator:
         try:
             FIELD_MIN = int(os.getenv("AIPLAT_CONSTRAINT_FIELD_COVERAGE_PCT", "50"))
             from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
             import yaml
             ont_dir = self._home / "ontologies"
             if not ont_dir.exists():
@@ -338,7 +340,7 @@ class ConstraintValidator:
                     domain_id = yf.stem
                     data = yaml.safe_load(yf.read_text(encoding="utf-8")) or {}
                     classes = data.get("classes", {})
-                    graph = GraphIndex.load(domain_id)
+                    graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())  # N09 K29
                     for cls_name, cls_def in classes.items():
                         label = cls_def.get("label", cls_name)
                         required = cls_def.get("required_fields", []) or []

@@ -69,6 +69,23 @@ class DomainRouter:
 
     # D2: sole platform tracking domain constant (assignment allowed; behavior forks forbidden)
     PLATFORM_TRACKING_DOMAIN = "fde-delivery"
+    PLATFORM_TERMS_DOMAIN = "enterprise-terms"
+    PLATFORM_ATOM_DOMAIN = "knowledge-atom"
+    PLATFORM_KB_DOMAIN = "ai-knowledge"
+    PLATFORM_COMPETITION_DOMAIN = "bell-competition"
+    PLATFORM_DEFAULT_GRAPH_DOMAIN = "default"
+    PLATFORM_IT_OPS_DOMAIN = "it-ops"
+    PLATFORM_DATA_GOV_DOMAIN = "data-gov"
+    PLATFORM_SYSTEM_DOMAIN = "aiplat-system"
+    # Tenant / collection / profile / session / view / workspace / module fallback SSOT (N09 K49–K68) — not ontology domain ids.
+    PLATFORM_DEFAULT_TENANT = "default"
+    PLATFORM_DEFAULT_COLLECTION = "default"
+    PLATFORM_DEFAULT_PROFILE = "default"
+    PLATFORM_DEFAULT_SESSION = "default"
+    PLATFORM_DEFAULT_VIEW = "default"
+    PLATFORM_DEFAULT_WORKSPACE = "default"
+    PLATFORM_DEFAULT_MODULE = "default"
+    PLATFORM_DEFAULT_LABEL = "default"
 
     @staticmethod
     def _home() -> str:
@@ -348,6 +365,143 @@ class DomainRouter:
         """
         return self.PLATFORM_TRACKING_DOMAIN
 
+    def terms_domain(self) -> str:
+        """Return platform enterprise-terms domain id (N09 K39).
+
+        Prefer this over hardcoding the terms domain string in callers.
+        """
+        return self.PLATFORM_TERMS_DOMAIN
+
+    def knowledge_atom_domain(self) -> str:
+        """Return platform knowledge-atom domain id (N09 K39).
+
+        Prefer this over hardcoding the atom domain string in callers.
+        """
+        return self.PLATFORM_ATOM_DOMAIN
+
+    def default_kb_domain(self) -> str:
+        """Return default KB / wiki graph domain id (N09 K39).
+
+        Prefer this over hardcoding the KB domain string in callers.
+        """
+        return self.PLATFORM_KB_DOMAIN
+
+    def competition_domain(self) -> str:
+        """Return platform competition-landscape domain id (N09 K41).
+
+        Prefer this over hardcoding the competition domain string in callers
+        (e.g. rapid_insight GraphIndex loads).
+        """
+        return self.PLATFORM_COMPETITION_DOMAIN
+
+    @classmethod
+    def default_graph_domain(cls) -> str:
+        """Return catch-all / default ontology graph domain id (N09 K42/K63).
+
+        Distinct from ``default_kb_domain()`` (``ai-knowledge``). Prefer this
+        over hardcoding ``\"default\"`` in GraphIndex constructors / runtime
+        ``domain_id`` fallbacks (callable as ``DomainRouter.default_graph_domain()``).
+        """
+        return cls.PLATFORM_DEFAULT_GRAPH_DOMAIN
+
+    @classmethod
+    def it_ops_domain(cls) -> str:
+        """Return platform IT-ops / org pilot domain id (N09 K46).
+
+        Prefer this over hardcoding ``\"it-ops\"`` in org/FDE signature defaults.
+        """
+        return cls.PLATFORM_IT_OPS_DOMAIN
+
+    @classmethod
+    def data_gov_domain(cls) -> str:
+        """Return platform data-governance domain id (N09 K46).
+
+        Prefer this over hardcoding ``\"data-gov\"`` in governance signature defaults.
+        """
+        return cls.PLATFORM_DATA_GOV_DOMAIN
+
+    @classmethod
+    def system_domain(cls) -> str:
+        """Return platform system / meta ontology domain id (N09 K47).
+
+        Prefer this over hardcoding ``\"aiplat-system\"`` in wiki generate-domain
+        signature defaults.
+        """
+        return cls.PLATFORM_SYSTEM_DOMAIN
+
+    @classmethod
+    def default_tenant(cls) -> str:
+        """Return platform default tenant id fallback (N09 K49).
+
+        Prefer this over hardcoding ``\"default\"`` in ``tenant_id`` signature
+        defaults / GraphIndex resolve fallbacks.
+        """
+        return cls.PLATFORM_DEFAULT_TENANT
+
+    @classmethod
+    def default_collection(cls) -> str:
+        """Return platform default wiki/KB collection id (N09 K52).
+
+        Prefer this over hardcoding ``\"default\"`` in ``collection_id``
+        signature defaults / DDL.
+        """
+        return cls.PLATFORM_DEFAULT_COLLECTION
+
+    @classmethod
+    def default_profile(cls) -> str:
+        """Return platform default skill/kanban profile id (N09 K52).
+
+        Prefer this over hardcoding ``\"default\"`` in ``profile_id``
+        signature defaults / DDL.
+        """
+        return cls.PLATFORM_DEFAULT_PROFILE
+
+    @classmethod
+    def default_session(cls) -> str:
+        """Return platform default session id fallback (N09 K53).
+
+        Prefer this over hardcoding ``\"default\"`` in ``session_id``
+        signature defaults (kernel / syscall / FDE voice).
+        """
+        return cls.PLATFORM_DEFAULT_SESSION
+
+    @classmethod
+    def default_view_name(cls) -> str:
+        """Return platform default cross-domain view name (N09 K64).
+
+        Prefer this over hardcoding ``\"default\"`` in ``view_name``
+        runtime fallbacks (CrossDomainResolver / K-wave arbit).
+        """
+        return cls.PLATFORM_DEFAULT_VIEW
+
+    @classmethod
+    def default_workspace_id(cls) -> str:
+        """Return platform default named-workspace id (N09 K65).
+
+        Prefer this over hardcoding ``\"default\"`` in named_workspace
+        registry / resolve fallbacks (legacy AIPLAT_HOME agents layout).
+        """
+        return cls.PLATFORM_DEFAULT_WORKSPACE
+
+    @classmethod
+    def default_module_id(cls) -> str:
+        """Return platform default builder project module id (N09 K68).
+
+        Prefer this over hardcoding ``\"default\"`` in builder ``module_id``
+        signature defaults / single-module path branches.
+        """
+        return cls.PLATFORM_DEFAULT_MODULE
+
+    @classmethod
+    def default_label(cls) -> str:
+        """Return catch-all string fallback for non-isolation ids (N09 K69).
+
+        Prefer this over hardcoding ``"default"`` in gateway ``channel``,
+        memory ``agent_type``, learning ``benchmark_name``, builder
+        ``output_style`` and similar label defaults.
+        """
+        return cls.PLATFORM_DEFAULT_LABEL
+
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).
 
@@ -367,9 +521,11 @@ class DomainRouter:
 
     def fallback_domains(self) -> List[str]:
         u"""Supplementary domains for cross-domain fallback."""
-        return self._load_registry().get("fallback_domains", ["default"])
+        return self._load_registry().get(
+            "fallback_domains", [self.PLATFORM_DEFAULT_GRAPH_DOMAIN]
+        )
 
-    def register_domain(self, domain_id: str, config: dict, auto_rebuild: bool = True, tenant_id: str = "default"):
+    def register_domain(self, domain_id: str, config: dict, auto_rebuild: bool = True, tenant_id: str = PLATFORM_DEFAULT_TENANT):
         """Hot-register a new domain at runtime (no restart).
 
         Args:
@@ -447,18 +603,23 @@ class DomainRouter:
                 for d in self.list_domains()
             ]
 
-    def refresh_domain_maturity(self, domain_id: str = "") -> Dict[str, Any]:
+    def refresh_domain_maturity(
+        self, domain_id: str = "", *, tenant_id: str = PLATFORM_DEFAULT_TENANT
+    ) -> Dict[str, Any]:
         """Refresh maturity scores for one or all domains, writing back to registry.
 
         Args:
             domain_id: domain 标识。
+            tenant_id: 租户；透传 compute_domain_maturity（N09 K19）。
         """
         import json as _json
         registry = self._load_registry()
+        tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
         if domain_id:
             from core.harness.knowledge.domain_maturity import compute_domain_maturity
-            maturity = compute_domain_maturity(domain_id)
+            # 为什么：N09 K19 — registry 成熟度刷新须按租户 GraphIndex
+            maturity = compute_domain_maturity(domain_id, tenant_id=tid)
             if domain_id in registry.get("domains", {}):
                 registry["domains"][domain_id]["maturity"] = maturity["level"]
                 registry["domains"][domain_id]["maturity_score"] = maturity["maturity_score"]
@@ -467,7 +628,7 @@ class DomainRouter:
         else:
             from core.harness.knowledge.domain_maturity import compute_domain_maturity
             for did in list(registry.get("domains", {}).keys()):
-                maturity = compute_domain_maturity(did)
+                maturity = compute_domain_maturity(did, tenant_id=tid)
                 registry["domains"].setdefault(did, {})
                 registry["domains"][did]["maturity"] = maturity["level"]
                 registry["domains"][did]["maturity_score"] = maturity["maturity_score"]
@@ -534,7 +695,8 @@ class DomainRouter:
         u"""LLM binary classification across registered domains."""
         domains = self.list_domains()
         if len(domains) <= 1:
-            return domains[0] if domains else "ai-knowledge"
+            return domains[0] if domains else self.PLATFORM_KB_DOMAIN
+
 
         domain_names = ", ".join(
             f"{did}({self.domain_config(did).get('name', did)})"
@@ -545,7 +707,9 @@ class DomainRouter:
             f"判断以下问题属于哪个领域，只输出领域ID名称：\n{query[:500]}"
         )
 
-        fallback = self._load_registry().get("fallback_domain", "ai-knowledge")
+        fallback = self._load_registry().get(
+            "fallback_domain", self.PLATFORM_KB_DOMAIN
+        )
         try:
             import asyncio
             from core.harness.syscalls.llm import sys_llm_generate
@@ -607,7 +771,10 @@ class DomainRouter:
                 "name": dom.name,
                 "description": dom.description,
                 "ontology_file": f"{did}.yaml",
-                "collection_id": "default" if did == "ai-knowledge" else did,
+                "collection_id": (
+                    "default" if did == self.PLATFORM_KB_DOMAIN else did
+                ),
+
                 "namespace": dom.namespace,
                 "min_wiki_score": 0.25,
                 "expand_subclasses": True,
@@ -619,8 +786,8 @@ class DomainRouter:
         return {
             "version": "1.0.0",
             "domains": domains,
-            "fallback_domain": "ai-knowledge",
-            "fallback_domains": ["default"],
+            "fallback_domain": self.PLATFORM_KB_DOMAIN,
+            "fallback_domains": [self.PLATFORM_DEFAULT_GRAPH_DOMAIN],
             "routing": {
                 "tiers": ["label_match", "embedding", "llm"],
                 "embedding": {"min_confidence": 0.4, "min_margin": 0.08},

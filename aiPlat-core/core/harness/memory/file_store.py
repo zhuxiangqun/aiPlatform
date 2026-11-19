@@ -38,6 +38,7 @@ import logging
 from datetime import datetime
 
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -51,7 +52,7 @@ MEMORY_DIR = get_aiplat_data_dir("memory")
 def _safe_tenant_key(tenant_id: str = "") -> str:
     import re as _re
 
-    s = _re.sub(r"[^a-zA-Z0-9_\-]", "_", str(tenant_id or "default").strip())[:80]
+    s = _re.sub(r"[^a-zA-Z0-9_\-]", "_", str(tenant_id or DomainRouter.default_tenant()).strip())[:80]
     return s or "default"
 
 
@@ -78,7 +79,7 @@ def write_memory(
     key: str = "preference",
     source: str = "agent",
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> bool:
 
     """Dual-write: Markdown first, then SQLite. Markdown is the canonical store.
@@ -340,7 +341,7 @@ def memory_char_budget() -> int:
         return 1400
 
 
-def _memory_entries(tenant_id: str = "default") -> List[str]:
+def _memory_entries(tenant_id: str = DomainRouter.default_tenant()) -> List[str]:
     path = _memory_md_path(tenant_id)
     if not os.path.isfile(path):
         return []
@@ -495,7 +496,7 @@ def _entry_body(line: str) -> str:
     return (line or "").strip()
 
 
-def _injectable_entries(tenant_id: str = "default") -> List[str]:
+def _injectable_entries(tenant_id: str = DomainRouter.default_tenant()) -> List[str]:
     """Lines that still qualify as facts. Older command rows stay on disk but stay out of the prompt."""
     return [
         ln
@@ -504,7 +505,7 @@ def _injectable_entries(tenant_id: str = "default") -> List[str]:
     ]
 
 
-def memory_entry_fits(entry: str, *, tenant_id: str = "default") -> bool:
+def memory_entry_fits(entry: str, *, tenant_id: str = DomainRouter.default_tenant()) -> bool:
     """True when appending this entry stays inside the character budget.
 
     Args:
@@ -517,7 +518,7 @@ def memory_entry_fits(entry: str, *, tenant_id: str = "default") -> bool:
 
 
 def pinned_memory_text(
-    max_chars: Optional[int] = None, *, tenant_id: str = "default"
+    max_chars: Optional[int] = None, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> str:
     """Newest facts that fit the budget. Statements for every session, not a transcript.
 
@@ -548,7 +549,7 @@ def replace_memory_entry(
     *,
     key: str = "preference",
     source: str = "agent",
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> bool:
     """Replace the whole entry that contains ``old_text``. ``content`` is the new full fact.
 

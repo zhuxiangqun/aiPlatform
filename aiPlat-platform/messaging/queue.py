@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from queue import Queue as PyQueue
 from threading import Lock
+from core.api.core_facade import DomainRouter
 
 
 class MessagePriority(str, Enum):
@@ -28,7 +29,7 @@ class Message:
     topic: str = ""
     payload: Any = None
     priority: MessagePriority = MessagePriority.NORMAL
-    tenant_id: str = "default"
+    tenant_id: str = DomainRouter.default_tenant()
     trace_id: Optional[str] = None
     run_id: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)

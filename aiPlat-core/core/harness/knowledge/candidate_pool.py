@@ -474,8 +474,10 @@ class CandidateKnowledgePool:
         try:
 
             from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-            gi = GraphIndex.load(gap.domain_id)
+            # 为什么：N09 K22 — gap 校验须读租户 GraphIndex
+            gi = GraphIndex.load(gap.domain_id, tenant_id=_resolve_graph_tenant())
 
             if not gi:
 

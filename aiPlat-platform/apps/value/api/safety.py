@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, Query
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
+from core.api.core_facade import DomainRouter
 
 router = APIRouter(prefix="/safety", tags=["safety"])
 
@@ -87,7 +88,7 @@ async def emotion_state(body: Dict[str, Any]):
         body: 请求体。
     """
     session_id = body.get("session_id", "")
-    tenant_id = body.get("tenant_id", "default")
+    tenant_id = body.get("tenant_id") or DomainRouter.default_tenant()
     if not session_id:
         return {"error": "session_id is required"}
 
@@ -110,7 +111,7 @@ async def dependency_check(body: Dict[str, Any]):
         body: 请求体。
     """
     session_id = body.get("session_id", "")
-    tenant_id = body.get("tenant_id", "default")
+    tenant_id = body.get("tenant_id") or DomainRouter.default_tenant()
     if not session_id:
         return {"error": "session_id is required"}
 
@@ -135,7 +136,7 @@ async def dependency_check(body: Dict[str, Any]):
 
 
 @router.get("/flagged-sessions", response_model=ItemResponse)
-async def flagged_sessions(tenant_id: str = Query("default")):
+async def flagged_sessions(tenant_id: str = Query(DomainRouter.default_tenant())):
     """List all safety-flagged sessions.
 
     Args:
@@ -163,7 +164,7 @@ async def track_emotion(body: Dict[str, Any]):
     """
     session_id = body.get("session_id", "")
     messages = body.get("messages", [])
-    tenant_id = body.get("tenant_id", "default")
+    tenant_id = body.get("tenant_id") or DomainRouter.default_tenant()
     duration_s = body.get("duration_s", 0)
     if not session_id or not messages:
         return {"error": "session_id and messages are required"}

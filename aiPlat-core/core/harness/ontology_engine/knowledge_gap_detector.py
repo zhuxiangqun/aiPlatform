@@ -10,6 +10,8 @@ This is the first step from L4 (passive response) toward L5 (active perception).
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 
 from dataclasses import dataclass, field
@@ -43,9 +45,10 @@ class KnowledgeGap:
 def detect_knowledge_gaps(
     queries: List[str],
     *,
-    domain_id: str = "ai-knowledge",
+    domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN,
     min_frequency: int = 2,
     max_gaps: int = 20,
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """Detect knowledge gaps from a list of query strings.
 
@@ -54,6 +57,7 @@ def detect_knowledge_gaps(
         domain_id: ontology domain to check against
         min_frequency: minimum occurrences to flag as a gap
         max_gaps: maximum gaps to return
+        tenant_id: 租户；空则解析 ActiveRequestContext（N09 K26）。
 
     Returns:
         { gaps: [KnowledgeGap, ...], summary: { total, by_type } }
@@ -72,7 +76,10 @@ def detect_knowledge_gaps(
     graph = None
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+        # 为什么：N09 K26 — gap 检测须读租户图
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 

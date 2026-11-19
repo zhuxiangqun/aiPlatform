@@ -29,6 +29,8 @@ AbstractGoalDecomposer — 模糊业务目标分解器 (Phase 39).
 
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
@@ -369,11 +371,11 @@ class AbstractGoalDecomposer:
 
                 classified = router.classify(obj_lower)
 
-                dom = classified.get("domain_id") or domain_id or "default"
+                dom = classified.get("domain_id") or domain_id or DomainRouter.default_graph_domain()
 
             except Exception:
 
-                dom = domain_id or "default"
+                dom = domain_id or DomainRouter.default_graph_domain()
 
 
 

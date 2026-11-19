@@ -4,6 +4,8 @@
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import asyncio
@@ -1179,7 +1181,7 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest,
         t2 = set_active_request_context(
             ActiveRequestContext(
                 user_id=str(request.user_id),
-                session_id=str(request.session_id or "default"),
+                session_id=str(request.session_id or DomainRouter.default_session()),
                 tenant_id=str(tenant_id) if tenant_id else None,
                 actor_id=str(actor_id) if actor_id else None,
                 actor_role=str(actor_role) if actor_role else None,
@@ -1232,7 +1234,7 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest,
                         "status": "success",
                         "tenant_id": str(tenant_id) if tenant_id else None,
                         "user_id": str(request.user_id or "system"),
-                        "session_id": str(request.session_id or "default"),
+                        "session_id": str(request.session_id or DomainRouter.default_session()),
                         "target_type": "context",
                         "target_id": str(out.workspace_context_hash or out.stable_cache_key or ""),
                         "args": {"operation": "diagnostics_prompt_assemble", "repo_root": str(request.repo_root or "")},
@@ -2144,7 +2146,7 @@ async def get_doc_quality(limit: int = 20):
 
 
 @router.get("/diagnostics/wiki-quality", response_model=Dict[str, Any])
-async def get_wiki_content_quality(limit: int = 20, collection: str = "default"):
+async def get_wiki_content_quality(limit: int = 20, collection: str = DomainRouter.default_collection()):
     """Returns Wiki page content quality vs original source documents.
 
     Args:
@@ -2494,7 +2496,7 @@ async def aggregate_all_alerts() -> Dict[str, Any]:
     # 4. Wiki content quality alerts
     try:
         from core.harness.knowledge.wiki_quality_monitor import get_wiki_quality_monitor
-        for a in get_wiki_quality_monitor().get_alerts(limit=20, collection_id="default"):
+        for a in get_wiki_quality_monitor().get_alerts(limit=20, collection_id=DomainRouter.default_collection()):
             _add(f"wikiq:{a.get('page_id', a.get('id','?'))}", a.get("severity"),
                  a.get("alert_type", "wiki_quality"), "wiki_quality",
                  str(a.get("message") or a.get("alert_type", "wiki quality")),
@@ -2769,7 +2771,7 @@ async def get_profile_status():
 
 
 @router.post("/diagnostics/profile/switch", response_model=Dict[str, Any])
-async def switch_profile(name: str = "default"):
+async def switch_profile(name: str = DomainRouter.default_profile()):
     """Switch active ControlProfile at session level.
 
     Args:
@@ -2821,7 +2823,7 @@ _KHEALTH_CACHE_TTL = 300  # 5 minutes
 
 @router.get("/diagnostics/knowledge-base-health", response_model=Dict[str, Any])
 async def get_kb_health(
-    collection: str = "default",
+    collection: str = DomainRouter.default_collection(),
     days: int = 30,
     format: str = "json",
 ):
@@ -3124,22 +3126,33 @@ def _build_markdown_report(data: dict, collection: str, days: int = 30) -> str:
 # ── v2.9: Knowledge Drift Status API ──
 
 @router.get("/diagnostics/drift-status", response_model=Dict[str, Any])
-def get_drift_status(collection: str = "", refresh: bool = False):
+def get_drift_status(
+    request: Request,
+    collection: str = "",
+    refresh: bool = False,
+):
     """Knowledge drift scanner — reports which Wiki pages have stale source documents.
 
     Args:
+        request: FastAPI Request；租户经 ``actor_from_http`` 身份门（N09 K17）。
         collection: collection 参数。
         refresh: refresh 参数。
     """
     import time as _time
     from core.harness.knowledge.staleness_monitor import StalenessMonitor
 
-    # Simple cache (5 min TTL)
-    if not refresh and _drift_cache["data"] and _time.time() - _drift_cache["ts"] < 300:
-        return _drift_cache["data"]
+    # 为什么：N09 K17 — 禁止 query/body 伪造 tenant_id；只信 gated identity headers
+    actor0 = actor_from_http(request, None)
+    tid = str(actor0.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
+    # Simple cache (5 min TTL) — key includes tenant
+    cache_key = f"drift:{tid}:{collection}"
+    cached = _drift_cache.get("by_tenant", {}).get(cache_key)
+    if not refresh and cached and _time.time() - cached["ts"] < 300:
+        return cached["data"]
 
     try:
-        monitor = StalenessMonitor()
+        # 为什么：N09 K14 — 漂移扫描必须读对应租户 KB，禁止写死 default
+        monitor = StalenessMonitor(tenant_id=tid)
         if collection:
             reports = [monitor.scan_collection(collection)]
         else:
@@ -3192,22 +3205,30 @@ def get_drift_status(collection: str = "", refresh: bool = False):
         ] if total_stale > 0 else [],
         "checked_at": _time.time(),
     }
-    _drift_cache["data"] = result
-    _drift_cache["ts"] = _time.time()
+    result = {**result, "tenant_id": tid}
+    _drift_cache.setdefault("by_tenant", {})[cache_key] = {
+        "data": result,
+        "ts": _time.time(),
+    }
     return result
 
 
 @router.post("/diagnostics/drift-rebuild", response_model=Dict[str, Any])
-async def trigger_drift_rebuild(max_pages: int = 10):
+async def trigger_drift_rebuild(request: Request, max_pages: int = 10):
     """Auto-rebuild stale pages by re-running the ontology engine on drifted sources.
 
     Args:
+        request: FastAPI Request；租户经 ``actor_from_http`` 身份门（N09 K17）。
         max_pages: max_pages 参数。
     """
-    from core.harness.knowledge.staleness_monitor import StalenessMonitor
+    from core.harness.knowledge.staleness_monitor import StalenessMonitor, kb_sqlite_path_for_tenant
     from core.api.core_facade import read_page
 
-    monitor = StalenessMonitor()
+    # 为什么：N09 K17 — rebuild 租户同 drift-status，禁止 query 旁路
+    actor0 = actor_from_http(request, None)
+    tid = str(actor0.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
+    # 为什么：N09 K14 — rebuild 与扫描共用租户分库
+    monitor = StalenessMonitor(tenant_id=tid)
     reports = monitor.scan_all_collections()
 
     rebuilt = 0
@@ -3217,7 +3238,7 @@ async def trigger_drift_rebuild(max_pages: int = 10):
     for report in reports:
         for page in report.affected_pages[:max_pages]:
             title = page["title"]
-            cid = report.collection_id or "default"
+            cid = report.collection_id or DomainRouter.default_collection()
 
             # Extract KB doc_ids from stale sources
             stale_refs = page.get("stale_sources", [])
@@ -3227,13 +3248,13 @@ async def trigger_drift_rebuild(max_pages: int = 10):
             for doc_id in doc_ids:
                 try:
                     import sqlite3 as _sq
-                    kb_db = get_aiplat_home() + "/kb/tenants/default/kb.sqlite3"
+                    kb_db = str(kb_sqlite_path_for_tenant(tid))
                     conn = _sq.connect(kb_db)
                     row = conn.execute("SELECT source_uri FROM documents WHERE doc_id=?", (doc_id,)).fetchone()
                     conn.close()
                     if row and row[0] and os.path.exists(row[0]):
                         from core.api.core_facade import auto_ontology_pipeline_for_doc
-                        r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid)
+                        r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid, tenant_id=tid)
                         if r["status"] == "completed":
                             rebuilt += 1
                         else:
@@ -3246,13 +3267,14 @@ async def trigger_drift_rebuild(max_pages: int = 10):
 
     return {
         "status": "completed",
+        "tenant_id": tid,
         "rebuilt": rebuilt,
         "errors": errors,
         "details": details[:20],
     }
 
 
-_drift_cache: Dict[str, Any] = {"data": None, "ts": 0}
+_drift_cache: Dict[str, Any] = {"data": None, "ts": 0, "by_tenant": {}}
 
 
 # ── v2.9: Config Drift Detection ──
@@ -3436,34 +3458,59 @@ def get_adoption_metrics():
     }
 
 @router.get("/diagnostics/ontology-audit", response_model=Dict[str, Any])
-def get_ontology_audit(domain_id: str = "ai-knowledge"):
+def get_ontology_audit(request: Request, domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN):
     """Ontology domain audit: class coverage, relation density, state machine activity.
 
     Args:
+        request: FastAPI Request；租户经 ``actor_from_http``（N09 K20）。
         domain_id: domain 标识。
     """
     from core.harness.knowledge.ontology_audit import OntologyAuditor
+    # 为什么：N09 K20 — 审计 GraphIndex 须跟身份租户，禁止默认分库
+    actor0 = actor_from_http(request, None)
+    tid = str(actor0.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
     auditor = OntologyAuditor()
     if domain_id == "all":
-        reports = auditor.audit_all_domains()
-        return {"status": "completed", "domains": {r.domain_id: r.to_dict() for r in reports}}
-    report = auditor.audit_domain(domain_id)
-    return {"status": "completed", "domain": domain_id, "report": report.to_dict()}
+        reports = auditor.audit_all_domains(tenant_id=tid)
+        return {
+            "status": "completed",
+            "tenant_id": tid,
+            "domains": {r.domain_id: r.to_dict() for r in reports},
+        }
+    report = auditor.audit_domain(domain_id, tenant_id=tid)
+    return {
+        "status": "completed",
+        "tenant_id": tid,
+        "domain": domain_id,
+        "report": report.to_dict(),
+    }
 
 
 @router.get("/diagnostics/ontology-audit/summary", response_model=Dict[str, Any])
-def get_ontology_audit_summary():
-    """Quick summary: top orphan classes, worst relation coverage across all domains."""
+def get_ontology_audit_summary(request: Request):
+    """Quick summary: top orphan classes, worst relation coverage across all domains.
+
+    Args:
+        request: FastAPI Request；租户经 ``actor_from_http``（N09 K20）。
+    """
     from core.harness.knowledge.ontology_audit import OntologyAuditor
+    actor0 = actor_from_http(request, None)
+    tid = str(actor0.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
     auditor = OntologyAuditor()
-    reports = auditor.audit_all_domains()
+    reports = auditor.audit_all_domains(tenant_id=tid)
     total_orphans = sum(len(r.orphan_classes) for r in reports)
     total_entities = sum(r.total_entities for r in reports)
     worst = [{"domain": r.domain_id, "entities": r.total_entities, "orphans": len(r.orphan_classes),
               "edge_count": r.total_edges, "warnings": r.warnings[:2]} for r in reports if r.orphan_classes or r.warnings]
     worst.sort(key=lambda x: x["orphans"], reverse=True)
-    return {"status": "completed", "total_entities": total_entities, "total_orphans": total_orphans,
-            "domains_scanned": len(reports), "worst_domains": worst[:10]}
+    return {
+        "status": "completed",
+        "tenant_id": tid,
+        "total_entities": total_entities,
+        "total_orphans": total_orphans,
+        "domains_scanned": len(reports),
+        "worst_domains": worst[:10],
+    }
 
 
 # ── Phase 20: Audit trail API ──
@@ -3655,7 +3702,7 @@ async def get_data_lineage(entity: str = "", type: str = "wiki_page"):
     return {"entity": entity, "type": type, "lineage": lineage}
 
 
-def _fetch_kb_element(doc_id: str, tenant_id: str = "default") -> Optional[str]:
+def _fetch_kb_element(doc_id: str, tenant_id: str = DomainRouter.default_tenant()) -> Optional[str]:
     """Fetch raw text content from kb_elements table."""
     import os as _os
     import sqlite3 as _sq
@@ -3770,5 +3817,5 @@ async def run_cross_validation(payload: dict):
     """
     from core.api.core_facade import cross_validation_verify
     output = (payload or {}).get("output", {})
-    domain_id = str((payload or {}).get("domain_id", "default"))
+    domain_id = str((payload or {}).get("domain_id") or DomainRouter.default_graph_domain())
     return cross_validation_verify(output, domain_id=domain_id)

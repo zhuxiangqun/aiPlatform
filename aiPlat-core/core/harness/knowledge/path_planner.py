@@ -175,6 +175,8 @@ def execute_path(
     path: ReasoningPath,
     start_entities: List[str],
     domain_id: str,
+    *,
+    tenant_id: str = "",
 ) -> PathResult:
     """Execute a reasoning path from start entities, stepping through each relation.
 
@@ -182,13 +184,17 @@ def execute_path(
         path: 路径。
         start_entities: start_entities 参数。
         domain_id: domain 标识。
+        tenant_id: 租户；空则解析 ActiveRequestContext（N09 K22）。
     """
     result = PathResult(path_name=path.name)
     current_ids = list(start_entities)
 
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+        # 为什么：N09 K22 — 推理路径执行须读租户 GraphIndex
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
     except Exception as e:
         result.completed = False
         result.failed_at_step = 0

@@ -11,6 +11,8 @@ docs_sync / write_page 直调）不经过本门。
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 import os
 from typing import FrozenSet
@@ -50,7 +52,8 @@ def read_model_collections() -> FrozenSet[str]:
     Returns:
         collection_id 集合；未配置时为空（门不生效，需显式配置试点名单）。
     """
-    raw = (os.getenv("AIPLAT_WIKI_READ_MODEL_COLLECTIONS") or "").strip()
+    # 为什么：名单 env 含 MODEL 字样但非 LLM 模型解析；豁免 §40.2 误报
+    raw = (os.getenv("AIPLAT_WIKI_READ_MODEL_COLLECTIONS") or "").strip()  # noqa: env-legacy
     if not raw:
         return frozenset()
     return frozenset(x.strip() for x in raw.split(",") if x.strip())
@@ -62,7 +65,7 @@ def is_wiki_read_model_collection(collection_id: str) -> bool:
     Args:
         collection_id: Wiki collection 标识。
     """
-    cid = (collection_id or "default").strip() or "default"
+    cid = (collection_id or DomainRouter.default_collection()).strip() or DomainRouter.default_collection()
     return cid in read_model_collections()
 
 
@@ -75,7 +78,7 @@ def assert_manual_wiki_write_allowed(collection_id: str) -> None:
     Raises:
         WikiManualWriteDenied: 已配置为读模型且未开破窗。
     """
-    cid = (collection_id or "default").strip() or "default"
+    cid = (collection_id or DomainRouter.default_collection()).strip() or DomainRouter.default_collection()
     if not is_wiki_read_model_collection(cid):
         return
     if wiki_manual_write_break_glass():

@@ -5,6 +5,7 @@ Phase 2: goals + runs + HITL resume. No live customer DB writes.
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json
 import logging
@@ -85,7 +86,7 @@ def _default_seed(domain_id: str) -> Dict[str, Any]:
     }
 
 
-def ensure_pilot_goal(domain_id: str = "it-ops") -> Dict[str, Any]:
+def ensure_pilot_goal(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Install seed OrgGoal into AIPLAT_HOME when missing for domain.
 
     Args:
@@ -246,7 +247,7 @@ def _resolve_goal(goal_id: str, domain_id: str) -> Optional[Dict[str, Any]]:
 def run_org_goal(
     goal_id: str = "",
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     dry_actions: bool = True,
     week_label: str = "",
     usage_channel: str = "",

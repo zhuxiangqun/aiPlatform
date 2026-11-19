@@ -8,6 +8,7 @@ Default: no ACL file → allow all (backward compatible).
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json
 import logging
@@ -300,7 +301,7 @@ def redact_entity_fields(
     return out
 
 
-def seed_demo_data_gov_acl(domain_id: str = "data-gov") -> Dict[str, Any]:
+def seed_demo_data_gov_acl(domain_id: str = DomainRouter.data_gov_domain()) -> Dict[str, Any]:
     """Demo ACL: viewer cannot read ghost table; owner_contact admin-only.
 
     Args:

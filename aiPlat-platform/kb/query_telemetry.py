@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import time
 from typing import Any, Dict, List, Optional
+from core.api.core_facade import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def summarize_kb_query_result(out: Optional[Dict[str, Any]]) -> Dict[str, Any]:
 async def record_kb_query_syscall(
     *,
     question: str,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     tenant_id: str = "",
     actor_id: str = "",
     request_id: str = "",
@@ -103,13 +104,13 @@ async def record_kb_query_syscall(
                 "user_id": actor_id or None,
                 "args": {
                     "question": str(question or "")[:500],
-                    "collection_id": str(collection_id or "default"),
+                    "collection_id": str(collection_id or DomainRouter.default_collection()),
                     "request_id": str(request_id or "")[:80] or None,
                 },
                 "result": result,
                 "error": error,
                 "target_type": "kb_collection",
-                "target_id": str(collection_id or "default"),
+                "target_id": str(collection_id or DomainRouter.default_collection()),
             }
         )
         return True

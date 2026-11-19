@@ -63,6 +63,7 @@ class ActionStore:
                     action_id TEXT NOT NULL,
                     entity_id TEXT NOT NULL,
                     domain_id TEXT NOT NULL,
+                    tenant_id TEXT DEFAULT '',
                     from_state TEXT,
                     to_state TEXT,
                     actor TEXT,
@@ -76,6 +77,13 @@ class ActionStore:
                     created_at TEXT DEFAULT (datetime('now'))
                 )
             """)
+            # 为什么：N24 J8 — 存量库补物理 tenant_id 列（召回前过滤；非改写历史 payload）
+            async with db.execute("PRAGMA table_info(action_audit)") as cur:
+                cols = {str(r[1]) for r in await cur.fetchall()}
+            if "tenant_id" not in cols:
+                await db.execute(
+                    "ALTER TABLE action_audit ADD COLUMN tenant_id TEXT DEFAULT ''"
+                )
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS pending_approvals (
                     lock_id TEXT PRIMARY KEY,
@@ -106,6 +114,10 @@ class ActionStore:
                 "ON action_audit(domain_id, actor, created_at)"
             )
             await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_action_audit_tenant "
+                "ON action_audit(tenant_id, created_at)"
+            )
+            await db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_pending_status ON pending_approvals(status)"
             )
             # Phase 3: ontology proposals table
@@ -133,6 +145,54 @@ class ActionStore:
                 )
             """)
             await db.commit()
+        # 为什么：N24 J9 — initialize 后幂等回填物理 tenant_id（生产 caller）
+        await self.backfill_tenant_id()
+
+    async def backfill_tenant_id(self, *, batch_limit: int = 5000) -> Dict[str, Any]:
+        """将空物理 ``tenant_id`` 从 ``params.tenant_id`` 回填（幂等；不改写 params）。
+
+        Args:
+            batch_limit: 单次最多更新行数（防巨型库一次锁太久）。
+
+        Returns:
+            ``updated`` / ``remaining_empty`` / ``batch_limit`` 统计；无 params 租户的行保持空列。
+        """
+        import aiosqlite
+
+        lim = max(1, min(int(batch_limit or 5000), 100_000))
+        updated = 0
+        remaining_empty = 0
+        async with aiosqlite.connect(self.db_path) as db:
+            # 为什么：仅回填「物理列空且 params 有非空 tenant_id」；不猜测默认租户
+            cur = await db.execute(
+                """
+                UPDATE action_audit
+                SET tenant_id = trim(json_extract(params, '$.tenant_id'))
+                WHERE audit_id IN (
+                    SELECT audit_id FROM action_audit
+                    WHERE COALESCE(tenant_id, '') = ''
+                      AND json_extract(params, '$.tenant_id') IS NOT NULL
+                      AND trim(COALESCE(json_extract(params, '$.tenant_id'), '')) != ''
+                    LIMIT ?
+                )
+                """,
+                (lim,),
+            )
+            updated = int(cur.rowcount or 0)
+            await db.commit()
+            async with db.execute(
+                """
+                SELECT COUNT(*) FROM action_audit
+                WHERE COALESCE(tenant_id, '') = ''
+                """
+            ) as c2:
+                row = await c2.fetchone()
+                remaining_empty = int((row[0] if row else 0) or 0)
+        return {
+            "updated": updated,
+            "remaining_empty": remaining_empty,
+            "batch_limit": lim,
+        }
 
     # ═══════════════════════════════════════════════════════
     # Audit
@@ -154,24 +214,32 @@ class ActionStore:
         if record.get("result_status") == "not_found" and not effect.strip():
             effect = "[ENTITY_MISSING]"
 
+        params_obj = record.get("params", {})
+        if not isinstance(params_obj, dict):
+            try:
+                params_obj = json.loads(params_obj or "{}")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                params_obj = {}
+        tid = str(record.get("tenant_id") or params_obj.get("tenant_id") or "").strip()
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 INSERT INTO action_audit (
-                    audit_id, action_id, entity_id, domain_id,
+                    audit_id, action_id, entity_id, domain_id, tenant_id,
                     from_state, to_state, actor, role, params,
                     result_status, constraint_type, effect_summary,
                     compensation, entity_snapshot
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 audit_id,
                 record.get("action_id", ""),
                 record.get("entity_id", ""),
                 record.get("domain_id", ""),
+                tid,
                 record.get("from_state", ""),
                 record.get("to_state", ""),
                 record.get("actor", "system"),
                 record.get("role", ""),
-                json.dumps(record.get("params", {}), ensure_ascii=False),
+                json.dumps(params_obj, ensure_ascii=False),
                 record.get("result_status", "executed"),
                 record.get("constraint_type", ""),
                 effect,
@@ -179,39 +247,88 @@ class ActionStore:
                 snapshot_json,
             ))
             await db.commit()
+        # 为什么：N24 J7 — ActionStore.action_audit 热路径 best-effort 写入统一审计总线
+        if tid:
+            try:
+                from core.harness.knowledge_pipeline.unified_audit_bus import (
+                    append_unified_audit_event,
+                )
+
+                append_unified_audit_event(
+                    tenant_id=tid,
+                    event_id=str(audit_id),
+                    stream="action_store",
+                    event_type=str(record.get("result_status") or "executed"),
+                    occurred_at=time.time(),
+                    actor=str(record.get("actor") or "system"),
+                    subject=str(record.get("action_id") or ""),
+                    refs={
+                        "entity_id": record.get("entity_id") or "",
+                        "domain_id": record.get("domain_id") or "",
+                    },
+                    payload={
+                        "audit_id": audit_id,
+                        "action_id": record.get("action_id", ""),
+                        "entity_id": record.get("entity_id", ""),
+                        "domain_id": record.get("domain_id", ""),
+                        "result_status": record.get("result_status", "executed"),
+                        "params": params_obj,
+                    },
+                )
+            except Exception:
+                logger.warning(
+                    "unified_audit_bus append failed for action_store %s",
+                    audit_id,
+                    exc_info=True,
+                )
         return audit_id
 
-    async def list_audit(self, entity_id: str = "", domain_id: str = "",
-                         limit: int = 50) -> List[Dict[str, Any]]:
-        """Query audit entries by entity/domain.
+    async def list_audit(
+        self,
+        entity_id: str = "",
+        domain_id: str = "",
+        tenant_id: str = "",
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Query audit entries by tenant/entity/domain（tenant 优先物理列）。
 
         Args:
             entity_id: entity 标识。
             domain_id: domain 标识。
+            tenant_id: 租户（物理列；空则不按租户过滤）。
             limit: 返回条数上限。
         """
         import aiosqlite
         results: List[Dict[str, Any]] = []
+        clauses: List[str] = []
+        params: List[Any] = []
+        tid = (tenant_id or "").strip()
+        eid = (entity_id or "").strip()
+        did = (domain_id or "").strip()
+        if tid:
+            # 为什么：J8 物理列优先；存量空列回退 params JSON 抽取
+            clauses.append(
+                "(COALESCE(tenant_id,'')=? OR "
+                "(COALESCE(tenant_id,'')='' AND "
+                "json_extract(params,'$.tenant_id')=?))"
+            )
+            params.extend([tid, tid])
+        if eid:
+            clauses.append("entity_id=?")
+            params.append(eid)
+        if did:
+            clauses.append("domain_id=?")
+            params.append(did)
+        where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        lim = max(1, min(int(limit or 50), 500))
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
-            if entity_id and domain_id:
-                async with db.execute(
-                    "SELECT * FROM action_audit WHERE entity_id=? AND domain_id=? ORDER BY created_at DESC LIMIT ?",
-                    (entity_id, domain_id, limit),
-                ) as cur:
-                    results = [dict(r) for r in await cur.fetchall()]
-            elif entity_id:
-                async with db.execute(
-                    "SELECT * FROM action_audit WHERE entity_id=? ORDER BY created_at DESC LIMIT ?",
-                    (entity_id, limit),
-                ) as cur:
-                    results = [dict(r) for r in await cur.fetchall()]
-            else:
-                async with db.execute(
-                    "SELECT * FROM action_audit ORDER BY created_at DESC LIMIT ?",
-                    (limit,),
-                ) as cur:
-                    results = [dict(r) for r in await cur.fetchall()]
+            async with db.execute(
+                f"SELECT * FROM action_audit{where} "
+                "ORDER BY created_at DESC LIMIT ?",
+                (*params, lim),
+            ) as cur:
+                results = [dict(r) for r in await cur.fetchall()]
         return results
 
     # ═══════════════════════════════════════════════════════

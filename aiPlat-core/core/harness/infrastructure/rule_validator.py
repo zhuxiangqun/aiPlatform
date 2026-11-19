@@ -21,13 +21,16 @@ logger = logging.getLogger(__name__)
 class RuleValidator:
     """Domain-specific rule checker powered by inference_rules in YAML."""
 
-    def __init__(self, domain_id: str):
+    def __init__(self, domain_id: str, *, tenant_id: str = ""):
         """初始化。
 
         Args:
             domain_id: domain 标识。
+            tenant_id: 可选租户；空则从 ActiveRequestContext 解析（N09 K29）。
         """
         self.domain_id = domain_id
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        self._tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
         self.rules = self._load_rules()
 
     def _load_rules(self) -> Dict:
@@ -71,7 +74,8 @@ class RuleValidator:
             if required:
                 try:
                     from core.harness.ontology_engine.graph_index import GraphIndex
-                    g = GraphIndex.load(self.domain_id)
+                    # 为什么：N09 K29 — 规则校验读租户图
+                    g = GraphIndex.load(self.domain_id, tenant_id=self._tenant_id)
                     node = g._nodes.get(entity_id)
                     if not node:
                         conflicts.append({

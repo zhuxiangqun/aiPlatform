@@ -1,0 +1,42 @@
+# FDE rapid-insight icebreaker questions by domain_id (N09 K48 — config-driven).
+# Domain keys live here (not hardcoded in Python). Override path via
+# AIPLAT_ICEBREAKER_QUESTIONS_PATH.
+version: 1
+questions_by_domain:
+  bell-competition:
+    - "这个行业的头部公司是谁？他们各自押注的技术路线有何不同？"
+    - "目前的竞争格局中，哪类公司的利润率最高？为什么？"
+    - "行业里有没有还没达成共识的关键问题？"
+  supply-chain:
+    - "目前供应链中哪个环节的库存周转最慢？"
+    - "供应商评级是根据什么标准？多久更新一次？"
+    - "物流配送是否支持多仓库调拨？"
+  bell-healthcare:
+    - "临床试验数据管理是按 ICH-GCP 标准还是内部规范？"
+    - "患者招募目前最大的瓶颈是什么？"
+    - "CRO 服务的切换成本有多大？"
+  bell-consulting:
+    - "目前有哪些业务流程是靠人工经验而非系统规则驱动的？"
+    - "团队里有多少人具备 BPR 项目经验？"
+    - "最近一次流程优化带来了多少效率提升？"
+  bell-contact-center:
+    - "目前的呼叫中心是自建还是外包？坐席规模多大？"
+    - "客服对话数据是否已经在做分析和知识沉淀？"
+    - "高峰期和低谷期的坐席利用率差多少？"
+  bell-data-cloud:
+    - "目前用的 CRM 系统是什么？有没有做过定制开发？"
+    - "AI 能力（如自动回复）是自研还是采购的第三方方案？"
+  lock-service:
+    - "目前设备故障率最高的型号是哪个？"
+    - "安装师傅的调度系统是手动分配还是自动派单？"
+    - "客户现场的门类型分布是怎样的？"
+  procurement-mvo:
+    - "采购流程中哪个环节最耗时？审批还是比价？"
+    - "供应商的历史履约率是多少？"
+    - "有没有遇到过围标的情况？"
+  finance:
+    - "核心财务指标中哪个波动最大？为什么？"
+    - "交易对手的信用评估是怎么做的？"
+  gov-service:
+    - "政务服务中审批时限最长的环节是哪一步？"
+    - "公民办事的一次通过率大概是多少？"

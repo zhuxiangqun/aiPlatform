@@ -20,6 +20,7 @@ import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 _log = logging.getLogger("aiplat.emotion_tracker")
 
@@ -122,11 +123,14 @@ class EmotionTracker:
             from core.services.execution_store import get_execution_store
             store = get_execution_store()
             def _create():
+                from core.harness.knowledge.domain_router import DomainRouter
+
                 conn = store._connect()
-                conn.execute("""
+                default_tid = DomainRouter.default_tenant()
+                conn.execute(f"""
                     CREATE TABLE IF NOT EXISTS emotion_snapshots (
                         id TEXT PRIMARY KEY,
-                        tenant_id TEXT NOT NULL DEFAULT 'default',
+                        tenant_id TEXT NOT NULL DEFAULT '{default_tid}',
                         session_id TEXT NOT NULL,
                         dominant_tone TEXT NOT NULL DEFAULT 'neutral',
                         intensity REAL NOT NULL DEFAULT 0.5,
@@ -158,7 +162,7 @@ class EmotionTracker:
         except Exception as e:
             _log.debug("Emotion persist skipped: %s", e)
 
-    async def _load_from_store(self, session_id: str, tenant_id: str = "default") -> Optional[EmotionState]:
+    async def _load_from_store(self, session_id: str, tenant_id: str = DomainRouter.default_tenant()) -> Optional[EmotionState]:
         import json as _json
         try:
             from core.services.execution_store import get_execution_store
@@ -192,7 +196,7 @@ class EmotionTracker:
         self,
         session_id: str,
         messages: List[Dict[str, Any]],
-        tenant_id: str = "default",
+        tenant_id: str = DomainRouter.default_tenant(),
         session_duration_s: float = 0.0,
     ):
         """track。
@@ -301,7 +305,7 @@ class EmotionTracker:
             return "medium"
         return "low"
 
-    async def get_state(self, session_id: str, tenant_id: str = "default") -> Optional[EmotionState]:
+    async def get_state(self, session_id: str, tenant_id: str = DomainRouter.default_tenant()) -> Optional[EmotionState]:
         """获取 state。
 
         Args:
@@ -313,7 +317,7 @@ class EmotionTracker:
             return self._cache[key]
         return await self._load_from_store(session_id, tenant_id)
 
-    def get_flagged_sessions(self, tenant_id: str = "default") -> List[EmotionState]:
+    def get_flagged_sessions(self, tenant_id: str = DomainRouter.default_tenant()) -> List[EmotionState]:
         """获取 flagged_sessions。
 
         Args:

@@ -10,6 +10,7 @@ aggregation = multi-instance method  (p95, avg, sum, count, none)
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 import os as _os
 import re as _re
@@ -86,6 +87,7 @@ def compute(
     domain_id: str,
     *,
     time_window_days: int = 30,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Compute a metric value from state_history.db + GraphIndex.
 
@@ -93,17 +95,21 @@ def compute(
         metric: metric 参数。
         domain_id: domain 标识。
         time_window_days: time_window_days 参数。
+        tenant_id: 租户；过滤 state_changes（N09 K18）。
     """
     if not _os.path.exists(DB_PATH):
         return {"value": None, "error": "state_changes.db not found", "metric_name": metric.name}
 
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     cutoff = _time.time() - (time_window_days * 86400)
     try:
         conn = _sqlite3.connect(DB_PATH, timeout=5.0)
         conn.row_factory = _sqlite3.Row
+        # 为什么：N09 K18 — metric 召回须按物理 tenant_id 过滤，禁止跨租户混算
         rows = conn.execute(
-            "SELECT DISTINCT entity_name FROM state_changes WHERE domain_id = ? AND class_name = ? AND timestamp >= ?",
-            (domain_id, metric.binds_to, cutoff),
+            "SELECT DISTINCT entity_name FROM state_changes "
+            "WHERE domain_id = ? AND tenant_id = ? AND class_name = ? AND timestamp >= ?",
+            (domain_id, tid, metric.binds_to, cutoff),
         ).fetchall()
     except _sqlite3.OperationalError as e:
         return {"value": None, "error": str(e), "metric_name": metric.name}
@@ -111,7 +117,7 @@ def compute(
     values = []
     for row in rows:
         entity_name = row["entity_name"]
-        val = _eval_per_instance(entity_name, metric, domain_id, conn)
+        val = _eval_per_instance(entity_name, metric, domain_id, conn, tenant_id=tid)
         if val is not None:
             values.append(val)
 
@@ -153,6 +159,8 @@ def get_trend(
     metric: MetricDefinition,
     domain_id: str,
     days: int = 30,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> List[Dict[str, Any]]:
     """Get daily metric values for the last N days.
 
@@ -160,26 +168,35 @@ def get_trend(
         metric: metric 参数。
         domain_id: domain 标识。
         days: days 参数。
+        tenant_id: 租户；透传 compute（N09 K18）。
     """
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     results = []
     for offset in range(days):
-        val = compute(metric, domain_id, time_window_days=1)
+        val = compute(metric, domain_id, time_window_days=1, tenant_id=tid)
         day_str = _time.strftime("%Y-%m-%d", _time.gmtime(_time.time() - offset * 86400))
         val["date"] = day_str
         results.append(val)
     return list(reversed(results))
 
 
-def scorecard(metrics: List[MetricDefinition], domain_id: str) -> List[Dict[str, Any]]:
+def scorecard(
+    metrics: List[MetricDefinition],
+    domain_id: str,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
+) -> List[Dict[str, Any]]:
     """Compute all metrics for a domain, returning a scorecard.
 
     Args:
         metrics: metrics 参数。
         domain_id: domain 标识。
+        tenant_id: 租户；透传 compute（N09 K18）。
     """
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     result = []
     for m in metrics:
-        val = compute(m, domain_id)
+        val = compute(m, domain_id, tenant_id=tid)
         result.append(val)
     return result
 
@@ -189,17 +206,21 @@ def _eval_per_instance(
     metric: MetricDefinition,
     domain_id: str,
     conn,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Optional[float]:
     u"""Evaluate measurement formula for a single instance."""
     formula = metric.measurement
     if not formula:
         return None
 
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     # Simple field references: completed_at, created_at are timestamps from state_changes
     # For "completed_at - created_at": extract transition timestamps
     row = conn.execute(
-        "SELECT from_state, to_state, timestamp FROM state_changes WHERE domain_id = ? AND entity_name = ? ORDER BY timestamp",
-        (domain_id, entity_name),
+        "SELECT from_state, to_state, timestamp FROM state_changes "
+        "WHERE domain_id = ? AND tenant_id = ? AND entity_name = ? ORDER BY timestamp",
+        (domain_id, tid, entity_name),
     ).fetchall()
 
     if not row:

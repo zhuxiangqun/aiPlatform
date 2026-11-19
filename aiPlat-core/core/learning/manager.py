@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 from core.harness.kernel.runtime import get_kernel_runtime
 
 from .types import LearningArtifact, LearningArtifactKind, LearningArtifactStatus
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +170,7 @@ class LearningManager:
         *,
         target_type: str,
         target_id: str,
-        benchmark_name: str = "default",
+        benchmark_name: str = DomainRouter.default_label(),
         metadata: Optional[Dict[str, Any]] = None,
     ) -> LearningArtifact:
         """Run evaluation benchmark and produce a scored artifact.

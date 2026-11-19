@@ -39,6 +39,8 @@ consumer_patterns:
   - "harness/syscalls/"
   - "harness/knowledge/"
   - "harness/ontology_engine/"
+  - "harness/meta/"
+  - "harness/observability/"
   - "policy/"
   - "api/"
   - "apps/"

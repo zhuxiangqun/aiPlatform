@@ -6,6 +6,7 @@ not hardcoded domain_id branches in core/harness.
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import hmac
 import json
@@ -384,7 +385,7 @@ def map_table_rows_to_payload(
     }
 
 
-def load_table_map_sample(domain_id: str = "it-ops") -> Dict[str, Any]:
+def load_table_map_sample(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Bundled CSV + relation sample for demos (it-ops).
 
     Args:
@@ -543,9 +544,11 @@ def ingest_webhook_payload(
 
     if graph_factory is None:
         from core.api.core_facade import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
         GraphIndex._loaded_instances.clear()
-        g = GraphIndex.load(did)
+        # 为什么：N09 K28 — ABox 写入须按租户图
+        g = GraphIndex.load(did, tenant_id=_resolve_graph_tenant())
     else:
         g = graph_factory(did)
 
@@ -656,8 +659,10 @@ def fetch_entity_snapshot(
     node_payload: Dict[str, Any] = {}
     try:
         from core.api.core_facade import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        g = GraphIndex.load(did)
+        # 为什么：N09 K28 — ABox 快照读租户图
+        g = GraphIndex.load(did, tenant_id=_resolve_graph_tenant())
         node = (getattr(g, "_nodes", {}) or {}).get(eid)
         if node is None:
             return {

@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from core.utils.paths import get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 class SkillMarketplace:
@@ -63,8 +64,10 @@ class SkillMarketplace:
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
+            # 为什么：N09 K51 — tenant DDL DEFAULT 走 default_tenant SSOT
+            default_tid = DomainRouter.default_tenant()
 
-            conn.executescript("""
+            conn.executescript(f"""
 
                 CREATE TABLE IF NOT EXISTS skill_registry (
 
@@ -104,7 +107,7 @@ class SkillMarketplace:
 
                     comment TEXT,
 
-                    profile_id TEXT DEFAULT 'default',
+                    profile_id TEXT DEFAULT '{DomainRouter.default_profile()}',
 
                     created_at TEXT NOT NULL,
 
@@ -118,10 +121,10 @@ class SkillMarketplace:
 
                 CREATE TABLE IF NOT EXISTS publish_submissions (
                     submission_id TEXT PRIMARY KEY,
-                    tenant_id TEXT NOT NULL DEFAULT 'default',
+                    tenant_id TEXT NOT NULL DEFAULT '{default_tid}',
                     skill_id TEXT NOT NULL,
                     status TEXT NOT NULL DEFAULT 'pending_review',
-                    test_result_json TEXT DEFAULT '{}',
+                    test_result_json TEXT DEFAULT '{{}}',
                     created_at TEXT NOT NULL,
                     decided_at TEXT,
                     decided_by TEXT,
@@ -150,7 +153,7 @@ class SkillMarketplace:
 
                  category: str = "general", source_url: str = "", tags: list[str] | None = None) -> bool:
 
-        """register。
+        """注册或更新 marketplace Skill 条目。
 
         Args:
             skill_id: Skill ID。
@@ -235,7 +238,7 @@ class SkillMarketplace:
 
 
 
-    def rate(self, skill_id: str, rating: int, comment: str = "", profile_id: str = "default"):
+    def rate(self, skill_id: str, rating: int, comment: str = "f", profile_id: str = DomainRouter.default_profile()):
 
         """rate。
 
@@ -502,7 +505,7 @@ class SkillMarketplace:
                 """,
                 (
                     submission_id,
-                    tenant_id or "default",
+                    tenant_id or DomainRouter.default_tenant(),
                     skill_id,
                     "pending_review",
                     payload,
@@ -513,7 +516,7 @@ class SkillMarketplace:
             conn.close()
         return {
             "submission_id": submission_id,
-            "tenant_id": tenant_id or "default",
+            "tenant_id": tenant_id or DomainRouter.default_tenant(),
             "skill_id": skill_id,
             "status": "pending_review",
             "test_result": test_result if isinstance(test_result, dict) else {},

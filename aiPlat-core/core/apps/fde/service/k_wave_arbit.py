@@ -14,6 +14,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +220,7 @@ def propose_ticket(
         "status": status,
         "suggested": sug,
         "decision": sug if status == "rejected" else "",
-        "view_name": (view_name or "").strip() or "default",
+        "view_name": (view_name or "").strip() or DomainRouter.default_view_name(),
         "left_id": lid,
         "right_id": rid,
         "left_domain": ld,
@@ -328,10 +329,27 @@ def _copy_json(value: Any) -> Any:
     return json.loads(json.dumps(value, ensure_ascii=False))
 
 
-def _read_cross_domain(domain_id: str, entity_id: str) -> Any:
+def _ticket_tenant_id(ticket: Dict[str, Any]) -> str:
+    """Resolve tenant for GraphIndex ABox ops from ticket fields."""
+    return (
+        str(
+            ticket.get("tenant_id")
+            or ticket.get("left_tenant")
+            or ticket.get("right_tenant")
+            or DomainRouter.default_tenant()
+        ).strip()
+        or DomainRouter.default_tenant()
+    )
+
+
+def _read_cross_domain(
+    domain_id: str, entity_id: str, *, tenant_id: str = DomainRouter.default_tenant()
+) -> Any:
     from core.api.core_facade import GraphIndex
 
-    node = GraphIndex.load(domain_id).get_node(entity_id)
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    # 为什么：N09 K7 — 读边快照必须与 resolve 写入同租户分库
+    node = GraphIndex.load(domain_id, tenant_id=tid).get_node(entity_id)
     if node is None or not isinstance(getattr(node, "metadata", None), dict):
         return None
     raw = node.metadata.get("_cross_domain")
@@ -343,13 +361,16 @@ def _read_cross_domain(domain_id: str, entity_id: str) -> Any:
 def _capture_edge_before(ticket: Dict[str, Any]) -> Dict[str, Any]:
     """Read both sides before resolve. Missing entity is null, not a failure."""
     try:
+        tid = _ticket_tenant_id(ticket)
         left = _read_cross_domain(
             str(ticket.get("left_domain") or ""),
             str(ticket.get("left_id") or ""),
+            tenant_id=tid,
         )
         right = _read_cross_domain(
             str(ticket.get("right_domain") or ""),
             str(ticket.get("right_id") or ""),
+            tenant_id=tid,
         )
     except Exception:
         logger.warning("edge_before capture failed", exc_info=True)
@@ -415,13 +436,15 @@ def apply_ticket(ticket_id: str, *, actor: str = "") -> Dict[str, Any]:
 
     from core.api.core_facade import CrossDomainResolver
 
+    # 为什么：N09 K7 — apply 写跨域边必须显式透传租户到 GraphIndex
     ok = CrossDomainResolver.resolve(
-        str(found.get("view_name") or "default"),
+        str(found.get("view_name") or DomainRouter.default_view_name()),
         str(found.get("left_id") or ""),
         str(found.get("right_id") or ""),
         str(found.get("left_domain") or ""),
         str(found.get("right_domain") or ""),
         float(found.get("confidence") or 0),
+        tenant_id=_ticket_tenant_id(found),
     )
     now = time.time()
     found.update(
@@ -450,10 +473,17 @@ def _points_at(current: Any, other_id: str, other_domain: str) -> bool:
     return not target_domain or target_domain == other_domain
 
 
-def _restore_cross_domain(domain_id: str, entity_id: str, value: Any) -> bool:
+def _restore_cross_domain(
+    domain_id: str,
+    entity_id: str,
+    value: Any,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
+) -> bool:
     from core.api.core_facade import GraphIndex
 
-    graph = GraphIndex.load(domain_id)
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    graph = GraphIndex.load(domain_id, tenant_id=tid)
     if graph.get_node(entity_id) is None:
         return value is None
     stored = None if value is None else _copy_json(value)
@@ -502,19 +532,26 @@ def rollback_ticket_edge(ticket_id: str, *, role: str) -> Dict[str, Any]:
     right_domain = str(found.get("right_domain") or "")
     left_id = str(found.get("left_id") or "")
     right_id = str(found.get("right_id") or "")
+    tid_graph = _ticket_tenant_id(found)
     try:
-        left_now = _read_cross_domain(left_domain, left_id)
-        right_now = _read_cross_domain(right_domain, right_id)
+        left_now = _read_cross_domain(left_domain, left_id, tenant_id=tid_graph)
+        right_now = _read_cross_domain(right_domain, right_id, tenant_id=tid_graph)
     except Exception:
         logger.warning("edge rollback read failed", exc_info=True)
         return {"ok": False, "reason": "edge_restore_failed", "ticket_id": tid}
     if not _points_at(left_now, right_id, right_domain) or not _points_at(right_now, left_id, left_domain):
         return {"ok": False, "reason": "edge_superseded", "ticket_id": tid, "edge_written": True}
 
-    if not _restore_cross_domain(left_domain, left_id, before.get("left")):
+    if not _restore_cross_domain(
+        left_domain, left_id, before.get("left"), tenant_id=tid_graph
+    ):
         return {"ok": False, "reason": "edge_restore_failed", "ticket_id": tid}
-    if not _restore_cross_domain(right_domain, right_id, before.get("right")):
-        _restore_cross_domain(left_domain, left_id, left_now)
+    if not _restore_cross_domain(
+        right_domain, right_id, before.get("right"), tenant_id=tid_graph
+    ):
+        _restore_cross_domain(
+            left_domain, left_id, left_now, tenant_id=tid_graph
+        )
         return {"ok": False, "reason": "edge_restore_failed", "ticket_id": tid}
 
     found.update(

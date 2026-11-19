@@ -15,10 +15,15 @@ from core.harness.ontology_engine.graph_index import GraphIndex
 class ShardedGraphIndex:
     """Multi-domain graph aggregator."""
 
-    def __init__(self):
+    def __init__(self, *, tenant_id: str = ""):
         """初始化。
+
+        Args:
+            tenant_id: 可选租户；空则从 ActiveRequestContext 解析（N09 K26）。
         """
         self._shards: Dict[str, GraphIndex] = {}
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        self._tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
 
     def get_shard(self, domain_id: str) -> GraphIndex:
         """Get or load a domain shard.
@@ -27,7 +32,8 @@ class ShardedGraphIndex:
             domain_id: domain 标识。
         """
         if domain_id not in self._shards:
-            self._shards[domain_id] = GraphIndex.load(domain_id)
+            # 为什么：N09 K26 — shard 须按租户分库
+            self._shards[domain_id] = GraphIndex.load(domain_id, tenant_id=self._tenant_id)
         return self._shards[domain_id]
 
     def cross_domain_neighbors(

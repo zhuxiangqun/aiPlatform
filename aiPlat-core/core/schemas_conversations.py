@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 class ConversationScope(BaseModel):
     """ConversationScope。"""
-    collection_id: str = "default"
+    collection_id: str = DomainRouter.default_collection()
     doc_ids: List[str] = Field(default_factory=list)
     version: int = 1
     scope_hash: Optional[str] = None

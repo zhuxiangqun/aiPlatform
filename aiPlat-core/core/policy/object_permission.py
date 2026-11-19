@@ -22,6 +22,7 @@ import time as _time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
+from core.harness.knowledge.domain_router import DomainRouter
 
 AI = "http://aiplat.local/knowledge#"
 
@@ -81,12 +82,12 @@ class ObjectPermission:
         )
 
 
-def _permissions_path(collection_id: str = "default") -> str:
+def _permissions_path(collection_id: str = DomainRouter.default_collection()) -> str:
     home = get_aiplat_home()
     return _os.path.join(home, "wiki", "collections", collection_id, "permissions.json")
 
 
-def _load(collection_id: str = "default") -> List[ObjectPermission]:
+def _load(collection_id: str = DomainRouter.default_collection()) -> List[ObjectPermission]:
     path = _permissions_path(collection_id)
     if not _os.path.exists(path):
         return []
@@ -98,7 +99,7 @@ def _load(collection_id: str = "default") -> List[ObjectPermission]:
         return []
 
 
-def _save(permissions: List[ObjectPermission], collection_id: str = "default") -> None:
+def _save(permissions: List[ObjectPermission], collection_id: str = DomainRouter.default_collection()) -> None:
     path = _permissions_path(collection_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -113,10 +114,10 @@ def grant_object_permission(
     entity_uri: str,
     role: str,
     actions: List[str],
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     granted_by: str = "api",
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> ObjectPermission:
     """grant_object_permission。
 
@@ -155,7 +156,7 @@ def revoke_object_permission(
     role: str = "",
     action: str = "",
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> bool:
     """revoke_object_permission。
 
@@ -193,9 +194,9 @@ def check_object_permission(
     entity_uri: str,
     role: str,
     action: str,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> bool:
     """Check if a role has a specific action on a specific entity.
 
@@ -240,9 +241,9 @@ def check_object_permission(
 
 def get_effective_permissions(
     entity_uri: str,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, List[str]]:
     """Get all effective permissions for an entity, grouped by role.
 

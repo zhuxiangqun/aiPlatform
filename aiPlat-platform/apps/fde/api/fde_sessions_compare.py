@@ -1,6 +1,7 @@
 """FDE Sessions Compare — side-by-side comparison of two diagnosis sessions (split from fde.py)."""
 from __future__ import annotations
 
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 from typing import Any, Dict, List
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
@@ -35,7 +36,7 @@ async def fde_compare_sessions(
         from core.api.core_facade import GraphIndex
         import json as _json_cmp
 
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
 
         def _get_session_data(sid: str) -> dict:
             """Extract key session data for comparison."""

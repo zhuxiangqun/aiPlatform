@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
+from core.api.core_facade import DomainRouter
 
 
 # ── Chat ──
@@ -38,7 +39,7 @@ class ChatSessionDetailResponse(BaseModel):
 
 class ConversationScope(BaseModel):
     """ConversationScope。"""
-    collection_id: str = "default"
+    collection_id: str = DomainRouter.default_collection()
     doc_ids: List[str] = Field(default_factory=list)
     version: int = 0
     scope_hash: str = ""
@@ -60,7 +61,7 @@ class ConversationResponse(BaseModel):
     messages: List[Dict[str, str]] = Field(default_factory=list)
     created_at: Optional[float] = None
     updated_at: Optional[float] = None
-    tenant_id: str = "default"
+    tenant_id: str = DomainRouter.default_tenant()
     user_id: str = ""
 
 

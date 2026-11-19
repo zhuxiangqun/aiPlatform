@@ -48,6 +48,7 @@ from typing import Any, Dict, List, Optional
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger("aiplat.rag_diagnostics")
 
 
@@ -203,7 +204,7 @@ class RAGDiagnosticsCollector:
 
         self,
 
-        domain_id: str = "default",
+        domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
 
         lookback_hours: int = 24,
 
@@ -382,7 +383,7 @@ class RAGDiagnosticsCollector:
 
 
 
-    def collect_retention_stats(self, domain_id: str = "default") -> Dict[str, Any]:
+    def collect_retention_stats(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> Dict[str, Any]:
 
         """Collect user retention stats from execution_store.
 

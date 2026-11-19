@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from collections import defaultdict
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 @dataclass
 # disposition: internal data type — used by HallucinationTracker.evaluate(); wired to llm.py
 class FactualClaim:
@@ -77,7 +78,7 @@ class HallucinationTracker:
         answer: str,
         retrieved_context: List[Dict[str, Any]],
         run_id: str = "",
-        domain_id: str = "default",
+        domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
     ) -> HallucinationReport:
         """评估答案的幻觉风险。
 
@@ -331,7 +332,12 @@ class HallucinationTracker:
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
             # Search for nodes by name
-            graph = GraphIndex("ai-knowledge")
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            from core.harness.knowledge.domain_router import get_domain_router
+            graph = GraphIndex(
+                get_domain_router().default_kb_domain(),
+                tenant_id=_resolve_graph_tenant(),
+            )
             node_a = graph.find_by_name(entity_a)
             node_b = graph.find_by_name(entity_b)
             if node_a and node_b:

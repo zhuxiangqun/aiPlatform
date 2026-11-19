@@ -61,9 +61,11 @@ def get_ontology_pillars(domain_id: str) -> Dict[str, Any]:
     # ── data pillar ──
     try:
         from core.api.core_facade import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
         GraphIndex._loaded_instances.clear()
-        g = GraphIndex.load(did)
+        # 为什么：N09 K28 — pillars 数据柱读租户图
+        g = GraphIndex.load(did, tenant_id=_resolve_graph_tenant())
         by_class: Dict[str, int] = {}
         rel_count = 0
         for node in (g._nodes or {}).values():

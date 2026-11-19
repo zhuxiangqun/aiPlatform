@@ -12,6 +12,7 @@ import time as _time
 from collections import OrderedDict
 from typing import Any, Dict, Optional, Tuple
 
+from core.harness.knowledge.domain_router import DomainRouter
 CacheKey = Tuple[str, int, str]  # (start_entity, max_hops, direction)
 
 
@@ -112,7 +113,7 @@ class TraversalCache:
 _cache_instances: Dict[str, TraversalCache] = {}
 
 
-def get_traversal_cache(domain_id: str = "default") -> TraversalCache:
+def get_traversal_cache(domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> TraversalCache:
     """Get or create a TraversalCache for a domain.
 
     Args:

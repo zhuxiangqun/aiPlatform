@@ -6,6 +6,7 @@ GET /api/core/diagnostics/capability-boundary?domain=supply-chain
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json, logging, os, time
 from typing import Any, Dict, List, Optional, Tuple
@@ -140,7 +141,9 @@ async def _get_wiki_entity_count(domain_id: str) -> int:
 async def _get_graph_stats_sync(domain_id: str) -> dict:
     try:
         from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
-        g = GraphIndex.load(domain_id)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        # 为什么：N09 K29 — diagnostics 图统计读租户图
+        g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
         edge_count = sum(len(n.out_edges) for n in g._nodes.values())
         return {
             "edge_count": edge_count,
@@ -301,7 +304,7 @@ async def get_capability_boundary(
 @router.get("/diagnostics/rag-quality", response_model=ItemResponse)
 async def get_rag_quality(
     hours: Optional[int] = Query(24, ge=1, le=168),
-    domain: Optional[str] = Query("default"),
+    domain: Optional[str] = Query(DomainRouter.default_graph_domain()),
 ):
     """Return RAG quality dashboard: faithfulness, hallucination risk, user signals, retrieval quality.
 
@@ -313,7 +316,7 @@ async def get_rag_quality(
         from core.harness.evaluation.rag_diagnostics_collector import RAGDiagnosticsCollector
         collector = RAGDiagnosticsCollector()
         dash = await collector.collect_quality_dashboard(
-            domain_id=domain or "default",
+            domain_id=domain or DomainRouter.default_graph_domain(),
             lookback_hours=hours or 24,
         )
         overall = collector.compute_overall_score(dash)

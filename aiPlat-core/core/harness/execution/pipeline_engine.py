@@ -58,6 +58,8 @@ from dataclasses import dataclass, field
 
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, TypedDict
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 
 
 # ── Pipeline Registry (for Playbook v1 export/import) ──
@@ -279,7 +281,7 @@ async def _save_pipeline_knowledge_to_wiki(state: dict, config: Any) -> None:
                     body=f"# {_val.get('label', _key)} - {_name}\n\n{_output[:5000]}",
                     category="topics",
                     tags=["pipeline-output", _key],
-                    collection_id="default",
+                    collection_id=DomainRouter.default_collection(),
                     status="draft",
                     skip_validation=True,
                 )
@@ -800,7 +802,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     @staticmethod
 
-    def _load_default_model(model_name: str = "", *, category: str = "default") -> Any:
+    def _load_default_model(model_name: str = "", *, category: str = DomainRouter.default_label()) -> Any:
 
         import os
 
@@ -1364,7 +1366,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                     'kb_query',
 
-                    {'collection_id': kb_name or 'default', 'question': kb_query, 'limit': kb_top_k},
+                    {'collection_id': kb_name or DomainRouter.default_collection(), 'question': kb_query, 'limit': kb_top_k},
 
                     trace_context={"source": f"workflow_knowledge_{stage.id}"}
 
@@ -5968,7 +5970,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
             state["_hitl_grilling_available"] = True
 
-            state["_hitl_domain_id"] = state.get("domain_id") or "ai-knowledge"
+            from core.harness.knowledge.domain_router import get_domain_router
+
+            state["_hitl_domain_id"] = state.get("domain_id") or get_domain_router().default_kb_domain()
 
             state["_hitl_output_artifact"] = getattr(stage, 'output_artifact', '') or ''
 
@@ -6554,10 +6558,13 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
             try:
 
                 from core.harness.ontology_engine.graph_index import GraphIndex
+                from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
                 import json as _json_pt
 
-                kg = GraphIndex.load("knowledge-atom")
+                # 为什么：N09 K30 — pipeline 阶段快照写租户原子图
+                from core.harness.knowledge.domain_router import get_domain_router
+                kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=_resolve_graph_tenant())
 
                 pt_id = f"pt_{stage.id}_{int(time.time())}"
 
@@ -7014,7 +7021,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
 
 
-            result = execute_action(action, onto, collection_id="default")
+            result = execute_action(action, onto, collection_id=DomainRouter.default_collection())
 
 
 
@@ -8065,7 +8072,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                 from core.harness.memory.manager import get_memory_manager, TaskSkill
 
-                mm = get_memory_manager(namespace=state.get("session_id", "default"))
+                mm = get_memory_manager(namespace=state.get("session_id") or DomainRouter.default_session())
 
                 task_skill = TaskSkill(
 

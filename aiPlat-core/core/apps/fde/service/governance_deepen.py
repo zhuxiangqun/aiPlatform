@@ -8,13 +8,14 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
 _TOKEN = re.compile(r"[a-zA-Z0-9_\u4e00-\u9fff]{2,}")
 
 
-def governance_quality_snapshot(domain_id: str = "data-gov") -> Dict[str, Any]:
+def governance_quality_snapshot(domain_id: str = DomainRouter.data_gov_domain()) -> Dict[str, Any]:
     """Step ⑥: OCS + action surface + deep links (read-only).
 
     Args:
@@ -128,8 +129,10 @@ def locate_via_ontology(
     hits: List[Dict[str, Any]] = []
     try:
         from core.api.core_facade import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        g = GraphIndex.load(did)
+        # 为什么：N09 K28 — governance 定位读租户图
+        g = GraphIndex.load(did, tenant_id=_resolve_graph_tenant())
         nodes = list((getattr(g, "_nodes", None) or {}).values())
         scored: List[tuple] = []
         for node in nodes:
@@ -204,6 +207,7 @@ async def locate_via_ontology_async(
     *,
     top_k: int = 8,
     with_graphrag: bool = False,
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """Locate + optional GraphRAG overlay (best-effort).
 
@@ -212,6 +216,7 @@ async def locate_via_ontology_async(
         query: 查询。
         top_k: top_k 参数。
         with_graphrag: with_graphrag 参数。
+        tenant_id: 可选租户；透传 GraphRAG 向量层（N09 K4）。
     """
     base = locate_via_ontology(domain_id, query, top_k=top_k)
     if not with_graphrag or not base.get("hits"):
@@ -220,7 +225,13 @@ async def locate_via_ontology_async(
         from core.api.core_facade import GraphRAGRetriever
 
         rag = GraphRAGRetriever()
-        ctx = await rag.retrieve(query, domain_id=domain_id, top_k=min(5, top_k))
+        # 为什么：治理 locate 叠加 GraphRAG 时必须带租户，避免向量层读到 default/他租户
+        ctx = await rag.retrieve(
+            query,
+            domain_id=domain_id,
+            top_k=min(5, top_k),
+            tenant_id=tenant_id or "",
+        )
         base["graphrag"] = {
             "mode": ctx.get("mode"),
             "subgraph_size": ctx.get("subgraph_size"),

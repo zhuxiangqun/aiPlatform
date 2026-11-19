@@ -48,6 +48,8 @@ def traverse_ontology_graph(
 
     max_classes: int = 3,
 
+    tenant_id: str = "",
+
 ) -> Dict[str, Any]:
 
     """Run the ontology→graph traversal pipeline.
@@ -63,6 +65,8 @@ def traverse_ontology_graph(
         max_hops: Maximum graph traversal hops.
 
         max_classes: Maximum matched ontology classes to follow.
+
+        tenant_id: 租户；空则解析 ActiveRequestContext（N09 K22）。
 
 
 
@@ -123,10 +127,13 @@ def traverse_ontology_graph(
     try:
 
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.domain_router import get_domain_router
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
 
-
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K22 — 编排检索图遍历须按租户
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
 
         if not graph or len(graph) == 0:
 
@@ -210,6 +217,8 @@ async def ontology_first_retrieve(
 
     top_k: int = 8,
 
+    tenant_id: str = "",
+
 ) -> Tuple[str, List[dict]]:
 
     """Ontology-first multi-class retrieval with neighbor class expansion.
@@ -220,15 +229,17 @@ async def ontology_first_retrieve(
         domain_id: domain 标识。
         collection_id: collection 标识。
         top_k: top_k 参数。
+        tenant_id: 租户；空则解析 ActiveRequestContext（N09 K22）。
     """
 
     try:
 
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
         from core.harness.syscalls.retrieval import sys_knowledge_retrieve
 
-
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
 
         target_classes = [ontology_class_uri]
 
@@ -238,7 +249,9 @@ async def ontology_first_retrieve(
 
         try:
 
-            g = GraphIndex.load("ai-knowledge")
+            # 为什么：N09 K22 — 邻域扩展图须按租户；域名硬编码仍为存量债务
+            from core.harness.knowledge.domain_router import get_domain_router
+            g = GraphIndex.load(get_domain_router().default_kb_domain(), tenant_id=tid)
 
             if len(g) > 0:
 

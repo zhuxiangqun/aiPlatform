@@ -35,6 +35,7 @@ What this file provides:
 
 
 from __future__ import annotations
+
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
@@ -84,7 +85,7 @@ from auth.governance_ops_auth import require_governance_ops_auth
 
 from storage import sqlite as platform_store  # type: ignore
 
-from core.api.core_facade import create_infra_database_client  # P0-A2 修复: CoreFacade 已补 re-export
+from core.api.core_facade import create_infra_database_client, DomainRouter  # P0-A2: CoreFacade re-export
 
 from core.api.facades.service_facade import llm_generate
 
@@ -186,7 +187,7 @@ async def _governance_middleware(request: Request, call_next):
             # Spoofable headers only via _resolve_identity (DEV_MODE / identity secret / JWT / API key).
             ident = _resolve_identity(request)
 
-            tenant_id = ident.tenant_id or "default"
+            tenant_id = ident.tenant_id or DomainRouter.default_tenant()
 
             actor_id = ident.actor_id or "anonymous"
 
@@ -550,7 +551,7 @@ def _resolve_identity(request: Request) -> Identity:
 
         if dev_allow_any:
 
-            tid = request.headers.get("X-AIPLAT-TENANT-ID") or "default"
+            tid = request.headers.get("X-AIPLAT-TENANT-ID") or DomainRouter.default_tenant()
 
             return Identity(
 
@@ -576,7 +577,7 @@ def _resolve_identity(request: Request) -> Identity:
 
         claims = _decode_jwt_claims(token)
 
-        tid = claims.get("tid") or claims.get("tenant_id") or "default"
+        tid = claims.get("tid") or claims.get("tenant_id") or DomainRouter.default_tenant()
 
         sub = claims.get("sub") or claims.get("actor_id") or "anonymous"
 
@@ -658,7 +659,7 @@ def _resolve_identity(request: Request) -> Identity:
 
         scopes = ["kb:read", "kb:write", "admin"]
 
-    return Identity(request_id=request_id, tenant_id="default", actor_id="anonymous", scopes=scopes, auth_type="anonymous")
+    return Identity(request_id=request_id, tenant_id=DomainRouter.default_tenant(), actor_id="anonymous", scopes=scopes, auth_type="anonymous")
 
 
 
@@ -726,7 +727,7 @@ def _kb_tenant_dir(tenant_id: str) -> str:
 
 
 
-    tid = str(tenant_id or "").strip() or "default"
+    tid = str(tenant_id or "").strip() or DomainRouter.default_tenant()
 
     p = Path(_platform_home()).expanduser() / "kb" / "tenants" / tid
 
@@ -1661,7 +1662,7 @@ async def platform_whoami(request: Request):
 
     return {
 
-        "tenant_id": ident.tenant_id or "default",
+        "tenant_id": ident.tenant_id or DomainRouter.default_tenant(),
 
         "actor_id": ident.actor_id or "anonymous",
 
@@ -2657,7 +2658,7 @@ async def kb_ingest_url(request: Request):
 
         raise HTTPException(status_code=400, detail="url is required")
 
-    collection_id = str(body.get("collection_id", "default"))
+    collection_id = str(body.get("collection_id") or DomainRouter.default_collection())
 
     name = str(body.get("name", ""))
 
@@ -2770,7 +2771,7 @@ async def kb_reingest_document(doc_id: str, request: Request):
 
         kind = d.get("kind") or "pdf"
 
-        collection_id = d.get("collection_id") or "default"
+        collection_id = d.get("collection_id") or DomainRouter.default_collection()
 
         ocr_lang = (meta.get("ocr_lang") or "zh") if isinstance(meta, dict) else "zh"
 
@@ -2905,7 +2906,7 @@ class AgentExecuteRequest(BaseModel):
 class DocIngestRequest(BaseModel):
 
     """DocIngestRequest。"""
-    collection_id: str = "default"
+    collection_id: str = DomainRouter.default_collection()
 
     url: Optional[str] = None
 
@@ -2980,7 +2981,7 @@ async def documents_preview(request: Request):
 
     kind = ""
 
-    collection_id = "default"
+    collection_id=DomainRouter.default_collection()
 
     dst = None
 
@@ -3002,7 +3003,7 @@ async def documents_preview(request: Request):
 
         kind = str(form.get("kind") or "").strip().lower()
 
-        collection_id = str(form.get("collection_id") or "default")
+        collection_id = str(form.get("collection_id") or DomainRouter.default_collection())
 
         safe_name = re.sub(r"[^A-Za-z0-9_.\u4e00-\u9fff-]+", "_", file.filename)
 
@@ -3026,7 +3027,7 @@ async def documents_preview(request: Request):
 
         url = body.get("url") if isinstance(body, dict) else None
 
-        collection_id = str(body.get("collection_id") or "default") if isinstance(body, dict) else "default"
+        collection_id = str(body.get("collection_id") or DomainRouter.default_collection()) if isinstance(body, dict) else DomainRouter.default_collection()
 
         if not url:
 
@@ -3110,7 +3111,7 @@ async def documents_ingest(request: Request):
 
 
 
-    collection_id = "default"
+    collection_id=DomainRouter.default_collection()
 
     url = None
 
@@ -3140,7 +3141,7 @@ async def documents_ingest(request: Request):
 
         file = form.get("file")
 
-        collection_id = str(form.get("collection_id") or "default")
+        collection_id = str(form.get("collection_id") or DomainRouter.default_collection())
 
         if file is None or not getattr(file, "filename", None):
 
@@ -3202,7 +3203,7 @@ async def documents_ingest(request: Request):
 
             raise HTTPException(status_code=400, detail="json_body_required")
 
-        collection_id = str(body.get("collection_id") or "default")
+        collection_id = str(body.get("collection_id") or DomainRouter.default_collection())
 
         url = body.get("url")
 
@@ -3344,7 +3345,7 @@ async def documents_ingest(request: Request):
 
         if doc_id:
 
-            _asyncio.create_task(_auto_ontology_pipeline(doc_id, str(file_path), collection_id))
+            _asyncio.create_task(_auto_ontology_pipeline(doc_id, str(file_path), collection_id, tenant_id=str(identity.tenant_id or DomainRouter.default_tenant())))
 
     except Exception as e:
 
@@ -3412,7 +3413,7 @@ async def kb_watch_directory(request: Request):
 
     directory = str(body.get("directory", "") or "").strip()
 
-    collection_id = str(body.get("collection_id", "default") or "default")
+    collection_id = str(body.get("collection_id") or DomainRouter.default_collection())
 
     recursive = bool(body.get("recursive", True))
 
@@ -3492,7 +3493,7 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
 
 
 
-async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: str = "default"):
+async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: str = DomainRouter.default_collection(), *, tenant_id: str = DomainRouter.default_tenant()):
 
     u"""Background task: run ontology engine pipeline on a newly ingested document.
 
@@ -3508,7 +3509,7 @@ async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: st
 
         from core.api.core_facade import auto_ontology_pipeline_for_doc
 
-        result = await auto_ontology_pipeline_for_doc(doc_id, file_path, collection_id)
+        result = await auto_ontology_pipeline_for_doc(doc_id, file_path, collection_id, tenant_id=tenant_id)
 
         if result.get("status") not in ("disabled", "skipped"):
 
@@ -4607,9 +4608,9 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
     out = await execute_platform_kb_query(
 
-        tenant_id=str(getattr(identity, "tenant_id", "") or "default"),
+        tenant_id=str(getattr(identity, "tenant_id", "") or DomainRouter.default_tenant()),
 
-        collection_id=str(getattr(req, "collection_id", "") or "default"),
+        collection_id=str(getattr(req, "collection_id", "") or DomainRouter.default_collection()),
 
         question=str(getattr(req, "question", "") or ""),
 
@@ -4631,7 +4632,7 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
             question=str(getattr(req, "question", "") or ""),
 
-            collection_id=str(getattr(req, "collection_id", "") or "default"),
+            collection_id=str(getattr(req, "collection_id", "") or DomainRouter.default_collection()),
 
             tenant_id=str(getattr(identity, "tenant_id", "") or ""),
 
@@ -4677,9 +4678,9 @@ async def collection_query(request: Request):
 
     out = await execute_platform_kb_query(
 
-        tenant_id=str(getattr(identity, "tenant_id", "") or "default"),
+        tenant_id=str(getattr(identity, "tenant_id", "") or DomainRouter.default_tenant()),
 
-        collection_id=str(body.get("collection_id") or "default"),
+        collection_id=str(body.get("collection_id") or DomainRouter.default_collection()),
 
         question=str(body.get("question") or ""),
 
@@ -4701,7 +4702,7 @@ async def collection_query(request: Request):
 
             question=str(body.get("question") or ""),
 
-            collection_id=str(body.get("collection_id") or "default"),
+            collection_id=str(body.get("collection_id") or DomainRouter.default_collection()),
 
             tenant_id=str(getattr(identity, "tenant_id", "") or ""),
 
@@ -4904,7 +4905,7 @@ async def api_v1_agent_execute(agent_id: str, req: AgentExecuteRequest, request:
 
     payload_ctx.setdefault("tenant_id", identity.tenant_id)
 
-    payload_ctx.setdefault("session_id", req.session_id or "default")
+    payload_ctx.setdefault("session_id", req.session_id or DomainRouter.default_session())
 
     # Execute workspace agent via core workspace agent endpoint (not gateway/execute),
 
@@ -4918,7 +4919,7 @@ async def api_v1_agent_execute(agent_id: str, req: AgentExecuteRequest, request:
 
         "user_id": identity.actor_id,
 
-        "session_id": req.session_id or "default",
+        "session_id": req.session_id or DomainRouter.default_session(),
 
     }
 
@@ -5404,7 +5405,7 @@ async def gateway_execute(body: Dict[str, Any], request: Request):
 
     payload.setdefault("user_id", identity.actor_id)
 
-    payload.setdefault("session_id", payload.get("session_id") or "default")
+    payload.setdefault("session_id", payload.get("session_id") or DomainRouter.default_session())
 
     result = await _core_request("POST", "/api/core/gateway/execute", identity=identity, json_body=payload)
 
@@ -6189,7 +6190,7 @@ async def tenant_dashboard(request: Request):
 
     identity = _resolve_identity(request)
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     return {
 
@@ -6221,7 +6222,7 @@ async def tenant_list_api_keys(request: Request):
 
     identity = _resolve_identity(request)
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     try:
 
@@ -6253,7 +6254,7 @@ async def tenant_create_api_key(request: Request):
 
     body = await request.json()
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     expires_days = min(int(body.get("expires_days", 365)), 365)
 
@@ -6333,7 +6334,7 @@ async def tenant_usage(request: Request):
 
     identity = _resolve_identity(request)
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     try:
 
@@ -6369,7 +6370,7 @@ async def tenant_billing(request: Request, year: int = None, month: int = None):
 
     identity = _resolve_identity(request)
 
-    tid = identity.tenant_id or "default"
+    tid = identity.tenant_id or DomainRouter.default_tenant()
 
     from datetime import datetime as _dt
 
@@ -6526,7 +6527,7 @@ async def marketplace_publish(request: Request):
 
     row = marketplace_create_submission(
         submission_id=submission_id,
-        tenant_id=identity.tenant_id or "default",
+        tenant_id=identity.tenant_id or DomainRouter.default_tenant(),
         skill_id=skill_id,
         test_result=test_result if isinstance(test_result, dict) else {"raw": test_result},
     )
@@ -7315,7 +7316,7 @@ async def kb_create_with_ai(request: Request):
 
     prompt = str(body.get("prompt", "")).strip()
 
-    collection_id = str(body.get("collection_id", "default"))
+    collection_id = str(body.get("collection_id") or DomainRouter.default_collection())
 
     if not prompt:
 
@@ -7604,7 +7605,7 @@ def _auto_archive_docs(tenant_id: str) -> None:
 
 
 
-def _resolve_vault_path(vault_id: str, tenant_id: str = "default") -> str:
+def _resolve_vault_path(vault_id: str, tenant_id: str = DomainRouter.default_tenant()) -> str:
 
     from kb.db import KBSqlite
 
@@ -7626,7 +7627,7 @@ def _resolve_vault_path(vault_id: str, tenant_id: str = "default") -> str:
 
 @app.get("/platform/kb/vault/list")
 
-async def vault_list(tenant_id: str = "default"):
+async def vault_list(tenant_id: str = DomainRouter.default_tenant()):
 
     """vault_list。
 
@@ -7652,7 +7653,7 @@ async def vault_connect(body: dict):
     """
     from kb.service import vault_connect
 
-    return vault_connect(tenant_id=body.get("tenant_id", "default"), vault_path=body["path"],
+    return vault_connect(tenant_id=body.get("tenant_id") or DomainRouter.default_tenant(), vault_path=body["path"],
 
                          label=body.get("label", ""), auto_index=body.get("auto_index", True))
 
@@ -7671,7 +7672,7 @@ async def vault_disconnect(body: dict):
     """
     from kb.service import vault_disconnect
 
-    return vault_disconnect(tenant_id=body.get("tenant_id", "default"), vault_id=body["vault_id"])
+    return vault_disconnect(tenant_id=body.get("tenant_id") or DomainRouter.default_tenant(), vault_id=body["vault_id"])
 
 
 
@@ -7719,7 +7720,7 @@ async def vault_read_file(vault_id: str, path: str):
 
 @app.get("/platform/kb/vault/{vault_id}/index/status")
 
-async def vault_index_status(vault_id: str, tenant_id: str = "default"):
+async def vault_index_status(vault_id: str, tenant_id: str = DomainRouter.default_tenant()):
 
     """vault_index_status。
 
@@ -7737,7 +7738,7 @@ async def vault_index_status(vault_id: str, tenant_id: str = "default"):
 
 @app.post("/platform/kb/vault/{vault_id}/index/start")
 
-async def vault_index_start(vault_id: str, tenant_id: str = "default", collection_id: str = "default"):
+async def vault_index_start(vault_id: str, tenant_id: str = DomainRouter.default_tenant(), collection_id: str = DomainRouter.default_collection()):
 
     """vault_index_start。
 
@@ -7758,7 +7759,7 @@ async def vault_index_start(vault_id: str, tenant_id: str = "default", collectio
 
 @app.post("/platform/kb/vault/{vault_id}/index/stop")
 
-async def vault_index_stop(vault_id: str, tenant_id: str = "default"):
+async def vault_index_stop(vault_id: str, tenant_id: str = DomainRouter.default_tenant()):
 
     """vault_index_stop。
 
@@ -7791,7 +7792,7 @@ async def vault_send_to_wiki(body: dict):
 
                                vault_id=body.get("vault_id", ""),
 
-                               tenant_id=body.get("tenant_id", "default"))
+                               tenant_id=body.get("tenant_id") or DomainRouter.default_tenant())
 
 
 
@@ -7839,7 +7840,7 @@ async def create_analysis_batch(request: Request):
     Args:
         request: FastAPI Request。
     """
-    tenant_id = _resolve_identity(request).tenant_id or "default"
+    tenant_id = _resolve_identity(request).tenant_id or DomainRouter.default_tenant()
 
     body = await request.json()
 
@@ -7873,7 +7874,7 @@ async def list_analysis_batches(request: Request, collection_id: Optional[str] =
         request: FastAPI Request。
         collection_id: collection 标识。
     """
-    tenant_id = _resolve_identity(request).tenant_id or "default"
+    tenant_id = _resolve_identity(request).tenant_id or DomainRouter.default_tenant()
 
     batches = _list_analysis_batches(tenant_id=tenant_id, collection_id=collection_id)
 
@@ -7893,7 +7894,7 @@ async def delete_analysis_batch(batch_id: str, request: Request):
         batch_id: batch 标识。
         request: FastAPI Request。
     """
-    tenant_id = _resolve_identity(request).tenant_id or "default"
+    tenant_id = _resolve_identity(request).tenant_id or DomainRouter.default_tenant()
 
     ok = _delete_analysis_batch(tenant_id=tenant_id, batch_id=batch_id)
 

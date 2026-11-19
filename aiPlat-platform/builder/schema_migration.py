@@ -17,6 +17,7 @@ import re
 import time
 import uuid
 from typing import Any, Dict, List
+from core.api.core_facade import DomainRouter
 
 _SQLA_COLUMN_FN = ("Column", "mapped_column")
 _PYDANTIC_BASES = ("BaseModel", "pydantic.BaseModel")
@@ -190,7 +191,7 @@ def _column_ddl(tbl_schema: Dict[str, Any], col: str) -> str:
 
 
 def generate_migration(diff: Dict[str, Any], project_id: str,
-                       new_schema: Dict[str, Any], module_id: str = "default") -> Dict[str, Any]:
+                       new_schema: Dict[str, Any], module_id: str = DomainRouter.default_module_id()) -> Dict[str, Any]:
     """diff → {id, up_sql, down_sql, destructive, created_at, module_id}. None if no changes.
 
     Args:

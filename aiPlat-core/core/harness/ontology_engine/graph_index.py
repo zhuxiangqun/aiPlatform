@@ -22,6 +22,7 @@ import time as _time
 from dataclasses import dataclass, field
 from pathlib import Path as _Path
 from typing import Any, Dict, List, Optional, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 @dataclass
@@ -113,7 +114,7 @@ class GraphIndex:
     _loaded_instances: dict = {}
     _load_epoch: float = 0.0
 
-    def __init__(self, domain_id: str, tenant_id: str = "default"):
+    def __init__(self, domain_id: str, tenant_id: str = DomainRouter.default_tenant()):
         """初始化。
 
         Args:
@@ -1169,7 +1170,7 @@ class GraphIndex:
         return str(self._json_path)
 
     @classmethod
-    def load(cls, domain_id: str, tenant_id: str = "default") -> GraphIndex:
+    def load(cls, domain_id: str, tenant_id: str = DomainRouter.default_tenant()) -> GraphIndex:
         """Load graph from SQLite first, fall back to JSON.
 
         Args:
@@ -1191,7 +1192,7 @@ class GraphIndex:
         return graph
 
     @classmethod
-    def _load_internal(cls, domain_id: str, tenant_id: str = "default") -> GraphIndex:
+    def _load_internal(cls, domain_id: str, tenant_id: str = DomainRouter.default_tenant()) -> GraphIndex:
         """Internal load implementation (called by load())."""
         graph = cls(domain_id, tenant_id)
 
@@ -1506,6 +1507,17 @@ class GraphIndex:
             limit: 返回条数上限。
         """
         conn = self._get_conn()
+        # 为什么：snapshot() 才建表；新连接上 list 需幂等建表，避免 no such table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS graph_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                domain_id TEXT NOT NULL,
+                label TEXT NOT NULL DEFAULT '',
+                timestamp REAL NOT NULL,
+                data TEXT NOT NULL
+            )
+        """)
+        conn.commit()
         rows = conn.execute(
             "SELECT id, label, timestamp FROM graph_snapshots WHERE domain_id=? ORDER BY timestamp DESC LIMIT ?",
             (self.domain_id, limit),

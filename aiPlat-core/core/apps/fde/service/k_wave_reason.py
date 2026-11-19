@@ -42,8 +42,10 @@ def build_org_run_reasoning(
     entities: List[Dict[str, Any]] = []
     try:
         from core.api.core_facade import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        g = GraphIndex.load(did)
+        # 为什么：N09 K28 — FDE 推理读租户图
+        g = GraphIndex.load(did, tenant_id=_resolve_graph_tenant())
         nodes = getattr(g, "_nodes", {}) or {}
         for h in seed[:12]:
             eid = str(h.get("entity_id") or "")

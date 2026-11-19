@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 @dataclass
 class Citation:
     """Citation。"""
@@ -48,7 +49,7 @@ class ProvenanceTracker:
         self._store: Dict[str, AnswerProvenance] = {}
         self._stale_source_ids: set[str] = set()
 
-    def extract_citations(self, answer: str, retrieved_context: List[Dict[str, Any]], *, domain_id: str = "default") -> List[Citation]:
+    def extract_citations(self, answer: str, retrieved_context: List[Dict[str, Any]], *, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> List[Citation]:
         """extract_citations。
 
         Args:

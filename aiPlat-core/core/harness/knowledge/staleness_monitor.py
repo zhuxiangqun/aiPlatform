@@ -22,6 +22,7 @@ Usage:
 
 
 from __future__ import annotations
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
@@ -79,6 +80,110 @@ class StalenessReport:
 
 
 
+
+def kb_sqlite_path_for_tenant(tenant_id: str = DomainRouter.default_tenant()) -> Path:
+    """Resolve per-tenant KB sqlite path under AIPLAT_HOME.
+
+    Args:
+        tenant_id: 租户；空则 default。
+
+    Returns:
+        ``{AIPLAT_HOME}/kb/tenants/{tenant}/kb.sqlite3``。
+    """
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    # 为什么：N09 K14 — 禁止写死 tenants/default，漂移扫描须命中租户分库
+    return Path(get_aiplat_home()) / "kb" / "tenants" / tid / "kb.sqlite3"
+
+
+def list_kb_tenant_ids() -> List[str]:
+    """Enumerate tenant ids that have a KB sqlite under AIPLAT_HOME.
+
+    Always includes ``default`` even if the file is missing (compat for
+    single-tenant installs and callers that expect a non-empty list).
+
+    Returns:
+        Sorted unique tenant id strings.
+    """
+    root = Path(get_aiplat_home()) / "kb" / "tenants"
+    found: set[str] = set()
+    if root.is_dir():
+        for child in root.iterdir():
+            if not child.is_dir():
+                continue
+            name = (child.name or "").strip()
+            if not name:
+                continue
+            # 为什么：N09 K15 — cron/health 须枚举已有分库，不能只扫 default
+            if (child / "kb.sqlite3").is_file():
+                found.add(name)
+    found.add("default")
+    return sorted(found)
+
+
+def aggregate_stale_summary(
+    *,
+    tenant_ids: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Cross-tenant stale summary for cron / system_health.
+
+    Args:
+        tenant_ids: 可选显式租户列表；默认 ``list_kb_tenant_ids()``。
+
+    Returns:
+        Aggregated totals plus per-tenant ``get_stale_summary`` payloads.
+    """
+    tids = list(tenant_ids) if tenant_ids is not None else list_kb_tenant_ids()
+    total_stale = 0
+    total_scanned = 0
+    by_tenant: Dict[str, Any] = {}
+    for tid in tids:
+        s = StalenessMonitor(tenant_id=tid).get_stale_summary()
+        total_stale += int(s.get("total_stale") or 0)
+        total_scanned += int(s.get("total_scanned") or 0)
+        by_tenant[tid] = s
+    return {
+        "total_scanned": total_scanned,
+        "total_stale": total_stale,
+        "drift_ratio": round(total_stale / max(1, total_scanned), 3),
+        "tenants": by_tenant,
+        "tenant_ids": tids,
+    }
+
+
+async def auto_rebuild_stale_tenants(*, max_pages: int = 10) -> Dict[str, Any]:
+    """Per-tenant auto-rebuild when that tenant's drift_ratio ≥ 0.3.
+
+    Args:
+        max_pages: 每租户最多重建页数。
+
+    Returns:
+        Aggregated rebuild counts and per-tenant results.
+    """
+    summary = aggregate_stale_summary()
+    details: List[Dict[str, Any]] = []
+    rebuilt = 0
+    errors = 0
+    for tid, ts in (summary.get("tenants") or {}).items():
+        if float(ts.get("drift_ratio") or 0) < 0.3 or int(ts.get("total_stale") or 0) <= 0:
+            continue
+        r = await StalenessMonitor(tenant_id=tid).auto_rebuild_if_needed(max_pages=max_pages)
+        rebuilt += int(r.get("rebuilt") or 0)
+        errors += int(r.get("errors") or 0)
+        details.append({"tenant_id": tid, **r})
+    return {
+        "status": "completed",
+        "rebuilt": rebuilt,
+        "errors": errors,
+        "tenants_checked": summary.get("tenant_ids") or [],
+        "details": details,
+        "aggregate": {
+            "total_stale": summary.get("total_stale"),
+            "total_scanned": summary.get("total_scanned"),
+            "drift_ratio": summary.get("drift_ratio"),
+        },
+    }
+
+
 class StalenessMonitor:
 
     """Periodic monitor for knowledge drift detection.
@@ -95,11 +200,16 @@ class StalenessMonitor:
 
 
 
-    def __init__(self):
+    def __init__(self, *, tenant_id: str = DomainRouter.default_tenant()):
 
         """初始化。
+
+        Args:
+            tenant_id: 租户；选择 KB 分库路径（N09 K14）。
         """
-        self._kb_db_path = Path(get_aiplat_home()) / "kb" / "tenants" / "default" / "kb.sqlite3"
+        self._tenant_id = (tenant_id or "").strip() or DomainRouter.default_tenant()
+
+        self._kb_db_path = kb_sqlite_path_for_tenant(self._tenant_id)
 
 
 
@@ -365,7 +475,7 @@ class StalenessMonitor:
 
                 title = page["title"]
 
-                cid = report.collection_id or "default"
+                cid = report.collection_id or DomainRouter.default_collection()
 
 
 
@@ -401,7 +511,7 @@ class StalenessMonitor:
 
                             from core.api.core_facade import auto_ontology_pipeline_for_doc
 
-                            r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid)
+                            r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid, tenant_id=self._tenant_id)
 
                             if r["status"] == "completed":
 

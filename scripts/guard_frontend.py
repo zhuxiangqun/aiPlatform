@@ -164,8 +164,49 @@ def check_vite_proxy() -> list[dict]:
 
 
 def _get_running_ports() -> set[str]:
-    """Get set of ports with running Python processes."""
-    ports = set()
+    """Get set of TCP listen ports (proxy health probe).
+
+    ``start.sh`` launches gunicorn with bind in ``gunicorn.conf.py`` (no
+    ``--port`` on argv). A ps-only ``--port`` scan therefore false-reports
+    ``proxy_dead_target`` while services are up. Prefer TCP connect + lsof.
+    """
+    import socket
+
+    ports: set[str] = set()
+
+    # 1) Probe common aiPlat / vite proxy targets (authoritative "alive?")
+    for port in (
+        "8000",
+        "8001",
+        "8002",
+        "8003",
+        "8004",
+        "5173",
+        "8010",
+        "8011",
+    ):
+        try:
+            with socket.create_connection(("127.0.0.1", int(port)), timeout=0.25):
+                ports.add(port)
+        except OSError:
+            pass
+
+    # 2) lsof LISTEN (may include extra ports; tolerate non-UTF8 process names)
+    try:
+        result = subprocess.run(
+            ["lsof", "-nP", "-iTCP", "-sTCP:LISTEN"],
+            capture_output=True,
+            timeout=5,
+        )
+        stdout = (result.stdout or b"").decode("utf-8", errors="replace")
+        for line in stdout.splitlines():
+            m = re.search(r":(\d+)\s+\(LISTEN\)", line)
+            if m:
+                ports.add(m.group(1))
+    except Exception:
+        pass
+
+    # 3) cmdline --port (uvicorn / eval proxy)
     try:
         result = subprocess.run(
             ["ps", "aux"], capture_output=True, text=True, timeout=5
@@ -173,10 +214,11 @@ def _get_running_ports() -> set[str]:
         for line in result.stdout.split("\n"):
             if "uvicorn" not in line and "python" not in line:
                 continue
-            for m in re.finditer(r'--port\s+(\d+)', line):
+            for m in re.finditer(r"--port\s+(\d+)", line):
                 ports.add(m.group(1))
     except Exception:
         pass
+
     return ports
 
 

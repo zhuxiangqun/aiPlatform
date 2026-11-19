@@ -159,8 +159,15 @@ class SelfHealGate:
             logging.info("SelfHeal: orphan_domain_flag applied for %s", data.get("source", "?"))
         elif signal_type == "stale_mark":
             try:
-                from core.harness.knowledge.staleness_monitor import StalenessMonitor
-                monitor = StalenessMonitor()
+                from core.harness.knowledge.staleness_monitor import (
+                    StalenessMonitor,
+                    list_kb_tenant_ids,
+                )
+                tid = str(data.get("tenant_id") or "").strip()
+                # 为什么：N09 K16 — stale_mark 须按信号租户扫分库；缺省枚举全租户
+                tids = [tid] if tid else list_kb_tenant_ids()
+                for t in tids:
+                    StalenessMonitor(tenant_id=t).scan_all_collections()
                 sources = data.get("claim_sources", [])
                 for src in sources:
                     doc_id = src.get("doc_id", "")

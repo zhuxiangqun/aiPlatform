@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 
 
@@ -530,7 +532,7 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
 
                         user_id=str(user_id or "system"),
 
-                        session_id=str(sess_id or req.session_id or "default"),
+                        session_id=str(sess_id or req.session_id or DomainRouter.default_session()),
 
                         channel=str(getattr(req, "channel", None)) if hasattr(req, "channel") else None,
 
@@ -626,7 +628,7 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
 
         context = AgentContext(
 
-            session_id=payload.get("session_id", req.session_id or "default"),
+            session_id=payload.get("session_id") or req.session_id or DomainRouter.default_session(),
 
             user_id=user_id,
 
@@ -992,7 +994,7 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
                 try:
 
                     # ── Inject MemoryManager context before agent execution ──
-                    _sess = getattr(context, 'session_id', None) or str(payload.get("session_id", "default"))
+                    _sess = getattr(context, 'session_id', None) or str(payload.get("session_id") or DomainRouter.default_session())
                     try:
                         from core.harness.memory.manager import get_memory_manager
                         _mm = get_memory_manager()
@@ -1114,7 +1116,7 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
 
             "context": payload.get("context", {}),
 
-            "session_id": payload.get("session_id", req.session_id or "default"),
+            "session_id": payload.get("session_id") or req.session_id or DomainRouter.default_session(),
 
             "user_id": user_id,
 
@@ -1363,7 +1365,7 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
                           out.get("answer", "") if isinstance(out, dict) else "")
 
                 if q and answer:
-                    _sess_id = str(payload.get("session_id", "default")) if isinstance(payload, dict) else "default"
+                    _sess_id = str(payload.get("session_id") or DomainRouter.default_session()) if isinstance(payload, dict) else DomainRouter.default_session()
                     await mm.save_interaction(
                         user_message=q, assistant_message=str(answer),
                         session_id=_sess_id,
@@ -1384,9 +1386,9 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
 
                 result, domain_id=agent_id, agent_id=agent_id,
 
-                tenant_id=str(payload.get("tenant_id", "default")) if isinstance(payload, dict) else "default",
+                tenant_id=str(payload.get("tenant_id") or DomainRouter.default_tenant()) if isinstance(payload, dict) else DomainRouter.default_tenant(),
 
-                session_id=str(payload.get("session_id", "default")) if isinstance(payload, dict) else "default",
+                session_id=str(payload.get("session_id") or DomainRouter.default_session()) if isinstance(payload, dict) else DomainRouter.default_session(),
 
             )
 
@@ -1552,7 +1554,7 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
 
             try:
 
-                sess_id = str(payload.get("session_id", req.session_id or "default")) if isinstance(payload, dict) else str(req.session_id or "default")
+                sess_id = str(payload.get("session_id") or req.session_id or DomainRouter.default_session()) if isinstance(payload, dict) else str(req.session_id or DomainRouter.default_session())
 
                 # pick last user message as the "current query"
 

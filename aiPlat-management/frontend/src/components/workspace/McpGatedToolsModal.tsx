@@ -1,7 +1,7 @@
 /** MCP gated：高风险工具个别确认（与升格页同级，非一键全开）。 */
 import React, { useEffect, useState } from 'react';
-import { Button, Modal, toast } from '../ui';
-import { toastGateError, workspaceMcpApi, type McpServer } from '../../services';
+import { Button, Modal, toast, toastGateError } from '../ui';
+import { workspaceMcpApi, type McpServer } from '../../services';
 
 type GatedTool = {
   name: string;

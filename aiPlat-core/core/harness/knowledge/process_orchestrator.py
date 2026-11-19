@@ -17,6 +17,7 @@ Process instances tracked in SQLite (process_instances table) in state_changes.d
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
+from core.harness.knowledge.domain_router import DomainRouter
 import json as _json
 import logging
 import os as _os
@@ -29,16 +30,32 @@ logger = logging.getLogger("process_orchestrator")
 
 
 def _db_path() -> str:
-    return get_aiplat_data_dir("state_changes.db")
+    """与 state_history 共用库，避免 process_instances 与状态变更分裂。
+
+    Returns:
+        state_changes.db 绝对路径。
+    """
+    # 为什么：N09 K12 — 旧实现旁路 get_aiplat_data_dir，与 K11 监控库不一致
+    from core.harness.ontology_engine.state_history import _db_path as _hist_db
+
+    return _hist_db()
+
+
+def _tid(tenant_id: str | None) -> str:
+    return (tenant_id or "").strip() or DomainRouter.default_tenant()
 
 
 def _ensure_schema():
+    """Ensure process_instances schema including physical tenant_id."""
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
-    conn.execute("""
+    # 为什么：N09 K12/K51 — DDL DEFAULT 与回填值均走 default_tenant SSOT
+    default_tid = DomainRouter.default_tenant()
+    conn.execute(f"""
         CREATE TABLE IF NOT EXISTS process_instances (
             id TEXT PRIMARY KEY,
             process_name TEXT NOT NULL,
             domain_id TEXT NOT NULL,
+            tenant_id TEXT NOT NULL DEFAULT '{default_tid}',
             current_step INTEGER DEFAULT 0,
             starter_entity TEXT NOT NULL,
             status TEXT DEFAULT 'running',
@@ -46,7 +63,20 @@ def _ensure_schema():
             updated_at REAL NOT NULL
         )
     """)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(process_instances)").fetchall()}
+    if "tenant_id" not in cols:
+        conn.execute(
+            f"ALTER TABLE process_instances ADD COLUMN tenant_id TEXT NOT NULL DEFAULT '{default_tid}'"
+        )
+    conn.execute(
+        "UPDATE process_instances SET tenant_id = ? "
+        "WHERE tenant_id IS NULL OR trim(tenant_id) = ''",
+        (default_tid,),
+    )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_proc_domain ON process_instances(domain_id, process_name)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_proc_tenant_domain ON process_instances(tenant_id, domain_id)"
+    )
     conn.commit()
     conn.close()
 
@@ -78,6 +108,8 @@ def start_process(
     domain_id: str,
     starter_entity: str,
     process_def: Dict[str, Any],
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> str:
     """Start a new process instance. Returns instance_id.
 
@@ -86,14 +118,16 @@ def start_process(
         domain_id: domain 标识。
         starter_entity: starter_entity 参数。
         process_def: process_def 参数。
+        tenant_id: 租户；写入 process_instances 物理列（N09 K12）。
     """
     _ensure_schema()
+    tid = _tid(tenant_id)
     pid = f"{process_name}:{starter_entity}:{int(_time.time())}"
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
     now = _time.time()
     conn.execute(
-        "INSERT INTO process_instances (id, process_name, domain_id, current_step, starter_entity, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
-        (pid, process_name, domain_id, 0, starter_entity, "running", now, now),
+        "INSERT INTO process_instances (id, process_name, domain_id, tenant_id, current_step, starter_entity, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        (pid, process_name, domain_id, tid, 0, starter_entity, "running", now, now),
     )
     conn.commit()
     conn.close()
@@ -200,24 +234,28 @@ def check_step_completion(
     return results
 
 
-def get_process_status(domain_id: str, process_name: str = "") -> List[Dict[str, Any]]:
+def get_process_status(
+    domain_id: str, process_name: str = "", *, tenant_id: str = DomainRouter.default_tenant()
+) -> List[Dict[str, Any]]:
     """Get status of all running process instances.
 
     Args:
         domain_id: domain 标识。
         process_name: process_name 参数。
+        tenant_id: 租户；召回前过滤（N09 K12）。
     """
     _ensure_schema()
+    tid = _tid(tenant_id)
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
     if process_name:
         rows = conn.execute(
-            "SELECT id, process_name, current_step, starter_entity, status, created_at, updated_at FROM process_instances WHERE domain_id = ? AND process_name = ? ORDER BY updated_at DESC",
-            (domain_id, process_name),
+            "SELECT id, process_name, current_step, starter_entity, status, created_at, updated_at FROM process_instances WHERE tenant_id = ? AND domain_id = ? AND process_name = ? ORDER BY updated_at DESC",
+            (tid, domain_id, process_name),
         ).fetchall()
     else:
         rows = conn.execute(
-            "SELECT id, process_name, current_step, starter_entity, status, created_at, updated_at FROM process_instances WHERE domain_id = ? ORDER BY updated_at DESC",
-            (domain_id,),
+            "SELECT id, process_name, current_step, starter_entity, status, created_at, updated_at FROM process_instances WHERE tenant_id = ? AND domain_id = ? ORDER BY updated_at DESC",
+            (tid, domain_id),
         ).fetchall()
     conn.close()
 
@@ -235,19 +273,23 @@ def get_process_status(domain_id: str, process_name: str = "") -> List[Dict[str,
     return results
 
 
-def get_bottlenecks(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+def get_bottlenecks(
+    domain_id: str, limit: int = 10, *, tenant_id: str = DomainRouter.default_tenant()
+) -> List[Dict[str, Any]]:
     """Find process instances stuck at the same step the longest.
 
     Args:
         domain_id: domain 标识。
         limit: 返回条数上限。
+        tenant_id: 租户；召回前过滤（N09 K12）。
     """
     _ensure_schema()
+    tid = _tid(tenant_id)
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
     now = _time.time()
     rows = conn.execute(
-        "SELECT id, process_name, current_step, starter_entity, updated_at FROM process_instances WHERE domain_id = ? AND status = 'running' ORDER BY updated_at ASC LIMIT ?",
-        (domain_id, limit),
+        "SELECT id, process_name, current_step, starter_entity, updated_at FROM process_instances WHERE tenant_id = ? AND domain_id = ? AND status = 'running' ORDER BY updated_at ASC LIMIT ?",
+        (tid, domain_id, limit),
     ).fetchall()
     conn.close()
 

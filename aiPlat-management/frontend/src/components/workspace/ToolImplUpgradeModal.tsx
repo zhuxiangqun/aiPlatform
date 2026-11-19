@@ -1,7 +1,7 @@
 /** §5.4 对齐：Tool 实现草稿预览 → 试跑 / 丢弃 / 确认启用（禁止一键直启用）。 */
 import React, { useEffect, useState } from 'react';
-import { Button, Modal, toast } from '../ui';
-import { toastGateError, workspaceToolApi, type ToolInfo } from '../../services';
+import { Button, Modal, toast, toastGateError } from '../ui';
+import { workspaceToolApi, type ToolInfo } from '../../services';
 
 type Preview = {
   ok?: boolean;

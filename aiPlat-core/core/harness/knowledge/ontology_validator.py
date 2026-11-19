@@ -9,6 +9,7 @@ Callers:
 """
 
 from __future__ import annotations
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
@@ -60,15 +61,22 @@ class ValidationReport:
             self.summary[k] += 1
 
 
-def validate_domain(domain_id: str, *, collection_id: str = None) -> ValidationReport:
+def validate_domain(
+    domain_id: str,
+    *,
+    collection_id: str = None,
+    tenant_id: str = DomainRouter.default_tenant(),
+) -> ValidationReport:
     """Run full cross-check of existing data vs current ontology.
 
     Args:
         domain_id: ontology domain to validate (e.g. "ai-knowledge")
         collection_id: wiki collection to check (defaults to domain_id)
+        tenant_id: 租户；加载 GraphIndex 分库（N09 K20）。
     """
     report = ValidationReport(domain_id=domain_id)
     report.generated_at = _time.time()
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     home = _Path(get_aiplat_home())
     onto_path = home / "ontologies" / f"{domain_id}.yaml"
@@ -85,7 +93,7 @@ def validate_domain(domain_id: str, *, collection_id: str = None) -> ValidationR
     _validate_wiki_pages(report, domain, cid, home)
 
     # ── 2. Graph node validation ──
-    _validate_graph_nodes(report, domain, domain_id, home)
+    _validate_graph_nodes(report, domain, domain_id, home, tenant_id=tid)
 
     return report
 
@@ -150,11 +158,20 @@ def _validate_wiki_pages(report: ValidationReport, domain, collection_id: str, h
         report.add(ValidationItem("orphan_page", "error", f"Wiki 页面扫描失败: {e}"))
 
 
-def _validate_graph_nodes(report: ValidationReport, domain, domain_id: str, home: _Path):
+def _validate_graph_nodes(
+    report: ValidationReport,
+    domain,
+    domain_id: str,
+    home: _Path,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
+):
     """Check graph nodes: orphans + state mismatches."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+        # 为什么：N09 K20 — 校验图节点须读租户分库
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         nodes = list(graph._nodes.values())
         report.summary["total_nodes"] = len(nodes)
 

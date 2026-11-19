@@ -17,6 +17,8 @@ Storage: ~/.aiplat/file_checkpoints/{session_id}/{checkpoint_id}.{header.json,co
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
@@ -39,7 +41,7 @@ def _enabled() -> bool:
 
 
 def _sanitize_session(session_id: str) -> str:
-    s = (session_id or "default").strip() or "default"
+    s = (session_id or DomainRouter.default_session()).strip() or DomainRouter.default_session()
     return hashlib.sha256(s.encode()).hexdigest()[:16]
 
 
@@ -98,7 +100,7 @@ def checkpoint_file(
             raw = f.read()
         content_hash = hashlib.sha256(raw).hexdigest()
 
-        sess = session_id or "default"
+        sess = session_id or DomainRouter.default_session()
         dstdir = _session_dir(sess)
         pkey = _path_key(abs_path)
 
@@ -154,7 +156,7 @@ def list_file_checkpoints(*, session_id: str = "", path: str = "") -> List[Dict[
         session_id: 会话 ID。
         path: 路径。
     """
-    dstdir = _session_dir(session_id or "default")
+    dstdir = _session_dir(session_id or DomainRouter.default_session())
     pkey = _path_key(os.path.realpath(os.path.abspath(path))) if path else ""
     headers = _list_headers(dstdir, path_key=pkey)
     for h in headers:
@@ -163,7 +165,7 @@ def list_file_checkpoints(*, session_id: str = "", path: str = "") -> List[Dict[
 
 
 def _find_header(checkpoint_id: str, session_id: str) -> Optional[Dict[str, Any]]:
-    dstdir = _session_dir(session_id or "default")
+    dstdir = _session_dir(session_id or DomainRouter.default_session())
     for h in _list_headers(dstdir):
         if h.get("checkpoint_id") == checkpoint_id:
             return h
@@ -180,7 +182,7 @@ def get_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Optional[Di
     header = _find_header(checkpoint_id, session_id)
     if header is None:
         return None
-    dstdir = _session_dir(session_id or "default")
+    dstdir = _session_dir(session_id or DomainRouter.default_session())
     pkey = _path_key(header["path"])
     content_path = os.path.join(dstdir, f"{pkey}.{checkpoint_id}.content")
     content = None
@@ -203,7 +205,7 @@ def restore_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Dict[st
     header = _find_header(checkpoint_id, session_id)
     if header is None:
         return {"success": False, "error": "checkpoint_not_found", "checkpoint_id": checkpoint_id}
-    dstdir = _session_dir(session_id or "default")
+    dstdir = _session_dir(session_id or DomainRouter.default_session())
     pkey = _path_key(header["path"])
     content_path = os.path.join(dstdir, f"{pkey}.{checkpoint_id}.content")
     if not os.path.isfile(content_path):

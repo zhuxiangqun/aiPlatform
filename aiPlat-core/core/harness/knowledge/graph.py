@@ -11,6 +11,7 @@ Architecture:
   - Graph search via entity linking at query time
 """
 from __future__ import annotations
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 
 import json as _json
@@ -34,9 +35,9 @@ CREATE INDEX IF NOT EXISTS idx_kb_graph_doc ON kb_graph(tenant_id, doc_id);
 """
 
 
-def _graph_db_path(tenant_id: str = "default") -> str:
+def _graph_db_path(tenant_id: str = DomainRouter.default_tenant()) -> str:
     base = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
-    return os.path.join(base, tenant_id or "default", "kb.sqlite3")
+    return os.path.join(base, tenant_id or DomainRouter.default_tenant(), "kb.sqlite3")
 
 
 def _ensure_graph_schema(conn: sqlite3.Connection) -> None:
@@ -50,7 +51,7 @@ def _ensure_graph_schema(conn: sqlite3.Connection) -> None:
 async def extract_entities(
     text: str,
     doc_id: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> List[Dict[str, str]]:
     """Extract entity-relation triples from text via LLM.
 
@@ -123,7 +124,7 @@ def _store_triples(tenant_id: str, doc_id: str, triples: list) -> None:
 
 def graph_enhance_query(
     query: str,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     doc_ids: Optional[List[str]] = None,
     max_related: int = 5,
 ) -> List[Dict[str, Any]]:

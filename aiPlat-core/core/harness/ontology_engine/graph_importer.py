@@ -44,6 +44,7 @@ from xml.etree import ElementTree as ET
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger("aiplat.graph_import")
 
 
@@ -64,9 +65,11 @@ class GraphFileImporter:
 
         *,
 
-        domain_id: str = "default",
+        domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
 
         format: str = "auto",
+
+        tenant_id: str = "",
 
         source_col: int = 0,
 
@@ -89,6 +92,8 @@ class GraphFileImporter:
             file_path: Path to the graph data file
 
             domain_id: Target knowledge domain
+
+            tenant_id: 租户；空则 resolve（N09 K34）
 
             format: "csv" | "graphml" | "edgelist" | "auto" (detect from extension)
 
@@ -120,7 +125,9 @@ class GraphFileImporter:
 
             from core.harness.ontology_engine.graph_index import GraphIndex
 
-            graph = GraphIndex(domain_id)
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+            graph = GraphIndex(domain_id, tenant_id=tid)
 
 
 

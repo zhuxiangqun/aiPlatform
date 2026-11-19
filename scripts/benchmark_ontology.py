@@ -46,12 +46,35 @@ class DocMetrics:
     warnings: List[str] = field(default_factory=list)
 
 
-def benchmark_file(file_path: str, domain_id: str = "ai-knowledge") -> DocMetrics:
+
+def _script_graph_tenant(tenant_id: str = "") -> str:
+    """Resolve tenant for script GraphIndex writes (N09 K35).
+
+    Args:
+        tenant_id: 显式租户；空则 CoreFacade resolve_graph_tenant，失败回落 default。
+    """
+    tid = (tenant_id or "").strip()
+    if tid:
+        return tid
+    try:
+        from core.api.core_facade import resolve_graph_tenant
+        return resolve_graph_tenant()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug(
+            "script resolve_graph_tenant failed; using default",
+            exc_info=True,
+        )
+        return "default"
+
+
+def benchmark_file(file_path: str, domain_id: str = "ai-knowledge", *, tenant_id: str = "") -> DocMetrics:
     """benchmark_file。
 
     Args:
         file_path: file_path 参数。
         domain_id: domain 标识。
+        tenant_id: 租户；空则 resolve（N09 K35）。
     """
     m = DocMetrics(file=_Path(file_path).name)
     t0 = _time.time()
@@ -119,7 +142,7 @@ def benchmark_file(file_path: str, domain_id: str = "ai-knowledge") -> DocMetric
     # Relations + Graph
     t5 = _time.time()
     from core.harness.ontology_engine.graph_index import GraphIndex
-    graph = GraphIndex(domain_id)
+    graph = GraphIndex(domain_id, tenant_id=_script_graph_tenant(tenant_id))
     for inst in instances:
         graph.add_entity(inst.get("entity_text", inst.get("properties", {}).get("name", "")),
                          inst.get("entity_text", inst.get("properties", {}).get("name", "")),
@@ -215,6 +238,7 @@ def main():
     parser.add_argument("--file", help="Single file to process")
     parser.add_argument("--domain", default="ai-knowledge", help="Ontology domain ID")
     parser.add_argument("--graph-only", action="store_true", help="Only print graph stats")
+    parser.add_argument("--tenant", default="", help="GraphIndex tenant id (N09 K35)")
     args = parser.parse_args()
 
     files = []
@@ -232,7 +256,7 @@ def main():
     metrics = []
     for f in files:
         try:
-            m = benchmark_file(f, args.domain)
+            m = benchmark_file(f, args.domain, tenant_id=args.tenant)
             metrics.append(m)
         except Exception as e:
             print(f"  ERROR {_Path(f).name}: {e}")

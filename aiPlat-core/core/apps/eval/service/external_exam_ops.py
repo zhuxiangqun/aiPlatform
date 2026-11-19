@@ -92,7 +92,9 @@ async def run_external_exam(
         set_active_named_workspace,
     )
 
-    wid = (workspace_id or "").strip() or "default"
+    from core.harness.knowledge.domain_router import DomainRouter
+
+    wid = (workspace_id or "").strip() or DomainRouter.default_workspace_id()
     tid = (target_id or "").strip()
     sid = (set_id or "").strip()
     if not tid:

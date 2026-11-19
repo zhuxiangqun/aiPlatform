@@ -9,6 +9,8 @@ scripts/eval_code_review_gold.py, platform apps/eval code_review_gold router.
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import json
 import logging
 import os
@@ -49,8 +51,8 @@ _TOKEN_RE = re.compile(r"[a-zA-Z0-9_\u4e00-\u9fff]{2,}")
 
 
 def _safe_tenant(tenant_id: str = "") -> str:
-    t = re.sub(r"[^a-zA-Z0-9_\-]", "_", (tenant_id or "default").strip())[:64]
-    return t or "default"
+    t = re.sub(r"[^a-zA-Z0-9_\-]", "_", (tenant_id or DomainRouter.default_tenant()).strip())[:64]
+    return t or DomainRouter.default_tenant()
 
 
 def _safe_case_id(case_id: str) -> str:

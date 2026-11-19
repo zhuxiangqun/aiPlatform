@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from core.apps.document_intelligence.llm_client import chat_complete, extract_json_block, llm_enabled
 from core.harness.knowledge.utils import extract_keywords, score_text
 from core.apps.document_intelligence.kb_provider import get_tenant_storage
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 def _split_sentences(text: str) -> List[str]:
@@ -46,9 +47,9 @@ async def summarize_document(
         max_points: max_points 参数。
     """
     if not tenant_id:
-        tenant_id = "default"
+        tenant_id = DomainRouter.default_tenant()
     if not collection_id:
-        collection_id = "default"
+        collection_id=DomainRouter.default_collection()
     if not doc_id:
         raise ValueError("doc_id_required")
 
@@ -57,7 +58,7 @@ async def summarize_document(
     import os as _os
     from pathlib import Path as _Path
     _aiplat_home = get_aiplat_home()
-    _db_path = str(_Path(_aiplat_home).expanduser() / "kb" / "tenants" / (tenant_id or "default") / "kb.sqlite3")
+    _db_path = str(_Path(_aiplat_home).expanduser() / "kb" / "tenants" / (tenant_id or DomainRouter.default_tenant()) / "kb.sqlite3")
     conn = create_infra_database_client(_db_path)
     try:
         conn.row_factory = None

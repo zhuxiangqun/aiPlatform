@@ -21,13 +21,14 @@ from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 
 from typing import Any, Dict, List, Optional, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 def map_query_to_ontology(
     question: str,
     *,
     domain_id: str = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     max_matches: int = 3,
 ) -> Dict[str, Any]:
     u"""Map a natural language question to T-Box classes and properties.
@@ -275,7 +276,7 @@ def _get_concept_map() -> Dict[str, str]:
 def enrich_query_for_retrieval(
     question: str,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> str:
     """Convenience function: map query and return the rewritten version.
 
@@ -290,7 +291,7 @@ def enrich_query_for_retrieval(
 def parse_to_logic_form(
     question: str,
     *,
-    domain_id: str = "ai-knowledge",
+    domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN,
 ) -> Dict[str, Any]:
     """NL2LF: Parse natural language question to structured Logic Form.
 

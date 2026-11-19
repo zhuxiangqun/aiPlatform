@@ -124,7 +124,11 @@ class SystemHealthCalculator:
 
             auditor = OntologyAuditor()
 
-            audit_reports = auditor.audit_all_domains()
+            # 为什么：N09 K21 — 健康分本体审计聚合全租户分库，禁止只扫 default
+            from core.harness.knowledge.staleness_monitor import list_kb_tenant_ids
+            audit_reports = []
+            for _tid in list_kb_tenant_ids():
+                audit_reports.extend(auditor.audit_all_domains(tenant_id=_tid))
 
             total_orphans = sum(len(r.orphan_classes) for r in audit_reports)
 
@@ -154,11 +158,10 @@ class SystemHealthCalculator:
 
         try:
 
-            from core.harness.knowledge.staleness_monitor import StalenessMonitor
+            from core.harness.knowledge.staleness_monitor import aggregate_stale_summary
 
-            monitor = StalenessMonitor()
-
-            summary = monitor.get_stale_summary()
+            # 为什么：N09 K15 — 健康分须聚合全租户 KB，禁止只读 default
+            summary = aggregate_stale_summary()
 
             drift_ratio = summary.get("drift_ratio", 0)
 
@@ -170,7 +173,9 @@ class SystemHealthCalculator:
 
                 detail={"drift_ratio": drift_ratio, "stale_pages": summary.get("total_stale", 0),
 
-                        "total_scanned": summary.get("total_scanned", 0)}
+                        "total_scanned": summary.get("total_scanned", 0),
+
+                        "tenant_ids": summary.get("tenant_ids") or []}
 
             )
 
@@ -430,9 +435,10 @@ class SystemHealthCalculator:
 
             if event_type == "staleness_changed":
 
-                from core.harness.knowledge.staleness_monitor import StalenessMonitor
+                from core.harness.knowledge.staleness_monitor import aggregate_stale_summary
 
-                s = StalenessMonitor().get_stale_summary()
+                # 为什么：N09 K15 — incremental 健康事件同样聚合全租户
+                s = aggregate_stale_summary()
 
                 dr = s.get("drift_ratio", 0)
 
@@ -440,7 +446,9 @@ class SystemHealthCalculator:
 
                     score=round((1 - dr) * 100), label="知识漂移",
 
-                    detail={"drift_ratio": dr, "stale_pages": s.get("total_stale", 0)})
+                    detail={"drift_ratio": dr, "stale_pages": s.get("total_stale", 0),
+
+                            "tenant_ids": s.get("tenant_ids") or []})
 
                 # Copy other sub-scores from existing
 
@@ -492,7 +500,12 @@ class SystemHealthCalculator:
 
                 from core.harness.knowledge.ontology_audit import OntologyAuditor
 
-                reports = OntologyAuditor().audit_all_domains()
+                # 为什么：N09 K21 — incremental 审计事件同样聚合全租户
+                from core.harness.knowledge.staleness_monitor import list_kb_tenant_ids
+                _aud = OntologyAuditor()
+                reports = []
+                for _tid in list_kb_tenant_ids():
+                    reports.extend(_aud.audit_all_domains(tenant_id=_tid))
 
                 total_orphans = sum(len(r.orphan_classes) for r in reports)
 
@@ -596,17 +609,19 @@ class SystemHealthCalculator:
 
                     data = _y.safe_load(yf.read_text(encoding="utf-8")) or {}
 
-                    g = GraphIndex.load(yf.stem)
-
-                    if len(g) == 0: unknown.append(f"{yf.stem}: 0 entities")
-
-                    for cn, cd in data.get("classes",{}).items():
-
-                        lb = cd.get("label", cn)
-
-                        if sum(1 for n in g._nodes.values() if n.class_name in (cn, lb)) == 0:
-
-                            r["confidence_gap_count"] += 1
+                    # 为什么：N09 K21 — 置信度缺口按租户枚举图，禁止只读 default
+                    from core.harness.knowledge.staleness_monitor import list_kb_tenant_ids
+                    empty_all = True
+                    for _tid in list_kb_tenant_ids():
+                        g = GraphIndex.load(yf.stem, tenant_id=_tid)
+                        if len(g) != 0:
+                            empty_all = False
+                        for cn, cd in data.get("classes", {}).items():
+                            lb = cd.get("label", cn)
+                            if sum(1 for n in g._nodes.values() if n.class_name in (cn, lb)) == 0:
+                                r["confidence_gap_count"] += 1
+                    if empty_all:
+                        unknown.append(f"{yf.stem}: 0 entities")
 
                 except Exception:
 

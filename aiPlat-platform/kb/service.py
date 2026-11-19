@@ -26,6 +26,7 @@ from .poc.ingest import ingest_scanned_pdf
 from .intelligence.embeddings import embed_text
 from core.api.facades.kb_facade import kb_parse_document, kb_chunk_document
 from core.api.facades.kb_facade import kb_classify_document
+from core.api.core_facade import DomainRouter
 
 
 def _safe_readable_path(p: str) -> bool:
@@ -1239,7 +1240,7 @@ _WATCH_STOP_FLAGS: Dict[str, bool] = {}
 
 def watch_directory(
     *, tenant_id: str, watch_id: str, directory: str,
-    collection_id: str = "default", recursive: bool = True,
+    collection_id: str = DomainRouter.default_collection(), recursive: bool = True,
     pattern: str = "*.md", kind: str = "markdown", poll_interval: float = 30.0,
 ) -> Dict[str, Any]:
     """Start background watcher for a directory. On each poll, ingest new/changed files.
@@ -1309,6 +1310,7 @@ def watch_directory(
                                 _aio.run(auto_ontology_pipeline_for_doc(
                                     doc_id=doc_id, file_path=file_path,
                                     collection_id=collection_id,
+                                    tenant_id=tenant_id,
                                 ))
                         except Exception:
                             logging.getLogger(__name__).debug('_poll failed', exc_info=True)
@@ -1424,7 +1426,7 @@ def vault_list(*, tenant_id: str) -> List[Dict[str, Any]]:
 
 
 def vault_tree(*, vault_path: str, subdir: str = "", max_depth: int = 3,
-               vault_id: str = "", tenant_id: str = "default") -> Dict[str, Any]:
+               vault_id: str = "", tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
     """Return directory tree for a vault starting from subdir. Includes wiki status per file.
 
     Args:
@@ -1517,7 +1519,7 @@ def vault_read(*, file_path: str) -> Dict[str, Any]:
 
 
 async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str = "",
-                       vault_id: str = "", tenant_id: str = "default") -> Dict[str, Any]:
+                       vault_id: str = "", tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
     """Convert a vault markdown file to a Wiki page using the full KB pipeline.
 
     Args:
@@ -1597,7 +1599,7 @@ _VAULT_INDEX_STATE: Dict[str, Dict[str, Any]] = {}  # vault_id → {status, prog
 
 def vault_start_indexer(
     *, tenant_id: str, vault_id: str, vault_path: str,
-    collection_id: str = "default", poll_interval: float = 30.0,
+    collection_id: str = DomainRouter.default_collection(), poll_interval: float = 30.0,
     auto_wiki: bool = False,
 ) -> Dict[str, Any]:
     """Start background indexer for a vault. Optionally auto-wiki new files.
@@ -1701,7 +1703,7 @@ def vault_index_status(*, tenant_id: str, vault_id: str) -> Dict[str, Any]:
     return _VAULT_INDEX_STATE.get(key, {"status": "idle", "progress": 0, "last_error": None})
 
 
-def vault_reindex(*, tenant_id: str, vault_path: str, collection_id: str = "default") -> Dict[str, Any]:
+def vault_reindex(*, tenant_id: str, vault_path: str, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Rebuild all indexes for a vault: clear existing docs + re-scan + re-ingest.
 
     Args:

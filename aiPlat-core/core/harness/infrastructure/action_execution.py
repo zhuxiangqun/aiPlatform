@@ -15,7 +15,7 @@ import sqlite3
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +183,53 @@ def lookup_execution(
         conn.close()
 
 
+def list_action_executions(
+    *,
+    tenant_id: str,
+    action_id_prefix: str = "",
+    limit: int = 100,
+    db_path: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """按租户列出 ActionExecution 行（只读；跨租户空）。
+
+    Args:
+        tenant_id: 租户（必填）。
+        action_id_prefix: 可选 action_id 前缀（LIKE prefix%）。
+        limit: 最大条数（1–500）。
+        db_path: 可选库路径。
+    """
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return []
+    lim = max(1, min(int(limit or 100), 500))
+    prefix = (action_id_prefix or "").strip()
+    conn = _connect(db_path)
+    try:
+        if prefix:
+            rows = conn.execute(
+                """
+                SELECT * FROM action_executions
+                WHERE tenant_id=? AND action_id LIKE ?
+                ORDER BY COALESCE(completed_at, started_at) ASC, execution_id ASC
+                LIMIT ?
+                """,
+                (tid, f"{prefix}%", lim),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM action_executions
+                WHERE tenant_id=?
+                ORDER BY COALESCE(completed_at, started_at) ASC, execution_id ASC
+                LIMIT ?
+                """,
+                (tid, lim),
+            ).fetchall()
+        return [_row_to_record(r) for r in rows]
+    finally:
+        conn.close()
+
+
 def _row_to_record(row: sqlite3.Row) -> Dict[str, Any]:
     """Row → ActionExecution 形字典。"""
     def _json(col: str) -> Any:
@@ -292,6 +339,35 @@ def persist_execution(
             raise
     finally:
         conn.close()
+    # 为什么：N24 J6 — ActionExecution 热路径 best-effort 写入统一审计总线（非 ActionStore 合并）
+    try:
+        from core.harness.knowledge_pipeline.unified_audit_bus import (
+            append_unified_audit_event,
+        )
+
+        occurred = float(
+            payload.get("completed_at") or payload.get("started_at") or time.time()
+        )
+        append_unified_audit_event(
+            tenant_id=tenant_id,
+            event_id=str(execution_id),
+            stream="action_execution",
+            event_type=str(payload.get("status") or "executed"),
+            occurred_at=occurred,
+            actor=str(payload.get("actor") or ""),
+            subject=str(payload.get("action_id") or ""),
+            refs={
+                "idempotency_key": key,
+                "audit_hash": str(payload.get("audit_hash") or ""),
+            },
+            payload=payload,
+        )
+    except Exception:
+        logger.warning(
+            "unified_audit_bus append failed for action_execution %s",
+            execution_id,
+            exc_info=True,
+        )
     return payload
 
 

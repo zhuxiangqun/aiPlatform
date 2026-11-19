@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json
 import os
@@ -24,7 +25,7 @@ def _median(vals: List[float]) -> Optional[float]:
 
 
 def weekly_kpi_report(
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "",
     *,
     week: str = "",
@@ -87,8 +88,10 @@ def weekly_kpi_report(
     # Graph-level MTTA attempt (state timestamps if present)
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        g = GraphIndex.load(domain_id)
+        # 为什么：N09 K30 — org KPI MTTA 读租户图
+        g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
         entity_class = str((goal or {}).get("entity_class") or "").strip()
         for node in (getattr(g, "_nodes", {}) or {}).values():
             if entity_class and getattr(node, "class_name", "") != entity_class:
@@ -154,7 +157,7 @@ def weekly_kpi_report(
     }
 
 
-def joint_health_view(domain_id: str = "it-ops") -> Dict[str, Any]:
+def joint_health_view(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Read-only joint health. Does not write YAML, register actions, or start a fleet.
 
     Args:

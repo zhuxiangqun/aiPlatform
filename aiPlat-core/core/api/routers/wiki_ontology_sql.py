@@ -5,11 +5,12 @@ SQL Ontology Bridge API (P3: three-layer architecture).
 from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 
+from core.harness.knowledge.domain_router import DomainRouter
 router = APIRouter(tags=["wiki-ontology-sql"])
 
 
 @router.get("/mappings", response_model=Dict[str, Any])
-async def list_sql_mappings(domain_id: str = "default"):
+async def list_sql_mappings(domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN):
     """List all ontology classes with SQL data source mappings.
 
     Args:
@@ -24,7 +25,7 @@ async def list_sql_mappings(domain_id: str = "default"):
 @router.post("/query", response_model=Dict[str, Any])
 async def query_sql_ontology(
     class_name: str = "",
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
     columns: str = "",
     filters: str = "",
     limit: int = 100,
@@ -58,7 +59,7 @@ async def query_sql_ontology(
 @router.get("/preview", response_model=Dict[str, Any])
 async def preview_sql_query(
     class_name: str = "",
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
     limit: int = 10,
 ):
     """Preview SQL for a concept query (SELECT * equivalent, no execution).

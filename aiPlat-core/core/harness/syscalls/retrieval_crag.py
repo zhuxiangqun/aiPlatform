@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 
 from typing import Any, Dict, List, Optional, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -64,7 +65,7 @@ async def sys_crag_retrieve(
 
     domain_id: Optional[str] = None,
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     tenant_id: str = "system",
 
@@ -129,7 +130,7 @@ async def sys_crag_retrieve(
     # ── Cache lookup (transparent at syscall level, v3.1) ──
     try:
         from core.harness.knowledge.semantic_cache_hook import try_cache_hit
-        cache_id = collection_id if collection_id != "default" else domain_id or "default"
+        cache_id = collection_id if collection_id != DomainRouter.default_collection() else domain_id or DomainRouter.default_graph_domain()
         cached = await try_cache_hit(query, cache_id)
         if cached:
             text = cached.get("text", "") or cached.get("llm_answer", "")
@@ -156,7 +157,14 @@ async def sys_crag_retrieve(
         try:
             from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever
             gr = GraphRAGRetriever()
-            g_result = await gr.retrieve(query, domain_id=domain_id, top_k=_effective_top_k, run_id=run_id)
+            # 为什么：N09 K4 — CRAG 已有 tenant_id，须透传 GraphRAG 向量层，禁止静默用 domain 回退他租户
+            g_result = await gr.retrieve(
+                query,
+                domain_id=domain_id,
+                top_k=_effective_top_k,
+                run_id=run_id,
+                tenant_id=tenant_id or "",
+            )
             if g_result.get("mode") == "graphrag" and g_result.get("chunks"):
                 chunks_text = "\n\n".join(
                     f"[{c.get('title', '')}] {c.get('content', '')}"
@@ -390,7 +398,7 @@ async def _deep_research_retrieve(
 
     query: str,
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     domain_id: str = "",
 

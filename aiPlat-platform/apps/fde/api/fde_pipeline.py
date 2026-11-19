@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 import time
 import os
+from core.api.core_facade import DomainRouter
 
 router = APIRouter(tags=["fde-pipeline"])
 
@@ -43,7 +44,7 @@ async def fde_pipeline_status():
 
         # Wiki/historical cases
         try:
-            h = wiki_search_pages("诊断报告", collection_id="default", limit=1)
+            h = wiki_search_pages("诊断报告", collection_id=DomainRouter.default_collection(), limit=1)
             data_status["historical_cases"] = f"{len(h)} available" if h else "empty"
         except Exception:
             data_status["historical_cases"] = "error"

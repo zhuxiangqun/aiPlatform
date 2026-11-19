@@ -19,6 +19,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger("aiplat.semantic_gate")
 
 
@@ -92,7 +93,7 @@ class SemanticGate:
         """
         self.mode = mode  # "warn" | "audit" | "block"
 
-    def verify(self, output: dict, *, domain_id: str = "default") -> SemanticGateResult:
+    def verify(self, output: dict, *, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> SemanticGateResult:
         """Run all three validation layers against the given domain.
 
         Args:
@@ -144,7 +145,9 @@ class SemanticGate:
         """Check that all named entities exist in GraphIndex."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            graph = GraphIndex.load(domain_id)
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            # 为什么：N09 K29 — semantic gate 实体校验读租户图
+            graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
         except Exception:
             return []  # graph not available → skip
 

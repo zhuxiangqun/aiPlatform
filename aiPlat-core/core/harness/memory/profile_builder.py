@@ -18,6 +18,7 @@ import re
 import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 _log = logging.getLogger("pipeline_engine.profile_builder")
 
@@ -379,7 +380,7 @@ def promote_durable_profile_facts(profile: UserProfile) -> Dict[str, Any]:
 
 
 def compose_sticky_memory(
-    max_chars: Optional[int] = None, *, tenant_id: str = "default"
+    max_chars: Optional[int] = None, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """User profile + pinned MEMORY.md under one char budget. Pi sticky payload.
 
@@ -389,7 +390,7 @@ def compose_sticky_memory(
     """
     from core.harness.memory.file_store import memory_char_budget, pinned_memory_text
 
-    tid = (tenant_id or "default").strip() or "default"
+    tid = (tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
     budget = memory_char_budget() if max_chars is None else max(0, int(max_chars))
     profile_cap = min(600, max(0, budget // 2)) if budget else 0
     profile = (
@@ -417,7 +418,7 @@ def compose_sticky_memory(
     }
 
 
-def user_profile_sticky_text(max_chars: int = 600, *, tenant_id: str = "default") -> str:
+def user_profile_sticky_text(max_chars: int = 600, *, tenant_id: str = DomainRouter.default_tenant()) -> str:
     """Char-budgeted user profile for sticky / Pi session start. Empty when none.
 
     Args:
@@ -431,7 +432,7 @@ def user_profile_sticky_text(max_chars: int = 600, *, tenant_id: str = "default"
         from core.harness.memory.semantic import SemanticMemory
         import json as _json
 
-        store = SemanticMemory(store_type="sqlite", tenant_id=tenant_id or "default")
+        store = SemanticMemory(store_type="sqlite", tenant_id=tenant_id or DomainRouter.default_tenant())
         item = store.latest_by_tag(MEMORY_PROFILE_TAG)
         if item is None:
             return ""
@@ -523,7 +524,7 @@ async def extract_and_persist_profile(
     if memory_manager is None:
         try:
             from core.harness.memory.manager import get_memory_manager
-            ns = str((state or {}).get("session_id") or (state or {}).get("_session_id") or "default")
+            ns = str((state or {}).get("session_id") or (state or {}).get("_session_id") or DomainRouter.default_session())
             memory_manager = get_memory_manager(namespace=ns)
         except Exception:
             memory_manager = None

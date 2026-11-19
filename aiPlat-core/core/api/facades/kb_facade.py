@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 import logging
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -33,7 +34,7 @@ async def kb_qa_retrieve(
     *,
     doc_ids: Any = None,
     tenant_id: Optional[str] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     domain_id: Optional[str] = None,
     top_k: int = 8,
     enable_hyde: bool = True,
@@ -56,7 +57,7 @@ async def kb_qa_retrieve(
     return await sys_crag_retrieve(
         query,
         domain_id=domain_id,
-        collection_id=collection_id or "default",
+        collection_id=collection_id or DomainRouter.default_collection(),
         tenant_id=tenant_id or "system",
         doc_ids=doc_ids,
         top_k=int(top_k or 8),

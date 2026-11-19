@@ -62,6 +62,7 @@ import os
 from core.utils.paths import get_aiplat_data_dir
 
 from typing import List, Optional, Dict, Any
+from core.harness.knowledge.domain_router import DomainRouter
 
 from dataclasses import dataclass, field
 
@@ -260,7 +261,7 @@ class MemoryManager:
 
 
 
-    def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = "default",
+    def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = DomainRouter.default_session(),
 
                  *, tenant_id: Optional[str] = None, session_id: Optional[str] = None):
 
@@ -342,7 +343,7 @@ class MemoryManager:
 
             store_type=self._config.vector_store_type,
 
-            tenant_id=self._tenant_id or "default",
+            tenant_id=self._tenant_id or DomainRouter.default_tenant(),
 
         )
 
@@ -709,7 +710,7 @@ class MemoryManager:
                 from core.harness.memory.file_store import pinned_memory_text
 
                 pinned = pinned_memory_text(
-                    tenant_id=str(self._tenant_id or "default"),
+                    tenant_id=str(self._tenant_id or DomainRouter.default_tenant()),
                 )
 
                 if pinned:
@@ -787,7 +788,7 @@ class MemoryManager:
                         current_query,
                         limit=3,
                         session_id=str(self._session_id or ""),
-                        tenant_id=str(self._tenant_id or "default"),
+                        tenant_id=str(self._tenant_id or DomainRouter.default_tenant()),
                     )
                     if query_asks_about_past(current_query)
                     else []
@@ -1042,7 +1043,7 @@ class MemoryManager:
                 messages,
                 state,
                 session_id=str(self._session_id or ""),
-                tenant_id=str(self._tenant_id or "default"),
+                tenant_id=str(self._tenant_id or DomainRouter.default_tenant()),
             )
 
         
@@ -2624,7 +2625,7 @@ _default_manager: Optional[MemoryManager] = None
 
 
 
-def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = "default",
+def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = DomainRouter.default_session(),
 
                        *, tenant_id: Optional[str] = None,
 
@@ -2645,19 +2646,19 @@ def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = "
 
         if _default_manager is None:
 
-            _default_manager = MemoryManager(config, namespace="default")
+            _default_manager = MemoryManager(config, namespace=DomainRouter.default_session())
 
             _wire_persist_callback(_default_manager)
 
         return _default_manager
 
-    key = (namespace or "default", tenant_id, session_id)
+    key = (namespace or DomainRouter.default_session(), tenant_id, session_id)
 
     if key not in _memory_managers:
 
         _memory_managers[key] = MemoryManager(
 
-            config, namespace=namespace or "default",
+            config, namespace=namespace or DomainRouter.default_session(),
 
             tenant_id=tenant_id, session_id=session_id)
 
@@ -2682,7 +2683,7 @@ def _wire_persist_callback(mgr: MemoryManager) -> None:
             # New-style: namespace, user_message, assistant_message
             interaction = {
                 "user_id": str(kwargs.get("user_id", "system")),
-                "session_id": str(kwargs.get("namespace", "default")),
+                "session_id": str(kwargs.get("namespace") or DomainRouter.default_session()),
                 "summary": str(kwargs.get("assistant_message", ""))[:5000],
                 "metadata": str(kwargs.get("user_message", ""))[:2000],
                 "timestamp": kwargs.get("timestamp", None),
@@ -2694,7 +2695,7 @@ def _wire_persist_callback(mgr: MemoryManager) -> None:
             await store.add_long_term_memory(
                 user_id=str(interaction.get("user_id", "system")),
                 content=str(interaction.get("summary", ""))[:5000],
-                key=str(interaction.get("session_id", "default")),
+                key=str(interaction.get("session_id") or DomainRouter.default_session()),
                 metadata={"raw_user_message": str(interaction.get("metadata", ""))[:2000]},
             )
         except Exception as e:

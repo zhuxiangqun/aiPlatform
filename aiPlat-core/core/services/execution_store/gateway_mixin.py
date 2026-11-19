@@ -8,6 +8,7 @@ import json, time, sqlite3, logging
 import anyio
 import uuid
 from ._base import _json_dumps, _json_loads
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 class GatewayMixin:
@@ -41,7 +42,7 @@ class GatewayMixin:
             now = time.time()
             rec = {
                 "id": f"gwp-{uuid.uuid4().hex[:12]}",
-                "channel": str(channel or "default"),
+                "channel": str(channel or DomainRouter.default_label()),
                 "channel_user_id": str(channel_user_id),
                 "user_id": str(user_id or "system"),
                 "session_id": str(session_id) if session_id else None,
@@ -105,7 +106,7 @@ class GatewayMixin:
             try:
                 row = conn.execute(
                     "SELECT * FROM gateway_pairings WHERE channel=? AND channel_user_id=?;",
-                    (str(channel or "default"), str(channel_user_id)),
+                    (str(channel or DomainRouter.default_label()), str(channel_user_id)),
                 ).fetchone()
                 return dict(row) if row else None
             finally:
@@ -179,7 +180,7 @@ class GatewayMixin:
             try:
                 cur = conn.execute(
                     "DELETE FROM gateway_pairings WHERE channel=? AND channel_user_id=?;",
-                    (str(channel or "default"), str(channel_user_id)),
+                    (str(channel or DomainRouter.default_label()), str(channel_user_id)),
                 )
                 conn.commit()
                 return bool(cur.rowcount)

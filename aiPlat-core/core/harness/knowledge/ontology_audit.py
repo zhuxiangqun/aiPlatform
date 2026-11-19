@@ -23,6 +23,7 @@ Usage:
 
 
 from __future__ import annotations
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 
@@ -123,15 +124,17 @@ class OntologyAuditor:
 
 
 
-    def audit_domain(self, domain_id: str) -> OntologyAuditReport:
+    def audit_domain(self, domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()) -> OntologyAuditReport:
 
         """Run full audit on one domain.
 
         Args:
             domain_id: domain 标识。
+            tenant_id: 租户；加载 GraphIndex 分库（N09 K20）。
         """
 
         report = OntologyAuditReport(domain_id=domain_id)
+        tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
 
 
@@ -159,7 +162,8 @@ class OntologyAuditor:
 
             from core.harness.ontology_engine.graph_index import GraphIndex
 
-            graph = GraphIndex.load(domain_id)
+            # 为什么：N09 K20 — 本体审计须读租户分库，禁止默认 GraphIndex
+            graph = GraphIndex.load(domain_id, tenant_id=tid)
 
 
 
@@ -421,9 +425,13 @@ class OntologyAuditor:
 
 
 
-    def audit_all_domains(self) -> List[OntologyAuditReport]:
+    def audit_all_domains(self, *, tenant_id: str = DomainRouter.default_tenant()) -> List[OntologyAuditReport]:
 
-        """Run audit on all registered domains."""
+        """Run audit on all registered domains.
+
+        Args:
+            tenant_id: 租户；透传 audit_domain（N09 K20）。
+        """
 
         reports = []
 
@@ -441,7 +449,7 @@ class OntologyAuditor:
 
                 for did in domains:
 
-                    reports.append(self.audit_domain(did))
+                    reports.append(self.audit_domain(did, tenant_id=tenant_id))
 
         except Exception:
 

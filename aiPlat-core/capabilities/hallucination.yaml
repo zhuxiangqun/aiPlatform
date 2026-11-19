@@ -30,11 +30,18 @@ methods:
     signature: "() -> HallucinationTracker"
     purpose: "获取全局幻觉追踪器单例"
 
+consumers:
+  - path: aiPlat-core/core/harness/meta/org_harness_metrics.py
+    uses: get_recent_reports
+    via: core.harness.evaluation.hallucination_tracker.get_hallucination_tracker
+    note: "组织 harness 指标汇总最近幻觉报告"
+
 consumer_patterns:
   - "harness/evaluation/"
   - "harness/integration"
   - "harness/syscalls/"
   - "harness/scheduler/"
+  - "harness/meta/"
   - "apps/agents/"
   - "api/"
   - "management/"

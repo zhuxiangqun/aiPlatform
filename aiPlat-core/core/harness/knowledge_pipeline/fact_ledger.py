@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger(__name__)
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -2482,6 +2483,42 @@ class FactLedger:
                 ),
             )
             await db.commit()
+        # 为什么：N24 J5 — revision_audit 热路径 best-effort 写入统一审计总线（非 ActionStore 合并）
+        try:
+            from core.harness.knowledge_pipeline.unified_audit_bus import (
+                append_unified_audit_event,
+            )
+
+            occ = 0.0
+            try:
+                from datetime import datetime
+
+                occ = datetime.fromisoformat(
+                    str(recorded_at).replace("Z", "+00:00")
+                ).timestamp()
+            except (TypeError, ValueError, AttributeError):
+                occ = 0.0
+            append_unified_audit_event(
+                tenant_id=tenant_id,
+                event_id=audit_id,
+                stream="revision_audit",
+                event_type=ev,
+                occurred_at=occ,
+                actor=who,
+                subject=f"{et}:{eid}",
+                refs={
+                    "revision": int(revision),
+                    "to_revision": None if to_revision is None else int(to_revision),
+                    "reason": why,
+                },
+                payload=entry,
+            )
+        except Exception:
+            logger.warning(
+                "unified_audit_bus append failed for revision_audit %s",
+                audit_id,
+                exc_info=True,
+            )
         return entry
 
     async def list_revision_audit(
@@ -3818,6 +3855,15 @@ _N09_CASES = (
     "get_source_no_leak",
     "gateway_no_leak",
     "verify_raw_no_leak",
+    "object_set_no_leak",
+    "unified_audit_no_leak",
+    "kb_retrieve_no_leak",
+    "wiki_retrieve_no_leak",
+    "graphrag_no_leak",
+    "graphrag_caller_passthrough",
+    "graphindex_no_leak",
+    "graph_write_tenant",
+    "cross_domain_resolve_tenant",
 )
 
 
@@ -3828,7 +3874,7 @@ async def run_cross_tenant_isolation_suite(
     tenant_b: str = "n09-tenant-b",
     domain_id: str = "",
 ) -> Dict[str, Any]:
-    """N09 跨租户 0 泄漏最小加深套件（FactLedger 四探针）。
+    """N09 跨租户 0 泄漏加深套件（含跨域写边 / publish snapshot 租户）。
 
     Args:
         ledger: 可选账本；默认临时目录新建（不污染单例）。
@@ -3839,10 +3885,12 @@ async def run_cross_tenant_isolation_suite(
     Returns:
         套件汇总；``certified`` / ``n09_full_conformance`` 恒 false。
     """
+    import os
     import tempfile
 
     own = ledger is None
     tmp: Optional[tempfile.TemporaryDirectory] = None
+    root: Optional[Path] = None
     if own:
         tmp = tempfile.TemporaryDirectory(prefix="n09-cross-tenant-")
         root = Path(tmp.name)
@@ -3856,6 +3904,9 @@ async def run_cross_tenant_isolation_suite(
         await lg.initialize()
 
     cases: List[Dict[str, Any]] = []
+    prev_kb_tenants = os.environ.get("AIPLAT_KB_TENANTS_DIR")
+    prev_embed_backend = os.environ.get("AIPLAT_EMBED_BACKEND")
+    prev_aiplat_home = os.environ.get("AIPLAT_HOME")
     try:
         src = await lg.register_source(
             tenant_id=tenant_a,
@@ -3866,10 +3917,37 @@ async def run_cross_tenant_isolation_suite(
             connector="n09_cross_tenant",
             domain_id=domain_id,
         )
+        # 为什么：K1 用临时 ObjectType 绑定，避免 harness 依赖业务域种子
+        import json as _json
+
+        probe_domain = (domain_id or "n09-probe").strip() or "n09-probe"
+        probe_type = "N09Probe"
+        bind_dir = root or Path(tempfile.mkdtemp(prefix="n09-bindings-"))
+        bindings_path = bind_dir / "n09-object-types.json"
+        bindings_path.write_text(
+            _json.dumps(
+                {
+                    "domain_id": probe_domain,
+                    "object_types": [
+                        {
+                            "object_type_id": probe_type,
+                            "label": "N09 probe",
+                            "primary_key": "id",
+                            "domain_id": probe_domain,
+                            "properties": [
+                                {"id": "note", "type": "string", "indexed": True}
+                            ],
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
         fact = await lg.put_fact(
             tenant_id=tenant_a,
             collection_id="n09-kb",
-            subject="InstallOrder:n09-secret",
+            subject=f"{probe_type}:n09-secret",
             predicate="note",
             object="secret",
             evidence=[
@@ -3885,7 +3963,7 @@ async def run_cross_tenant_isolation_suite(
             review_status="published",
             confidence=0.9,
             allow_bootstrap_published=True,
-            domain_id=domain_id,
+            domain_id=probe_domain,
         )
         same = await lg.query_facts(tenant_id=tenant_a, domain_id=domain_id or None)
         other = await lg.query_facts(tenant_id=tenant_b, domain_id=domain_id or None)
@@ -3939,7 +4017,477 @@ async def run_cross_tenant_isolation_suite(
                 "detail": "" if v_ok else "verify_allowed_cross_tenant",
             }
         )
+
+        # K1：ObjectSet 入口跨租户（经 FactLedger 租户前置；临时 ObjectType）
+        from core.harness.knowledge_pipeline.object_set import query_object_set
+
+        os_kwargs: Dict[str, Any] = {"ledger": lg}
+        if bindings_path is not None:
+            os_kwargs["bindings_path"] = bindings_path
+        os_a = await query_object_set(
+            {"object_type": probe_type, "domain_id": probe_domain},
+            tenant_id=tenant_a,
+            permissions=["kb:read"],
+            **os_kwargs,
+        )
+        os_b = await query_object_set(
+            {"object_type": probe_type, "domain_id": probe_domain},
+            tenant_id=tenant_b,
+            permissions=["kb:read"],
+            **os_kwargs,
+        )
+        ids_a = {
+            str(i.get("id") or i.get("order_id") or "")
+            for i in (os_a.get("items") or [])
+        }
+        ids_b = {
+            str(i.get("id") or i.get("order_id") or "")
+            for i in (os_b.get("items") or [])
+        }
+        os_ok = (
+            bindings_path is not None
+            and os_a.get("status") == "ok"
+            and "n09-secret" in ids_a
+            and os_b.get("status") == "ok"
+            and "n09-secret" not in ids_b
+            and int(os_b.get("total") or 0) == 0
+        )
+        cases.append(
+            {
+                "id": "object_set_no_leak",
+                "ok": os_ok,
+                "detail": "" if os_ok else "object_set_leak_or_miss",
+            }
+        )
+
+        # K1：Unified Audit / ActionStore 跨租户（物理 tenant_id 召回前过滤）
+        from core.harness.infrastructure.action_store import ActionStore
+        from core.harness.knowledge_pipeline.unified_audit_view import (
+            list_unified_audit_events,
+        )
+
+        store_root = root or Path(tempfile.mkdtemp(prefix="n09-audit-"))
+        store_db = str(store_root / "action_store.sqlite3")
+        store = ActionStore(store_db)
+        await store.initialize()
+        await store.insert_audit(
+            {
+                "action_id": "n09:probe",
+                "entity_id": "n09-secret",
+                "domain_id": (domain_id or "n09").strip() or "n09",
+                "actor": "n09-suite",
+                "result_status": "executed",
+                "tenant_id": tenant_a,
+                "params": {"tenant_id": tenant_a},
+            }
+        )
+        view_a = await list_unified_audit_events(
+            tenant_id=tenant_a,
+            streams=["action_store"],
+            action_store_db_path=store_db,
+            limit=50,
+        )
+        view_b = await list_unified_audit_events(
+            tenant_id=tenant_b,
+            streams=["action_store"],
+            action_store_db_path=store_db,
+            limit=50,
+        )
+        ua_ok = (
+            view_a.get("certified") is False
+            and int(view_a.get("count") or 0) >= 1
+            and int(view_b.get("count") or 0) == 0
+            and view_b.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "unified_audit_no_leak",
+                "ok": ua_ok,
+                "detail": "" if ua_ok else "unified_audit_leak_or_miss",
+            }
+        )
+
+        # K2：KB 入口跨租户（per-tenant sqlite 路径隔离）
+        import json as _json_kb
+        import sqlite3 as _sqlite3
+
+        from core.harness.knowledge.embedder import hash_embed as _hash_embed
+        from core.harness.syscalls.retrieval import sys_kb_retrieve
+
+        kb_root = root or Path(tempfile.mkdtemp(prefix="n09-kb-"))
+        kb_tenants = kb_root / "kb_tenants"
+        os.environ["AIPLAT_KB_TENANTS_DIR"] = str(kb_tenants)
+        os.environ["AIPLAT_EMBED_BACKEND"] = "hash"
+        tenant_a_dir = kb_tenants / tenant_a
+        tenant_a_dir.mkdir(parents=True, exist_ok=True)
+        kb_db = tenant_a_dir / "kb.sqlite3"
+        secret_text = "n09-secret-payload"
+        with _sqlite3.connect(str(kb_db)) as kb_conn:
+            kb_conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS kb_elements (
+                    element_id TEXT PRIMARY KEY, doc_id TEXT, type TEXT,
+                    page_idx INTEGER, text TEXT, cells_json TEXT,
+                    meta_json TEXT, tenant_id TEXT);
+                CREATE TABLE IF NOT EXISTS kb_embeddings (
+                    element_id TEXT PRIMARY KEY, vector_json TEXT, tenant_id TEXT);
+                """
+            )
+            kb_conn.execute(
+                "INSERT OR REPLACE INTO kb_elements"
+                "(element_id, doc_id, type, page_idx, text, cells_json, "
+                "meta_json, tenant_id) VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    "n09-secret-el",
+                    "n09-secret-doc",
+                    "paragraph",
+                    0,
+                    secret_text,
+                    None,
+                    "{}",
+                    tenant_a,
+                ),
+            )
+            # 为什么：K3 GraphRAG 向量层探针需要同库 embedding（hash，离线可复现）
+            kb_conn.execute(
+                "INSERT OR REPLACE INTO kb_embeddings"
+                "(element_id, vector_json, tenant_id) VALUES (?,?,?)",
+                (
+                    "n09-secret-el",
+                    _json_kb.dumps(_hash_embed(secret_text)),
+                    tenant_a,
+                ),
+            )
+            kb_conn.commit()
+        kb_a = sys_kb_retrieve(
+            secret_text,
+            [],
+            tenant_id=tenant_a,
+            top_k=5,
+        )
+        kb_b = sys_kb_retrieve(
+            secret_text,
+            [],
+            tenant_id=tenant_b,
+            top_k=5,
+        )
+        secret_hit = any(
+            secret_text in str(r.get("text") or "") for r in (kb_a or [])
+        )
+        kb_ok = secret_hit and not (kb_b or [])
+        cases.append(
+            {
+                "id": "kb_retrieve_no_leak",
+                "ok": kb_ok,
+                "detail": "" if kb_ok else "kb_retrieve_leak_or_miss",
+            }
+        )
+
+        # K2：Wiki 入口跨租户（retriever/query tenant_id mismatch 硬门）
+        # 为什么：Wiki 页按 collection 存；现网硬隔离点是 mismatch→空，非全域 collection ACL
+        from core.harness.knowledge.types import KnowledgeQuery
+        from core.harness.knowledge.wiki_retriever import WikiPageRetriever
+
+        wiki_ret = WikiPageRetriever(
+            wiki_titles=["N09 Secret"],
+            collection_ids=["n09-wiki-probe"],
+            tenant_id=tenant_a,
+        )
+        wiki_leak = await wiki_ret.retrieve(
+            KnowledgeQuery(query="n09-secret", limit=5, tenant_id=tenant_b)
+        )
+        wiki_same = await wiki_ret.retrieve(
+            KnowledgeQuery(query="n09-secret", limit=5, tenant_id=tenant_a)
+        )
+        wiki_ok = wiki_leak == [] and isinstance(wiki_same, list)
+        cases.append(
+            {
+                "id": "wiki_retrieve_no_leak",
+                "ok": wiki_ok,
+                "detail": "" if wiki_ok else "wiki_retrieve_leak_or_miss",
+            }
+        )
+
+        # K3：GraphRAG 向量层跨租户（显式 tenant_id 不回退 default/wiki）
+        from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever
+
+        gr = GraphRAGRetriever()
+        probe_domain = (domain_id or "n09-probe").strip() or "n09-probe"
+        gr_a = await gr._vector_search(
+            secret_text, probe_domain, 5, tenant_id=tenant_a
+        )
+        gr_b = await gr._vector_search(
+            secret_text, probe_domain, 5, tenant_id=tenant_b
+        )
+        gr_hit = any(secret_text in str(c.get("content") or "") for c in (gr_a or []))
+        gr_ok = gr_hit and not (gr_b or [])
+        cases.append(
+            {
+                "id": "graphrag_no_leak",
+                "ok": gr_ok,
+                "detail": "" if gr_ok else "graphrag_leak_or_miss",
+            }
+        )
+
+        # K4：CRAG / 治理入口透传 tenant_id → GraphRAG.retrieve
+        captured: Dict[str, Any] = {}
+        _orig_retrieve = GraphRAGRetriever.retrieve
+
+        async def _capture_retrieve(
+            self: Any,
+            query: str,
+            domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
+            top_k: int = 10,
+            run_id: str = "",
+            tenant_id: str = "",
+        ) -> Dict[str, Any]:
+            captured["tenant_id"] = tenant_id
+            captured["domain_id"] = domain_id
+            # 为什么：提前返回 graphrag 命中，避免 CRAG 继续走 Level1+ 拉长探针
+            return {
+                "mode": "graphrag",
+                "chunks": [{"title": "n09", "content": "passthrough"}],
+                "reasoning_paths": [],
+                "subgraph_size": 1,
+            }
+
+        GraphRAGRetriever.retrieve = _capture_retrieve  # type: ignore[method-assign]
+        crag_tid: Any = None
+        gov_tid: Any = None
+        try:
+            # 为什么：经 CoreFacade + importlib，避免 harness AST 直导 apps/
+            import importlib
+
+            from core.api.core_facade import governance_locate_view
+            from core.harness.syscalls.retrieval_crag import sys_crag_retrieve
+
+            await sys_crag_retrieve(
+                "n09 passthrough probe",
+                domain_id=probe_domain,
+                tenant_id=tenant_a,
+                top_k=3,
+                enable_hyde=False,
+            )
+            crag_tid = captured.get("tenant_id")
+            captured.clear()
+
+            _gov = importlib.import_module("core.apps.fde.service.governance_deepen")
+            _orig_locate = _gov.locate_via_ontology
+
+            def _fake_locate(
+                domain_id: str, query: str, *, top_k: int = 8
+            ) -> Dict[str, Any]:
+                return {
+                    "hits": [{"id": "n09-hit", "name": "n09"}],
+                    "domain_id": domain_id,
+                    "query": query,
+                }
+
+            _gov.locate_via_ontology = _fake_locate  # type: ignore[assignment]
+            try:
+                await governance_locate_view(
+                    probe_domain,
+                    "n09 passthrough probe",
+                    top_k=3,
+                    with_graphrag=True,
+                    tenant_id=tenant_a,
+                )
+            finally:
+                _gov.locate_via_ontology = _orig_locate  # type: ignore[assignment]
+            gov_tid = captured.get("tenant_id")
+            pass_ok = crag_tid == tenant_a and gov_tid == tenant_a
+        except Exception as exc:
+            pass_ok = False
+            captured["error"] = str(exc)[:200]
+        finally:
+            GraphRAGRetriever.retrieve = _orig_retrieve  # type: ignore[method-assign]
+        cases.append(
+            {
+                "id": "graphrag_caller_passthrough",
+                "ok": pass_ok,
+                "detail": (
+                    ""
+                    if pass_ok
+                    else (
+                        "passthrough_miss "
+                        f"crag={crag_tid!r} gov={gov_tid!r} "
+                        f"err={captured.get('error', '')!r}"
+                    )
+                ),
+            }
+        )
+
+        # K5：GraphIndex 图层跨租户（per-tenant db 前缀 + GraphRAG _find_node 透传）
+        from core.harness.ontology_engine.graph_index import GraphIndex
+
+        home_root = root or Path(tempfile.mkdtemp(prefix="n09-gi-home-"))
+        os.environ["AIPLAT_HOME"] = str(home_root)
+        GraphIndex._loaded_instances.clear()
+        secret_name = "N09SecretEntity"
+        gi_a = GraphIndex(probe_domain, tenant_id=tenant_a)
+        gi_a.add_entity("n09-secret-node", secret_name, "概念")
+        # 为什么：强制落盘并清缓存，确保 tenant_b load 不会命中内存脏图
+        GraphIndex._loaded_instances.clear()
+        found_a = gr._find_node(
+            secret_name, probe_domain, tenant_id=tenant_a
+        )
+        found_b = gr._find_node(
+            secret_name, probe_domain, tenant_id=tenant_b
+        )
+        gi_ok = (
+            found_a is not None
+            and found_a.get("name") == secret_name
+            and found_b is None
+        )
+        cases.append(
+            {
+                "id": "graphindex_no_leak",
+                "ok": gi_ok,
+                "detail": "" if gi_ok else "graphindex_leak_or_miss",
+            }
+        )
+
+        # K6：图写入路径强制 tenant（缺省拒绝；写入落到对应租户库）
+        from core.harness.knowledge_pipeline.extractor import (
+            write_extraction_to_graph_index,
+        )
+
+        GraphIndex._loaded_instances.clear()
+        denied = write_extraction_to_graph_index(
+            probe_domain,
+            [{"name": "N09WriteDenied", "class_type": "概念"}],
+            [],
+            source_doc_id="n09-k6-denied",
+            tenant_id="",
+        )
+        write_name = "N09WriteSecret"
+        wrote = write_extraction_to_graph_index(
+            probe_domain,
+            [{"name": write_name, "class_type": "概念"}],
+            [],
+            source_doc_id="n09-k6-write",
+            tenant_id=tenant_a,
+        )
+        GraphIndex._loaded_instances.clear()
+        wrote_a = gr._find_node(write_name, probe_domain, tenant_id=tenant_a)
+        wrote_b = gr._find_node(write_name, probe_domain, tenant_id=tenant_b)
+        # 为什么：created_entities 是 entity_id slug；跨租户断言以 _find_node 为准
+        gw_ok = (
+            denied.get("error") == "tenant_id_required"
+            and denied.get("ok") is False
+            and wrote.get("ok") is True
+            and wrote.get("tenant_id") == tenant_a
+            and wrote_a is not None
+            and wrote_a.get("name") == write_name
+            and wrote_b is None
+        )
+        cases.append(
+            {
+                "id": "graph_write_tenant",
+                "ok": gw_ok,
+                "detail": "" if gw_ok else "graph_write_tenant_miss",
+            }
+        )
+
+        # K7：跨域写边 + publish snapshot 按租户分库
+        from core.harness.knowledge_pipeline.resolver import CrossDomainResolver
+
+        left_dom = f"{probe_domain}-left"
+        right_dom = f"{probe_domain}-right"
+        GraphIndex._loaded_instances.clear()
+        g_la = GraphIndex(left_dom, tenant_id=tenant_a)
+        g_ra = GraphIndex(right_dom, tenant_id=tenant_a)
+        g_la.add_entity("n09-left", "N09Left", "概念")
+        g_ra.add_entity("n09-right", "N09Right", "概念")
+        GraphIndex._loaded_instances.clear()
+        denied_resolve = CrossDomainResolver.resolve(
+            "n09-view",
+            "n09-left",
+            "n09-right",
+            left_dom,
+            right_dom,
+            0.9,
+            tenant_id="",
+        )
+        ok_resolve = CrossDomainResolver.resolve(
+            "n09-view",
+            "n09-left",
+            "n09-right",
+            left_dom,
+            right_dom,
+            0.9,
+            tenant_id=tenant_a,
+        )
+        GraphIndex._loaded_instances.clear()
+        meta_a = (
+            GraphIndex.load(left_dom, tenant_id=tenant_a)
+            .get_node("n09-left")
+        )
+        meta_b = (
+            GraphIndex.load(left_dom, tenant_id=tenant_b)
+            .get_node("n09-left")
+        )
+        cross_a = (
+            isinstance(getattr(meta_a, "metadata", None), dict)
+            and isinstance(meta_a.metadata.get("_cross_domain"), dict)
+            and meta_a.metadata["_cross_domain"].get("tenant_id") == tenant_a
+        )
+        # publish snapshot：同租户分库落盘（无需真实 ontology YAML；直接测 GraphIndex 路径）
+        from core.api import core_facade as _facade
+
+        snap_ok = False
+        try:
+            GraphIndex._loaded_instances.clear()
+            g_pub = GraphIndex.load(left_dom, tenant_id=tenant_a)
+            snap = g_pub.snapshot("n09-k7-pre-publish")
+            snaps_a = g_pub.list_snapshots(limit=5)
+            GraphIndex._loaded_instances.clear()
+            snaps_b = GraphIndex.load(left_dom, tenant_id=tenant_b).list_snapshots(
+                limit=5
+            )
+            snap_ok = (
+                isinstance(snap, dict)
+                and any(
+                    "n09-k7-pre-publish" in str(s.get("label") or "")
+                    for s in (snaps_a or [])
+                )
+                and not any(
+                    "n09-k7-pre-publish" in str(s.get("label") or "")
+                    for s in (snaps_b or [])
+                )
+            )
+            # 覆盖 facade 透传签名（不依赖真实域 YAML）
+            _ = _facade.list_rule_versions(left_dom, tenant_id=tenant_a)
+        except Exception:
+            snap_ok = False
+        cd_ok = (
+            denied_resolve is False
+            and ok_resolve is True
+            and cross_a
+            and meta_b is None
+            and snap_ok
+        )
+        cases.append(
+            {
+                "id": "cross_domain_resolve_tenant",
+                "ok": cd_ok,
+                "detail": "" if cd_ok else "cross_domain_resolve_tenant_miss",
+            }
+        )
+        GraphIndex._loaded_instances.clear()
     finally:
+        if prev_kb_tenants is None:
+            os.environ.pop("AIPLAT_KB_TENANTS_DIR", None)
+        else:
+            os.environ["AIPLAT_KB_TENANTS_DIR"] = prev_kb_tenants
+        if prev_embed_backend is None:
+            os.environ.pop("AIPLAT_EMBED_BACKEND", None)
+        else:
+            os.environ["AIPLAT_EMBED_BACKEND"] = prev_embed_backend
+        if prev_aiplat_home is None:
+            os.environ.pop("AIPLAT_HOME", None)
+        else:
+            os.environ["AIPLAT_HOME"] = prev_aiplat_home
         if tmp is not None:
             tmp.cleanup()
 
@@ -3957,7 +4505,11 @@ async def run_cross_tenant_isolation_suite(
         "cases": cases,
         "certified": False,
         "n09_full_conformance": False,
-        "note": "FactLedger isolation probes only; not global zero-leak certification",
+        "note": (
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
+            "GraphIndex+graph_write+cross_domain/snapshot probes; "
+            "not global zero-leak certification"
+        ),
     }
 
 
@@ -3992,7 +4544,11 @@ def evaluate_cross_tenant_gate(
         "issues": issues,
         "certified": False,
         "n09_full_conformance": False,
-        "note": "FactLedger suite deepen; not platform-wide zero-leak certified",
+        "note": (
+            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
+            "GraphIndex+graph_write+cross_domain/snapshot deepen; "
+            "not platform-wide zero-leak certified"
+        ),
     }
 
 

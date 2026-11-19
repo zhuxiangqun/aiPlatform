@@ -11,6 +11,8 @@ returning APPROVAL_REQUIRED. Daemon / cron paths should set attendance to ``inbo
 or ``auto`` and must call ``refuse_unattended_self_approve`` before any auto path.
 """
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json
@@ -161,7 +163,7 @@ class ApprovalInboxStore:
             session_id: 会话 ID。
             mode: mode 参数。
         """
-        sid = str(session_id or "").strip() or "default"
+        sid = str(session_id or "").strip() or DomainRouter.default_session()
         norm = normalize_attendance(mode)
         with self._lock:
             self._attendance[sid] = norm
@@ -174,7 +176,7 @@ class ApprovalInboxStore:
         Args:
             session_id: 会话 ID。
         """
-        sid = str(session_id or "").strip() or "default"
+        sid = str(session_id or "").strip() or DomainRouter.default_session()
         with self._lock:
             return normalize_attendance(self._attendance.get(sid, ATTENDED))
 
@@ -206,7 +208,7 @@ class ApprovalInboxStore:
             approval_source: approval_source 参数。
             visibility: visibility 参数。
         """
-        sid = str(session_id or "").strip() or "default"
+        sid = str(session_id or "").strip() or DomainRouter.default_session()
         attendance = self.get_attendance(sid)
         vis = visibility or (VIS_INBOX if attendance in (INBOX, AUTO) else VIS_INLINE)
 

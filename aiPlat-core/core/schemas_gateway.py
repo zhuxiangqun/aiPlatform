@@ -7,11 +7,12 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 class GatewayExecuteRequest(BaseModel):
     """GatewayExecuteRequest。"""
-    channel: str = "default"
+    channel: str = DomainRouter.default_label()
     kind: str = "agent"  # agent|skill|tool|graph
     target_id: str
     user_id: Optional[str] = None

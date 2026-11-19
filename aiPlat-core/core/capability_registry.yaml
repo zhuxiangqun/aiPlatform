@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2930
+total_capabilities: 3006
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,8 +2823,16 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 465
+    caps_count: 540
     provides:
+      - symbol: "fde_graph_tenant"
+        type: "function"
+        signature: "fde_graph_tenant(request=None)→str"
+        module: "aiPlat-platform/apps/fde/api/graph_tenant.py"
+      - symbol: "resolve_graph_tenant"
+        type: "function"
+        signature: "resolve_graph_tenant(params=None)→str"
+        module: "aiPlat-core/core/api/core_facade.py"
       - symbol: "to_ontology_api_v0"
         type: "function"
         signature: "to_ontology_api_v0(kind, payload, domain_id, refs)→Dict ontology.api.v0"
@@ -2930,10 +2938,94 @@ domains:
         module: core/harness/knowledge/doc_compressor.py
         type: function
         signature: "LLM 轻量摘要统一通道 (sys_llm_generate 单一入口 — §57 上下文组装合规)"
+      - symbol: "kb_sqlite_path_for_tenant"
+        module: core/harness/knowledge/staleness_monitor.py
+        type: function
+        signature: "Resolve {AIPLAT_HOME}/kb/tenants/{tenant}/kb.sqlite3 (N09 K14)"
+      - symbol: "list_kb_tenant_ids"
+        module: core/harness/knowledge/staleness_monitor.py
+        type: function
+        signature: "Enumerate tenant ids with kb.sqlite3 under AIPLAT_HOME (N09 K15)"
+      - symbol: "aggregate_stale_summary"
+        module: core/harness/knowledge/staleness_monitor.py
+        type: function
+        signature: "Cross-tenant stale summary for cron/system_health (N09 K15)"
+      - symbol: "auto_rebuild_stale_tenants"
+        module: core/harness/knowledge/staleness_monitor.py
+        type: function
+        signature: "Per-tenant auto-rebuild when drift_ratio>=0.3 (N09 K15)"
+      - symbol: "_resolve_graph_tenant"
+        module: core/harness/knowledge/context_bus.py
+        type: function
+        signature: "Resolve tenant for ContextBus GraphIndex loads (N09 K21)"
       - symbol: "DomainRouter"
         module: core/harness/knowledge/domain_router.py
         type: class
         signature: "classify(query)→domain_id; process-wide route_stats + T3 latency (Ollaya Phase 0)"
+      - symbol: "DomainRouter.terms_domain"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "terms_domain()→str platform enterprise-terms SSOT (N09 K39)"
+      - symbol: "DomainRouter.knowledge_atom_domain"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "knowledge_atom_domain()→str platform knowledge-atom SSOT (N09 K39)"
+      - symbol: "DomainRouter.default_kb_domain"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_kb_domain()→str platform ai-knowledge SSOT (N09 K39)"
+      - symbol: "DomainRouter.competition_domain"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "competition_domain()→str platform bell-competition SSOT (N09 K41)"
+      - symbol: "DomainRouter.default_graph_domain"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_graph_domain()→str platform default graph SSOT classmethod (N09 K42/K63)"
+      - symbol: "DomainRouter.it_ops_domain"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "it_ops_domain()→str platform it-ops SSOT (N09 K46)"
+      - symbol: "DomainRouter.data_gov_domain"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "data_gov_domain()→str platform data-gov SSOT (N09 K46)"
+      - symbol: "DomainRouter.system_domain"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "system_domain()→str platform aiplat-system SSOT (N09 K47)"
+      - symbol: "DomainRouter.default_tenant"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_tenant()→str platform default tenant SSOT (N09 K49)"
+      - symbol: "DomainRouter.default_collection"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_collection()→str platform default collection SSOT (N09 K52)"
+      - symbol: "DomainRouter.default_profile"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_profile()→str platform default profile SSOT (N09 K52)"
+      - symbol: "DomainRouter.default_session"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_session()→str platform default session SSOT (N09 K53)"
+      - symbol: "DomainRouter.default_view_name"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_view_name()→str platform default cross-domain view SSOT (N09 K64)"
+      - symbol: "DomainRouter.default_workspace_id"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_workspace_id()→str platform default named-workspace SSOT (N09 K65)"
+      - symbol: "DomainRouter.default_module_id"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_module_id()→str platform default builder module SSOT (N09 K68)"
+      - symbol: "DomainRouter.default_label"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_label()→str catch-all non-isolation label SSOT (N09 K69)"
       - symbol: "get_domain_router"
         module: core/harness/knowledge/domain_router.py
         type: function
@@ -3290,6 +3382,150 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "evaluate_fact_revision_action_bridge_gate(suite)→gate (certified=false)"
+      - symbol: "list_revision_restore_requests_route"
+        module: aiPlat-platform/apps/fde/api/revision_restore_routes.py
+        type: function
+        signature: "GET /fde/revision-restore/requests via Facade"
+      - symbol: "request_revision_restore_route"
+        module: aiPlat-platform/apps/fde/api/revision_restore_routes.py
+        type: function
+        signature: "POST /fde/revision-restore/requests via Facade"
+      - symbol: "approve_revision_restore_route"
+        module: aiPlat-platform/apps/fde/api/revision_restore_routes.py
+        type: function
+        signature: "POST /fde/revision-restore/requests/{id}/approve via Facade"
+      - symbol: "reject_revision_restore_route"
+        module: aiPlat-platform/apps/fde/api/revision_restore_routes.py
+        type: function
+        signature: "POST /fde/revision-restore/requests/{id}/reject via Facade"
+      - symbol: "list_revision_audit_route"
+        module: aiPlat-platform/apps/fde/api/revision_restore_routes.py
+        type: function
+        signature: "GET /fde/revision-restore/audit via Facade"
+      - symbol: "list_revision_action_bridges_route"
+        module: aiPlat-platform/apps/fde/api/revision_restore_routes.py
+        type: function
+        signature: "GET /fde/revision-restore/action-bridges via Facade"
+      - symbol: "run_restore_approval_suite_route"
+        module: aiPlat-platform/apps/fde/api/revision_restore_routes.py
+        type: function
+        signature: "POST /fde/revision-restore/suite via Facade"
+      - symbol: "evaluate_restore_approval_gate_route"
+        module: aiPlat-platform/apps/fde/api/revision_restore_routes.py
+        type: function
+        signature: "POST /fde/revision-restore/gate via Facade"
+      - symbol: "RevisionRestorePanel"
+        module: aiPlat-management/frontend/src/pages/KnowledgeFactory/RevisionRestorePanel.tsx
+        type: component
+        signature: "KnowledgeFactory revision-restore UI → J1 HTTP (certified=false)"
+      - symbol: "UnifiedAuditPanel"
+        module: aiPlat-management/frontend/src/pages/KnowledgeFactory/UnifiedAuditPanel.tsx
+        type: component
+        signature: "KnowledgeFactory unified-audit UI → J3 HTTP (certified=false)"
+      - symbol: "list_package_versions"
+        module: core/harness/knowledge_pipeline/ontology_package.py
+        type: function
+        signature: "list_package_versions(tenant_id,...)→package rows"
+      - symbol: "list_action_executions"
+        module: core/harness/infrastructure/action_execution.py
+        type: function
+        signature: "list_action_executions(tenant_id,...)→execution rows"
+      - symbol: "list_unified_audit_events"
+        module: core/harness/knowledge_pipeline/unified_audit_view.py
+        type: function
+        signature: "list_unified_audit_events(...)→read-only merge view (certified=false)"
+      - symbol: "run_unified_audit_view_suite"
+        module: core/harness/knowledge_pipeline/unified_audit_view.py
+        type: function
+        signature: "run_unified_audit_view_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_unified_audit_view_gate"
+        module: core/harness/knowledge_pipeline/unified_audit_view.py
+        type: function
+        signature: "evaluate_unified_audit_view_gate(suite)→gate (certified=false)"
+      - symbol: "list_fact_unified_audit_events"
+        module: core/api/core_facade.py
+        type: function
+        signature: "list_fact_unified_audit_events(...)→merge view via Facade"
+      - symbol: "run_fact_unified_audit_view_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "run_fact_unified_audit_view_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_fact_unified_audit_view_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_unified_audit_view_gate(suite)→gate (certified=false)"
+      - symbol: "list_unified_audit_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "GET /fde/unified-audit via Facade"
+      - symbol: "run_unified_audit_suite_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/suite via Facade"
+      - symbol: "evaluate_unified_audit_gate_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/gate via Facade"
+      - symbol: "append_unified_audit_event"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "append_unified_audit_event(...)→idempotent bus row (certified=false)"
+      - symbol: "list_unified_audit_bus_events"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "list_unified_audit_bus_events(tenant_id,...)→bus rows"
+      - symbol: "materialize_unified_audit_from_view"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "materialize_unified_audit_from_view(...)→written/skipped (certified=false)"
+      - symbol: "run_unified_audit_bus_suite"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "run_unified_audit_bus_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_unified_audit_bus_gate"
+        module: core/harness/knowledge_pipeline/unified_audit_bus.py
+        type: function
+        signature: "evaluate_unified_audit_bus_gate(suite)→gate (certified=false)"
+      - symbol: "append_fact_unified_audit_event"
+        module: core/api/core_facade.py
+        type: function
+        signature: "append_fact_unified_audit_event(...)→bus row via Facade"
+      - symbol: "list_fact_unified_audit_bus_events"
+        module: core/api/core_facade.py
+        type: function
+        signature: "list_fact_unified_audit_bus_events(...)→bus rows via Facade"
+      - symbol: "materialize_fact_unified_audit_bus"
+        module: core/api/core_facade.py
+        type: function
+        signature: "materialize_fact_unified_audit_bus(...)→materialize via Facade"
+      - symbol: "run_fact_unified_audit_bus_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "run_fact_unified_audit_bus_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_fact_unified_audit_bus_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_unified_audit_bus_gate(suite)→gate (certified=false)"
+      - symbol: "list_unified_audit_bus_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "GET /fde/unified-audit/bus via Facade"
+      - symbol: "append_unified_audit_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/append via Facade"
+      - symbol: "materialize_unified_audit_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/materialize via Facade"
+      - symbol: "run_unified_audit_bus_suite_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/bus/suite via Facade"
+      - symbol: "evaluate_unified_audit_bus_gate_route"
+        module: aiPlat-platform/apps/fde/api/unified_audit_routes.py
+        type: function
+        signature: "POST /fde/unified-audit/bus/gate via Facade"
       - symbol: "fact_ledger_query_gateway"
         module: core/api/core_facade.py
         type: function
@@ -4524,6 +4760,14 @@ domains:
         type: "function"
         signature: "pilot readiness gate (pilot_certified=false)"
         module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_core_ready_gate"
+        type: "function"
+        signature: "Core minimum set structural gate (core_ready≠certified)"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_pilot_core_certification"
+        type: "function"
+        signature: "pilot Core badge only with non-author approval+core_ready"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
       - symbol: "load_conformance_catalog"
         type: "function"
         signature: "W10: load n24-conformance-catalog.yaml"
@@ -4535,6 +4779,62 @@ domains:
       - symbol: "evaluate_conformance_gate_route"
         type: "function"
         signature: "GET /fde/conformance-pack/gate via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_core_ready_gate_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/core-ready via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_pilot_core_certification_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/pilot-core-cert via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_extended_ready_gate"
+        type: "function"
+        signature: "Extended minimum set structural gate (extended_ready≠certified)"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_pilot_extended_certification"
+        type: "function"
+        signature: "pilot Extended badge only with non-author approval+extended_ready"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_extended_ready_gate_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/extended-ready via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_pilot_extended_certification_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/pilot-extended-cert via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_operational_ready_gate"
+        type: "function"
+        signature: "Operational minimum set structural gate (operational_ready≠certified)"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_pilot_operational_certification"
+        type: "function"
+        signature: "pilot Operational badge only with non-author approval+operational_ready"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_operational_ready_gate_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/operational-ready via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_pilot_operational_certification_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/pilot-operational-cert via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_full_ready_gate"
+        type: "function"
+        signature: "Full N24 structural gate (full_ready≠certified)"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_full_certification"
+        type: "function"
+        signature: "full certified only with three badges + independent non-author approval"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_full_ready_gate_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/full-ready via Facade"
+        module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
+      - symbol: "evaluate_full_certification_route"
+        type: "function"
+        signature: "GET /fde/conformance-pack/full-cert via Facade"
         module: "aiPlat-platform/apps/fde/api/conformance_pack_routes.py"
       - symbol: "default_catalog_path"
         type: "function"
@@ -10749,7 +11049,7 @@ domains:
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 72
+    caps_count: 73
     provides:
       - symbol: "finalize_tool_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -10931,6 +11231,11 @@ domains:
         module: core/harness/infrastructure/action_store.py
         type: function
         signature: "default_action_db_path()→str; ACTION/EXECUTION_DB_PATH → AIPLAT_HOME → ./data"
+      - symbol: "backfill_tenant_id"
+        module: aiPlat-core/core/harness/infrastructure/action_store.py
+        type: doc
+        signature: "ActionStore.backfill_tenant_id(batch_limit=5000)→{updated,remaining_empty}; N24 J9"
+        notes: "class method; initialize wires idempotent backfill; AST skip via type:doc"
       - symbol: "query_usage_signal"
         module: aiPlat-core/core/harness/infrastructure/action_store.py
         type: doc

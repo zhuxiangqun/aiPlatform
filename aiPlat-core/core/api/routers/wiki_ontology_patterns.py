@@ -7,13 +7,14 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 import logging
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["wiki-ontology-patterns"])
 
 # ── Pattern Detector (Ontology Evolution Layer 1) ─────────────────
 
 @router.get("/patterns", response_model=Dict[str, Any])
-async def detect_patterns(collection: str = "default"):
+async def detect_patterns(collection: str = DomainRouter.default_collection()):
     """Scan wiki data and detect patterns not yet covered by T-Box.
 
     Args:
@@ -39,7 +40,7 @@ async def detect_patterns(collection: str = "default"):
 
 
 @router.get("/metrics", response_model=Dict[str, Any])
-async def get_ontology_metrics(collection: str = "default", refresh: bool = False):
+async def get_ontology_metrics(collection: str = DomainRouter.default_collection(), refresh: bool = False):
     """Four-dimension ontology health metrics (cache-backed).
 
     Args:
@@ -75,7 +76,7 @@ async def get_ontology_metrics(collection: str = "default", refresh: bool = Fals
 
 
 @router.get("/metrics/history", response_model=Dict[str, Any])
-async def get_metrics_history(collection: str = "default"):
+async def get_metrics_history(collection: str = DomainRouter.default_collection()):
     """Return historical metrics snapshots for trend analysis (last 30 days).
 
     Args:
@@ -92,7 +93,7 @@ async def get_metrics_history(collection: str = "default"):
 
 
 @router.get("/golden-regression", response_model=Dict[str, Any])
-async def run_golden_regression(collection: str = "default", min_score: float = None, strict: bool = False):
+async def run_golden_regression(collection: str = DomainRouter.default_collection(), min_score: float = None, strict: bool = False):
     """Run golden query regression test to validate retrieval quality.
 
     Uses golden_queries.yaml (8 queries) to check whether wiki retrieval

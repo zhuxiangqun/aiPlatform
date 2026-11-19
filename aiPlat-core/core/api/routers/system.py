@@ -118,12 +118,15 @@ async def system_overview():
 
         from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
         from core.harness.knowledge.domain_router import get_domain_router
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
         router = get_domain_router()
         domain_counts = {}
+        tid = _resolve_graph_tenant()
         for domain_id in router.list_domains():
             try:
-                g = GraphIndex.load(domain_id)
+                # 为什么：N09 K29 — system 健康统计读租户图
+                g = GraphIndex.load(domain_id, tenant_id=tid)
                 node_count = len(g._nodes) if hasattr(g, '_nodes') else 0
                 domain_counts[domain_id] = node_count
             except Exception:
@@ -739,12 +742,15 @@ async def system_status():
 
         from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
         from core.harness.knowledge.domain_router import get_domain_router
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
         router = get_domain_router()
         delivery_stats = {}
+        tid = _resolve_graph_tenant()
         for domain_id in router.list_domains():
             try:
-                g = GraphIndex.load(domain_id)
+                # 为什么：N09 K29 — delivery 统计读租户图
+                g = GraphIndex.load(domain_id, tenant_id=tid)
                 total = len(g._nodes) if hasattr(g, '_nodes') else 0
                 classes = {}
                 for _, n in getattr(g, '_nodes', {}).items():

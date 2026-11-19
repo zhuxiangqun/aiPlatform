@@ -531,7 +531,7 @@ review_cycle:
 
 | 真相类型 | 唯一出处 | doc_id |
 |---|---|---|
-| 知识体系标准 | `docs/standards/knowledge-system/v4.3.1/` | `KS_V431_INDEX`（包入口） |
+| 知识体系标准 | `docs/standards/knowledge-system/v4.3.1/` | `KS_V431_INDEX`（包入口）；正文 `technical-whitepaper.md` / 附录 `normative-appendix.md` 为 `authority: canonical`（2026-11-19） |
 | 文档治理 | `docs/DOCUMENT_SYSTEM.md` | `DOCUMENT_SYSTEM` |
 | 文档入口 | `docs/README.md` | `DOCS_INDEX` |
 | 非规范解释材料 | `docs/reference/explanatory/` | （目录级，逐篇待铺） |
@@ -704,7 +704,7 @@ docs/doc-paths.yaml
 | HookPhase 枚举 | 21 | `grep -c '^    [A-Z_]* = "' aiPlat-core/core/harness/infrastructure/hooks/hook_manager.py` |
 | Arch Guard 规则 | 197 | `grep -c '^  - id:' aiPlat-core/core/management/arch_guard_rules.yaml` |
 | 本体引擎模块 | 32 | `ls aiPlat-core/core/harness/ontology_engine/*.py | wc -l` |
-| 本体引擎总行数 | 13504 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
+| 本体引擎总行数 | 13788 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
 | 文档一级目录数 | 10 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
 
 规则：

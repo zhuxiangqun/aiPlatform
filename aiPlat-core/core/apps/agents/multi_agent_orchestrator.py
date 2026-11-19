@@ -11,6 +11,8 @@ Usage:
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 from typing import Any, Dict, List, Optional
 
 
@@ -58,7 +60,7 @@ class MultiAgentOrchestrator:
         query: str,
         *,
         context: Optional[Dict[str, Any]] = None,
-        domain_id: str = "ai-knowledge",
+        domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN,
     ) -> Dict[str, Any]:
         """Execute a multi-agent pipeline and merge results.
 

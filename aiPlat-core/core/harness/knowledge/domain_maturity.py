@@ -14,6 +14,7 @@ Levels: seeding(0-20) → growing(20-40) → building(40-60) → stable(60-80) �
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 import os as _os
 import sqlite3 as _sqlite3
@@ -89,14 +90,18 @@ def _load_golden_eval_score(domain_id: str) -> Optional[float]:
 def compute_domain_maturity(
     domain_id: str,
     ontologies_dir: str = "",
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Compute 6-dimension maturity for a domain. Returns score + level + dimensions.
 
     Args:
         domain_id: domain 标识。
         ontologies_dir: ontologies_dir 参数。
+        tenant_id: 租户；加载 GraphIndex 并过滤 state_changes（N09 K19）。
     """
     base = _os.path.expanduser(ontologies_dir or _os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     dims = {}
     thresholds = dict(DEFAULT_THRESHOLDS)
@@ -104,7 +109,8 @@ def compute_domain_maturity(
     # ── 1. Entity Count ──
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K19 — maturity 实体计数须读租户分库，禁止默认 GraphIndex
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         stats = graph.stats() if hasattr(graph, 'stats') else {}
         entity_count = stats.get("node_count", 0)
     except Exception:
@@ -116,7 +122,7 @@ def compute_domain_maturity(
         from core.harness.knowledge.wiki_engine import search_pages
         # Resolve collection_id from registry
         reg_path = _os.path.join(base, "registry.json")
-        collection_id = "default"
+        collection_id=DomainRouter.default_collection()
         if _os.path.exists(reg_path):
             import json
             with open(reg_path) as f:
@@ -148,9 +154,10 @@ def compute_domain_maturity(
     try:
         if _os.path.exists(db_path):
             conn = _sqlite3.connect(db_path, timeout=5.0)
+            # 为什么：N09 K19 — pass_rate 按物理 tenant_id 过滤
             total = conn.execute(
-                "SELECT COUNT(*) FROM state_changes WHERE domain_id = ?",
-                (domain_id,),
+                "SELECT COUNT(*) FROM state_changes WHERE domain_id = ? AND tenant_id = ?",
+                (domain_id, tid),
             ).fetchone()[0]
             pass_rate = min(total / max(total + 0, 1), 1.0) if total > 0 else 0.5
             conn.close()
@@ -204,6 +211,7 @@ def compute_domain_maturity(
 
     return {
         "domain_id": domain_id,
+        "tenant_id": tid,
         "maturity_score": round(maturity, 1),
         "level": level,
         "dimensions": {
@@ -218,11 +226,16 @@ def compute_domain_maturity(
     }
 
 
-def compare_domains(ontologies_dir: str = "") -> List[Dict[str, Any]]:
+def compare_domains(
+    ontologies_dir: str = "",
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
+) -> List[Dict[str, Any]]:
     """Cross-domain comparison: compute maturity for all domains, sorted by score desc.
 
     Args:
         ontologies_dir: ontologies_dir 参数。
+        tenant_id: 租户；透传 compute_domain_maturity（N09 K19）。
     """
     base = _os.path.expanduser(ontologies_dir or _os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
     import json
@@ -235,7 +248,7 @@ def compare_domains(ontologies_dir: str = "") -> List[Dict[str, Any]]:
 
     results = []
     for domain_id in reg.get("domains", {}):
-        maturity = compute_domain_maturity(domain_id, ontologies_dir)
+        maturity = compute_domain_maturity(domain_id, ontologies_dir, tenant_id=tenant_id)
         domain_meta = reg["domains"].get(domain_id, {})
         maturity["name"] = domain_meta.get("name", domain_id)
         maturity["description"] = domain_meta.get("description", "")

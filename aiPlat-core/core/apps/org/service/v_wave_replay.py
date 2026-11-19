@@ -6,6 +6,7 @@ May append one audit read line. That line is not a business step.
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json
 import logging
@@ -72,7 +73,7 @@ def _audit(trace_id: str, status: str) -> None:
         logger.debug("trace replay audit skipped", exc_info=True)
 
 
-def replay_org_trace(trace_id: str = "", *, domain_id: str = "it-ops") -> Dict[str, Any]:
+def replay_org_trace(trace_id: str = "", *, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Assemble one chain by exact trace_id. Never stitches by time or name.
 
     Args:

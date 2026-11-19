@@ -3,6 +3,7 @@
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from core.utils.math_utils import cosine_similarity
+from core.harness.knowledge.domain_router import DomainRouter
 """
 Experience Vector Cache — 经验向量存储与检索 (Phase 5.1)
 
@@ -41,7 +42,7 @@ class ExperienceEntry:
     summary: str                    # 轨迹摘要 (文本)
     embedding: List[float] = field(default_factory=list)  # Embedding 向量
     label: str = ""                 # success / failure / exception
-    domain_id: str = "default"
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN
     tags: List[str] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
 
@@ -75,7 +76,7 @@ class ExperienceVectorCache:
         summary: str,
         *,
         label: str = "",
-        domain_id: str = "default",
+        domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
         tags: List[str] = None,
     ) -> Optional[str]:
         """存储一条执行经验。
@@ -274,7 +275,7 @@ class ExperienceVectorCache:
                 for e in data.get("entries", [])[-500:]:  # 最多加载 500 条
                     self._entries[e["id"]] = ExperienceEntry(
                         id=e["id"], run_id=e["run_id"], summary=e["summary"],
-                        label=e.get("label", ""), domain_id=e.get("domain_id", "default"),
+                        label=e.get("label", ""), domain_id=e.get("domain_id") or DomainRouter.default_graph_domain(),
                         tags=e.get("tags", []), created_at=e.get("created_at", time.time()),
                     )
         except Exception as e:

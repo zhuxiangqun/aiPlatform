@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["kanban"])
 
@@ -19,7 +20,7 @@ log = logging.getLogger("aiplat.kanban")
 class TaskCreate(BaseModel):
     """TaskCreate。"""
     title: str
-    profile_id: str = "default"
+    profile_id: str = DomainRouter.default_profile()
     description: str = ""
     priority: int = 5
     depends_on: Optional[List[str]] = None
@@ -32,7 +33,7 @@ class StatusUpdate(BaseModel):
 
 
 @router.get("/kanban/tasks", response_model=Dict[str, Any])
-async def get_kanban_tasks(profile: str = Query("default"), status: Optional[str] = None):
+async def get_kanban_tasks(profile: str = Query(DomainRouter.default_profile()), status: Optional[str] = None):
     """List tasks for a profile, optionally filtered by status. Returns tasks。
 
     Args:
@@ -86,7 +87,7 @@ async def update_kanban_task_status(task_id: str, body: StatusUpdate):
 
 
 @router.get("/health/kanban", response_model=Dict[str, Any])
-async def kanban_health(profile: str = Query("default")):
+async def kanban_health(profile: str = Query(DomainRouter.default_profile())):
     """Kanban health summary: total/todo/blocked/overdue counts.
 
     Args:

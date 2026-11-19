@@ -14,6 +14,7 @@ import statistics
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,20 @@ class RapidSession:
 # ═══════════════════════════════════════════════════════════
 # Q1: Industry Consensus
 # ═══════════════════════════════════════════════════════════
+
+
+def _ri_graph_tenant() -> str:
+    """Resolve tenant for rapid_insight GraphIndex loads (N09 K28)."""
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    return _resolve_graph_tenant()
+
+
+def _ri_competition_domain() -> str:
+    """Resolve competition domain via DomainRouter SSOT (N09 K41)."""
+    from core.harness.knowledge.domain_router import get_domain_router
+
+    return get_domain_router().competition_domain()
+
 
 def extract_industry_consensus(
     domain_id: str,
@@ -105,7 +120,7 @@ def extract_industry_consensus(
     entities = []
     for d in aligned_domains[:3]:
         try:
-            g = GraphIndex.load(d)
+            g = GraphIndex.load(d, tenant_id=_ri_graph_tenant())
             classes = g.get_entity_classes()
             entities.extend(classes[:5])
         except Exception:
@@ -139,7 +154,7 @@ def detect_industry_controversies(
 
     for d in [domain_id] + aligned_domains:
         try:
-            g = GraphIndex.load(d)
+            g = GraphIndex.load(d, tenant_id=_ri_graph_tenant())
         except Exception:
             continue
         if not g._nodes:
@@ -157,14 +172,15 @@ def detect_industry_controversies(
             })
 
     # Also check competition domain for explicit competitor data
-    if "bell-competition" in aligned_domains:
+    comp_domain = _ri_competition_domain()
+    if comp_domain in aligned_domains:
         try:
-            g_comp = GraphIndex.load("bell-competition")
+            g_comp = GraphIndex.load(comp_domain, tenant_id=_ri_graph_tenant())
             competitors = g_comp.get_entities_by_class("Competitor")
             competitor_names = [n.entity_name for n in competitors]
             if competitor_names:
                 controversies.append({
-                    "domain": "bell-competition",
+                    "domain": comp_domain,
                     "type": "competitive_landscape",
                     "entity": "行业竞争格局",
                     "positions": [
@@ -209,7 +225,7 @@ def generate_penetrating_questions(
 
     for d in [domain_id] + aligned_domains:
         try:
-            g = GraphIndex.load(d)
+            g = GraphIndex.load(d, tenant_id=_ri_graph_tenant())
         except Exception:
             continue
         for nid, node in g._nodes.items():
@@ -243,7 +259,7 @@ def generate_penetrating_questions(
     g_first = None
     for d in [domain_id] + aligned_domains:
         try:
-            g_first = GraphIndex.load(d)
+            g_first = GraphIndex.load(d, tenant_id=_ri_graph_tenant())
             if g_first._nodes:
                 break
         except Exception:
@@ -685,61 +701,63 @@ def auto_suggest_domains(
     return suggestions
 
 
+def _icebreaker_questions_path() -> str:
+    """Resolve icebreaker YAML path (env override or workspace_seeds)."""
+    override = (os.environ.get("AIPLAT_ICEBREAKER_QUESTIONS_PATH") or "").strip()
+    if override:
+        return os.path.expanduser(override)
+    return str(
+        Path(__file__).resolve().parents[4]
+        / "workspace_seeds"
+        / "fde"
+        / "icebreaker_questions.yaml"
+    )
+
+
+def _load_icebreaker_map() -> Dict[str, List[str]]:
+    """Load domain→questions from YAML (N09 K48 — no business domain keys in code).
+
+    Returns:
+        Mapping of domain_id to question strings; empty on missing/invalid file.
+    """
+    import yaml
+
+    path = _icebreaker_questions_path()
+    try:
+        with open(path, encoding="utf-8") as fh:
+            raw = yaml.safe_load(fh) or {}
+    except FileNotFoundError:
+        logger.warning("icebreaker questions YAML missing: %s", path)
+        return {}
+    except Exception:
+        logger.warning("icebreaker questions YAML load failed: %s", path, exc_info=True)
+        return {}
+    block = raw.get("questions_by_domain") if isinstance(raw, dict) else None
+    if not isinstance(block, dict):
+        return {}
+    out: Dict[str, List[str]] = {}
+    for did, qs in block.items():
+        key = str(did or "").strip()
+        if not key or not isinstance(qs, list):
+            continue
+        out[key] = [str(q).strip() for q in qs if str(q).strip()]
+    # Alias competition SSOT id when YAML used the platform competition constant value.
+    from core.harness.knowledge.domain_router import DomainRouter
+
+    comp = _ri_competition_domain()
+    alt = DomainRouter.PLATFORM_COMPETITION_DOMAIN
+    if comp and comp not in out and alt in out:
+        out[comp] = out[alt]
+    return out
+
+
 def generate_icebreaker_questions(aligned_domains: List[str]) -> List[str]:
     """Generate industry-specific icebreaker questions based on aligned domains.
 
     Args:
         aligned_domains: aligned_domains 参数。
     """
-    icebreaker_map = {
-        "bell-competition": [
-            "这个行业的头部公司是谁？他们各自押注的技术路线有何不同？",
-            "目前的竞争格局中，哪类公司的利润率最高？为什么？",
-            "行业里有没有还没达成共识的关键问题？",
-        ],
-        "supply-chain": [
-            "目前供应链中哪个环节的库存周转最慢？",
-            "供应商评级是根据什么标准？多久更新一次？",
-            "物流配送是否支持多仓库调拨？",
-        ],
-        "bell-healthcare": [
-            "临床试验数据管理是按 ICH-GCP 标准还是内部规范？",
-            "患者招募目前最大的瓶颈是什么？",
-            "CRO 服务的切换成本有多大？",
-        ],
-        "bell-consulting": [
-            "目前有哪些业务流程是靠人工经验而非系统规则驱动的？",
-            "团队里有多少人具备 BPR 项目经验？",
-            "最近一次流程优化带来了多少效率提升？",
-        ],
-        "bell-contact-center": [
-            "目前的呼叫中心是自建还是外包？坐席规模多大？",
-            "客服对话数据是否已经在做分析和知识沉淀？",
-            "高峰期和低谷期的坐席利用率差多少？",
-        ],
-        "bell-data-cloud": [
-            "目前用的 CRM 系统是什么？有没有做过定制开发？",
-            "AI 能力（如自动回复）是自研还是采购的第三方方案？",
-        ],
-        "lock-service": [
-            "目前设备故障率最高的型号是哪个？",
-            "安装师傅的调度系统是手动分配还是自动派单？",
-            "客户现场的门类型分布是怎样的？",
-        ],
-        "procurement-mvo": [
-            "采购流程中哪个环节最耗时？审批还是比价？",
-            "供应商的历史履约率是多少？",
-            "有没有遇到过围标的情况？",
-        ],
-        "finance": [
-            "核心财务指标中哪个波动最大？为什么？",
-            "交易对手的信用评估是怎么做的？",
-        ],
-        "gov-service": [
-            "政务服务中审批时限最长的环节是哪一步？",
-            "公民办事的一次通过率大概是多少？",
-        ],
-    }
+    icebreaker_map = _load_icebreaker_map()
 
     questions = []
     for domain in aligned_domains:

@@ -46,6 +46,7 @@ import logging
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 router = APIRouter()
 
 
@@ -974,7 +975,7 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
 
                     "user_id": (request or {}).get("user_id", "system"),
 
-                    "session_id": (request or {}).get("session_id", "default"),
+                    "session_id": (request or {}).get("session_id") or DomainRouter.default_session(),
 
                     "approval_request_id": approval_id,
 
@@ -1181,7 +1182,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
             "context": kr.get("context", {}),
 
-            "session_id": kr.get("session_id", "default"),
+            "session_id": kr.get("session_id") or DomainRouter.default_session(),
 
             "user_id": kr.get("user_id", "system"),
 
@@ -1322,7 +1323,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
                     "entity_id": str((paused.get("request", {}) or {}).get("entity", "")),
 
-                    "domain_id": str((paused.get("request", {}) or {}).get("domain_id", "default")),
+                    "domain_id": str((paused.get("request", {}) or {}).get("domain_id") or DomainRouter.default_graph_domain()),
 
                     "timestamp": str(int(time.time())),
 
@@ -1360,7 +1361,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
                     "context": {"_reject_feedback": feedback or "决策被人工拒绝，请重新生成"},
 
-                    "session_id": paused.get("session_id", "default"),
+                    "session_id": paused.get("session_id") or DomainRouter.default_session(),
 
                     "user_id": paused.get("user_id", "system"),
 
@@ -1753,7 +1754,7 @@ async def submit_agent_feedback(body: dict, request: Request):
 
 @router.get("/agents/hallucination/dashboard", response_model=Dict[str, Any])
 
-async def get_hallucination_dashboard(domain_id: str = "default"):
+async def get_hallucination_dashboard(domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN):
 
     """Phase 3.1: Get hallucination tracking dashboard.
 
@@ -1899,7 +1900,13 @@ async def resolve_pipeline_hitl(pipeline_id: str, request: dict):
 
         if action == "grilling":
 
-            domain_id = engine._state.get("_hitl_domain_id", "") or engine._state.get("domain_id", "ai-knowledge")
+            from core.harness.knowledge.domain_router import get_domain_router
+
+            domain_id = (
+                engine._state.get("_hitl_domain_id", "")
+                or engine._state.get("domain_id", "")
+                or get_domain_router().default_kb_domain()
+            )
 
             from core.api.core_facade import start_grilling
 

@@ -14,6 +14,8 @@ callers: hook_manager POST_LOOP, skill_routing Canary callback, EvolutionEngine 
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 import time as _time
 from typing import Any, Dict, List, Optional
@@ -24,18 +26,25 @@ logger = logging.getLogger(__name__)
 class SECIEngine:
     """Knowledge creation bus. Single instance per process; idempotent writes."""
 
-    def __init__(self):
+    def __init__(self, *, tenant_id: str = ""):
         """初始化。
+
+        Args:
+            tenant_id: 可选租户；空则从 ActiveRequestContext 解析（N09 K22）。
         """
         self._graph = None
         self._initialized = False
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        self._tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
 
     def _ensure_graph(self):
         if self._initialized:
             return
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            self._graph = GraphIndex.load("knowledge-atom")
+            from core.harness.knowledge.domain_router import get_domain_router
+            # 为什么：N09 K22 — SECI 原子图须按租户分库
+            self._graph = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=self._tenant_id)
             self._initialized = True
         except Exception as e:
             logger.debug("SECIEngine: graph load failed: %s", str(e))
@@ -125,6 +134,8 @@ class SECIEngine:
             atom_id: atom 标识。
             threshold: threshold 参数。
         """
+        from core.harness.knowledge.domain_router import get_domain_router
+
         self._ensure_graph()
 
         atom_node = self._graph.get_node(atom_id)
@@ -197,7 +208,7 @@ class SECIEngine:
                     links.append({
                         "link_id": link_id,
                         "target_class": "SECI知识原子(existing)",
-                        "domain": "knowledge-atom",
+                        "domain": get_domain_router().knowledge_atom_domain(),
                         "score": round(overlap, 2),
                     })
                     linked_count += 1
@@ -231,7 +242,7 @@ class SECIEngine:
                     links.append({
                         "link_id": link_id,
                         "target_class": "SECI知识原子(deprecated)",
-                        "domain": "knowledge-atom",
+                        "domain": get_domain_router().knowledge_atom_domain(),
                         "score": round(overlap, 2),
                     })
                     linked_count += 1
@@ -461,7 +472,7 @@ def register_seci_hook() -> bool:
         try:
             # 1. Get MemoryManager
             from core.harness.memory.manager import get_memory_manager
-            ns = getattr(context, 'session_id', '') or 'default'
+            ns = getattr(context, 'session_id', '') or DomainRouter.default_session()
             mgr = get_memory_manager(namespace=ns)
 
             # 2. Extract high-scored episodic entries
@@ -522,7 +533,8 @@ def register_seci_hook() -> bool:
                 from core.harness.ontology_engine.graph_index import GraphIndex
                 import json as _json_qs, time as _time_qs
 
-                kg = GraphIndex.load("knowledge-atom")
+                from core.harness.knowledge.domain_router import get_domain_router
+                kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=engine._tenant_id)
                 atom_count = engine.get_atom_count()
                 link_count = engine.get_link_count()
                 qs_id = f"qs_{int(_time_qs.time())}"

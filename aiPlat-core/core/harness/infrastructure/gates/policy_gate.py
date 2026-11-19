@@ -56,6 +56,7 @@ from core.harness.kernel.runtime import get_kernel_runtime
 
 from core.policy.engine import evaluate_tool_policy_snapshot, PolicyDecision as EngineDecision
 from core.services.tenant_store_protocol import get_tenant_store  # P0-A3: tenant policy via injected store
+from core.harness.knowledge.domain_router import DomainRouter
 
 # DI: resolve_skill_permission via SkillPermissionResolver
 
@@ -545,7 +546,7 @@ class PolicyGate:
         if not reviewer_enabled(args):
             return None, None, ""
 
-        session_id = str(args.get("_session_id") or args.get("_run_id") or "default")
+        session_id = str(args.get("_session_id") or args.get("_run_id") or DomainRouter.default_session())
         try:
             result = await review_proposed_action(
                 tool_name=tool_name,
@@ -608,7 +609,7 @@ class PolicyGate:
     ) -> PolicyResult:
         """Build APPROVAL_REQUIRED and park to Unattended Inbox when attendance≠attended."""
         args = tool_args if isinstance(tool_args, dict) else {}
-        session_id = str(args.get("_session_id") or args.get("_run_id") or user_id or "default")
+        session_id = str(args.get("_session_id") or args.get("_run_id") or user_id or DomainRouter.default_session())
         attendance_raw = args.get("_attendance") or args.get("attendance")
         inbox_item_id: Optional[str] = None
         attendance: Optional[str] = None
@@ -1966,7 +1967,7 @@ class PolicyGate:
                 marking_max = trace_context.get("_max_marking_level", marking_level)
                 allowed, reason = check_tool_args_markings(
                     tool_args, max_allowed_level=marking_max,
-                    collection_id=trace_context.get("collection_id", "default"),
+                    collection_id=trace_context.get("collection_id") or DomainRouter.default_collection(),
                 )
                 if not allowed:
                     return PolicyResult(
@@ -2486,7 +2487,7 @@ async def check_stage_ontology_guard(
 
     state: Dict[str, Any],
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
 ) -> Optional[str]:
 
@@ -2668,9 +2669,9 @@ async def check_kb_access(
 
     actor_scopes: Optional[List[str]] = None,
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
 ) -> PolicyResult:
 

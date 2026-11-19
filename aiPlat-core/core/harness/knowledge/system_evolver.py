@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 from collections import Counter, defaultdict
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -32,16 +33,23 @@ class SystemEvolver:
     MIN_SANDBOX_SCORE = 0.7        # publish threshold
     STRONG_EVIDENCE_RATE = 80      # delivery rate for strong marking
 
-    def __init__(self):
+    def __init__(self, *, tenant_id: str = ""):
         """初始化。
+
+        Args:
+            tenant_id: 可选租户；空则从 ActiveRequestContext 解析（N09 K22）。
         """
         self._kg = None
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        self._tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
 
     def _ensure_loaded(self):
         if self._kg:
             return
         from core.harness.ontology_engine.graph_index import GraphIndex
-        self._kg = GraphIndex.load("knowledge-atom")
+        # 为什么：N09 K22 — evolver 知识原子图须按租户分库
+        from core.harness.knowledge.domain_router import get_domain_router
+        self._kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=self._tenant_id)
 
     # ═══════════════════════════════════════════════════════════════
     # Main API
@@ -110,7 +118,7 @@ class SystemEvolver:
 
             for domain_id in domains:
                 try:
-                    g = GraphIndex.load(domain_id)
+                    g = GraphIndex.load(domain_id, tenant_id=self._tenant_id)
                 except Exception:
                     continue
                 for _, n in g._nodes.items():
@@ -177,7 +185,7 @@ class SystemEvolver:
 
             for domain_id in domains:
                 try:
-                    g = GraphIndex.load(domain_id)
+                    g = GraphIndex.load(domain_id, tenant_id=self._tenant_id)
                 except Exception:
                     continue
                 for _, n in g._nodes.items():
@@ -269,7 +277,7 @@ class SystemEvolver:
                 from core.harness.ontology_engine.graph_index import GraphIndex
                 target_domain = candidate.get("target_domain", "") or os.getenv("AIPLAT_EVOLVER_TERM_DOMAIN", "")
                 if target_domain:
-                    tg = GraphIndex.load(target_domain)
+                    tg = GraphIndex.load(target_domain, tenant_id=self._tenant_id)
                     tid = f"term_evolved_{candidate['name'].replace(' ', '_')[:50]}"
                     tg.add_entity(tid, candidate["name"], "Term", source_doc_id="system_evolver")
                     action_detail["action"] = "published"

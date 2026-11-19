@@ -7,6 +7,8 @@ ActionRegistry handler 与薄路由共同调用。
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import json
 import logging
 from pathlib import Path
@@ -79,14 +81,21 @@ async def run_confirm_extraction(
             proposal_id = await store._enqueue_ontology_proposal(row)
             ents = _parse_list(row.get("entities_json"))
             rels = _parse_list(row.get("relations_json"))
-            domain_id = str(row.get("domain_id") or receipt.get("domain_id") or "default")
+            domain_id = str(row.get("domain_id") or receipt.get("domain_id") or DomainRouter.default_graph_domain())
+            tenant_id = str(
+                row.get("tenant_id")
+                or receipt.get("tenant_id")
+                or DomainRouter.default_tenant()
+            ).strip() or DomainRouter.default_tenant()
             if ents:
                 try:
+                    # 为什么：N09 K6 — confirm 写图必须带租户，与 Fact 投影一致
                     graph_write = write_extraction_to_graph_index(
                         domain_id,
                         ents,
                         rels,
                         source_doc_id=f"extract:{eid}",
+                        tenant_id=tenant_id,
                     )
                 except Exception:
                     logger.warning(
@@ -100,11 +109,6 @@ async def run_confirm_extraction(
             )
             if _ot_seed.is_file():
                 try:
-                    tenant_id = str(
-                        row.get("tenant_id")
-                        or receipt.get("tenant_id")
-                        or "default"
-                    )
                     summary = f"confirmed extraction {eid} ({len(ents)} entities)"
                     fact_ledger = await record_extraction_as_claim(
                         tenant_id=tenant_id,

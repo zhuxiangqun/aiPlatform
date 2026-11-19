@@ -14,6 +14,8 @@ AsyncActionRegistry — enterprise action execution engine (v3, 2026-07-29).
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import asyncio
 import importlib
 import json
@@ -326,7 +328,7 @@ class AsyncActionRegistry:
             domain_id = entity_ref[0]
         else:
             entity_id = entity_ref
-            domain_id = c.domain_id or "default"
+            domain_id = c.domain_id or DomainRouter.default_graph_domain()
 
         mutex_lock_id = f"{domain_id}:{entity_id}:mutex"
 
@@ -632,7 +634,9 @@ class AsyncActionRegistry:
     async def _get_entity(self, domain_id: str, entity_id: str) -> Optional[Dict]:
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            g = GraphIndex.load(domain_id)
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
+            # 为什么：N09 K26 — Action 实体读取须按租户
+            g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
             node = g.get_node(entity_id)
             if node is None:
                 return None

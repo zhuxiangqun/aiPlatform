@@ -7,6 +7,7 @@ by decomposing into sub-tasks: retrieve → analyze → summarize → format.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 from core.harness.interfaces import AgentConfig, AgentContext, AgentResult, AgentStatus
 from core.harness.knowledge.cost_estimator import estimate_query_cost
@@ -38,7 +39,7 @@ class KBPlannerAgent:
         try:
             vars0 = dict(context.variables or {})
             scope = dict(vars0.get("scope") or {})
-            tenant_id = str(vars0.get("tenant_id") or "default")
+            tenant_id = str(vars0.get("tenant_id") or DomainRouter.default_tenant())
             task = ""
             if context.messages:
                 task = str(context.messages[-1].get("content") or "").strip()

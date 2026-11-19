@@ -10,6 +10,7 @@ from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResp
 
 from fastapi import APIRouter, HTTPException, Query
 import logging
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-diagnostics-v2"])
 
@@ -69,7 +70,7 @@ async def fde_trends(
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         now = datetime.now(timezone.utc)
         cutoff = now - timedelta(days=months * 30)
 
@@ -150,7 +151,7 @@ async def fde_trends(
         # ── Term dictionary growth trend ──
         term_trends = []
         try:
-            tg = GraphIndex.load("enterprise-terms")
+            tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
             term_buckets = defaultdict(int)
             for nid, node in list(tg._nodes.items()):
                 if getattr(node, "class_name", "") != "Term":
@@ -228,7 +229,7 @@ async def fde_search(
 
         # ── 1. Search fde-delivery sessions ──
         if scope in ("all", "sessions"):
-            fd = GraphIndex.load("fde-delivery")
+            fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
             for nid, node in list(fd._nodes.items()):
                 cls = getattr(node, "class_name", "")
                 name = node.entity_name.lower()
@@ -268,7 +269,7 @@ async def fde_search(
         # ── 3. Search enterprise-terms ──
         if scope in ("all", "terms"):
             try:
-                tg = GraphIndex.load("enterprise-terms")
+                tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
                 for nid, node in list(tg._nodes.items()):
                     name = node.entity_name.lower()
                     if query in name and (nid, "term") not in seen:
@@ -357,7 +358,7 @@ async def fde_alerts(
     try:
         from core.api.core_facade import GraphIndex
 
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         now = datetime.now(timezone.utc)
         stale_cutoff = now - timedelta(days=30)
 

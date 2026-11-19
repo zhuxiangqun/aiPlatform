@@ -20,16 +20,23 @@ logger = logging.getLogger(__name__)
 class SystemDiagnostician:
     """Cross-subsystem diagnostic engine with correlation analysis."""
 
-    def __init__(self):
+    def __init__(self, *, tenant_id: str = ""):
         """初始化。
+
+        Args:
+            tenant_id: 可选租户；空则从 ActiveRequestContext 解析（N09 K23）。
         """
         self._kg = None
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        self._tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
 
     def _ensure_loaded(self):
         if self._kg:
             return
         from core.harness.ontology_engine.graph_index import GraphIndex
-        self._kg = GraphIndex.load("knowledge-atom")
+        # 为什么：N09 K23 — diagnostician 知识原子图须按租户分库
+        from core.harness.knowledge.domain_router import get_domain_router
+        self._kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=self._tenant_id)
 
     # ═══════════════════════════════════════════════════════════════
     # Main API
@@ -138,7 +145,7 @@ class SystemDiagnostician:
             sessions = []
             for domain_id in domains:
                 try:
-                    g = GraphIndex.load(domain_id)
+                    g = GraphIndex.load(domain_id, tenant_id=self._tenant_id)
                 except Exception:
                     continue
                 for _, n in g._nodes.items():
@@ -388,7 +395,7 @@ class SystemDiagnostician:
 
             for domain_id in domains:
                 try:
-                    g = GraphIndex.load(domain_id)
+                    g = GraphIndex.load(domain_id, tenant_id=self._tenant_id)
                 except Exception:
                     continue
                 for _, n in g._nodes.items():
@@ -630,7 +637,9 @@ class SystemHealer:
         """P3: Rollback to last known-good state from audit snapshot."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            kg = GraphIndex.load("knowledge-atom")
+            # 为什么：N09 K23 — heal rollback 读租户原子图
+            from core.harness.knowledge.domain_router import get_domain_router
+            kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=self._tenant_id)
             # Find last heal audit for this rule
             for _, n in sorted(kg._nodes.items(), key=lambda x: x[0], reverse=True):
                 if getattr(n, "class_name", "") != "SystemSnapshot":
@@ -696,8 +705,11 @@ def _record_heal_audit(rule: str, resolved: bool, before: Dict, after: Dict):
     """Record auto-heal action as SystemSnapshot for audit trail."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
         import json, time
-        kg = GraphIndex.load("knowledge-atom")
+        # 为什么：N09 K23 — heal audit 写入租户原子图
+        from core.harness.knowledge.domain_router import get_domain_router
+        kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=_resolve_graph_tenant())
         ts = int(time.time())
         hid = f"heal_{ts}_{rule}"
         kg.add_entity(

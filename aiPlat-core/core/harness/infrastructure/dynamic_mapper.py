@@ -134,6 +134,8 @@ class DynamicSchemaMapper:
         self, raw_json: Dict[str, Any], domain_id: str, class_name: str,
         custom_mapping: Optional[Dict[str, str]] = None,
         source_doc_id: str = "dynamic_mapper",
+        *,
+        tenant_id: str = "",
     ) -> Dict[str, Any]:
         """Map + write to GraphIndex in one call.
 
@@ -143,9 +145,13 @@ class DynamicSchemaMapper:
             class_name: class_name 参数。
             custom_mapping: custom_mapping 参数。
             source_doc_id: source_doc 标识。
+            tenant_id: 租户；空则解析 ActiveRequestContext（N09 K29）。
         """
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
         ed = self.map_to_entity(raw_json, domain_id, class_name, custom_mapping)
-        g = GraphIndex.load(domain_id)
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+        # 为什么：N09 K29 — dynamic mapper 写入须按租户
+        g = GraphIndex.load(domain_id, tenant_id=tid)
 
         existing = g._nodes.get(ed["id"])
         if existing:

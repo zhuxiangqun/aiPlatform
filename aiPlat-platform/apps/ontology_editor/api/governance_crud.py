@@ -1,10 +1,11 @@
-"""governance_crud：模块接口。"""
+"""Governance API — 治理管线 + 审批 + 映射验证 + 仪表盘 (v2.8)."""
+from typing import Any, Dict
 
-from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
-from api.schemas_response import StatusResponse
-u"""Governance API — 治理管线 + 审批 + 映射验证 + 仪表盘 (v2.8)."""
-from fastapi import APIRouter, HTTPException, Query
-from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, HTTPException, Query, Request
+
+from apps.common_schemas import StatusResponse
+from auth.request_identity import resolve_request_tenant
+from core.utils.paths import get_aiplat_data_dir
 
 router = APIRouter(prefix="/governance", tags=["governance"])
 
@@ -12,24 +13,34 @@ router = APIRouter(prefix="/governance", tags=["governance"])
 # ── Dashboard ──
 
 @router.get("/dashboard")
-async def governance_dashboard():
-    u"""Aggregated governance dashboard data."""
+async def governance_dashboard(request: Request):
+    """Aggregated governance dashboard data.
+
+    Args:
+        request: FastAPI Request；身份租户（N09 K18）。
+    """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import aggregate_dashboard
-        return aggregate_dashboard()
+        data = aggregate_dashboard()
+        if isinstance(data, dict):
+            return {**data, "tenant_id": tenant_id}
+        return {"data": data, "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/dashboard/audit-log")
-async def audit_log(days: int = Query(7), domain: str = Query("")):
+async def audit_log(request: Request, days: int = Query(7), domain: str = Query("")):
     """Governance audit log.
 
     Args:
+        request: FastAPI Request；身份租户（N09 K18）。
         days: days 参数。
         domain: domain 参数。
     """
     try:
+        tenant_id = resolve_request_tenant(request)
         import sqlite3, os, time
         db = get_aiplat_data_dir("usage_metrics.db")
         if not os.path.exists(db):
@@ -44,18 +55,23 @@ async def audit_log(days: int = Query(7), domain: str = Query("")):
             params.append(domain)
         rows = conn.execute(query, params).fetchall()
         conn.close()
-        return {"events": [dict(r) for r in rows], "total": len(rows)}
+        return {"events": [dict(r) for r in rows], "total": len(rows), "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/dashboard/mapping-coverage")
-async def mapping_coverage_report():
-    u"""Data→semantic mapping coverage report (markdown)."""
+async def mapping_coverage_report(request: Request):
+    """Data→semantic mapping coverage report (markdown).
+
+    Args:
+        request: FastAPI Request；身份租户（N09 K18）。
+    """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import generate_mapping_report
         report = generate_mapping_report()
-        return {"format": "markdown", "report": report}
+        return {"format": "markdown", "report": report, "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -63,22 +79,28 @@ async def mapping_coverage_report():
 # ── Governance Pipeline ──
 
 @router.post("/run-cycle", response_model=StatusResponse)
-async def run_cycle(data: Dict[str, Any]):
+async def run_cycle(data: Dict[str, Any], request: Request):
     """Run 6-step governance cycle for a domain.
 
     Args:
         data: data 参数。
+        request: FastAPI Request；身份租户（N09 K18）。
     """
     try:
+        tenant_id = resolve_request_tenant(request)
         domain_id = data.get("domain_id", "")
         if not domain_id:
             raise HTTPException(status_code=400, detail="domain_id required")
         from core.api.core_facade import run_cycle as _run
         steps = data.get("steps")
         auto_publish = data.get("auto_publish", False)
-        result = await _run(domain_id, steps=steps, auto_publish=auto_publish)
+        # 为什么：N09 K19 — run_cycle 须透传身份租户至 maturity/GraphIndex
+        result = await _run(
+            domain_id, steps=steps, auto_publish=auto_publish, tenant_id=tenant_id
+        )
         return {
             "cycle_id": result.cycle_id, "domain_id": result.domain_id,
+            "tenant_id": tenant_id,
             "overall_health": result.overall_health, "health_level": result.health_level,
             "recommendations": result.recommendations,
             "step_results": [{"step_name": s.step_name, "status": s.status,
@@ -92,32 +114,41 @@ async def run_cycle(data: Dict[str, Any]):
 
 
 @router.post("/run-all", response_model=StatusResponse)
-async def run_all_cycles():
-    u"""Run governance cycle for all domains."""
+async def run_all_cycles(request: Request):
+    """Run governance cycle for all domains.
+
+    Args:
+        request: FastAPI Request；身份租户（N09 K18）。
+    """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import run_all_domains
-        results = await run_all_domains()
+        # 为什么：N09 K19 — 全域治理循环同样按身份租户扫图
+        results = await run_all_domains(tenant_id=tenant_id)
         return {
             "cycles": [{"domain_id": r.domain_id, "health": r.overall_health,
                          "level": r.health_level} for r in results],
             "total": len(results),
+            "tenant_id": tenant_id,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/cycle-history")
-async def cycle_history(domain_id: str = Query(""), limit: int = Query(10)):
+async def cycle_history(request: Request, domain_id: str = Query(""), limit: int = Query(10)):
     """Governance cycle history.
 
     Args:
+        request: FastAPI Request；身份租户（N09 K18）。
         domain_id: domain 标识。
         limit: 返回条数上限。
     """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import get_cycle_history
         history = get_cycle_history(domain_id, limit)
-        return {"cycles": history, "total": len(history)}
+        return {"cycles": history, "total": len(history), "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -125,66 +156,80 @@ async def cycle_history(domain_id: str = Query(""), limit: int = Query(10)):
 # ── Change Approval ──
 
 @router.get("/change-requests/pending")
-async def pending_requests(domain_id: str = Query("")):
+async def pending_requests(request: Request, domain_id: str = Query("")):
     """List pending change requests.
 
     Args:
+        request: FastAPI Request；身份租户（N09 K18）。
         domain_id: domain 标识。
     """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import list_pending  # P0-A2 修复: CoreFacade 已补 re-export
         pending = list_pending(domain_id)
-        return {"requests": pending, "total": len(pending)}
+        return {"requests": pending, "total": len(pending), "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/change-requests/{request_id}/approve", response_model=StatusResponse)
-async def approve_request(request_id: str, data: Dict[str, Any]):
+async def approve_request(request_id: str, data: Dict[str, Any], request: Request):
     """Approve a change request.
 
     Args:
         request_id: request 标识。
         data: data 参数。
+        request: FastAPI Request；身份租户（N09 K18）。
     """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import approve
         approved_by = data.get("approved_by", "governance_admin")
         comment = data.get("comment", "")
-        return approve(request_id, approved_by, comment)
+        out = approve(request_id, approved_by, comment)
+        if isinstance(out, dict):
+            return {**out, "tenant_id": tenant_id}
+        return {"result": out, "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/change-requests/{request_id}/reject", response_model=StatusResponse)
-async def reject_request(request_id: str, data: Dict[str, Any]):
+async def reject_request(request_id: str, data: Dict[str, Any], request: Request):
     """Reject a change request.
 
     Args:
         request_id: request 标识。
         data: data 参数。
+        request: FastAPI Request；身份租户（N09 K18）。
     """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import reject  # P0-A2 修复: CoreFacade 已补 re-export
         rejected_by = data.get("rejected_by", "governance_admin")
         reason = data.get("reason", "")
-        return reject(request_id, rejected_by, reason)
+        out = reject(request_id, rejected_by, reason)
+        if isinstance(out, dict):
+            return {**out, "tenant_id": tenant_id}
+        return {"result": out, "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/change-requests/history")
-async def approval_history(domain_id: str = Query(""), limit: int = Query(50)):
+async def approval_history(request: Request, domain_id: str = Query(""), limit: int = Query(50)):
     """Approval history.
 
     Args:
+        request: FastAPI Request；身份租户（N09 K18）。
         domain_id: domain 标识。
         limit: 返回条数上限。
     """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import get_history  # P0-A2 修复: CoreFacade 已补 re-export
         history = get_history(domain_id, limit)
-        return {"history": history, "total": len(history)}
+        return {"history": history, "total": len(history), "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -192,17 +237,20 @@ async def approval_history(domain_id: str = Query(""), limit: int = Query(50)):
 # ── Mapping Validation ──
 
 @router.post("/validate-mappings/{domain_id}", response_model=StatusResponse)
-async def validate_mappings(domain_id: str):
+async def validate_mappings(domain_id: str, request: Request):
     """Validate all data source mappings for a domain.
 
     Args:
         domain_id: domain 标识。
+        request: FastAPI Request；身份租户（N09 K18）。
     """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import validate_all_sources
         results = validate_all_sources(domain_id)
         return {
             "domain_id": domain_id,
+            "tenant_id": tenant_id,
             "results": [{"source_id": r.source_id, "coverage_pct": r.coverage_pct,
                           "status": r.status, "issues": len(r.issues)} for r in results],
             "total": len(results),
@@ -212,15 +260,17 @@ async def validate_mappings(domain_id: str):
 
 
 @router.get("/mapping-report/{domain_id}")
-async def mapping_report(domain_id: str):
+async def mapping_report(domain_id: str, request: Request):
     """Mapping coverage markdown report.
 
     Args:
         domain_id: domain 标识。
+        request: FastAPI Request；身份租户（N09 K18）。
     """
     try:
+        tenant_id = resolve_request_tenant(request)
         from core.api.core_facade import generate_mapping_report
         report = generate_mapping_report([domain_id])
-        return {"format": "markdown", "report": report}
+        return {"format": "markdown", "report": report, "tenant_id": tenant_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

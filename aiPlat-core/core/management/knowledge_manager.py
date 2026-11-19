@@ -14,14 +14,15 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from core.utils.ids import new_prefixed_id
+from core.harness.knowledge.domain_router import DomainRouter
 
 
-def _kb_db_path(tenant_id: str = "default") -> str:
+def _kb_db_path(tenant_id: str = DomainRouter.default_tenant()) -> str:
     base = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
-    return os.path.join(base, tenant_id or "default", "kb.sqlite3")
+    return os.path.join(base, tenant_id or DomainRouter.default_tenant(), "kb.sqlite3")
 
 
-def _kb_connect(tenant_id: str = "default"):
+def _kb_connect(tenant_id: str = DomainRouter.default_tenant()):
     path = _kb_db_path(tenant_id)
     if not os.path.exists(path):
         return None
@@ -412,7 +413,7 @@ class KnowledgeManager:
         if not conn:
             return {"total": 0, "active": 0, "indexing": 0, "error": 0}
         try:
-            total = conn.execute("SELECT count(*) FROM collections WHERE tenant_id=?", ("default",)).fetchone()[0]
+            total = conn.execute("SELECT count(*) FROM collections WHERE tenant_id=?", (DomainRouter.default_tenant(),)).fetchone()[0]
             return {"total": total, "active": total, "indexing": 0, "error": 0}
         finally:
             conn.close()

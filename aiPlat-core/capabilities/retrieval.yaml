@@ -64,4 +64,5 @@ consumer_patterns:
   - "engine/skills/"
   - "api/"
   - "builder/"
+  - "delivery/"
   - "server\\.py"

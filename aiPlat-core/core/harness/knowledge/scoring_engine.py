@@ -27,6 +27,7 @@ YAML schema:
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
 import logging
 import os as _os
 import re as _re
@@ -103,6 +104,8 @@ def evaluate(
     entity_name: str,
     model: ScoringModel,
     domain_id: str,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> ScoringResult:
     """Evaluate a single entity against a scoring model.
 
@@ -110,11 +113,15 @@ def evaluate(
         entity_name: entity_name 参数。
         model: 模型名。
         domain_id: domain 标识。
+        tenant_id: 租户；加载 GraphIndex 分库（N09 K18）。
     """
     result = ScoringResult(model_name=model.name, entity_name=entity_name)
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     for rule in model.rules:
-        rule_score, detail = _eval_rule(entity_name, rule, domain_id, model.time_window_days)
+        rule_score, detail = _eval_rule(
+            entity_name, rule, domain_id, model.time_window_days, tenant_id=tid,
+        )
         if rule_score > 0:
             result.total_score += rule_score
             result.rule_scores[rule.name] = rule_score
@@ -135,6 +142,8 @@ def evaluate_batch(
     class_name: str,
     model: ScoringModel,
     domain_id: str,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> List[ScoringResult]:
     """Evaluate all entities of a given class.
 
@@ -142,11 +151,13 @@ def evaluate_batch(
         class_name: class_name 参数。
         model: 模型名。
         domain_id: domain 标识。
+        tenant_id: 租户；加载 GraphIndex 分库（N09 K18）。
     """
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     results = []
-    entities = _get_entities_by_class(class_name, domain_id)
+    entities = _get_entities_by_class(class_name, domain_id, tenant_id=tid)
     for entity_name in entities:
-        result = evaluate(entity_name, model, domain_id)
+        result = evaluate(entity_name, model, domain_id, tenant_id=tid)
         if result.total_score > 0 or result.level != "low":
             results.append(result)
     return sorted(results, key=lambda r: r.total_score, reverse=True)
@@ -156,6 +167,8 @@ def get_alerts(
     model: ScoringModel,
     domain_id: str,
     class_name: str = "",
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> List[ScoringResult]:
     """Get all high-level alerts for a scoring model.
 
@@ -163,11 +176,13 @@ def get_alerts(
         model: 模型名。
         domain_id: domain 标识。
         class_name: class_name 参数。
+        tenant_id: 租户；加载 GraphIndex 分库（N09 K18）。
     """
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     if class_name:
-        results = evaluate_batch(class_name, model, domain_id)
+        results = evaluate_batch(class_name, model, domain_id, tenant_id=tid)
     else:
-        results = evaluate_batch(model.binds_to, model, domain_id)
+        results = evaluate_batch(model.binds_to, model, domain_id, tenant_id=tid)
     return [r for r in results if r.level in ("high", "medium")]
 
 
@@ -176,6 +191,8 @@ def _eval_rule(
     rule: ScoringRule,
     domain_id: str,
     default_time_window: int = 30,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Tuple[float, Optional[Dict[str, Any]]]:
     u"""Evaluate a single rule against an entity.
 
@@ -190,12 +207,17 @@ def _eval_rule(
     cond_type = condition.get("type", "relation_count")
 
     count = 0
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     if via_path:
         # Multi-hop: traverse the path to find terminal entities
-        count = _traverse_and_count(entity_name, via_path, domain_id, time_window)
+        count = _traverse_and_count(
+            entity_name, via_path, domain_id, time_window, tenant_id=tid,
+        )
     elif relation:
         # Single-hop backward compat
-        count = _count_related(entity_name, relation, domain_id, time_window)
+        count = _count_related(
+            entity_name, relation, domain_id, time_window, tenant_id=tid,
+        )
 
     # Evaluate condition
     met = _eval_condition(operator, threshold, count)
@@ -222,11 +244,14 @@ def _traverse_and_count(
     via_path: List[List[str]],
     domain_id: str,
     time_window_days: int = 30,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> int:
     u"""Traverse a multi-hop path and count terminal entities."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K18 — scoring 路径禁止 GraphIndex.load 默认租户
+        graph = GraphIndex.load(domain_id, tenant_id=(tenant_id or "").strip() or DomainRouter.default_tenant())
         from core.harness.ontology_engine.graph_traversal import traverse
 
         current_ids = [entity_name]
@@ -255,11 +280,13 @@ def _count_related(
     relation: str,
     domain_id: str,
     time_window_days: int = 30,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> int:
     u"""Count related entities via a single relation."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        graph = GraphIndex.load(domain_id, tenant_id=(tenant_id or "").strip() or DomainRouter.default_tenant())
         neighbors = graph.get_neighbors(entity_name, relation, direction="outgoing")
         return len(neighbors)
     except Exception:
@@ -291,11 +318,16 @@ def _calc_score(formula: str, weight: float, count: int) -> float:
         return weight
 
 
-def _get_entities_by_class(class_name: str, domain_id: str) -> List[str]:
+def _get_entities_by_class(
+    class_name: str,
+    domain_id: str,
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
+) -> List[str]:
     u"""Get all entity names of a given class from GraphIndex."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        graph = GraphIndex.load(domain_id, tenant_id=(tenant_id or "").strip() or DomainRouter.default_tenant())
         entities = []
         for node_id in graph._nodes:
             node = graph._nodes.get(node_id)

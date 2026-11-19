@@ -14,6 +14,8 @@ from typing import Optional, Dict, Any, List
 from enum import Enum
 from pydantic import BaseModel
 
+from core.api.core_facade import DomainRouter
+
 
 class TenantStatus(str, Enum):
     """TenantStatus。"""
@@ -93,7 +95,10 @@ class TenantManager:
             return
         self._initialized = True
         self._tenants: Dict[str, Tenant] = {}
-        self._default_tenant_id = os.getenv("AIPLAT_DEFAULT_TENANT", "default")
+        # 为什么：env 可覆盖运维默认租户；字面量回退走 DomainRouter SSOT（N09 K66）
+        self._default_tenant_id = (
+            os.getenv("AIPLAT_DEFAULT_TENANT") or DomainRouter.default_tenant()
+        ).strip() or DomainRouter.default_tenant()
         self._db = None
         self._load_from_db()
 

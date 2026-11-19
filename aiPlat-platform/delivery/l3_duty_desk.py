@@ -10,6 +10,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from core.api.core_facade import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +160,7 @@ def _quarterly_suggestions(
 
 def build_l3_duty_desk(
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     window_hours: int = 720,
     project_id: str = "",
 ) -> Dict[str, Any]:
@@ -186,7 +187,7 @@ def build_l3_duty_desk(
     return {
         "ok": True,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "tenant_id": tenant_id or "default",
+        "tenant_id": tenant_id or DomainRouter.default_tenant(),
         "project_id": project_id or "",
         "window_hours": window_hours,
         "period": quarter,

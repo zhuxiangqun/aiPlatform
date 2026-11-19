@@ -11,14 +11,17 @@ from typing import Any, Dict, List, Optional
 
 from ._trace import trace_syscall_entry
 
+from core.harness.knowledge.domain_router import DomainRouter
 _log = logging.getLogger(__name__)
 
 
 async def sys_graph_neighbors(
     entity_name: str,
-    domain_id: str = "default",
+    domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN,
     max_hops: int = 1,
     include_edges: bool = False,
+    *,
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """Look up an entity in the graph and return its neighbors.
 
@@ -27,13 +30,17 @@ async def sys_graph_neighbors(
         domain_id: domain 标识。
         max_hops: max_hops 参数。
         include_edges: include_edges 参数。
+        tenant_id: 租户；空则解析 ActiveRequestContext（N09 K24）。
     """
     trace_syscall_entry("sys_graph_neighbors")
     result: Dict[str, Any] = {"entity": entity_name, "neighbors": [], "edges": []}
 
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+        # 为什么：N09 K24 — 邻居查询须按租户图
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         node = graph.get_node(entity_name) or graph.find_by_name(entity_name)
         if not node:
             return result

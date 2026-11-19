@@ -9,6 +9,7 @@ Growth endpoints: knowledge base growth statistics and snapshots.
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
+from core.harness.knowledge.domain_router import DomainRouter
 
 router = APIRouter(tags=["wiki-scenes"])
 
@@ -29,7 +30,7 @@ class SceneCreateRequest(BaseModel):
 
 
 @router.get("/scenes", response_model=Dict[str, Any])
-async def list_scene_models(collection: str = "default"):
+async def list_scene_models(collection: str = DomainRouter.default_collection()):
     """List all ontology scene templates. Auto-seeds built-in scenes on first access.
 
     Args:
@@ -47,7 +48,7 @@ async def list_scene_models(collection: str = "default"):
 
 
 @router.post("/scenes", response_model=Dict[str, Any])
-async def create_scene_model(req: SceneCreateRequest, collection: str = "default"):
+async def create_scene_model(req: SceneCreateRequest, collection: str = DomainRouter.default_collection()):
     """创建 scene_model。
 
     Args:
@@ -66,7 +67,7 @@ async def create_scene_model(req: SceneCreateRequest, collection: str = "default
 
 
 @router.get("/scenes/{scene_id}", response_model=Dict[str, Any])
-async def get_scene_model(scene_id: str, collection: str = "default"):
+async def get_scene_model(scene_id: str, collection: str = DomainRouter.default_collection()):
     """获取 scene_model。
 
     Args:
@@ -82,7 +83,7 @@ async def get_scene_model(scene_id: str, collection: str = "default"):
 
 
 @router.post("/scenes/{scene_id}/instantiate", response_model=Dict[str, Any])
-async def instantiate_scene_model(scene_id: str, params: Dict[str, Any] = Body(default={}), collection: str = "default"):
+async def instantiate_scene_model(scene_id: str, params: Dict[str, Any] = Body(default={}), collection: str = DomainRouter.default_collection()):
     """instantiate_scene_model。
 
     Args:
@@ -98,7 +99,7 @@ async def instantiate_scene_model(scene_id: str, params: Dict[str, Any] = Body(d
 
 
 @router.delete("/scenes/{scene_id}", response_model=Dict[str, Any])
-async def delete_scene_model(scene_id: str, collection: str = "default"):
+async def delete_scene_model(scene_id: str, collection: str = DomainRouter.default_collection()):
     """删除 scene_model。
 
     Args:
@@ -113,7 +114,7 @@ async def delete_scene_model(scene_id: str, collection: str = "default"):
 # ── Growth Metrics ──────────────────────────────────────────────
 
 @router.get("/growth-stats", response_model=Dict[str, Any])
-async def get_growth_stats(days: int = 30, collection: str = "default"):
+async def get_growth_stats(days: int = 30, collection: str = DomainRouter.default_collection()):
     """Get knowledge base growth statistics for the last N days.
 
     Args:
@@ -127,7 +128,7 @@ async def get_growth_stats(days: int = 30, collection: str = "default"):
 
 
 @router.post("/growth/snapshot", response_model=Dict[str, Any])
-async def take_snapshot(collection: str = "default"):
+async def take_snapshot(collection: str = DomainRouter.default_collection()):
     """Manually trigger a growth snapshot.
 
     Args:

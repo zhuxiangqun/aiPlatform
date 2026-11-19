@@ -598,8 +598,10 @@ async def verify_ontology_domain(domain_id: str, collection: str = ""):
     graph_nodes = graph_edges = 0
 
     try:
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K29 — ontology domain 校验读租户图
+        graph = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
 
         graph_nodes = len(graph._nodes)
 
@@ -935,7 +937,7 @@ async def list_instances_by_class(domain_id: str, class_label: str = ""):
 
 @router.get("/class-by-category", response_model=Dict[str, Any])
 
-async def get_ontology_class_by_category(category: str = "entities", collection: str = "default"):
+async def get_ontology_class_by_category(category: str = "entities", collection: str = DomainRouter.default_collection()):
 
     """Return the OntologyClass matching a category name, with required/optional/template fields.
 

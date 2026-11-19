@@ -45,6 +45,17 @@ def test_lazy_store_without_kernel_runtime():
 
         cf.ApprovalManager = FakeMgr
         cf.get_execution_store = lambda: FakeStore()
+
+        class _FakeDomainRouter:
+            @staticmethod
+            def default_session():
+                return "default"
+
+            @staticmethod
+            def default_tenant():
+                return "default"
+
+        cf.DomainRouter = _FakeDomainRouter
         sys.modules["core.api.core_facade"] = cf
 
         for name in [

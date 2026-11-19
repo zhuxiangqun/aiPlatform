@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 import time
 import json
 import logging
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-bootstrap"])
 
@@ -43,7 +44,7 @@ async def fde_bootstrap_test_data(
         from core.api.core_facade import GraphIndex
 
         # fde-delivery: session + actions + evidence + meta + transitions
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         fd.add_entity(sid, company_name, "DiagnosisSession", source_doc_id="bootstrap")
 
         actions_data = {
@@ -89,7 +90,7 @@ async def fde_bootstrap_test_data(
         fd.add_relation(sid, tid, "has_transition", relation_label="状态变更", confidence=1.0)
 
         # enterprise-terms: seed terms
-        tg = GraphIndex.load("enterprise-terms")
+        tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
         for term_name in ["文本相似度检测", "关联图谱分析", "围标串标"]:
             term_id = f"term_bootstrap_{term_name.replace(' ', '_')[:40]}"
             tg.add_entity(term_id, term_name, "Term", source_doc_id=sid)
@@ -153,7 +154,7 @@ async def fde_bootstrap_all():
         co = company_names.get(ind,f"{ind}示范企业")
         ts = str(int(_t_ball.time()))
         sid = f"session_{co.replace(' ','')}_{ts}"
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         fd.add_entity(sid, co, "DiagnosisSession", source_doc_id="bootstrap-all")
         acts = actions_map.get(ind,[("智能分析",f"{ind}洞察")])
         for i,(name,_) in enumerate(acts):
@@ -170,7 +171,7 @@ async def fde_bootstrap_all():
         tid = f"trans_{sid}_{ts}"
         fd.add_entity(tid,f"Session → delivered ({ind})","StateTransition",source_doc_id=sid)
         fd.add_relation(sid,tid,"has_transition",relation_label="状态变更",confidence=1.0)
-        tg = GraphIndex.load("enterprise-terms")
+        tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
         for tn in [acts[0][0][:20], acts[1][0][:20]]:
             ti = f"term_{ind}_{tn.replace(' ','_')[:40]}"
             tg.add_entity(ti, tn, "Term", source_doc_id=sid)

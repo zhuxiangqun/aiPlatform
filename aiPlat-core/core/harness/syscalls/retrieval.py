@@ -45,6 +45,7 @@ import concurrent.futures as _cfutures
 
 
 
+from core.harness.knowledge.domain_router import DomainRouter
 def _run_async_in_sync(coro):
 
     """Safely run an async coroutine from sync context.
@@ -85,11 +86,11 @@ def sys_kb_retrieve(
 
     *,
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     domain_id: str = None,
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
     top_k: int = 8,
 
@@ -704,7 +705,7 @@ def _vector_search_chroma(
 
     doc_ids: List[str],
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
     limit: int = 16,
 
@@ -1050,7 +1051,7 @@ class WikiCircuitBreaker:
 
 
 
-    def _get(self, domain_id: str = "default", tenant_id: str = "default"):
+    def _get(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = DomainRouter.default_tenant()):
 
         from core.harness.infrastructure.circuit_breaker import BaseCircuitBreaker
 
@@ -1074,7 +1075,7 @@ class WikiCircuitBreaker:
 
 
 
-    def allow_request(self, domain_id: str = "default", tenant_id: str = "default") -> bool:
+    def allow_request(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = DomainRouter.default_tenant()) -> bool:
 
         """allow_request。
 
@@ -1086,7 +1087,7 @@ class WikiCircuitBreaker:
 
 
 
-    def record_success(self, domain_id: str = "default", tenant_id: str = "default"):
+    def record_success(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = DomainRouter.default_tenant()):
 
         """record_success。
 
@@ -1098,7 +1099,7 @@ class WikiCircuitBreaker:
 
 
 
-    def record_failure(self, domain_id: str = "default", tenant_id: str = "default"):
+    def record_failure(self, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN, tenant_id: str = DomainRouter.default_tenant()):
 
         """record_failure。
 
@@ -1130,9 +1131,9 @@ def sys_knowledge_retrieve(
 
     wiki_titles: List[str] = None,
 
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
     wiki_collection_ids: List[str] = None,
 
@@ -1251,10 +1252,13 @@ def sys_knowledge_retrieve(
 
 
     def _fetch_wiki():
+        from core.harness.knowledge.domain_router import get_domain_router
+
+        _cb_domain = domain_id or get_domain_router().default_graph_domain()
 
         if not _wiki_circuit_breaker.allow_request(
 
-            domain_id=domain_id or "default", tenant_id=tenant_id or "default"):
+            domain_id=_cb_domain, tenant_id=tenant_id or DomainRouter.default_tenant()):
 
             return []
 
@@ -1276,7 +1280,7 @@ def sys_knowledge_retrieve(
 
             _wiki_circuit_breaker.record_success(
 
-                domain_id=domain_id or "default", tenant_id=tenant_id or "default")
+                domain_id=_cb_domain, tenant_id=tenant_id or DomainRouter.default_tenant())
 
             for wr in out:
 
@@ -1288,7 +1292,7 @@ def sys_knowledge_retrieve(
 
             _wiki_circuit_breaker.record_failure(
 
-                domain_id=domain_id or "default", tenant_id=tenant_id or "default")
+                domain_id=_cb_domain, tenant_id=tenant_id or DomainRouter.default_tenant())
 
             logging.getLogger("retrieval").warning(
 
@@ -1355,8 +1359,12 @@ def sys_knowledge_retrieve(
     try:
 
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.domain_router import get_domain_router
 
-        gi = GraphIndex(domain_id=domain_id or "default")
+        gi = GraphIndex(
+            domain_id=domain_id or get_domain_router().default_graph_domain(),
+            tenant_id=tenant_id or DomainRouter.default_tenant(),
+        )
 
         if hasattr(gi, 'traverse') and gi._entities:
 
@@ -1662,7 +1670,7 @@ def sys_knowledge_retrieve(
         roi = KnowledgeROI()
         roi.record_from_syscall(
             query_text=query[:200],
-            domain_id=domain_id or collection_id or "default",
+            domain_id=domain_id or collection_id or DomainRouter.default_collection(),
             rag_tokens=rag_tokens,
             wiki_tokens=wiki_tokens,
             cache_hit=bool(graph_early_exit),
@@ -1682,7 +1690,7 @@ def _filter_by_security(
 
     actor_scopes: List[str],
 
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 
 ) -> List[Dict[str, Any]]:
 
@@ -1925,7 +1933,7 @@ def _route_intent(query: str) -> str:
 
 
 async def sys_routed_retrieve(query: str, *, top_k: int = 8, include_web: bool = True,
-                              tenant_id: str = "default", collection_id: str = "default",
+                              tenant_id: str = DomainRouter.default_tenant(), collection_id: str = DomainRouter.default_collection(),
                               doc_ids: List[str] = None) -> Dict[str, Any]:
     """意图路由统一检索：code/knowledge/web 三通道按查询意图分发。
 

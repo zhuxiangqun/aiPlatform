@@ -21,6 +21,35 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
+def _resolve_graph_tenant(params: Optional[Dict[str, Any]] = None) -> str:
+    """Resolve tenant for GraphIndex loads in context injection.
+
+    Prefers ``params["tenant_id"]``, then active request context, else default.
+
+    Args:
+        params: 可选 skill/上下文参数。
+
+    Returns:
+        非空租户 id。
+    """
+    if isinstance(params, dict):
+        tid = str(params.get("tenant_id") or "").strip()
+        if tid:
+            return tid
+    try:
+        from core.harness.kernel.execution_context import get_active_request_context
+        ctx = get_active_request_context()
+        if ctx is not None:
+            tid = str(getattr(ctx, "tenant_id", None) or "").strip()
+            if tid:
+                return tid
+    except Exception:
+        logger.debug("_resolve_graph_tenant: no active request context", exc_info=True)
+    from core.harness.knowledge.domain_router import DomainRouter
+
+    return DomainRouter.default_tenant()
+
+
 def _estimate_tokens(text: str) -> int:
     """Estimate token count for mixed CJK/ASCII text.
 
@@ -193,7 +222,7 @@ def assemble_field_assessment(
     if not _check_budget("self_optimization"):
         return system_parts, diagnostics
     try:
-        _inject_self_optimization(system_parts)
+        _inject_self_optimization(system_parts, params)
         if not _check_budget("self_optimization"):
             del system_parts[before:]
             return system_parts, diagnostics
@@ -227,7 +256,7 @@ def assemble_field_assessment(
     if not _check_budget("term_dictionary"):
         return system_parts, diagnostics
     try:
-        _inject_term_dictionary(system_parts)
+        _inject_term_dictionary(system_parts, params)
         if not _check_budget("term_dictionary"):
             del system_parts[before:]
             return system_parts, diagnostics
@@ -351,7 +380,9 @@ def _inject_graph_traversal(parts: List[str], did: str, params: Dict):
         from core.harness.ontology_engine.graph_index import GraphIndex
         from core.harness.ontology_engine.graph_traversal import traverse
 
-        g = GraphIndex.load(did)
+        # 为什么：N09 K21 — 上下文图谱注入须读请求租户分库
+        tid = _resolve_graph_tenant(params)
+        g = GraphIndex.load(did, tenant_id=tid)
         stats = g.stats()
         if stats.get("node_count", 0) == 0:
             return
@@ -396,9 +427,11 @@ def _inject_delivery_history(parts: List[str], params: Dict):
         delivered = total_sessions = industry_sessions = 0
         industry_lower = (params.get("industry") or "").strip().lower()
 
+        tid = _resolve_graph_tenant(params)
         for domain_id in domains:
             try:
-                g = GraphIndex.load(domain_id)
+                # 为什么：N09 K21 — 交付历史按租户图统计
+                g = GraphIndex.load(domain_id, tenant_id=tid)
             except Exception:
                 continue
             for _, node in list(g._nodes.items())[:100]:
@@ -424,17 +457,23 @@ def _inject_delivery_history(parts: List[str], params: Dict):
         logger.debug("_inject_delivery_history failed", exc_info=True)
 
 
-def _inject_self_optimization(parts: List[str]):
-    """Layer 7: History-driven self-optimization hints (E)."""
+def _inject_self_optimization(parts: List[str], params: Optional[Dict[str, Any]] = None):
+    """Layer 7: History-driven self-optimization hints (E).
+
+    Args:
+        parts: system_parts 累积列表。
+        params: 可选；含 tenant_id 时锁定租户图（N09 K21）。
+    """
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
         from core.harness.knowledge.domain_router import DomainRouter
         router = DomainRouter()
         domains = router.list_domains()
         sessions = []
+        tid = _resolve_graph_tenant(params)
         for domain_id in domains:
             try:
-                g = GraphIndex.load(domain_id)
+                g = GraphIndex.load(domain_id, tenant_id=tid)
             except Exception:
                 continue
             for _, node in list(g._nodes.items())[:200]:
@@ -458,7 +497,8 @@ def _inject_self_optimization(parts: List[str]):
                 from core.harness.ontology_engine.graph_index import GraphIndex
                 from datetime import timezone as _tz, timedelta as _td
                 import time as _time_fresh
-                kg = GraphIndex.load("knowledge-atom")
+                from core.harness.knowledge.domain_router import get_domain_router
+                kg = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=tid)
                 stale = 0
                 cutoff = int(_time_fresh.time()) - 90 * 86400
                 for _, n in kg._nodes.items():
@@ -495,16 +535,22 @@ def _inject_multi_role_risk(parts: List[str]):
     ]))
 
 
-def _inject_term_dictionary(parts: List[str]):
-    """Layer 9: Term dictionary from GraphIndex (R)."""
+def _inject_term_dictionary(parts: List[str], params: Optional[Dict[str, Any]] = None):
+    """Layer 9: Term dictionary from GraphIndex (R).
+
+    Args:
+        parts: system_parts 累积列表。
+        params: 可选；含 tenant_id 时锁定租户图（N09 K21）。
+    """
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
         from core.harness.knowledge.domain_router import DomainRouter
 
         terms = []
+        tid = _resolve_graph_tenant(params)
         for domain_id in DomainRouter().list_domains():
             try:
-                g = GraphIndex.load(domain_id)
+                g = GraphIndex.load(domain_id, tenant_id=tid)
                 for _, n in getattr(g, '_nodes', {}).items():
                     cn = getattr(n, "class_name", "")
                     if cn in ("Term", "术语"):
@@ -552,7 +598,7 @@ def assemble_agent_context(params: dict, system_parts: list) -> list:
         system_parts: system_parts 参数。
     """
     try:
-        _inject_term_dictionary(system_parts)
+        _inject_term_dictionary(system_parts, params)
     except Exception:
         logger.debug("assemble_agent_context: _inject_term_dictionary failed", exc_info=True)
     try:
@@ -574,7 +620,7 @@ def assemble_skill_context(params: dict, system_parts: list) -> list:
         system_parts: system_parts 参数。
     """
     try:
-        _inject_term_dictionary(system_parts)
+        _inject_term_dictionary(system_parts, params)
     except Exception:
         logger.debug("assemble_skill_context: _inject_term_dictionary failed", exc_info=True)
     try:
@@ -611,7 +657,8 @@ def register_context_hook() -> bool:
     async def _context_start_hook(ctx):
         try:
             parts = []
-            _inject_term_dictionary(parts)
+            # 为什么：N09 K21 — session hook 无 params，走 ActiveRequestContext / default
+            _inject_term_dictionary(parts, None)
             _inject_digital_employees(parts)
             text = "\n".join(parts)
             if text.strip():

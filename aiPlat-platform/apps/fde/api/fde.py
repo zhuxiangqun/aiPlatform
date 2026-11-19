@@ -36,12 +36,13 @@ from typing import Any, Dict, List, Optional
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
-from core.api.core_facade import _sync_resolve
+from core.api.core_facade import _sync_resolve, DomainRouter
 
 from fastapi import APIRouter, Body, HTTPException, Query
 from core.api.http_errors import not_found, bad_request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel as _PydanticBaseModel
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_atom_domain, fde_graph_tenant
 
 router = APIRouter(prefix="/fde", tags=["fde"])
 
@@ -945,7 +946,7 @@ def _get_knowledge_context(text: str) -> str:
     try:
         # Tier 1: Wiki FTS5 search
         from core.api.core_facade import wiki_search_pages
-        pages = wiki_search_pages(text, limit=3, collection_id="default")
+        pages = wiki_search_pages(text, limit=3, collection_id=DomainRouter.default_collection())
         if pages:
             parts.append("\n".join(
                 f"- {p.get('title','')}: {p.get('body','')[:300]}"
@@ -1923,7 +1924,7 @@ async def fde_health():
         from core.api.core_facade import GraphIndex
         for did in domains[:6]:
             try:
-                g = GraphIndex.load(did)
+                g = GraphIndex.load(did, tenant_id=fde_graph_tenant())
                 s = g.stats()
                 graphs[did] = {"nodes": s["node_count"], "edges": s["edge_count"]}
             except Exception:
@@ -1936,7 +1937,7 @@ async def fde_health():
     # ── 3. Delivery tracking ──
     try:
         from core.api.core_facade import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         fd_stats = fd.stats()
         sessions = 0
         actions = 0
@@ -2139,7 +2140,7 @@ async def fde_improve_suggestions(session_id: str):
         from core.api.core_facade import GraphIndex
         import json as _json_im
 
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
         if not session_node:
             for nid, node in list(fd._nodes.items()):
@@ -2203,7 +2204,7 @@ async def fde_improve_suggestions(session_id: str):
 
         # ── Check term dictionary size ──
         try:
-            tg = GraphIndex.load("enterprise-terms")
+            tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
             term_count = sum(1 for _, n in tg._nodes.items()
                            if getattr(n, "class_name", "") == "Term")
             if term_count < 10:
@@ -2281,7 +2282,7 @@ def _record_health_snapshot(result: dict):
         from core.api.core_facade import GraphIndex
         import json as _json_hs, time as _time_hs
 
-        kg = GraphIndex.load("knowledge-atom")
+        kg = GraphIndex.load(fde_atom_domain(), tenant_id=fde_graph_tenant())
         ts = int(_time_hs.time())
         snap_id = f"snap_{ts}"
         kg.add_entity(
@@ -2314,7 +2315,7 @@ def _get_evolution_stats() -> dict:
     """Quick evolution cycle stats for dashboard."""
     try:
         from core.api.core_facade import GraphIndex
-        kg = GraphIndex.load("knowledge-atom")
+        kg = GraphIndex.load(fde_atom_domain(), tenant_id=fde_graph_tenant())
         snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("heal_"))
         total_snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("snap_"))
         from core.api.core_facade import get_seci_engine
@@ -2357,7 +2358,7 @@ async def fde_seci_status():
         from core.api.core_facade import GraphIndex
 
         engine = get_seci_engine()
-        kg = GraphIndex.load("knowledge-atom")
+        kg = GraphIndex.load(fde_atom_domain(), tenant_id=fde_graph_tenant())
 
         # ── 1. Atom statistics ──
         atoms = {}
@@ -2477,7 +2478,7 @@ def _get_governance_live_status() -> dict:
 
     try:
         from core.api.core_facade import GraphIndex
-        tg = GraphIndex.load("enterprise-terms")
+        tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
         status["enterprise_term_count"] = sum(
             1 for _, n in tg._nodes.items()
             if getattr(n, "class_name", "") == "Term"
@@ -2487,7 +2488,7 @@ def _get_governance_live_status() -> dict:
 
     try:
         from core.api.core_facade import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         sessions = 0
         evidence = 0
         with_actions = 0
@@ -2933,7 +2934,7 @@ async def check_security_3d(
 @router.get("/security/markings/check")
 async def check_marking_level(
     entity_uri: str = Query(""),
-    collection_id: str = Query("default"),
+    collection_id: str = Query(DomainRouter.default_collection()),
 ):
     """检查实体的标记级别.
 
@@ -3248,11 +3249,14 @@ async def export_okf(payload: dict = Body(...)):
         payload: 载荷 dict。
     """
     from core.api.core_facade import OKFExporter
+    from apps.fde.api.graph_tenant import fde_kb_domain
+
     exporter = OKFExporter()
     result = await exporter.export(
-        payload.get("domain_id", "ai-knowledge"),
+        payload.get("domain_id") or fde_kb_domain(),
         incremental=payload.get("incremental", False),
         output_dir=payload.get("output_dir", ""),
+        tenant_id=fde_graph_tenant(),
     )
     return result
 
@@ -3294,7 +3298,7 @@ async def record_roi(payload: dict = Body(...)):
     roi = KnowledgeROI()
     qid = roi.record_from_syscall(
         payload.get("query_text", ""),
-        payload.get("domain_id", "default"),
+        payload.get("domain_id") or DomainRouter.default_graph_domain(),
         payload.get("rag_tokens", 0),
         payload.get("wiki_tokens", 0),
         cache_hit=payload.get("cache_hit", False),
@@ -3427,7 +3431,7 @@ async def health_all():
     # Branching
     try:
         from core.api.core_facade import OntologyBranchManager
-        branches = OntologyBranchManager.get().list_branches("fde-delivery")
+        branches = OntologyBranchManager.get().list_branches(fde_graph_domain(), tenant_id=fde_graph_tenant())
         subsystems["Branching"] = {"ok": True, "msg": f"{len(branches)} branches"}
     except Exception as e:
         subsystems["Branching"] = {"ok": False, "msg": str(e)[:100]}
@@ -3554,7 +3558,7 @@ async def voice_brainstorm(payload: dict = Body(...)):
     return await _brainstorm(
         transcript=str(payload.get("transcript", "")),
         duration_seconds=int(payload.get("duration_seconds", 0)),
-        session_id=str(payload.get("session_id", "default")),
+        session_id=str(payload.get("session_id") or DomainRouter.default_session()),
     )
 
 
@@ -3594,7 +3598,7 @@ async def list_branches(domain_id: str):
         domain_id: domain 标识。
     """
     from core.api.core_facade import OntologyBranchManager
-    return {"domain_id": domain_id, "branches": [b.to_dict() for b in OntologyBranchManager.get().list_branches(domain_id)]}
+    return {"domain_id": domain_id, "branches": [b.to_dict() for b in OntologyBranchManager.get().list_branches(domain_id, tenant_id=fde_graph_tenant())]}
 
 
 @router.post("/branches/{domain_id}/fork")
@@ -3606,7 +3610,10 @@ async def fork_branch(domain_id: str, payload: dict = Body(...)):
         payload: 载荷 dict。
     """
     from core.api.core_facade import OntologyBranchManager
-    info = OntologyBranchManager.get().fork(domain_id, payload.get("branch_name", ""), description=payload.get("description", ""))
+    info = OntologyBranchManager.get().fork(
+        domain_id, payload.get("branch_name", ""), description=payload.get("description", ""),
+        tenant_id=fde_graph_tenant(),
+    )
     return info.to_dict()
 
 
@@ -3619,7 +3626,7 @@ async def delete_branch(domain_id: str, branch_name: str):
         branch_name: branch_name 参数。
     """
     from core.api.core_facade import OntologyBranchManager
-    OntologyBranchManager.get().delete_branch(domain_id, branch_name)
+    OntologyBranchManager.get().delete_branch(domain_id, branch_name, tenant_id=fde_graph_tenant())
     return {"deleted": True, "branch": branch_name}
 
 
@@ -3633,7 +3640,7 @@ async def diff_branches(domain_id: str, source: str = Query("main"), target: str
         target: target 参数。
     """
     from core.api.core_facade import OntologyBranchManager
-    diff = OntologyBranchManager.get().diff(domain_id, source, target)
+    diff = OntologyBranchManager.get().diff(domain_id, source, target, tenant_id=fde_graph_tenant())
     return {"merge_level": diff.merge_level.value, "diff_summary": diff.diff_summary,
             "added_entities": diff.added_entities, "removed_entities": diff.removed_entities,
             "modified_entities": diff.modified_entities, "added_relations": diff.added_relations,
@@ -3649,8 +3656,11 @@ async def merge_branches(domain_id: str, payload: dict = Body(...)):
         payload: 载荷 dict。
     """
     from core.api.core_facade import OntologyBranchManager
-    result = OntologyBranchManager.get().merge(domain_id, payload.get("source", ""), payload.get("target", "main"),
-                                                auto_apply=payload.get("auto_apply", False))
+    result = OntologyBranchManager.get().merge(
+        domain_id, payload.get("source", ""), payload.get("target", "main"),
+        auto_apply=payload.get("auto_apply", False),
+        tenant_id=fde_graph_tenant(),
+    )
     return {"success": result.success, "merge_level": result.merge_level.value,
             "summary": result.summary, "conflict_details": result.conflict_details}
 

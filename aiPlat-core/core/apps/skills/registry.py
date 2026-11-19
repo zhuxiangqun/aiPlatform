@@ -18,6 +18,14 @@ from .base import BaseSkill, SkillMetadata, TextGenerationSkill, CodeGenerationS
 from ...harness.interfaces import SkillConfig, SkillResult
 
 
+
+
+def _skills_graph_tenant() -> str:
+    """Resolve tenant for skills registry GraphIndex loads (N09 K30)."""
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    return _resolve_graph_tenant()
+
+
 # Generic tool name patterns for compatibility scanning.
 # These are regex-ish keywords found in Skill SOP bodies — the actual
 # tool availability is determined dynamically via ToolRegistry.query().
@@ -2119,7 +2127,8 @@ class _GenericSkill(BaseSkill):
                         domains = DomainRouter().list_domains()
                         for domain_id in domains:
                             try:
-                                fd_g = GraphIndex.load(domain_id)
+                                # 为什么：N09 K30 — skill 侧 FDE 图读须按租户
+                                fd_g = GraphIndex.load(domain_id, tenant_id=_skills_graph_tenant())
                             except Exception:
                                 continue
                             # NOTE: inner report_text truncated to 8000 chars.
@@ -2181,7 +2190,9 @@ class _GenericSkill(BaseSkill):
                                 meta["knowledge_gaps"] = gaps
                                 # S: term auto-seeding
                                 try:
-                                    tg = GraphIndex.load("enterprise-terms")
+                                    # 为什么：N09 K30 — 术语播种写租户图；域名硬编码仍为存量债务
+                                    from core.harness.knowledge.domain_router import get_domain_router
+                                    tg = GraphIndex.load(get_domain_router().terms_domain(), tenant_id=_skills_graph_tenant())
                                     for gap in gaps[:5]:
                                         name = gap["concept"][:100]
                                         tid = f"term_{did}_{gap['concept'].replace(' ', '_')[:60]}"
@@ -2217,7 +2228,8 @@ class _GenericSkill(BaseSkill):
                                 domains = DomainRouter().list_domains()
                                 for domain_id in domains:
                                     try:
-                                        fd_g = GraphIndex.load(domain_id)
+                                        # 为什么：N09 K30 — skill 侧 FDE 图读须按租户
+                                        fd_g = GraphIndex.load(domain_id, tenant_id=_skills_graph_tenant())
                                     except Exception:
                                         continue
                                 for ei, ev in enumerate(evidence_map):

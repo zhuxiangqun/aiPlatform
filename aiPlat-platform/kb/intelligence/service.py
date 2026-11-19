@@ -20,6 +20,7 @@ from kb.storage import get_tenant_storage
 from .embeddings import embed_text
 from core.utils.ids import new_prefixed_id
 import logging
+from core.api.core_facade import DomainRouter
 
 
 class _TextHTMLParser(HTMLParser):
@@ -339,9 +340,9 @@ def enqueue_doc_ingest(
         force_reingest: force_reingest 参数。
     """
     if not tenant_id:
-        tenant_id = "default"
+        tenant_id = DomainRouter.default_tenant()
     if not collection_id:
-        collection_id = "default"
+        collection_id=DomainRouter.default_collection()
     if not file_path and not url:
         raise ValueError("file_path_or_url_required")
 

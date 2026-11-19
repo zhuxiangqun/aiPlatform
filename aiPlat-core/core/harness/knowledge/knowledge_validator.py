@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from dataclasses import dataclass, field
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 if TYPE_CHECKING:
     from core.harness.knowledge.knowledge_ontology import KnowledgeOntology, OntologyTriple, OntologyAxiom
 
@@ -414,7 +416,7 @@ class OntologyPatterns:
     scanned_collections: int = 0
 
 
-def detect_ontology_patterns(collection_id: str = "default") -> OntologyPatterns:
+def detect_ontology_patterns(collection_id: str = DomainRouter.default_collection()) -> OntologyPatterns:
     """Scan current Wiki data and detect patterns not covered by T-Box.
 
     Args:
@@ -606,12 +608,12 @@ import json as _json
 import time as _time
 
 
-def _metrics_cache_path(collection_id: str = "default") -> str:
+def _metrics_cache_path(collection_id: str = DomainRouter.default_collection()) -> str:
     wiki_root = get_aiplat_home()
     return _os.path.join(wiki_root, "wiki", "collections", collection_id, "metrics_cache.json")
 
 
-def load_metrics_cache(collection_id: str = "default") -> Optional[Dict[str, Any]]:
+def load_metrics_cache(collection_id: str = DomainRouter.default_collection()) -> Optional[Dict[str, Any]]:
     """Load cached metrics. Returns None if not found or expired.
 
     Args:
@@ -638,7 +640,7 @@ def load_metrics_cache(collection_id: str = "default") -> Optional[Dict[str, Any
         return None
 
 
-def save_metrics_cache(metrics: Dict[str, Any], collection_id: str = "default") -> None:
+def save_metrics_cache(metrics: Dict[str, Any], collection_id: str = DomainRouter.default_collection()) -> None:
     """Write metrics to cache file and append to history (keep last 30 snapshots).
 
     Args:
@@ -680,7 +682,7 @@ def save_metrics_cache(metrics: Dict[str, Any], collection_id: str = "default") 
         _json.dump(history[-30:], f, indent=2, ensure_ascii=False)
 
 
-def load_metrics_history(collection_id: str = "default") -> List[Dict[str, Any]]:
+def load_metrics_history(collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Load historical metrics snapshots for trend analysis.
 
     Args:
@@ -695,7 +697,7 @@ def load_metrics_history(collection_id: str = "default") -> List[Dict[str, Any]]
         return []
 
 
-def run_golden_query_regression(collection_id: str = "default",
+def run_golden_query_regression(collection_id: str = DomainRouter.default_collection(),
                                 min_score: float = None,
                                 strict_mode: bool = False) -> Dict[str, Any]:
     """Validate retrieval quality using golden_queries.yaml.
@@ -822,7 +824,7 @@ def run_golden_query_regression(collection_id: str = "default",
     }
 
 
-def compute_ontology_metrics(collection_id: str = "default",
+def compute_ontology_metrics(collection_id: str = DomainRouter.default_collection(),
                                force_fresh: bool = False) -> Dict[str, Any]:
     """Compute four-dimension ontology health metrics.
 

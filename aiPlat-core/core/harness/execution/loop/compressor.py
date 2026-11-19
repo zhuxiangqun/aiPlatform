@@ -3,6 +3,8 @@ Context compression & shaping pipeline — extracted from loop.py.
 
 Handles: 5-level compaction, context shaping pipeline, budget trimming.
 """
+
+from core.harness.knowledge.domain_router import DomainRouter
 import os, time, re, json, logging
 from typing import Any, Dict, List, Optional
 
@@ -231,7 +233,7 @@ async def apply_context_shaping(state: LoopState, config: LoopConfig, loop: Any 
                 f"Recent outputs: {key_outputs or 'none'}"
             )
             await mm.save_interaction(
-                session_id=state.context.get("_run_id", state.context.get("session_id", "default")),
+                session_id=state.context.get("_run_id") or state.context.get("session_id") or DomainRouter.default_session(),
                 user_msg=task_hint[:500],
                 assistant_msg=summary[:1000],
                 stability="medium",

@@ -27,6 +27,7 @@ import time as _time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Set, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 # ── Module-level governance hints cache (read by Prompt injection layer) ──
@@ -260,7 +261,7 @@ class PostRetrievalGovernor:
         self,
         results: List[Dict[str, Any]],
         query: str = "",
-        collection_id: str = "default",
+        collection_id: str = DomainRouter.default_collection(),
     ) -> Tuple[List[Dict[str, Any]], GovernanceHints, GovernanceStats]:
         """Execute the full governance pipeline.
 

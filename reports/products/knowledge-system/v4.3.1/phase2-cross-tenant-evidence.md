@@ -41,5 +41,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- Wiki/KB/ObjectSet 全入口跨租户认证
+- Wiki/KB/GraphRAG 全入口跨租户认证
 - N09 / 附录 N 全量认证
+
+> ObjectSet + Unified Audit 探针见 Batch K1：`phase2-cross-tenant-objectset-audit-evidence.md`。

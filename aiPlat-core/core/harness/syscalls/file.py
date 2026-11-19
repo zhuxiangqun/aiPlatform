@@ -43,6 +43,7 @@ from core.harness.infrastructure.gates import PolicyGate, TraceGate, ResilienceG
 from core.harness.kernel.runtime import get_kernel_runtime
 
 from core.harness.kernel.execution_context import get_active_workspace_context
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -300,7 +301,11 @@ async def sys_file_write(
 
             import asyncio as _asyncio
 
-            _asyncio.create_task(_check_hallucination_on_write(content, resolved))
+            _asyncio.create_task(
+                _check_hallucination_on_write(
+                    content, resolved, trace_context=trace_context,
+                )
+            )
 
         except Exception:
 
@@ -439,7 +444,11 @@ __all__ = ["sys_file_read", "sys_file_write", "sys_file_edit"]
 
 
 
-async def _check_hallucination_on_write(content: str, file_path: str):
+async def _check_hallucination_on_write(
+    content: str,
+    file_path: str,
+    trace_context: Optional[Dict[str, Any]] = None,
+):
 
     """Fire-and-forget hallucination check after file write.
 
@@ -449,6 +458,10 @@ async def _check_hallucination_on_write(content: str, file_path: str):
 
     Medium → log suggestion. Low → awareness log only.
 
+    Args:
+        content: 写入内容（截断后送评测）。
+        file_path: 目标绝对路径。
+        trace_context: 可选；含 ``tenant_id`` 时只扫该租户 KB（N09 K16）。
     """
 
     try:
@@ -469,15 +482,22 @@ async def _check_hallucination_on_write(content: str, file_path: str):
 
 
 
+        tid = ""
+        if isinstance(trace_context, dict):
+            tid = str(trace_context.get("tenant_id") or "").strip()
+
         if result.get("risk") == "high":
 
             # Immediately invalidate source — don't wait for cron
+            # 为什么：N09 K16 — 禁止 StalenessMonitor() 只打 default；无 tenant 则枚举分库
+            from core.harness.knowledge.staleness_monitor import (
+                StalenessMonitor,
+                list_kb_tenant_ids,
+            )
 
-            from core.harness.knowledge.staleness_monitor import StalenessMonitor
-
-            doc_id = os.path.basename(file_path)
-
-            StalenessMonitor().scan_all_collections()  # detect stale first
+            tids = [tid] if tid else list_kb_tenant_ids()
+            for t in tids:
+                StalenessMonitor(tenant_id=t).scan_all_collections()
 
             import logging
 
@@ -500,6 +520,8 @@ async def _check_hallucination_on_write(content: str, file_path: str):
             "detail": str(result.get("detail", ""))[:200],
 
             "severity": result.get("risk", "medium"),
+
+            "tenant_id": tid or DomainRouter.default_tenant(),
 
         })
 

@@ -18,6 +18,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 _log = logging.getLogger("aiplat.success_generalizer")
 
@@ -31,7 +32,7 @@ class GeneralizedRule:
     abstracted_from: str  # Source TaskSkill ID
     confidence: float     # 0.0 - 1.0
     verified_count: int   # How many successful runs support this rule
-    domain: str = "default"
+    domain: str = DomainRouter.default_graph_domain()
     status: str = "tentative"  # tentative | verified | deprecated
 
     def to_dict(self) -> dict:
@@ -182,7 +183,7 @@ class SuccessGeneralizer:
         h = hashlib.md5(f"{condition}|{action}".encode()).hexdigest()[:12]
         return f"rule_{h}"
 
-    def list_rules(self, domain: str = "default", min_confidence: float = 0.0) -> List[GeneralizedRule]:
+    def list_rules(self, domain: str = DomainRouter.default_graph_domain(), min_confidence: float = 0.0) -> List[GeneralizedRule]:
         """列出 rules。
 
         Args:

@@ -19,6 +19,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def _normalize_cross_domain_views(raw: Any) -> Dict[str, Any]:
         # Already keyed by view name — still normalize each value
         return {str(k): _normalize_one_view(str(k), v) for k, v in raw.items() if isinstance(v, dict)}
     if isinstance(raw, dict) and _looks_like_single_view(raw):
-        name = str(raw.get("view_name") or "default")
+        name = str(raw.get("view_name") or DomainRouter.default_view_name())
         return {name: _normalize_one_view(name, raw)}
     if isinstance(raw, list):
         out: Dict[str, Any] = {}
@@ -151,7 +152,7 @@ class CrossDomainResolver:
             logger.warning("Failed to load registry cross_domain_views", exc_info=True)
         return self._cache
 
-    def find_candidates(self, view_name: str, tenant_id: str = "default") -> List[CrossDomainCandidate]:
+    def find_candidates(self, view_name: str, tenant_id: str = DomainRouter.default_tenant()) -> List[CrossDomainCandidate]:
         """Find cross-domain merge candidates for a registered view.
 
         Args:
@@ -275,7 +276,7 @@ class CrossDomainResolver:
             return 0.0
 
     @staticmethod
-    def _load_entities(domain_id: str, class_name: str, tenant_id: str = "default") -> List[Dict[str, Any]]:
+    def _load_entities(domain_id: str, class_name: str, tenant_id: str = DomainRouter.default_tenant()) -> List[Dict[str, Any]]:
         """Load entities of a class as dicts. GraphIndex returns GraphNode, not dict."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
@@ -287,9 +288,16 @@ class CrossDomainResolver:
             return []
 
     @staticmethod
-    def resolve(view_name: str, left_id: str, right_id: str,
-                left_domain: str, right_domain: str,
-                confidence: float = 1.0) -> bool:
+    def resolve(
+        view_name: str,
+        left_id: str,
+        right_id: str,
+        left_domain: str,
+        right_domain: str,
+        confidence: float = 1.0,
+        *,
+        tenant_id: str = "",
+    ) -> bool:
         """Create a cross-domain edge between two entities.
 
         Args:
@@ -299,16 +307,31 @@ class CrossDomainResolver:
             left_domain: left_domain 参数。
             right_domain: right_domain 参数。
             confidence: confidence 参数。
+            tenant_id: 租户（必填）；两侧 GraphIndex 均按该租户分库写入。
         """
+        tid = (tenant_id or "").strip()
+        # 为什么：N09 K7 — 跨域写边必须显式租户，禁止静默落到 default 图
+        if not tid:
+            logger.warning(
+                "CrossDomainResolver.resolve denied: tenant_id required "
+                "(view=%s left=%s/%s right=%s/%s)",
+                view_name,
+                left_domain,
+                left_id,
+                right_domain,
+                right_id,
+            )
+            return False
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            g_left = GraphIndex.load(left_domain)
-            g_right = GraphIndex.load(right_domain)
+            g_left = GraphIndex.load(left_domain, tenant_id=tid)
+            g_right = GraphIndex.load(right_domain, tenant_id=tid)
 
             # Store cross-domain edge as metadata in both graphs
             edge_data = {
                 "view": view_name,
                 "confidence": confidence,
+                "tenant_id": tid,
                 "resolved_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             }
 
@@ -325,9 +348,20 @@ class CrossDomainResolver:
                 "aligned_to": left_domain,
                 **edge_data,
             })
+            g_left.save()
+            g_right.save()
 
-            logger.info("CrossDomainResolver: resolved %s/%s ↔ %s/%s (view=%s, confidence=%.2f)",
-                         left_domain, left_id, right_domain, right_id, view_name, confidence)
+            logger.info(
+                "CrossDomainResolver: resolved %s/%s ↔ %s/%s "
+                "(view=%s, tenant=%s, confidence=%.2f)",
+                left_domain,
+                left_id,
+                right_domain,
+                right_id,
+                view_name,
+                tid,
+                confidence,
+            )
             return True
         except Exception:
             logger.error("Failed to resolve cross-domain edge", exc_info=True)

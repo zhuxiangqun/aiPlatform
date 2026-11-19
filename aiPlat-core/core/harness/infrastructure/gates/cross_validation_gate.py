@@ -37,6 +37,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger("aiplat.cross_validation_gate")
 
 
@@ -96,7 +97,7 @@ class CrossValidationGate:
             logger.debug("CrossValidationGate readiness check failed: %s", e)
             return False
 
-    def verify(self, output: dict, *, domain_id: str = "default") -> CrossValidationResult:
+    def verify(self, output: dict, *, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> CrossValidationResult:
         """Run cross-domain validation across all three layers.
 
         Args:

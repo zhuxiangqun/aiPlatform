@@ -2,13 +2,14 @@
 doc_type: Architecture
 title: 知识系统 v4.3.1 实施方案
 status: in-progress
-authority: design-target
+authority: supporting
 language: zh-CN
 created: 2026-11-14
 doc_id: KNOWLEDGE_SYSTEM_V4_3_1_IMPLEMENTATION_PLAN_C8F90C
-last_reviewed: 2026-11-15
+last_reviewed: 2026-11-19
 phase0_evidence: reports/products/knowledge-system/v4.3.1/
 pilot_domain: lock-service
+purpose: 将 v4.3.1 标准落到试点 Core 可认证路径（非标准正文）
 ---
 # 知识系统 v4.3.1 实施方案
 
@@ -53,11 +54,15 @@ v4.3.1 不是一套“知识库功能清单”
 
 ### 1.1 目标
 
-1. 在试点域内实现 v4.3.1 Core 符合性；
-2. 扩展到 Extended 能力（对象/动作/函数/接口/对象集/SDK/场景）；
-3. 建立 Operational 能力（SLO/备份/恢复/审计/迁移）；
-4. 形成可审计的 conformance 证据包；
+1. **近端（MUST）**：在试点域 `lock-service` 实现 v4.3.1 **Core** 可认证——附录 N Core 最小符合集  
+   `N01, N02, N03, N04, N06, N09, N12, N15, N16, N17, N18, N21`  
+   全部 `exists`（或 ADR 例外）+ 认证槽位齐 + 非作者批准记录。**不是**一次 24/24。
+2. Core 人工认证之后，再扩展 Extended（N05/N07/N08/N19/N20/N22 等）；
+3. 再建立 Operational（N10/N11/N13/N14/N23/N24、生产 SLO）；
+4. 形成可审计的 conformance 证据包（`core_ready` 结构门 ≠ `certified`）；
 5. 为全平台推广提供可复制模板。
+
+**停止条件**：不再开无等级定义的 N09 `"default"` 字面量加深批（K70 为本线终点）；N09 仅按 Core 探针集收口。
 
 ### 1.2 范围
 
@@ -630,19 +635,54 @@ schema 校验
 | 本体漂移 | 版本化 + 人审 |
 | 迁移丢数据 | 双写/对账/回滚 |
 | 场景污染事实 | 隔离 + 合并人审 |
-| 假绿 | 证据包 + 负向测试 |
-| 范围过大 | 单试点域先行 |
+| 假绿 | 证据包 + 负向测试；禁止结构门自动 certified |
+| 范围过大 | 单试点域先行；近端只验收 Core 12 项 |
+| 无等级 N09 mop | 停止；N09 按 Core 探针集冻结 |
 
 ## 14. Definition of Done
 
+### 14.1 近端 DoD — 试点 Core（当前迭代）
+
 ```text
-试点域 Core 符合
-Extended 关键能力可用
-Operational 证据完整
-24 项 conformance 有证据
-迁移/回滚演练通过
-KPI 达标
+附录 N Core 12 项 status=exists（或 ADR 例外未过期）
+认证槽位齐（§9.4 / catalog certification_slots）
+core_ready 结构门 pass
+非作者批准记录存在后才可宣称「试点 Core 符合」
+certified / pilot_certified 不由代码自动置真
+N09 按 Core 探针集收口（停止无等级 default mop）
 ```
+
+### 14.2 近端 DoD — 试点 Extended（Core 签字后）
+
+```text
+附录 N.3 Extended 6 项 status=exists（或 ADR 例外）
+extended_ready 结构门 pass
+非作者批准后才可 pilot_extended_certified
+全量 certified 仍 false
+```
+
+### 14.3 近端 DoD — 试点 Operational（Extended 签字后）
+
+```text
+附录 N.4 Operational 6 项 status=exists（或 ADR 例外）
+operational_ready 结构门 pass
+非作者批准（朱莹）→ pilot_operational_certified
+全量 certified 仍 false（另需全量人工认证）
+```
+
+（2026-11-19：Operational 徽章已开；全量见 §14.4。）
+
+### 14.4 近端 DoD — 全量 certified（三级徽章后）
+
+```text
+附录 N 24 项 status=exists
+full_ready 结构门 pass（三级 *_ready + 槽位）
+三级徽章齐（Core/Extended/Operational）
+独立全量非作者批准后才可 certified / n24_full_conformance
+SLO：目标登记证据；生产遥测未接线须 conditional 批准
+```
+
+（2026-11-19：`full_ready` 已绿；朱向群独立全量批准 → `certified` / `n24_full_conformance`（conditional，SLO 非生产遥测）。）
 
 ## 15. 明确不做
 

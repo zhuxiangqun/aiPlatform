@@ -1,8 +1,4 @@
-"""domain_crud：模块接口。"""
-
-from api.schemas_response import StatusResponse
-u"""
-Ontology Editor — Domain CRUD endpoints.
+"""Ontology Editor — Domain CRUD endpoints.
 
 Routes:
   GET    /domains                  — list all ontology domains
@@ -13,10 +9,15 @@ Routes:
   POST   /domains/{id}/classes     — upsert a class definition
   DELETE /domains/{id}/classes/{name} — delete a class
   GET    /domains/{id}/rule-versions — list rule version snapshots
+  POST   /domains/{id}/rule-versions/{vid}/rollback — restore snapshot
   POST   /domains/{id}/publish     — write YAML + invalidate caches
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import Any, Dict, List
+
+# 为什么：走 apps.common_schemas，避免 `from api.*` 触发 api/__init__→routes→本模块环依赖
+from apps.common_schemas import StatusResponse
+from auth.request_identity import resolve_request_tenant
 
 router = APIRouter(tags=["ontology-editor"])
 
@@ -88,21 +89,25 @@ async def create_domain(data: Dict[str, Any]):
 
 
 @router.put("/domains/{domain_id}", response_model=StatusResponse)
-async def update_domain_meta(domain_id: str, data: Dict[str, Any]):
+async def update_domain_meta(domain_id: str, data: Dict[str, Any], request: Request):
     """Update domain metadata (name, description, version, namespace).
 
     Args:
         domain_id: domain 标识。
         data: data 参数。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         from core.api.core_facade import update_ontology_domain_meta
+        # 为什么：N09 K10 — domain meta 变更后按租户清 GraphIndex 缓存
+        tenant_id = resolve_request_tenant(request)
         result = update_ontology_domain_meta(
             domain_id=domain_id,
             name=data.get("name", ""),
             description=data.get("description", ""),
             version=data.get("version", ""),
             namespace=data.get("namespace", ""),
+            tenant_id=tenant_id,
         )
         return result
     except FileNotFoundError:
@@ -129,12 +134,13 @@ async def delete_domain(domain_id: str):
 
 
 @router.post("/domains/{domain_id}/classes", response_model=StatusResponse)
-async def upsert_class(domain_id: str, data: Dict[str, Any]):
+async def upsert_class(domain_id: str, data: Dict[str, Any], request: Request):
     """Create or update a class definition within a domain.
 
     Args:
         domain_id: domain 标识。
         data: data 参数。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         from core.api.core_facade import upsert_ontology_class
@@ -145,7 +151,11 @@ async def upsert_class(domain_id: str, data: Dict[str, Any]):
         if not class_data:
             class_data = {k: v for k, v in data.items()
                           if k not in ("class_name", "name")}
-        result = upsert_ontology_class(domain_id, class_name, class_data)
+        # 为什么：N09 K9 — class CRUD 后清租户 GraphIndex 缓存
+        tenant_id = resolve_request_tenant(request)
+        result = upsert_ontology_class(
+            domain_id, class_name, class_data, tenant_id=tenant_id
+        )
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")
@@ -154,19 +164,24 @@ async def upsert_class(domain_id: str, data: Dict[str, Any]):
 
 
 @router.delete("/domains/{domain_id}/classes/{class_name}", response_model=StatusResponse)
-async def delete_class(domain_id: str, class_name: str):
+async def delete_class(domain_id: str, class_name: str, request: Request):
     """Remove a class via proposal apply (F2: no direct live YAML write).
 
     Args:
         domain_id: domain 标识。
         class_name: class_name 参数。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         from core.api.core_facade import delete_ontology_class_async
         from urllib.parse import unquote
 
         name = unquote(class_name)
-        result = await delete_ontology_class_async(domain_id, name)
+        # 为什么：N09 K9 — class 删除后清租户 GraphIndex 缓存
+        tenant_id = resolve_request_tenant(request)
+        result = await delete_ontology_class_async(
+            domain_id, name, tenant_id=tenant_id
+        )
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Class or domain not found")
@@ -177,18 +192,49 @@ async def delete_class(domain_id: str, class_name: str):
 
 
 @router.get("/domains/{domain_id}/rule-versions", response_model=StatusResponse)
-async def list_rule_versions(domain_id: str):
+async def list_rule_versions(domain_id: str, request: Request):
     """List saved rule version snapshots for a domain.
 
     Args:
         domain_id: domain 标识。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         from core.api.core_facade import list_rule_versions
-        versions = list_rule_versions(domain_id)
-        return {"domain_id": domain_id, "versions": versions, "total": len(versions)}
+        # 为什么：N09 K8 — snapshot 按租户分库；HTTP 须注入解析后的 tenant
+        tenant_id = resolve_request_tenant(request)
+        versions = list_rule_versions(domain_id, tenant_id=tenant_id)
+        return {
+            "domain_id": domain_id,
+            "tenant_id": tenant_id,
+            "versions": versions,
+            "total": len(versions),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list rule versions: {e}")
+
+
+@router.post(
+    "/domains/{domain_id}/rule-versions/{version_id}/rollback",
+    response_model=StatusResponse,
+)
+async def rollback_rule_version(domain_id: str, version_id: str, request: Request):
+    """Restore GraphIndex snapshot for a prior rule version.
+
+    Args:
+        domain_id: domain 标识。
+        version_id: snapshot 版本 id。
+        request: FastAPI Request（经身份解析取 tenant）。
+    """
+    try:
+        from core.api.core_facade import rollback_rule_version as _rollback
+        # 为什么：N09 K9 — rollback 必须命中租户分库，禁止省略 tenant
+        tenant_id = resolve_request_tenant(request)
+        return _rollback(domain_id, version_id, tenant_id=tenant_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rollback: {e}")
 
 
 @router.post("/domains/{domain_id}/rules/generate-from-description", response_model=StatusResponse)
@@ -268,15 +314,18 @@ async def audit_rules(domain_id: str):
 
 
 @router.post("/domains/{domain_id}/publish", response_model=StatusResponse)
-async def publish_domain(domain_id: str):
+async def publish_domain(domain_id: str, request: Request):
     """Validate and publish domain YAML — snapshot + cache invalidation.
 
     Args:
         domain_id: domain 标识。
+        request: FastAPI Request（经身份解析取 tenant）。
     """
     try:
         from core.api.core_facade import publish_ontology_domain
-        result = publish_ontology_domain(domain_id)
+        # 为什么：N09 K8 — publish snapshot 写入租户分库，禁止省略 tenant
+        tenant_id = resolve_request_tenant(request)
+        result = publish_ontology_domain(domain_id, tenant_id=tenant_id)
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")

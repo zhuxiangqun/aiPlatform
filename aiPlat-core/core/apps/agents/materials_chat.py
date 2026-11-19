@@ -7,6 +7,7 @@ import os
 import re
 import time
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 from core.harness.utils.model_injection import best_model_for_purpose
 from core.harness.utils.prompt_loader import _sync_resolve as _resolve
@@ -346,8 +347,8 @@ class MaterialsChatAgent(BaseAgent):
             run_id = str(vars0.get("_run_id") or "").strip() or None
             scope = dict(vars0.get("scope") or {})
             options = dict(vars0.get("options") or {})
-            tenant_id = str(vars0.get("tenant_id") or "default")
-            session_id = str(context.session_id or "default")
+            tenant_id = str(vars0.get("tenant_id") or DomainRouter.default_tenant())
+            session_id = str(context.session_id or DomainRouter.default_session())
             user_id = str(context.user_id or "system")
 
             # §5.63: Query sanitization
@@ -368,7 +369,7 @@ class MaterialsChatAgent(BaseAgent):
             if os.getenv("AIPLAT_SEMANTIC_CACHE_ENABLED", "true").lower() in ("true", "1", "yes"):
                 try:
                     from core.harness.knowledge.semantic_cache_hook import try_cache_hit
-                    collection_id_pre = str(scope.get("collection_id") or vars0.get("collection_id") or "default")
+                    collection_id_pre = str(scope.get("collection_id") or vars0.get("collection_id") or DomainRouter.default_collection())
                     cached = await try_cache_hit(question, collection_id_pre)
                     if cached:
                         _trace("缓存命中", f"语义缓存L1/L2", cached=True)
@@ -379,7 +380,7 @@ class MaterialsChatAgent(BaseAgent):
                         )
                 except Exception:
                     logging.getLogger(__name__).debug("Semantic cache check skipped", exc_info=True)
-            collection_id = str(scope.get("collection_id") or vars0.get("collection_id") or "default")
+            collection_id = str(scope.get("collection_id") or vars0.get("collection_id") or DomainRouter.default_collection())
             # D7: ControlProfile 知识域过滤 — 画像驱动的 collection 覆盖
             try:
                 from core.harness.meta.profile_registry import get_active_profile
@@ -388,7 +389,7 @@ class MaterialsChatAgent(BaseAgent):
                     collection_id = profile.collection_filter
             except Exception:
                 logging.getLogger(__name__).debug('_execute_impl failed', exc_info=True)
-            if not _enforce_scope(collection_id, str(vars0.get("tenant_id") or "default")):
+            if not _enforce_scope(collection_id, str(vars0.get("tenant_id") or DomainRouter.default_tenant())):
                 return AgentResult(success=False, error="scope_required")
             _trace("问题理解", f"DMQR 多查询改写", query_len=len(question))
             doc_ids = [str(x).strip() for x in (scope.get("doc_ids") or []) if str(x).strip()]
@@ -754,7 +755,7 @@ class MaterialsChatAgent(BaseAgent):
                         answer=str(answer_text)[:5000],
                         retrieved_context=[{"text": c.get("text", str(c)[:300])} for c in (citations or [])[:10]],
                         run_id=str(run_id or ""),
-                        domain_id=str(domain_id or "default"),
+                        domain_id=str(domain_id or DomainRouter.default_graph_domain()),
                     )
                     meta = {
                         "hallucination_risk": round(report.hallucination_risk, 3),

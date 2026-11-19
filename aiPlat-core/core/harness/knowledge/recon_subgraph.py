@@ -47,12 +47,13 @@ class ReconSubgraph:
         recon.discard()
     """
 
-    def __init__(self, run_id: str, *, data_dir: str = ""):
+    def __init__(self, run_id: str, *, data_dir: str = "", tenant_id: str = ""):
         """初始化。
 
         Args:
             run_id: 运行 ID。
             data_dir: data_dir 参数。
+            tenant_id: 租户；空则 resolve（N09 K34）。
         """
         self.run_id = run_id
         self.domain_id = f"_recon_{run_id}"
@@ -65,10 +66,11 @@ class ReconSubgraph:
         self.created_at = _time.time()
         self.agent_contributions: Dict[str, int] = {}  # agent_id → count
         
-        # Lazy-init GraphIndex
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
         from core.harness.ontology_engine.graph_index import GraphIndex
-        self.graph = GraphIndex(self.domain_id)
-        logger.info("ReconSubgraph created: %s", self.domain_id)
+        self.tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
+        self.graph = GraphIndex(self.domain_id, tenant_id=self.tenant_id)
+        logger.info("ReconSubgraph created: %s tenant=%s", self.domain_id, self.tenant_id)
 
     def add_entity(
         self, entity_id: str, entity_name: str, class_name: str,
@@ -154,15 +156,25 @@ class ReconSubgraph:
 
         return computed
 
-    def merge_to(self, target_domain: str, *, min_confidence: float = 0.7) -> Dict[str, int]:
+    def merge_to(
+        self,
+        target_domain: str,
+        *,
+        min_confidence: float = 0.7,
+        tenant_id: str = "",
+    ) -> Dict[str, int]:
         """Merge high-confidence entities/edges into a persistent domain.
 
         Args:
             target_domain: target_domain 参数。
             min_confidence: min_confidence 参数。
+            tenant_id: 租户；空则解析 ActiveRequestContext（N09 K23）。
         """
         from core.harness.ontology_engine.graph_index import GraphIndex
-        target = GraphIndex.load(target_domain)
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+        # 为什么：N09 K23 — recon merge 目标域须按租户
+        target = GraphIndex.load(target_domain, tenant_id=tid)
         
         merged_entities = 0
         merged_relations = 0

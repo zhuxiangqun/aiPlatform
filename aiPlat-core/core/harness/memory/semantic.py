@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from .embedding import EmbeddingProvider, get_embedding_provider
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 @dataclass
@@ -35,7 +36,7 @@ class MemoryItem:
 class SemanticMemory:
     """Semantic memory - long-term knowledge storage"""
 
-    def __init__(self, store_type: str = "simple", tenant_id: str = "default"):
+    def __init__(self, store_type: str = "simple", tenant_id: str = DomainRouter.default_tenant()):
         """初始化。
 
         Args:
@@ -43,7 +44,7 @@ class SemanticMemory:
             tenant_id: 租户 ID。
         """
         self._store_type = store_type
-        self._tenant_id = tenant_id or "default"
+        self._tenant_id = tenant_id or DomainRouter.default_tenant()
         self._items: Dict[str, MemoryItem] = {}
         if store_type == "sqlite":
             self._init_sqlite()
@@ -52,7 +53,7 @@ class SemanticMemory:
         import sqlite3
         import os
         base = get_aiplat_home()
-        tid = getattr(self, '_tenant_id', 'default') or 'default'
+        tid = getattr(self, '_tenant_id', DomainRouter.default_tenant()) or DomainRouter.default_tenant()
         if tid != "default":
             db_path = os.path.join(base, f"memory_semantic_{tid}.sqlite3")
         else:

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 
 
 from typing import Dict, Optional, Any
@@ -318,7 +320,7 @@ async def create_document(request: DocumentCreateRequest, rt: RuntimeDep = Depen
 
     doc = await km.upload_document(
 
-        collection_id=collection_id or "default",
+        collection_id=collection_id or DomainRouter.default_collection(),
 
         name=request.metadata.get("name", "untitled") if request.metadata else "untitled",
 
@@ -338,7 +340,7 @@ async def create_document(request: DocumentCreateRequest, rt: RuntimeDep = Depen
 
         cache = SemanticCache()
 
-        cache.invalidate_domain(collection_id or "default")
+        cache.invalidate_domain(collection_id or DomainRouter.default_collection())
 
     except Exception:
 

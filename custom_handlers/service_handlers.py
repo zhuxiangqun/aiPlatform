@@ -5,6 +5,23 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 
+
+def _handler_graph_tenant(params: Dict[str, Any] | None = None) -> str:
+    """Resolve tenant for handler GraphIndex loads (N09 K33).
+
+    Prefers ``params["tenant_id"]``, then CoreFacade resolve_graph_tenant.
+
+    Args:
+        params: 可选 handler params。
+    """
+    if isinstance(params, dict):
+        tid = str(params.get("tenant_id") or "").strip()
+        if tid:
+            return tid
+    from core.api.core_facade import resolve_graph_tenant
+    return resolve_graph_tenant()
+
+
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -18,7 +35,7 @@ async def assign_technician(entity: Dict[str, Any], params: Dict[str, Any], acto
     if not technician_id:
         raise ValueError("technician_id required")
 
-    g = GraphIndex.load("service-domain")
+    g = GraphIndex.load("service-domain", tenant_id=_handler_graph_tenant(params))
     now = _iso_now()
     g.add_entity_property(entity_id, "status", "已指派")
     g.add_entity_property(entity_id, "technician_id", technician_id)
@@ -40,7 +57,7 @@ async def start_repair(entity: Dict[str, Any], params: Dict[str, Any], actor: st
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     entity_id = entity.get("id") or entity.get("entity_id")
-    g = GraphIndex.load("service-domain")
+    g = GraphIndex.load("service-domain", tenant_id=_handler_graph_tenant(params))
     now = _iso_now()
     g.add_entity_property(entity_id, "status", "维修中")
     g.add_entity_property(entity_id, "repair_started_at", now)
@@ -59,7 +76,7 @@ async def submit_report(entity: Dict[str, Any], params: Dict[str, Any], actor: s
     if not resolution:
         raise ValueError("resolution required")
 
-    g = GraphIndex.load("service-domain")
+    g = GraphIndex.load("service-domain", tenant_id=_handler_graph_tenant(params))
     report_id = f"RPR-{entity_id}-{int(datetime.now().timestamp())}"
 
     g.add_entity(report_id, f"维修报告-{entity_id}", "RepairReport", source_doc_id="service-domain")
@@ -90,7 +107,7 @@ async def complete_work_order(entity: Dict[str, Any], params: Dict[str, Any], ac
     if not confirmation:
         raise ValueError("customer_confirmation required")
 
-    g = GraphIndex.load("service-domain")
+    g = GraphIndex.load("service-domain", tenant_id=_handler_graph_tenant(params))
     now = _iso_now()
     g.add_entity_property(entity_id, "status", "已完成")
     g.add_entity_property(entity_id, "completed_at", now)
@@ -112,7 +129,7 @@ async def reopen_work_order(entity: Dict[str, Any], params: Dict[str, Any], acto
     if not reason:
         raise ValueError("reopen_reason required")
 
-    g = GraphIndex.load("service-domain")
+    g = GraphIndex.load("service-domain", tenant_id=_handler_graph_tenant(params))
     now = _iso_now()
     g.add_entity_property(entity_id, "status", "待指派")
     g.add_entity_property(entity_id, "technician_id", None)

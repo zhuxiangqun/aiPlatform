@@ -29,6 +29,7 @@ import threading
 from collections import defaultdict
 
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -166,7 +167,7 @@ class CostTracker:
 
     def record(self, model: str, input_tokens: int = 0, output_tokens: int = 0,
 
-               tenant_id: str = "default") -> None:
+               tenant_id: str = DomainRouter.default_tenant()) -> None:
 
         """record。
 

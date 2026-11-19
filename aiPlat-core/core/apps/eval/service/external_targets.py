@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin, urlparse
 
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home
 
 logger = logging.getLogger(__name__)
@@ -81,8 +82,8 @@ def targets_path_for_workspace(workspace_id: str) -> Path:
         YAML 文件 Path。
     """
     home = Path(get_aiplat_home())
-    wid = (workspace_id or "default").strip() or "default"
-    if wid == "default":
+    wid = (workspace_id or DomainRouter.default_workspace_id()).strip() or DomainRouter.default_workspace_id()
+    if wid == DomainRouter.default_workspace_id():
         return home / "external_targets.yaml"
     return home / "workspaces" / wid / "external_targets.yaml"
 

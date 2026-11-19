@@ -14,6 +14,7 @@ from core.utils.paths import get_aiplat_data_dir
 import re as _re_manual
 import json
 from datetime import datetime, timezone
+from apps.fde.api.graph_tenant import fde_graph_domain, fde_terms_domain, fde_graph_tenant
 
 router = APIRouter(tags=["fde-manuals"])
 
@@ -74,7 +75,7 @@ def _generate_manual_content(req: FdeManualRequest) -> str:
     term_table = ""
     try:
         from core.api.core_facade import GraphIndex
-        tg = GraphIndex.load("enterprise-terms")
+        tg = GraphIndex.load(fde_terms_domain(), tenant_id=fde_graph_tenant())
         terms = [(n.entity_name[:60], getattr(n, "source_doc_id", "")[:20])
                  for _, n in tg._nodes.items() if getattr(n, "class_name", "") == "Term"][:8]
         if terms:
@@ -85,7 +86,7 @@ def _generate_manual_content(req: FdeManualRequest) -> str:
     delivery_stats = ""
     try:
         from core.api.core_facade import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
+        fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
         sessions = sum(1 for _, n in fd._nodes.items() if getattr(n, "class_name", "") == "DiagnosisSession")
         if sessions > 0:
             delivery_stats = f"历史诊断数：{sessions} 次"
@@ -405,7 +406,7 @@ async def fde_manual_start_delivery(project_id: str):
     import time as _t_sd, json as _json_sd
     from core.api.core_facade import GraphIndex
 
-    fd = GraphIndex.load("fde-delivery")
+    fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
     ts = str(int(_t_sd.time()))
     sid = f"session_{co.replace(' ', '_')}_{ts}"
     fd.add_entity(sid, co, "DiagnosisSession", source_doc_id=project_id)

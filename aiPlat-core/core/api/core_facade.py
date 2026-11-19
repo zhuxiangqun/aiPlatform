@@ -23,6 +23,7 @@ from core.harness.utils.model_injection import best_model_for_purpose
 from core.harness.knowledge.ontology_yaml_gate import LiveYamlDirectWriteDenied, assert_live_yaml_write
 from core.harness.knowledge.ontology_case_learning import OntologyCase  # noqa: F401 — facade re-export / wiring
 from core.harness.evaluation.code_review_gold import GoldCase, GoldFinding  # noqa: F401 — facade re-export / wiring
+from core.harness.knowledge.domain_router import DomainRouter  # noqa: F401 — facade re-export / signature SSOT
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -457,6 +458,19 @@ def get_context_bus() -> Any:
     """Get ContextBus for field-assessment knowledge injection."""
     from core.harness.knowledge.context_bus import assemble_field_assessment
     return assemble_field_assessment
+
+
+def resolve_graph_tenant(params: Any = None) -> str:
+    """Resolve tenant for GraphIndex loads (CoreFacade canonical; N09 K31).
+
+    Args:
+        params: 可选 skill/上下文参数。
+
+    Returns:
+        非空租户 id。
+    """
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    return _resolve_graph_tenant(params)
 
 
 def get_skill_marketplace(db_path: str = "") -> Any:
@@ -1601,7 +1615,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                summary=body[:300].replace("\n", " "),
                source_articles=[f"kb:{doc_id}"],
                images=image_descriptions,
-               collection_id=collection_id or "default")
+               collection_id=collection_id or DomainRouter.default_collection())
 
     # LLM curation: extract knowledge atoms, generate proper metadata (with retry)
     import asyncio as _asyncio
@@ -1640,10 +1654,10 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                 summary=curated.get("summary", body[:300].replace("\n", " ")),
                 source_articles=[f"kb:{doc_id}"],
                 images=image_descriptions,
-                collection_id=collection_id or "default")
+                collection_id=collection_id or DomainRouter.default_collection())
             if curated["title"] != old_title:
                 from core.harness.knowledge.wiki_engine import delete_page
-                try: delete_page(old_title, collection_id=collection_id or "default")
+                try: delete_page(old_title, collection_id=collection_id or DomainRouter.default_collection())
                 except Exception: logging.debug(f"Failed to delete old page {old_title}", exc_info=True)
             # Create knowledge atom pages with evidence tracking
             from core.harness.knowledge.wiki_engine import write_atom
@@ -1664,7 +1678,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                         "tags": atom_tags,
                         "contradicts_atom_index": atom.get("contradicts_atom_index"),
                         "supports_atom_index": atom.get("supports_atom_index"),
-                    }, collection_id=collection_id or "default")
+                    }, collection_id=collection_id or DomainRouter.default_collection())
 
             # Track curation success for metrics
             try:
@@ -1714,7 +1728,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     # ── Evolution: auto-trigger if enough new pages accumulated ──
     try:
         from core.harness.knowledge.evolution_runner import EvolutionRunner
-        runner = EvolutionRunner(collection_id=collection_id or "default", max_mutations=3)
+        runner = EvolutionRunner(collection_id=collection_id or DomainRouter.default_collection(), max_mutations=3)
         if runner.can_evolve():
             await runner.run_one_generation(force=False)
     except Exception as e:
@@ -1741,7 +1755,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     # Phase G: LLM Wiki contradiction detection — flag contradictions at ingest time
     try:
         from core.harness.knowledge.wiki_engine import search_pages, update_page
-        pages = search_pages(limit=1000, collection_id=collection_id or "default")
+        pages = search_pages(limit=1000, collection_id=collection_id or DomainRouter.default_collection())
         for p in pages:
             ptitle = p.get("title", "")
             if ptitle == title:
@@ -1754,20 +1768,27 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                 contradictions = list(p.get("contradictions") or [])
                 if title not in contradictions:
                     contradictions.append(title)
-                    update_page(ptitle, contradictions=contradictions, collection_id=collection_id or "default")
+                    update_page(ptitle, contradictions=contradictions, collection_id=collection_id or DomainRouter.default_collection())
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
     return {"status": "created", "title": title, "category": final_category, "chars": len(body)}
 
 
-async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection_id: str = "default") -> Dict[str, Any]:
+async def auto_ontology_pipeline_for_doc(
+    doc_id: str,
+    file_path: str,
+    collection_id: str = DomainRouter.default_collection(),
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
+) -> Dict[str, Any]:
     """Auto-run ontology engine pipeline on a newly ingested/re-ingested document.
 
     Args:
         doc_id: doc 标识。
         file_path: file_path 参数。
         collection_id: collection 标识。
+        tenant_id: 租户；须从 ingest/身份上下文注入（N09 K13）。
     """
     import os as _os
     if _os.getenv("AIPLAT_AUTO_ONTOLOGY_PIPELINE", "true").lower() not in ("true", "1", "yes"):
@@ -1778,10 +1799,11 @@ async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection
     from core.api.core_facade import kb_parse_document, kb_chunk_elements
 
     router = DomainRouter()
-    domain_id = router.resolve(collection_id) or "ai-knowledge"
+    kb_fallback = router.default_kb_domain()
+    domain_id = router.resolve(collection_id) or kb_fallback
     # If the resolved domain doesn't have a valid engine, try the fallback
     if load_engine(domain_id) is None:
-        domain_id = "ai-knowledge"
+        domain_id = kb_fallback
 
     kind = _os.path.splitext(file_path)[1].lstrip(".") or "txt"
     try:
@@ -1806,7 +1828,9 @@ async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection
     if not engine_chunks:
         return {"status": "skipped", "reason": "chunks too small"}
 
-    engine = load_engine(domain_id)
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    # 为什么：N09 K13 — 自动本体流水线必须带 ingest 租户，禁止静默落到匿名 default 写库
+    engine = load_engine(domain_id, tenant_id=tid)
     if engine is None:
         return {"status": "skipped", "reason": f"no engine for domain '{domain_id}'"}
 
@@ -1820,7 +1844,7 @@ async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection
     for batch_start in range(0, len(engine_chunks), batch_size):
         batch = engine_chunks[batch_start:batch_start + batch_size]
         try:
-            result = await engine.process_chunks(batch, doc_id=doc_id)
+            result = await engine.process_chunks(batch, doc_id=doc_id, tenant_id=tid)
             total_instances += len(result.instances) if hasattr(result, "instances") else 0
             total_relations += len(result.relations) if hasattr(result, "relations") else 0
             chunks_processed += len(batch)
@@ -1840,9 +1864,16 @@ async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection
     except Exception:
         logging.getLogger(__name__).debug('code failed', exc_info=True)
 
-    return {"status": "completed", "domain": domain_id, "doc_id": doc_id,
-            "instances_created": total_instances, "relations_detected": total_relations,
-            "chunks_processed": chunks_processed, "batches": len(range(0, len(engine_chunks), batch_size))}
+    return {
+        "status": "completed",
+        "domain": domain_id,
+        "doc_id": doc_id,
+        "tenant_id": tid,
+        "instances_created": total_instances,
+        "relations_detected": total_relations,
+        "chunks_processed": chunks_processed,
+        "batches": len(range(0, len(engine_chunks), batch_size)),
+    }
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -2132,7 +2163,7 @@ def wiki_pages_by_source(source_key: str) -> List[Dict[str, Any]]:
 
 
 def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
-                       limit: int = 20, collection_id: str = "default") -> List[Dict[str, Any]]:
+                       limit: int = 20, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Search wiki pages — Phase 45: CoreFacade wrapper for platform layer.
 
     Args:
@@ -2148,7 +2179,7 @@ def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str 
 
 
 def wiki_search_pages_api(query: str = "", *, tags: List[str] = None, category: str = "",
-                          limit: int = 20, collection_id: str = "default") -> Dict[str, Any]:
+                          limit: int = 20, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Wiki search with ontology.api.v0 envelope (A1 contract).
 
     Args:
@@ -2179,8 +2210,10 @@ def get_graph_health(domain: str = "") -> Dict[str, Any]:
         domain: domain 参数。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
     try:
-        g = GraphIndex.load(domain) if domain else None
+        # 为什么：N09 K29 — facade 域图加载须按租户
+        g = GraphIndex.load(domain, tenant_id=_resolve_graph_tenant()) if domain else None
         if g:
             return {"domain": domain, "node_count": g.stats().get("node_count", 0),
                     "exists": True}
@@ -3741,7 +3774,7 @@ def get_chat_service_model(rt: Any = None) -> Any:
 # ── Semantic Ontology Evolution Facade (Phase 3) ──
 
 async def generate_ontology_suggestions(
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     *,
     max_suggestions: int = 5,
     confidence_threshold: float = 0.7,
@@ -3827,7 +3860,7 @@ def enqueue_listed_agent_eval(agent_id: str) -> None:
 
 def predict_evolution_impact_for(
     suggestion: Dict[str, Any],
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Predict the impact scope of accepting an evolution suggestion.
 
@@ -3843,7 +3876,7 @@ def predict_evolution_impact_for(
 
 # ── Ontology Health & Quality Facade (Phase 4) ──
 
-def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[str, Any]]:
+def check_ontology_health_triggers(collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """Check ontology health and return triggered curation tasks.
 
     Args:
@@ -3853,7 +3886,7 @@ def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[
     return _check(collection_id=collection_id)
 
 
-def get_entity_quality(entity_uri: str, *, collection_id: str = "default") -> Dict[str, Any]:
+def get_entity_quality(entity_uri: str, *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Get quality score and recent signals for an ontology entity.
 
     Args:
@@ -3876,7 +3909,7 @@ def apply_field_security(
     entity_uri: str = "",
     actor_role: str = "",
     actor_scopes: Optional[List[str]] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Apply field-level security redaction to entity data.
 
@@ -3992,9 +4025,11 @@ def import_abox_table_map(
     """
     from core.apps.fde.service.abox_connector import import_table_map_payload
     from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
     GraphIndex._loaded_instances.clear()
-    g = GraphIndex.load(domain_id)
+    # 为什么：N09 K29 — table map 导入写租户图
+    g = GraphIndex.load(domain_id, tenant_id=_resolve_graph_tenant())
     meta = import_table_map_payload(
         g,
         domain_id=domain_id,
@@ -4035,7 +4070,7 @@ def get_governance_scenario_loop() -> Dict[str, Any]:
     return get_governance_loop_map()
 
 
-def governance_quality_view(domain_id: str = "data-gov") -> Dict[str, Any]:
+def governance_quality_view(domain_id: str = DomainRouter.data_gov_domain()) -> Dict[str, Any]:
     """Step ⑥ vertical: OCS + gate-2 actions + value links.
 
     Args:
@@ -4052,6 +4087,7 @@ async def governance_locate_view(
     *,
     top_k: int = 8,
     with_graphrag: bool = False,
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """Step ⑦ vertical: locate entities on GraphIndex (+ optional GraphRAG).
 
@@ -4060,11 +4096,16 @@ async def governance_locate_view(
         query: 查询。
         top_k: top_k 参数。
         with_graphrag: with_graphrag 参数。
+        tenant_id: 可选租户；透传 GraphRAG（N09 K4）。
     """
     from core.apps.fde.service.governance_deepen import locate_via_ontology_async
 
     return await locate_via_ontology_async(
-        domain_id, query, top_k=top_k, with_graphrag=with_graphrag
+        domain_id,
+        query,
+        top_k=top_k,
+        with_graphrag=with_graphrag,
+        tenant_id=tenant_id or "",
     )
 
 
@@ -4129,7 +4170,7 @@ def org_set_goal_status(goal_id: str, status: str) -> Dict[str, Any]:
 def org_run_goal(
     goal_id: str = "",
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     dry_actions: bool = True,
     week_label: str = "",
 ) -> Dict[str, Any]:
@@ -4174,7 +4215,7 @@ def org_get_run(run_id: str) -> Dict[str, Any]:
     return get_run(run_id)
 
 
-def org_replay_trace(trace_id: str = "", *, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_replay_trace(trace_id: str = "", *, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """V1: read-only five-step replay. Does not write ontology, edges, or runs.
 
     Args:
@@ -4205,7 +4246,7 @@ def org_resume_run(
 
 
 def org_weekly_kpi(
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "",
     *,
     week: str = "",
@@ -4222,7 +4263,7 @@ def org_weekly_kpi(
     return weekly_kpi_report(domain_id, goal_id, week=week)
 
 
-def org_joint_health(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_joint_health(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Read-only joint health. Never writes live YAML.
 
     Args:
@@ -4266,7 +4307,7 @@ def org_list_memory(domain_id: str = "", limit: int = 50) -> Dict[str, Any]:
 def org_fleet_gate(
     goal_id: str = "",
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     project_id: str = "",
 ) -> Dict[str, Any]:
     """Org L5 Phase 4 W6: evaluate multi-agent fleet hard gate.
@@ -4306,7 +4347,7 @@ def org_sandbox_rehearsals(limit: int = 5) -> Dict[str, Any]:
 
 async def org_sandbox_conflict_probe(
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     resource_id: str = "shared_interface",
 ) -> Dict[str, Any]:
     """Sandbox concurrent lock probe. No live write.
@@ -4338,7 +4379,7 @@ async def org_sandbox_rehearsal_start(
     return await start_sandbox_rehearsal(role=role, domain_id=domain_id, roles=roles)
 
 
-def org_field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_field_ops_checklist(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Org L5 Phase 4 W7: field ops readiness checklist.
 
     Args:
@@ -4349,7 +4390,7 @@ def org_field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
     return field_ops_checklist(domain_id)
 
 
-def org_customer_signoff(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_customer_signoff(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """V3: customer signoff layer. Read-only. m4_claim_allowed stays false.
 
     Args:
@@ -4361,7 +4402,7 @@ def org_customer_signoff(domain_id: str = "it-ops") -> Dict[str, Any]:
 
 
 def org_signoff_prep(
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     *,
     as_markdown: bool = False,
@@ -4385,7 +4426,7 @@ def org_signoff_prep(
 async def org_approval_inbox(
     *,
     role: str,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     kind: str = "",
     offset: int = 0,
@@ -4480,8 +4521,8 @@ def set_unattended_attendance(session_id: str, mode: str) -> Dict[str, Any]:
     """
     from core.harness.infrastructure.gates.approval_inbox import get_approval_inbox
 
-    norm = get_approval_inbox().set_attendance(str(session_id or "default"), mode)
-    return {"session_id": str(session_id or "default"), "attendance": norm}
+    norm = get_approval_inbox().set_attendance(str(session_id or DomainRouter.default_session()), mode)
+    return {"session_id": str(session_id or DomainRouter.default_session()), "attendance": norm}
 
 
 def get_unattended_attendance(session_id: str) -> Dict[str, Any]:
@@ -4492,7 +4533,7 @@ def get_unattended_attendance(session_id: str) -> Dict[str, Any]:
     """
     from core.harness.infrastructure.gates.approval_inbox import get_approval_inbox
 
-    sid = str(session_id or "default")
+    sid = str(session_id or DomainRouter.default_session())
     return {"session_id": sid, "attendance": get_approval_inbox().get_attendance(sid)}
 
 
@@ -4511,7 +4552,7 @@ def list_session_write_provenance(session_id: str = "") -> Dict[str, Any]:
     )
 
     store: SessionWriteProvenance = get_session_write_provenance()
-    sid = str(session_id or "default")
+    sid = str(session_id or DomainRouter.default_session())
     records: List[OriginRecord] = []
     for path in sorted(store.known_paths(sid)):
         rec: Optional[OriginRecord] = store.lookup(sid, path)
@@ -4532,7 +4573,7 @@ async def org_approval_snapshot(
     item_id: str,
     *,
     role: str,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
 ) -> Dict[str, Any]:
     """H1: read-only approval snapshot. Does not approve.
 
@@ -4552,7 +4593,7 @@ async def org_approval_snapshot(
 def org_evidence_pack(
     *,
     role: str,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     week: str = "",
     max_traces: int = 5,
@@ -4585,7 +4626,7 @@ def org_evidence_pack(
 
 def org_value_translation(
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     week: str = "",
     tenant_id: str = "",
@@ -4610,7 +4651,7 @@ def org_value_translation(
 
 def org_value_roi_preview(
     *,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     week: str = "",
     trial_minutes_per_incident: float,
@@ -4659,7 +4700,7 @@ def org_h4_auto_audit(*, role: str, limit: int = 50) -> Dict[str, Any]:
     return h4_auto_audit(role=role, limit=limit)
 
 
-async def org_h4_auto_pass(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+async def org_h4_auto_pass(*, role: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """H4: sandbox queue status pass. Never writes live YAML or edges.
 
     Args:
@@ -4676,7 +4717,7 @@ async def org_h4_auto_pass(*, role: str, domain_id: str = "it-ops") -> Dict[str,
     return await run_h4_auto_pass(role=role, domain_id=domain_id or "it-ops")
 
 
-def org_h5_drafts(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_h5_drafts(*, role: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """H5: list draft packs and skill_candidate cases. Not a listing.
 
     Args:
@@ -4688,7 +4729,7 @@ def org_h5_drafts(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
     return list_skill_drafts(role=role, domain_id=domain_id or "it-ops")
 
 
-def org_h5_create_draft(*, role: str, case_id: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_h5_create_draft(*, role: str, case_id: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """H5: write a draft pack. Does not register or write SKILL.md.
 
     Args:
@@ -4725,7 +4766,7 @@ def org_h5_reject_draft(*, role: str, draft_id: str) -> Dict[str, Any]:
     return reject_skill_draft(role=role, draft_id=draft_id)
 
 
-def org_gap_hints(*, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_gap_hints(*, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Read-only: repeated action failures may draft via existing proposal path.
 
     Args:
@@ -4736,7 +4777,7 @@ def org_gap_hints(*, domain_id: str = "it-ops") -> Dict[str, Any]:
     return list_action_gap_hints(domain_id=domain_id or "it-ops")
 
 
-def org_preview_schema_gaps(*, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_preview_schema_gaps(*, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Read-only Diff for schema_gap cases. Does not create proposals.
 
     Args:
@@ -4747,7 +4788,7 @@ def org_preview_schema_gaps(*, domain_id: str = "it-ops") -> Dict[str, Any]:
     return preview_schema_gaps(domain_id or "it-ops")
 
 
-def org_list_cold_cases(*, domain_id: str = "it-ops", limit: int = 20) -> Dict[str, Any]:
+def org_list_cold_cases(*, domain_id: str = DomainRouter.it_ops_domain(), limit: int = 20) -> Dict[str, Any]:
     """Read-only cold case archive. Not injected.
 
     Args:
@@ -4759,7 +4800,7 @@ def org_list_cold_cases(*, domain_id: str = "it-ops", limit: int = 20) -> Dict[s
     return list_cold_cases(domain_id or "it-ops", limit=limit)
 
 
-def org_archive_cold_cases(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_archive_cold_cases(*, role: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Move low-yield cases to cold store. Does not delete or change TBox.
 
     Args:
@@ -4776,7 +4817,7 @@ def org_archive_cold_cases(*, role: str, domain_id: str = "it-ops") -> Dict[str,
     return archive_cold_cases(domain_id or "it-ops")
 
 
-async def org_draft_schema_gaps(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+async def org_draft_schema_gaps(*, role: str, domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Draft edge proposals from schema_gap cases. Does not apply.
 
     Args:
@@ -4897,7 +4938,7 @@ def org_signoff_progress_put(*, role: str, body: Dict[str, Any]) -> Dict[str, An
     return save_signoff_progress(role=role, body=body or {})
 
 
-def org_live_unlock_status(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_live_unlock_status(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """org_live_unlock_status。
 
     Args:
@@ -4929,7 +4970,7 @@ def org_list_interfaces(domain_id: str = "") -> Dict[str, Any]:
     return list_interface_specs(domain_id or "")
 
 
-def org_get_interface(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_get_interface(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Phase C1: get + validate InterfaceSpec for domain.
 
     Args:
@@ -4952,7 +4993,7 @@ def org_assert_action_interface(domain_id: str, action_id: str) -> Dict[str, Any
     return assert_action_bound(domain_id or "it-ops", action_id)
 
 
-def org_materialize_interface(domain_id: str = "it-ops") -> Dict[str, Any]:
+def org_materialize_interface(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Phase C1.5: copy InterfaceSpec into AIPLAT_HOME yaml. Never writes connector.live.
 
     Args:
@@ -5445,6 +5486,183 @@ def evaluate_pilot_cert_readiness_gate(
     )
 
     return _gate(readiness)
+
+
+def evaluate_core_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """附录 N Core 最小符合集结构门（core_ready ≠ certified）。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_core_ready_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_pilot_core_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Core 认证：core_ready + 非作者批准记录才可 pilot_certified。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+        approval_record_path: 试点 Core 批准记录 JSON 路径（必填才可能徽章）。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_pilot_core_certification as _gate,
+    )
+
+    return _gate(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+    )
+
+
+def evaluate_extended_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """附录 N Extended 最小符合集结构门（extended_ready ≠ certified）。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_extended_ready_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_pilot_extended_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Extended 认证：extended_ready + 非作者批准才可 pilot_extended_certified。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+        approval_record_path: Extended 批准记录路径。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_pilot_extended_certification as _gate,
+    )
+
+    return _gate(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+    )
+
+
+def evaluate_operational_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """附录 N Operational 最小符合集结构门（operational_ready ≠ certified）。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_operational_ready_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_pilot_operational_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Operational 认证：operational_ready + 非作者批准才可徽章。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+        approval_record_path: Operational 批准记录路径。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_pilot_operational_certification as _gate,
+    )
+
+    return _gate(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+    )
+
+
+def evaluate_full_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """附录 N 全量结构门（full_ready ≠ certified）。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_full_ready_gate as _gate,
+    )
+
+    return _gate(catalog_path=catalog_path, pilot_domain=pilot_domain)
+
+
+def evaluate_full_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+    core_approval_record_path: Optional[str] = None,
+    extended_approval_record_path: Optional[str] = None,
+    operational_approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """全量认证：full_ready + 三级徽章 + 独立全量非作者批准才可 certified。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 可选试点域覆盖。
+        approval_record_path: 全量批准记录路径。
+        core_approval_record_path: Core 批准；空则默认 approved。
+        extended_approval_record_path: Extended 批准；空则默认 approved。
+        operational_approval_record_path: Operational 批准；空则默认 approved。
+    """
+    from core.harness.knowledge_pipeline.conformance_pack import (
+        evaluate_full_certification as _gate,
+    )
+
+    return _gate(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+        core_approval_record_path=core_approval_record_path,
+        extended_approval_record_path=extended_approval_record_path,
+        operational_approval_record_path=operational_approval_record_path,
+    )
 
 
 async def run_implementer_semantics_suite(
@@ -6422,7 +6640,7 @@ def k2_rollback_arbitration_edge(ticket_id: str, *, role: str) -> Dict[str, Any]
     return rollback_ticket_edge(ticket_id, role=role)
 
 
-async def k5_scan_repeat_failures(domain_id: str = "it-ops") -> Dict[str, Any]:
+async def k5_scan_repeat_failures(domain_id: str = DomainRouter.it_ops_domain()) -> Dict[str, Any]:
     """Phase K5: repeated failures → edge draft. auto_apply stays false.
 
     Args:
@@ -6821,7 +7039,7 @@ def set_graph_field_acl(
 
 # ── Growth & Obsidian Facade (Phase E + Phase F) ──
 
-def get_growth_stats(days: int = 30, *, collection_id: str = "default") -> Dict[str, Any]:
+def get_growth_stats(days: int = 30, *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Get knowledge base growth statistics for the last N days.
 
     Args:
@@ -6832,7 +7050,7 @@ def get_growth_stats(days: int = 30, *, collection_id: str = "default") -> Dict[
     return _gs(collection_id=collection_id, days=days)
 
 
-def check_obsidian_compatibility(collection_id: str = "default") -> Dict[str, Any]:
+def check_obsidian_compatibility(collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
     """Verify that the wiki directory is 100% compatible with Obsidian vault format.
 
     Args:
@@ -6932,7 +7150,7 @@ def instantiate_scene(
     scene_id: str,
     *,
     params: Optional[Dict[str, Any]] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Optional[Dict[str, Any]]:
     """Instantiate a scene template into a PipelineConfig dict.
 
@@ -6978,7 +7196,7 @@ def register_writeback_target(
     *,
     trigger_actions: Optional[List[str]] = None,
     field_mapping: Optional[Dict[str, str]] = None,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Register a writeback target for ontology actions.
 
@@ -7002,7 +7220,7 @@ def register_writeback_target(
     return {"status": "ok", "config": config.to_dict()}
 
 
-def list_writeback_targets(collection_id: str = "default") -> List[Dict[str, Any]]:
+def list_writeback_targets(collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
     """List all registered writeback targets.
 
     Args:
@@ -7017,7 +7235,7 @@ def list_writeback_targets(collection_id: str = "default") -> List[Dict[str, Any
 def get_entity_markings(
     entity_uri: str,
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
     resolve_effective: bool = True,
 ) -> Dict[str, Any]:
     """Get explicit and effective markings for an entity.
@@ -7037,7 +7255,7 @@ def set_entity_marking(
     level: int,
     scope: str = "",
     *,
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Set a marking on an entity.
 
@@ -7060,7 +7278,7 @@ def check_kb_entity_access(
     *,
     actor_scopes: Optional[List[str]] = None,
     actor_role: str = "",
-    collection_id: str = "default",
+    collection_id: str = DomainRouter.default_collection(),
 ) -> Dict[str, Any]:
     """Check if an actor can access a knowledge entity (three-layer fusion).
 
@@ -7192,6 +7410,7 @@ def update_ontology_domain_meta(
     description: str = "",
     version: str = "",
     namespace: str = "",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Update domain metadata (name, description, version, namespace).
 
@@ -7201,6 +7420,7 @@ def update_ontology_domain_meta(
         description: description 参数。
         version: version 参数。
         namespace: namespace 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K10）。
     """
     import yaml
 
@@ -7228,8 +7448,10 @@ def update_ontology_domain_meta(
 
     if name:
         _register_domain_in_registry(domain_id, name, raw.get("description", ""))
-    _invalidate_domain_caches(domain_id)
-    return {"id": domain_id, "status": "updated"}
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    # 为什么：N09 K10 — domain meta 变更后须按租户清 GraphIndex 缓存
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
+    return {"id": domain_id, "tenant_id": tid, "status": "updated"}
 
 
 def delete_ontology_domain(domain_id: str) -> Dict[str, Any]:
@@ -7253,6 +7475,8 @@ def upsert_ontology_class(
     domain_id: str,
     class_name: str,
     class_data: Dict[str, Any],
+    *,
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Create or update a class definition in a domain YAML.
 
@@ -7260,6 +7484,7 @@ def upsert_ontology_class(
         domain_id: domain 标识。
         class_name: class_name 参数。
         class_data: class_data 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K9）。
     """
     import yaml
 
@@ -7279,18 +7504,30 @@ def upsert_ontology_class(
     assert_live_yaml_write()
     Path(file_path).write_text(yaml_str, encoding="utf-8")
 
-    _invalidate_domain_caches(domain_id)
-    return {"domain_id": domain_id, "class_name": class_name, "status": "upserted"}
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    # 为什么：N09 K9 — class CRUD 后须清对应租户 GraphIndex 缓存
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
+    return {
+        "domain_id": domain_id,
+        "tenant_id": tid,
+        "class_name": class_name,
+        "status": "upserted",
+    }
 
 
-def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
+def delete_ontology_class(
+    domain_id: str, class_name: str, *, tenant_id: str = DomainRouter.default_tenant()
+) -> Dict[str, Any]:
     """Remove a class — always via VersionedOntologyStore proposal (F2 live YAML gate).
 
     Args:
         domain_id: domain 标识。
         class_name: class_name 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K9）。
     """
     import asyncio
+
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     async def _via_proposal() -> Dict[str, Any]:
         store = VersionedOntologyStore(domain_id)
@@ -7306,6 +7543,7 @@ def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
         if not approved.get("success"):
             return {
                 "domain_id": domain_id,
+                "tenant_id": tid,
                 "class_name": class_name,
                 "status": "approve_failed",
                 "proposal_id": proposal_id,
@@ -7315,14 +7553,17 @@ def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
         if not receipt.get("ok"):
             return {
                 "domain_id": domain_id,
+                "tenant_id": tid,
                 "class_name": class_name,
                 "status": "apply_failed",
                 "proposal_id": proposal_id,
                 "reason": receipt.get("reason"),
             }
-        _invalidate_domain_caches(domain_id)
+        # 为什么：N09 K9 — sync delete 与 async 路径一致，按租户清 GraphIndex 缓存
+        _invalidate_domain_caches(domain_id, tenant_id=tid)
         return {
             "domain_id": domain_id,
+            "tenant_id": tid,
             "class_name": class_name,
             "status": "deleted",
             "proposal_id": proposal_id,
@@ -7339,12 +7580,15 @@ def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
     return asyncio.run(_via_proposal())
 
 
-async def delete_ontology_class_async(domain_id: str, class_name: str) -> Dict[str, Any]:
+async def delete_ontology_class_async(
+    domain_id: str, class_name: str, *, tenant_id: str = DomainRouter.default_tenant()
+) -> Dict[str, Any]:
     """Async delete class via create→approve→apply proposal (F2-safe).
 
     Args:
         domain_id: domain 标识。
         class_name: class_name 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K9）。
     """
     store = VersionedOntologyStore(domain_id)
     current = store.load_current() or {}
@@ -7375,9 +7619,11 @@ async def delete_ontology_class_async(domain_id: str, class_name: str) -> Dict[s
     receipt = await store.apply_proposal(proposal_id)
     if not receipt.get("ok"):
         raise RuntimeError(receipt.get("reason") or "apply_failed")
-    _invalidate_domain_caches(domain_id)
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
     return {
         "domain_id": domain_id,
+        "tenant_id": tid,
         "class_name": class_name,
         "status": "deleted",
         "proposal_id": proposal_id,
@@ -7385,11 +7631,14 @@ async def delete_ontology_class_async(domain_id: str, class_name: str) -> Dict[s
     }
 
 
-def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
+def publish_ontology_domain(
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
+) -> Dict[str, Any]:
     """Validate and publish — write domain YAML + create graph snapshot.
 
     Args:
         domain_id: domain 标识。
+        tenant_id: 租户；snapshot 写入对应 GraphIndex 分库（N09 K7）。
     """
     base_dir = _resolve_ontologies_dir()
     file_path = f"{base_dir}/{domain_id}.yaml"
@@ -7399,62 +7648,85 @@ def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
     from core.harness.ontology_engine.graph_index import GraphIndex
 
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     domain = load_ontology_from_yaml(file_path)
     try:
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K7 — publish 快照按租户分库，避免写到他租户 ABox
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         graph.snapshot(f"pre-publish-{domain.version}")
     except Exception:
         logging.getLogger(__name__).debug('publish_ontology_domain failed', exc_info=True)
 
-    _invalidate_domain_caches(domain_id)
-    _save_rule_version(domain_id, file_path, domain)
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
+    _save_rule_version(domain_id, file_path, domain, tenant_id=tid)
     return {
         "domain_id": domain_id,
+        "tenant_id": tid,
         "version": domain.version,
         "class_count": len(domain.classes),
         "status": "published",
     }
 
 
-def list_rule_versions(domain_id: str) -> List[Dict[str, Any]]:
+def list_rule_versions(
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
+) -> List[Dict[str, Any]]:
     """List all saved rule versions for a domain.
 
     Args:
         domain_id: domain 标识。
+        tenant_id: 租户；读取对应 GraphIndex 分库快照（N09 K7）。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     try:
-        graph = GraphIndex.load(domain_id)
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         snaps = graph.list_snapshots(limit=50)
         return snaps
     except Exception:
         return []
 
 
-def rollback_rule_version(domain_id: str, version_id: str) -> Dict[str, Any]:
+def rollback_rule_version(
+    domain_id: str, version_id: str, *, tenant_id: str = DomainRouter.default_tenant()
+) -> Dict[str, Any]:
     """Restore rules to a previous version — restore snapshot + invalidate caches.
 
     Args:
         domain_id: domain 标识。
         version_id: version 标识。
+        tenant_id: 租户；恢复对应 GraphIndex 分库快照（N09 K7）。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     try:
-        graph = GraphIndex.load(domain_id)
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         result = graph.restore_snapshot(int(version_id))
-        _invalidate_domain_caches(domain_id)
-        return {"domain_id": domain_id, "version_id": version_id, "status": "rolled_back", "result": result}
+        _invalidate_domain_caches(domain_id, tenant_id=tid)
+        return {
+            "domain_id": domain_id,
+            "tenant_id": tid,
+            "version_id": version_id,
+            "status": "rolled_back",
+            "result": result,
+        }
     except Exception as e:
         raise RuntimeError(f"Rollback failed: {e}")
 
 
-def _save_rule_version(domain_id: str, file_path: str, domain) -> None:
+def _save_rule_version(
+    domain_id: str, file_path: str, domain, *, tenant_id: str = DomainRouter.default_tenant()
+) -> None:
     u"""Save a version snapshot of the domain YAML after publish."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         yaml_text = Path(file_path).read_text(encoding="utf-8")
-        graph.snapshot(f"v{domain.version}-{__import__('time').strftime('%Y%m%dT%H%M%SZ', __import__('time').gmtime())}")
+        graph.snapshot(
+            f"v{domain.version}-"
+            f"{__import__('time').strftime('%Y%m%dT%H%M%SZ', __import__('time').gmtime())}"
+        )
     except Exception:
         logging.getLogger(__name__).debug('_save_rule_version failed', exc_info=True)
 
@@ -7490,13 +7762,16 @@ def get_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
     return view
 
 
-def upsert_view_for_domain(domain_id: str, role: str, view_data: Dict[str, Any]) -> Dict[str, Any]:
+def upsert_view_for_domain(
+    domain_id: str, role: str, view_data: Dict[str, Any], *, tenant_id: str = DomainRouter.default_tenant()
+) -> Dict[str, Any]:
     """Create or update a role view in the domain YAML, writing back via yaml_serializer.
 
     Args:
         domain_id: domain 标识。
         role: role 参数。
         view_data: view_data 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K10）。
     """
     import yaml
     base_dir = _resolve_ontologies_dir()
@@ -7507,15 +7782,21 @@ def upsert_view_for_domain(domain_id: str, role: str, view_data: Dict[str, Any])
     raw["views"][role] = view_data
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
     Path(file_path).write_text(dict_to_yaml(raw), encoding="utf-8")
-    return {"domain_id": domain_id, "role": role, "status": "upserted"}
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    # 为什么：N09 K10 — view 变更影响角色投影，须清对应租户 GraphIndex 缓存
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
+    return {"domain_id": domain_id, "tenant_id": tid, "role": role, "status": "upserted"}
 
 
-def delete_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
+def delete_view_for_domain(
+    domain_id: str, role: str, *, tenant_id: str = DomainRouter.default_tenant()
+) -> Dict[str, Any]:
     """Delete a role view from the domain YAML.
 
     Args:
         domain_id: domain 标识。
         role: role 参数。
+        tenant_id: 租户；用于 GraphIndex 缓存失效（N09 K10）。
     """
     import yaml
     base_dir = _resolve_ontologies_dir()
@@ -7525,7 +7806,9 @@ def delete_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
     raw.get("views", {}).pop(role, None)
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
     Path(file_path).write_text(dict_to_yaml(raw), encoding="utf-8")
-    return {"domain_id": domain_id, "role": role, "status": "deleted"}
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    _invalidate_domain_caches(domain_id, tenant_id=tid)
+    return {"domain_id": domain_id, "tenant_id": tid, "role": role, "status": "deleted"}
 
 
 def resolve_term_in_view(domain_id: str, role: str, term: str) -> Dict[str, Any]:
@@ -7569,68 +7852,86 @@ def resolve_prompt(prompt_id: str, **variables) -> str:
 # ── Process Monitor Facade (v2.6) ──
 
 
-def get_process_status(domain_id: str, process_name: str = "") -> List[Dict[str, Any]]:
+def get_process_status(
+    domain_id: str, process_name: str = "", *, tenant_id: str = DomainRouter.default_tenant()
+) -> List[Dict[str, Any]]:
     """Get running process instance status.
 
     Args:
         domain_id: domain 标识。
         process_name: process_name 参数。
+        tenant_id: 租户；透传 process_orchestrator（N09 K12）。
     """
     from core.harness.knowledge.process_orchestrator import get_process_status as _gps
-    return _gps(domain_id, process_name)
+    return _gps(domain_id, process_name, tenant_id=tenant_id)
 
 
-def get_bottlenecks(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+def get_bottlenecks(
+    domain_id: str, limit: int = 10, *, tenant_id: str = DomainRouter.default_tenant()
+) -> List[Dict[str, Any]]:
     """Get process bottlenecks — instances stuck at same step longest.
 
     Args:
         domain_id: domain 标识。
         limit: 返回条数上限。
+        tenant_id: 租户；透传 process_orchestrator（N09 K12）。
     """
     from core.harness.knowledge.process_orchestrator import get_bottlenecks as _gb
-    return _gb(domain_id, limit)
+    return _gb(domain_id, limit, tenant_id=tenant_id)
 
 
-def get_state_distribution(domain_id: str) -> List[Dict[str, Any]]:
+def get_state_distribution(
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
+) -> List[Dict[str, Any]]:
     """Count instances per class per state.
 
     Args:
         domain_id: domain 标识。
+        tenant_id: 租户；透传 process_monitor（N09 K11）。
     """
     from core.harness.knowledge.process_monitor import state_distribution as _sd
-    return _sd(domain_id)
+    return _sd(domain_id, tenant_id=tenant_id)
 
 
-def get_bottleneck_analysis(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+def get_bottleneck_analysis(
+    domain_id: str, limit: int = 10, *, tenant_id: str = DomainRouter.default_tenant()
+) -> List[Dict[str, Any]]:
     """Find entities stuck in their current state longest.
 
     Args:
         domain_id: domain 标识。
         limit: 返回条数上限。
+        tenant_id: 租户；透传 process_monitor（N09 K11）。
     """
     from core.harness.knowledge.process_monitor import bottleneck_analysis as _ba
-    return _ba(domain_id, limit)
+    return _ba(domain_id, limit, tenant_id=tenant_id)
 
 
-def get_sla_violations(domain_id: str) -> List[Dict[str, Any]]:
+def get_sla_violations(
+    domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()
+) -> List[Dict[str, Any]]:
     """Get SLA violations triggered by time_elapsed transitions.
 
     Args:
         domain_id: domain 标识。
+        tenant_id: 租户；透传 process_monitor（N09 K11）。
     """
     from core.harness.knowledge.process_monitor import sla_violations as _sv
-    return _sv(domain_id)
+    return _sv(domain_id, tenant_id=tenant_id)
 
 
-def get_trend_data(domain_id: str, days: int = 7) -> List[Dict[str, Any]]:
+def get_trend_data(
+    domain_id: str, days: int = 7, *, tenant_id: str = DomainRouter.default_tenant()
+) -> List[Dict[str, Any]]:
     """Daily state transition trend data.
 
     Args:
         domain_id: domain 标识。
         days: days 参数。
+        tenant_id: 租户；透传 process_monitor（N09 K11）。
     """
     from core.harness.knowledge.process_monitor import trend_data as _td
-    return _td(domain_id, days)
+    return _td(domain_id, days, tenant_id=tenant_id)
 
 
 # ── Internal helpers ──
@@ -7667,7 +7968,14 @@ def _remove_domain_from_registry(domain_id: str) -> None:
     reg_path.write_text(_json.dumps(registry, indent=2, ensure_ascii=False))
 
 
-def _invalidate_domain_caches(domain_id: str) -> None:
+def _invalidate_domain_caches(domain_id: str, *, tenant_id: str = DomainRouter.default_tenant()) -> None:
+    """Invalidate DomainRouter + GraphIndex cache for a domain.
+
+    Args:
+        domain_id: domain 标识。
+        tenant_id: 租户；须与 GraphIndex 分库键一致（N09 K9）。
+    """
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     try:
         from core.harness.knowledge.domain_router import DomainRouter
         DomainRouter()._built = False
@@ -7675,7 +7983,8 @@ def _invalidate_domain_caches(domain_id: str) -> None:
         logging.getLogger(__name__).debug('_invalidate_domain_caches failed', exc_info=True)
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        # 为什么：N09 K9 — 缓存键含 tenant；只清 default 会留下他租户脏缓存
+        graph = GraphIndex.load(domain_id, tenant_id=tid)
         graph._built = False
     except Exception:
         logging.getLogger(__name__).debug('_invalidate_domain_caches failed', exc_info=True)
@@ -8651,7 +8960,7 @@ def query_session_archive(
     *,
     limit: int = 3,
     session_id: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Past compacted turns. Not pinned facts — caller asks, we search.
 
@@ -8667,12 +8976,12 @@ def query_session_archive(
         query,
         limit=limit,
         session_id=session_id,
-        tenant_id=tenant_id or "default",
+        tenant_id=tenant_id or DomainRouter.default_tenant(),
     )
 
 
 def sticky_memory_slice(
-    max_chars: Optional[int] = None, *, tenant_id: str = "default"
+    max_chars: Optional[int] = None, *, tenant_id: str = DomainRouter.default_tenant()
 ) -> Dict[str, Any]:
     """User profile + pinned MEMORY.md for Pi session start. Shared char budget.
 
@@ -8757,7 +9066,7 @@ def upsert_pinned_memory(
     key: str = "preference",
     source: str = "agent",
     old_text: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Dict[str, Any]:
     """Write or replace a durable pinned fact. Budget-full same-key merges automatically.
 
@@ -8774,7 +9083,7 @@ def upsert_pinned_memory(
         write_memory,
     )
 
-    tid = (tenant_id or "default").strip() or "default"
+    tid = (tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
     body = (content or "").strip()
     needle = (old_text or "").strip()
     if needle:
@@ -15789,6 +16098,18 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_fact_revision_suite,
     validate_gateway_response,
 )
+from core.harness.knowledge_pipeline.unified_audit_view import (  # noqa: boundary
+    evaluate_unified_audit_view_gate,
+    list_unified_audit_events,
+    run_unified_audit_view_suite,
+)
+from core.harness.knowledge_pipeline.unified_audit_bus import (  # noqa: boundary
+    append_unified_audit_event,
+    evaluate_unified_audit_bus_gate,
+    list_unified_audit_bus_events,
+    materialize_unified_audit_from_view,
+    run_unified_audit_bus_suite,
+)
 from core.harness.knowledge_pipeline.fact_projector import project_facts_to_graph  # noqa: boundary
 from core.harness.knowledge_pipeline.object_set import ObjectSetRequest  # noqa: boundary
 from core.harness.knowledge_pipeline.link_traverse import LinkTraverseRequest  # noqa: boundary
@@ -16723,6 +17044,208 @@ def evaluate_fact_revision_action_bridge_gate(suite: dict | None = None) -> dict
     return evaluate_revision_action_bridge_gate(suite)
 
 
+async def list_fact_unified_audit_events(
+    *,
+    tenant_id: str,
+    streams: str = "",
+    package_id: str = "",
+    action_id_prefix: str = "",
+    entity_type: str = "",
+    entity_id: str = "",
+    domain_id: str = "",
+    limit: int = 100,
+) -> dict:
+    """CoreFacade：N24 多源统一审计汇合视图（含 ActionStore；非 certified）。
+
+    Args:
+        tenant_id: 租户。
+        streams: 逗号分隔流名；空则默认多流。
+        package_id: Package 流可选过滤。
+        action_id_prefix: Action 流可选前缀。
+        entity_type: revision 流可选实体类型。
+        entity_id: revision 流可选实体 ID。
+        domain_id: ActionStore 流可选域过滤。
+        limit: 最大条数。
+
+    Returns:
+        汇合事件字典（certified 恒 false）。
+    """
+    stream_list = [p.strip() for p in (streams or "").split(",") if p.strip()] or None
+    return await list_unified_audit_events(
+        tenant_id=tenant_id,
+        streams=stream_list,
+        package_id=package_id,
+        action_id_prefix=action_id_prefix,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        domain_id=domain_id,
+        limit=limit,
+        fact_ledger=get_fact_ledger(),
+    )
+
+
+async def run_fact_unified_audit_view_suite(
+    *,
+    tenant_id: str = "n24-unified-audit-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N24 统一审计视图套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_unified_audit_view_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_unified_audit_view_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N24 统一审计视图门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_unified_audit_view_gate(suite)
+
+
+def append_fact_unified_audit_event(
+    *,
+    tenant_id: str,
+    event_id: str,
+    stream: str,
+    event_type: str,
+    occurred_at: float = 0.0,
+    actor: str = "",
+    subject: str = "",
+    refs: dict | None = None,
+    payload: dict | None = None,
+) -> dict:
+    """CoreFacade：追加统一审计总线事件（幂等；非 ActionStore 合并）。
+
+    Args:
+        tenant_id: 租户。
+        event_id: 事件主键。
+        stream: 源流水线名。
+        event_type: 事件类型。
+        occurred_at: 发生时间。
+        actor: 操作者。
+        subject: 主体。
+        refs: 引用。
+        payload: 载荷。
+
+    Returns:
+        事件字典（certified 无关；幂等命中带 idempotent_hit）。
+    """
+    return append_unified_audit_event(
+        tenant_id=tenant_id,
+        event_id=event_id,
+        stream=stream,
+        event_type=event_type,
+        occurred_at=occurred_at,
+        actor=actor,
+        subject=subject,
+        refs=refs,
+        payload=payload,
+    )
+
+
+def list_fact_unified_audit_bus_events(
+    *,
+    tenant_id: str,
+    stream: str = "",
+    event_type: str = "",
+    limit: int = 100,
+) -> list:
+    """CoreFacade：列出统一审计总线事件（租户隔离）。
+
+    Args:
+        tenant_id: 租户。
+        stream: 可选源流水线过滤。
+        event_type: 可选事件类型。
+        limit: 最大条数。
+
+    Returns:
+        事件列表。
+    """
+    return list_unified_audit_bus_events(
+        tenant_id=tenant_id,
+        stream=stream,
+        event_type=event_type,
+        limit=limit,
+    )
+
+
+async def materialize_fact_unified_audit_bus(
+    *,
+    tenant_id: str,
+    streams: str = "",
+    package_id: str = "",
+    action_id_prefix: str = "",
+    entity_type: str = "",
+    entity_id: str = "",
+    limit: int = 100,
+) -> dict:
+    """CoreFacade：将源三流汇合 materialize 进写总线。
+
+    Args:
+        tenant_id: 租户。
+        streams: 逗号分隔源流水线；空则三流。
+        package_id: Package 可选过滤。
+        action_id_prefix: Action 可选前缀。
+        entity_type: revision 可选实体类型。
+        entity_id: revision 可选实体 ID。
+        limit: 源侧上限。
+
+    Returns:
+        materialize 回执（certified 恒 false）。
+    """
+    stream_list = [p.strip() for p in (streams or "").split(",") if p.strip()] or None
+    return await materialize_unified_audit_from_view(
+        tenant_id=tenant_id,
+        streams=stream_list,
+        package_id=package_id,
+        action_id_prefix=action_id_prefix,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        limit=limit,
+        fact_ledger=get_fact_ledger(),
+    )
+
+
+async def run_fact_unified_audit_bus_suite(
+    *,
+    tenant_id: str = "n24-unified-audit-bus-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N24 统一审计写总线套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总。
+    """
+    return await run_unified_audit_bus_suite(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_fact_unified_audit_bus_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N24 统一审计写总线门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+
+    Returns:
+        gate 结果。
+    """
+    return evaluate_unified_audit_bus_gate(suite)
+
+
 async def fact_ledger_project_to_graph(
     *,
     tenant_id: str,
@@ -16886,7 +17409,7 @@ async def wake_agent_stop() -> dict:
     agent.stop()
     return {"running": False}
 
-def cross_validation_verify(output: dict, *, domain_id: str = "default") -> dict:
+def cross_validation_verify(output: dict, *, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> dict:
     """Run CrossValidationGate semantic verification (equipment/process/quality).
 
     Args:

@@ -18,16 +18,44 @@ import time as _time
 import json as _json
 
 import asyncio
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
 router = APIRouter(tags=["wiki-ontology-engine"])
 
 
+def _graph_tenant() -> str:
+    """Resolve tenant for GraphIndex loads in this router (N09 K25)."""
+    from core.harness.knowledge.context_bus import _resolve_graph_tenant
+    return _resolve_graph_tenant()
+
+
+def _kb_domain() -> str:
+    """Default KB domain for request fallbacks (N09 K43)."""
+    from core.harness.knowledge.domain_router import get_domain_router
+
+    return get_domain_router().default_kb_domain()
+
+
+def _req_domain_id(req: Any, *, default: str = "") -> str:
+    """Extract domain_id from request body with KB domain fallback.
+
+    Args:
+        req: 请求体 dict 或其它。
+        default: 显式默认；空则用 ``_kb_domain()``。
+    """
+    fb = default or _kb_domain()
+    if isinstance(req, dict):
+        return str(req.get("domain_id") or fb)
+    return fb
+
+
+
 
 @router.post("/engine/process", response_model=Dict[str, Any])
 
-async def ontology_engine_process(req: dict, collection: str = "default"):
+async def ontology_engine_process(req: dict, collection: str = DomainRouter.default_collection()):
 
     """本体引擎处理：单文档 → 本体实例。
 
@@ -36,7 +64,7 @@ async def ontology_engine_process(req: dict, collection: str = "default"):
         collection: collection 参数。
     """
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     text = req.get("text", "") if isinstance(req, dict) else ""
 
@@ -72,7 +100,7 @@ async def ontology_engine_process(req: dict, collection: str = "default"):
 
 @router.post("/engine/process-and-write", response_model=Dict[str, Any])
 
-async def ontology_engine_process_and_write(req: dict, collection: str = "default"):
+async def ontology_engine_process_and_write(req: dict, collection: str = DomainRouter.default_collection()):
 
     """本体引擎 → 实例 → 自动写 Wiki 页面。
 
@@ -81,7 +109,7 @@ async def ontology_engine_process_and_write(req: dict, collection: str = "defaul
         collection: collection 参数。
     """
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     text = req.get("text", "") if isinstance(req, dict) else ""
 
@@ -177,7 +205,7 @@ async def cleanup_cross_domain_nodes(domain_id: str):
 
 
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
 
 
@@ -1060,7 +1088,7 @@ def _extract_keywords_light(text: str) -> set:
 
 
 
-def _get_cached_vector(title: str, *, collection_id: str = "default") -> list:
+def _get_cached_vector(title: str, *, collection_id: str = DomainRouter.default_collection()) -> list:
 
     """Read cached embedding vector from vectors.json. Returns None if not found."""
 
@@ -1279,7 +1307,7 @@ async def ontology_engine_parse(req: dict):
 
     fmt = req.get("format", "txt") if isinstance(req, dict) else "txt"
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
 
 
@@ -1353,7 +1381,7 @@ async def ontology_engine_parse(req: dict):
 
 @router.post("/engine/parse-and-process", response_model=Dict[str, Any])
 
-async def ontology_engine_parse_and_process(req: dict, collection: str = "default"):
+async def ontology_engine_parse_and_process(req: dict, collection: str = DomainRouter.default_collection()):
 
     """解析文档 → 结构化Chunk → 本体引擎 → 自动写Wiki页面。
 
@@ -1372,7 +1400,7 @@ async def ontology_engine_parse_and_process(req: dict, collection: str = "defaul
 
     fmt = req.get("format", "txt") if isinstance(req, dict) else "txt"
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     auto_write = bool(req.get("auto_write", False)) if isinstance(req, dict) else False
 
@@ -1474,7 +1502,7 @@ async def simulate_state_transitions(req: dict):
         req: req 参数。
     """
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     raw_instances = req.get("instances", []) if isinstance(req, dict) else []
 
@@ -1623,7 +1651,7 @@ async def simulate_scenarios(req: dict):
         req: req 参数。
     """
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     raw_instances = req.get("instances", []) if isinstance(req, dict) else []
 
@@ -1884,10 +1912,15 @@ async def get_cross_domain_stats():
 
     sharded = get_sharded_graph()
 
-    # Load all domains
+    # Load probe domains from DomainRouter registry (no call-site domain literals)
+    from core.harness.knowledge.domain_router import get_domain_router
 
-    for did in ["ai-knowledge", "default", "ship-design"]:
-
+    _r = get_domain_router()
+    probe = [_r.default_kb_domain(), _r.default_graph_domain()]
+    for did in _r.list_domains():
+        if did not in probe:
+            probe.append(did)
+    for did in probe:
         sharded.get_shard(did)
 
     return {
@@ -1914,7 +1947,7 @@ async def get_graph_stats(domain_id: str):
 
     from core.api.core_facade import GraphIndex, attach_ontology_api, ontology_api_from_graph_health
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     base = graph.stats()
 
@@ -1938,7 +1971,7 @@ async def cross_source_resolve(req: dict):
         req: req 参数。
     """
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     raw_a = req.get("instances_a", []) if isinstance(req, dict) else []
 
@@ -2008,7 +2041,7 @@ async def resolve_entities(req: dict):
         req: req 参数。
     """
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     raw_instances = req.get("instances", []) if isinstance(req, dict) else []
 
@@ -2200,7 +2233,7 @@ async def graph_traverse(req: dict):
         req: req 参数。
     """
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     start_entity = req.get("start_entity", "") if isinstance(req, dict) else ""
 
@@ -2224,7 +2257,7 @@ async def graph_traverse(req: dict):
 
 
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     if len(graph) == 0:
 
@@ -2282,7 +2315,7 @@ async def submit_feedback(req: dict):
 
     helpful = req.get("is_helpful") if isinstance(req, dict) else None
 
-    domain = req.get("domain_id", "default") if isinstance(req, dict) else "default"
+    domain = (req.get("domain_id") or DomainRouter.default_graph_domain()) if isinstance(req, dict) else DomainRouter.default_graph_domain()
 
     record_feedback(session_id=sid, query_text=q, rating=rating, is_helpful=helpful, domain_id=domain)
 
@@ -2382,7 +2415,7 @@ async def detect_knowledge_gaps_endpoint(req: dict):
         req: req 参数。
     """
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     queries = req.get("queries", []) if isinstance(req, dict) else []
 
@@ -2418,7 +2451,7 @@ async def process_from_datasource(req: dict):
 
     source_id = req.get("source_id", "") if isinstance(req, dict) else ""
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
 
 
@@ -2486,7 +2519,7 @@ async def run_knowledge_synthesis(req: dict):
         req: req 参数。
     """
 
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
 
     from core.api.core_facade import GraphIndex
 
@@ -2494,7 +2527,7 @@ async def run_knowledge_synthesis(req: dict):
 
 
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     if len(graph) == 0:
 
@@ -2531,7 +2564,7 @@ async def create_graph_snapshot(domain_id: str, label: str = ""):
 
     from core.api.core_facade import GraphIndex
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     if len(graph) == 0:
 
@@ -2556,7 +2589,7 @@ async def list_graph_snapshots(domain_id: str):
     """
     from core.api.core_facade import GraphIndex
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     return {"domain_id": domain_id, "snapshots": graph.list_snapshots()}
 
@@ -2582,7 +2615,7 @@ async def restore_graph_snapshot(domain_id: str, req: dict):
 
     from core.api.core_facade import GraphIndex
 
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
 
     result = graph.restore_snapshot(snapshot_id)
 
@@ -2736,7 +2769,7 @@ async def run_graph_inference(req: dict):
     Args:
         req: req 参数。
     """
-    domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
+    domain_id = _req_domain_id(req)
     do_apply = bool(req.get("apply")) if isinstance(req, dict) else False
 
     from core.api.core_facade import load_ontology_from_yaml
@@ -2750,7 +2783,7 @@ async def run_graph_inference(req: dict):
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     domain = load_ontology_from_yaml(str(ont_path))
-    graph = GraphIndex.load(domain_id)
+    graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
     if len(graph) == 0:
         raise HTTPException(status_code=404, detail=f"Graph for '{domain_id}' is empty")
 
@@ -2924,7 +2957,7 @@ async def sync_search_index(domain_id: str):
     """
     try:
         from core.api.core_facade import GraphIndex
-        graph = GraphIndex.load(domain_id)
+        graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
         node_count = len(graph._nodes)
         class_count = len(graph.get_entity_classes())
         if node_count == 0:
@@ -2979,7 +3012,7 @@ async def sync_search_index_all():
             domain_id = _os.path.splitext(_os.path.basename(db_file))[0]
             try:
                 from core.api.core_facade import GraphIndex
-                graph = GraphIndex.load(domain_id)
+                graph = GraphIndex.load(domain_id, tenant_id=_graph_tenant())
                 node_count = len(graph._nodes)
                 if node_count == 0:
                     continue

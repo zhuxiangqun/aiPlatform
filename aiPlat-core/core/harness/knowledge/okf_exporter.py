@@ -27,6 +27,8 @@ OKF 文件结构:
 """
 
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import json as _json
@@ -93,10 +95,11 @@ class OKFExporter:
 
     async def export(
         self,
-        domain_id: str = "ai-knowledge",
+        domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN,
         *,
         incremental: bool = False,
         output_dir: str = "",
+        tenant_id: str = "",
     ) -> Dict[str, Any]:
         """导出域本体为 OKF 格式.
 
@@ -104,6 +107,7 @@ class OKFExporter:
             domain_id: 域ID
             incremental: 是否增量导出 (仅导出上次导出后变更的实体)
             output_dir: 输出目录 (留空自动生成)
+            tenant_id: 租户；空则 resolve（N09 K34）
 
         Returns:
             {"exported": int, "skipped": int, "total": int, "dir": str}
@@ -123,7 +127,7 @@ class OKFExporter:
                 logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # 从 GraphIndex 加载实体
-        entities = await self._load_entities(domain_id)
+        entities = await self._load_entities(domain_id, tenant_id=tenant_id)
         if not entities:
             return {"exported": 0, "skipped": 0, "total": 0, "dir": str(out), "error": "No entities found"}
 
@@ -166,15 +170,21 @@ class OKFExporter:
             "dir": str(out),
         }
 
-    async def _load_entities(self, domain_id: str) -> List[OKFEntity]:
-        """从 GraphIndex 加载实体并转换为 OKF 格式."""
+    async def _load_entities(self, domain_id: str, *, tenant_id: str = "") -> List[OKFEntity]:
+        """从 GraphIndex 加载实体并转换为 OKF 格式.
+
+        Args:
+            domain_id: domain 标识。
+            tenant_id: 租户；空则 resolve（N09 K34）。
+        """
         entities = []
 
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.harness.knowledge.context_bus import _resolve_graph_tenant
 
-            gi = GraphIndex(domain_id)
-            gi.load(load_nodes=True)
+            tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+            gi = GraphIndex.load(domain_id, tenant_id=tid)
 
             for nid, node in gi._nodes.items():
                 # 提取别名 (从 entity_name 推断)

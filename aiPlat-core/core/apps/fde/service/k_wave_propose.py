@@ -7,6 +7,7 @@ Open drafts are not duplicated. Drafts older than 30 days expire without apply.
 
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
+from core.harness.knowledge.domain_router import DomainRouter
 
 import json
 import logging
@@ -152,7 +153,7 @@ def _open_keys(rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
 
 
 async def enqueue_repeat_failure_proposals(
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     *,
     writer: Optional[Callable[..., Any]] = None,
     now: Optional[float] = None,
@@ -273,7 +274,7 @@ def _gap_change(case: Any, *, class_name: str) -> Dict[str, Any]:
     }
 
 
-def preview_schema_gaps(domain_id: str = "it-ops", *, limit: int = 5) -> Dict[str, Any]:
+def preview_schema_gaps(domain_id: str = DomainRouter.it_ops_domain(), *, limit: int = 5) -> Dict[str, Any]:
     """Read-only Diff for schema_gap cases. Does not create proposals or write YAML.
 
     Args:
@@ -334,7 +335,7 @@ def preview_schema_gaps(domain_id: str = "it-ops", *, limit: int = 5) -> Dict[st
 
 
 async def draft_schema_gaps(
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     *,
     writer: Optional[Callable[..., Any]] = None,
     limit: int = 5,

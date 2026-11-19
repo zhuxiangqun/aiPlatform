@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from core.utils.math_utils import cosine_similarity
 from core.utils.math_utils import cosine_similarity
+from core.harness.knowledge.domain_router import DomainRouter
 """
 Semantic Cache — 多级缓存系统降低 LLM API 成本。
 
@@ -240,7 +241,7 @@ class SemanticCache:
 
     # ── Public API ────────────────────────────────────────────────────────
 
-    async def get(self, query: str, domain_id: str = "default") -> Optional[Dict[str, Any]]:
+    async def get(self, query: str, domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN) -> Optional[Dict[str, Any]]:
         """Try L1 → L2(Latent) → L3(Redis).
 
         Args:

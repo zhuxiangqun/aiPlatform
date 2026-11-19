@@ -9,6 +9,9 @@ POST /re-patch        — 回补修正后重新三问
 """
 from __future__ import annotations
 
+from core.api.core_facade import DomainRouter
+
+from apps.fde.api.graph_tenant import fde_graph_tenant
 import logging
 import os
 import uuid
@@ -78,7 +81,7 @@ async def rapid_insight_upload(
         DomainRouter().register_domain(domain_id, {
             "name": f"快速行业认知-{industry_name}",
             "description": f"临时域：{industry_name} 行业知识图谱",
-            "collection_id": "default",
+            "collection_id": DomainRouter.default_collection(),
             "namespace": f"http://aiplat.local/ontology/{domain_id}/",
             "maturity": "seeding",
             "maturity_score": 0.0,
@@ -227,7 +230,7 @@ async def rapid_insight_answer(body: Dict[str, Any]):
 
         for d in [domain_id] + aligned:
             try:
-                g = GraphIndex.load(d)
+                g = GraphIndex.load(d, tenant_id=fde_graph_tenant())
                 if g._nodes:
                     for e in expected:
                         if e.lower() not in answer_lower:
@@ -296,7 +299,7 @@ def _compute_reuse_rate(session: dict) -> dict:
         from core.api.core_facade import GraphIndex
         from core.apps.fde.service.rapid_insight_service import calculate_reuse_rate
         domain_id = session.get("domain_id", "")
-        tenant_id = session.get("tenant_id", "default")
+        tenant_id = session.get("tenant_id") or DomainRouter.default_tenant()
         g = GraphIndex.load(domain_id, tenant_id)
         return calculate_reuse_rate(g)
     except Exception:

@@ -14,6 +14,7 @@ import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from core.api.core_facade import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -257,7 +258,7 @@ def _cache_stats() -> Dict[str, Any]:
         return {"available": False, "reason": str(e)}
 
 
-def kb_cache_stats(*, tenant_id: str = "default") -> Dict[str, Any]:
+def kb_cache_stats(*, tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
     """Public cache stats for ``GET /platform/kb/cache-stats`` (KB_HEALTH §3.2.3).
 
     Args:
@@ -294,7 +295,7 @@ def _kb_metrics(tenant_id: str = "", hours: int = 720) -> Dict[str, Any]:
         return {"available": False, "reason": str(e)}
 
 
-def _billing_snapshot(tenant_id: str = "default") -> Dict[str, Any]:
+def _billing_snapshot(tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
     try:
         from datetime import datetime as _dt
 
@@ -302,7 +303,7 @@ def _billing_snapshot(tenant_id: str = "default") -> Dict[str, Any]:
 
         now = _dt.now()
         db = get_platform_db()
-        breakdown = db.get_monthly_breakdown(tenant_id or "default", now.year, now.month)
+        breakdown = db.get_monthly_breakdown(tenant_id or DomainRouter.default_tenant(), now.year, now.month)
         total_cents = sum(int(r.get("cost") or r.get("cost_cents") or 0) for r in (breakdown or []))
         tokens = sum(int(r.get("tokens") or r.get("tokens_used") or 0) for r in (breakdown or []))
         return {
@@ -444,7 +445,7 @@ def _optional_cny_saved(cache: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 def build_delivery_cost_report(
     *,
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
     window_hours: int = 720,
     project_id: str = "",
 ) -> Dict[str, Any]:
@@ -502,7 +503,7 @@ def build_delivery_cost_report(
     return {
         "ok": True,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "tenant_id": tenant_id or "default",
+        "tenant_id": tenant_id or DomainRouter.default_tenant(),
         "project_id": project_id or "",
         "window_hours": window_hours,
         "api_calls": {

@@ -51,6 +51,8 @@ from .conformance_pack_routes import router as _conformance_pack_router
 from .implementer_semantics_routes import router as _implementer_semantics_router
 from .source_policy_routes import router as _source_policy_router
 from .fact_state_routes import router as _fact_state_router
+from .revision_restore_routes import router as _revision_restore_router
+from .unified_audit_routes import router as _unified_audit_router
 from .rapid_insight import router as _rapid_insight_router
 from .fde_phase4 import router as _phase4_router
 from .fde_slice import router as _slice_router
@@ -98,6 +100,8 @@ router.include_router(_conformance_pack_router, prefix="/fde")
 router.include_router(_implementer_semantics_router, prefix="/fde")
 router.include_router(_source_policy_router, prefix="/fde")
 router.include_router(_fact_state_router, prefix="/fde")
+router.include_router(_revision_restore_router, prefix="/fde")
+router.include_router(_unified_audit_router, prefix="/fde")
 router.include_router(_rapid_insight_router, prefix="/fde")
 router.include_router(_phase4_router, prefix="/fde")
 router.include_router(_slice_router, prefix="/fde")

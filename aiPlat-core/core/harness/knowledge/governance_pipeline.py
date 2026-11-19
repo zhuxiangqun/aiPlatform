@@ -28,6 +28,7 @@ import time as _time
 from dataclasses import dataclass, field
 
 from typing import Any, Dict, List, Optional
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -97,6 +98,8 @@ async def run_cycle(
 
     auto_publish: bool = False,
 
+    tenant_id: str = DomainRouter.default_tenant(),
+
 ) -> GovernanceCycleResult:
 
     """Run the 6-step governance cycle for a domain.
@@ -105,9 +108,12 @@ async def run_cycle(
         domain_id: domain 标识。
         steps: steps 参数。
         auto_publish: auto_publish 参数。
+        tenant_id: 租户；透传 maturity/GraphIndex（N09 K19）。
     """
 
     import time
+
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
 
     cycle_id = f"gov-cycle-{domain_id}-{int(time.time())}"
 
@@ -133,9 +139,10 @@ async def run_cycle(
 
             import asyncio as _aio
 
+            # 为什么：N09 K19 — 治理步骤读图/成熟度须带租户，禁止默认 GraphIndex
             if step_name == "scenario":
 
-                await _aio.to_thread(_run_scenario_check, domain_id, step)
+                await _aio.to_thread(_run_scenario_check, domain_id, step, tid)
 
             elif step_name == "modeling":
 
@@ -147,11 +154,11 @@ async def run_cycle(
 
             elif step_name == "quality":
 
-                await _aio.to_thread(_run_quality_check, domain_id, step)
+                await _aio.to_thread(_run_quality_check, domain_id, step, tid)
 
             elif step_name == "publishing":
 
-                await _aio.to_thread(_run_publishing_check, domain_id, step, auto_publish)
+                await _aio.to_thread(_run_publishing_check, domain_id, step, auto_publish, tid)
 
             elif step_name == "feedback":
 
@@ -233,9 +240,14 @@ async def run_cycle(
 
 
 
-async def run_all_domains() -> List[GovernanceCycleResult]:
 
-    u"""Run governance cycle for all registered domains."""
+async def run_all_domains(*, tenant_id: str = DomainRouter.default_tenant()) -> List[GovernanceCycleResult]:
+
+    """Run governance cycle for all registered domains.
+
+    Args:
+        tenant_id: 租户；透传 run_cycle（N09 K19）。
+    """
 
     from core.harness.knowledge.domain_router import DomainRouter
 
@@ -245,15 +257,15 @@ async def run_all_domains() -> List[GovernanceCycleResult]:
 
     results = []
 
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+
     for did in domains:
 
-        result = await run_cycle(did)
+        result = await run_cycle(did, tenant_id=tid)
 
         results.append(result)
 
     return results
-
-
 
 
 
@@ -325,13 +337,13 @@ def _save_cycle(result: GovernanceCycleResult):
 
 
 
-def _run_scenario_check(domain_id: str, step: StepResult):
+def _run_scenario_check(domain_id: str, step: StepResult, tenant_id: str = DomainRouter.default_tenant()):
 
     try:
 
         from core.harness.knowledge.domain_maturity import compute_domain_maturity
 
-        maturity = compute_domain_maturity(domain_id)
+        maturity = compute_domain_maturity(domain_id, tenant_id=tenant_id)
 
         step.metrics = {"maturity_score": maturity["maturity_score"],
 
@@ -455,13 +467,13 @@ def _run_mapping_check(domain_id: str, step: StepResult):
 
 
 
-def _run_quality_check(domain_id: str, step: StepResult):
+def _run_quality_check(domain_id: str, step: StepResult, tenant_id: str = DomainRouter.default_tenant()):
 
     try:
 
         from core.harness.knowledge.domain_maturity import compute_domain_maturity
 
-        maturity = compute_domain_maturity(domain_id)
+        maturity = compute_domain_maturity(domain_id, tenant_id=tenant_id)
 
         dims = maturity.get("dimensions", {})
 
@@ -485,13 +497,13 @@ def _run_quality_check(domain_id: str, step: StepResult):
 
 
 
-def _run_publishing_check(domain_id: str, step: StepResult, auto_publish: bool):
+def _run_publishing_check(domain_id: str, step: StepResult, auto_publish: bool, tenant_id: str = DomainRouter.default_tenant()):
 
     try:
 
         from core.harness.knowledge.domain_maturity import compute_domain_maturity
 
-        maturity = compute_domain_maturity(domain_id)
+        maturity = compute_domain_maturity(domain_id, tenant_id=tenant_id)
 
         step.metrics = {"last_published": "auto" if auto_publish else "manual",
 

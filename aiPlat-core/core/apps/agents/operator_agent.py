@@ -15,6 +15,8 @@ Types for automated workflow triggering.
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import json
 import logging
 import os
@@ -75,7 +77,7 @@ class OperatorAgent(BaseAgent):  # noqa: agent-subclass-approved — §55: genui
         _t0 = time.time()
         vars0 = dict(context.variables or {})
         run_context = vars0.get("_run_context")
-        session_id = str(context.session_id or "default")
+        session_id = str(context.session_id or DomainRouter.default_session())
 
         question = ""
         if context.messages:
@@ -183,7 +185,7 @@ class OperatorAgent(BaseAgent):  # noqa: agent-subclass-approved — §55: genui
                         user_id=user_id,
                         agent_id="operator_agent",
                         agent_args={
-                            "_tenant_id": vars0.get("tenant_id", "default"),
+                            "_tenant_id": vars0.get("tenant_id") or DomainRouter.default_tenant(),
                             "_approval_required": True,
                         },
                     )

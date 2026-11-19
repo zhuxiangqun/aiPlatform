@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3717
+total_capabilities: 3871
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -955,6 +955,7 @@ scan_hash: 8f9548ec24f4
 | fail_open_governance_status | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
 | coerce_execution_type | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
 | execution_type_fail_closed | `core/harness/registry/execution_type_policy.py` | ✅ | 自动同步 | 已合入 |
+| load_agent_types / load_entity_registry（registry_loader） | `core/harness/registry/registry_loader.py` | ✅ | Entity Registry 单一真相源（agent/skill/mcp/workflow/tool/domain types）；arch_guard §87/§88。生成物适用：已接线（Harness 横切） | 已合入 |
 | load_repo_health_thresholds_from_duty | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
 | list_health_snapshots | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
 | default_scan_roots | `core/harness/meta/repo_health_scan.py` | ✅ | 自动同步 | 已合入 |
@@ -1211,9 +1212,92 @@ scan_hash: 8f9548ec24f4
 | **Revision Audit（v4.3.1 N24 I2）** | `list_revision_audit` / `run_revision_audit_suite` / `evaluate_revision_audit_gate` + Facade list/suite/gate | ✅ | archive/restore 写入 append-only `revision_audit`；租户前置过滤；门槛门 certified 恒 false。证据 `phase2-revision-audit-evidence.md`。**未宣称** 回滚 UI/Package+Action 统一总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Restore Approval（v4.3.1 N24 I3）** | `request_revision_restore` / `approve_revision_restore` / `reject_revision_restore` / `run_restore_approval_suite` / `evaluate_restore_approval_gate` + Facade | ✅ | 审批人≠请求人；批准才执行 restore；门槛门 certified 恒 false。证据 `phase2-restore-approval-evidence.md`。**未宣称** 回滚 UI/Package+Action 统一总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Revision→Action Bridge（v4.3.1 N24 I4）** | `bridge_revision_audit_to_action` / `list_revision_action_bridges` / `run_revision_action_bridge_suite` / `evaluate_revision_action_bridge_gate` + Facade | ✅ | 审批式 restore 决策幂等桥接 ActionExecution；门槛门 certified 恒 false。证据 `phase2-revision-action-bridge-evidence.md`。**未宣称** 回滚 UI/全量总线合并 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Revision Restore HTTP（v4.3.1 N24 J1）** | FDE `/revision-restore/*` 薄路由 → CoreFacade（requests/approve/reject/audit/bridges/suite/gate） | ✅ | 平台 HTTP 暴露审批式 restore 与审计/桥接查询；门槛门 certified 恒 false。证据 `phase2-revision-restore-http-evidence.md`。**未宣称** 管理端回滚 UI / 全量总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Revision Restore UI（v4.3.1 N24 J2）** | 知识工厂 `RevisionRestorePanel` → J1 HTTP（requests/approve/reject/audit/suite/gate） | ✅ | 管理端审批式 restore 薄面板；UI 禁自批；门槛门 certified 恒 false。证据 `phase2-revision-restore-ui-evidence.md`。**未宣称** Package+Action 全量总线 / N24 certified。生成物适用：已接线（管理端展示） | 本批 |
+| **Unified Audit View（v4.3.1 N24 J3）** | `list_unified_audit_events` / suite / gate + Facade + FDE `/unified-audit*` | ✅ | Package+ActionExecution+revision_audit 只读汇合；门槛门 certified 恒 false。证据 `phase2-unified-audit-view-evidence.md`。**未宣称** 写总线表 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Unified Audit UI（v4.3.1 N24 J4）** | 知识工厂 `UnifiedAuditPanel` → J3 HTTP（list/filter/suite/gate） | ✅ | 管理端只读统一审计薄面板；UI 诚实锁；门槛门 certified 恒 false。证据 `phase2-unified-audit-ui-evidence.md`。**未宣称** 写总线表 / N24 certified。生成物适用：已接线（管理端展示） | 本批 |
+| **Unified Audit Bus（v4.3.1 N24 J5）** | `append_unified_audit_event` / materialize / suite / gate + Facade + FDE `/unified-audit/append|bus|materialize` | ✅ | append-only 写总线；revision_audit 热路径；门槛门 certified 恒 false。证据 `phase2-unified-audit-bus-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Unified Audit Hotpath（v4.3.1 N24 J6）** | `publish_package` / `persist_execution` best-effort → bus；suite 增 package/action hotpath | ✅ | Package/Action 热路径写总线；与 materialize 幂等共存；门槛门 certified 恒 false。证据 `phase2-unified-audit-hotpath-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（生产写路径） | 本批 |
+| **Unified Audit ActionStore（v4.3.1 N24 J7）** | `ActionStore.insert_audit` → bus；view/materialize 含 `action_store` 流 | ✅ | ActionStore.action_audit 汇入统一审计；租户经 params.tenant_id 过滤；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（生产写路径） | 本批 |
+| **ActionStore tenant_id（v4.3.1 N24 J8）** | `action_audit.tenant_id` 物理列 + `list_audit(tenant_id=)` 召回前过滤 | ✅ | CREATE/ALTER 迁移；insert 写列；view 用物理过滤（空列回退 params）；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-tenant-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（生产写/读路径） | 本批 |
+| **ActionStore tenant backfill（v4.3.1 N24 J9）** | `ActionStore.backfill_tenant_id` + `initialize` 幂等接线 | ✅ | 空物理列从 `params.tenant_id` 回填；无 params 租户不猜测；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-tenant-backfill-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（initialize） | 本批 |
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户隔离加深（v4.3.1 N09 partial）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | query/get_source/gateway/verify 四探针；门槛门 certified 恒 false。证据 `phase2-cross-tenant-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **跨租户 ObjectSet/UnifiedAudit（v4.3.1 N09 K1）** | 同上套件增 `object_set_no_leak` / `unified_audit_no_leak` | ✅ | 临时 ObjectType + ActionStore→统一审计视图；六探针；certified 恒 false。证据 `phase2-cross-tenant-objectset-audit-evidence.md`。**未宣称** Wiki/KB 全入口 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **跨租户 Wiki/KB（v4.3.1 N09 K2）** | 同上套件增 `kb_retrieve_no_leak` / `wiki_retrieve_no_leak` | ✅ | KB per-tenant sqlite 路径 + Wiki retriever/query tenant mismatch 硬门；八探针；certified 恒 false。证据 `phase2-cross-tenant-wiki-kb-evidence.md`。**未宣称** GraphRAG/Wiki collection ACL / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **跨租户 GraphRAG（v4.3.1 N09 K3）** | `GraphRAGRetriever.retrieve/_vector_search(tenant_id=)` + 套件 `graphrag_no_leak` | ✅ | 显式 tenant 只查该租户 KB，禁 default/wiki 回退；九探针；certified 恒 false。证据 `phase2-cross-tenant-graphrag-evidence.md`。**未宣称** GraphIndex 租户/调用方全量透传 / N09 certified。生成物适用：已接线（经 Facade 套件） | 本批 |
+| **跨租户 GraphRAG caller 透传（v4.3.1 N09 K4）** | `sys_crag_retrieve` / `locate_via_ontology_async` / `governance_locate_view` / HTTP locate → `retrieve(tenant_id=)` + 套件 `graphrag_caller_passthrough` | ✅ | CRAG/治理入口透传租户到 GraphRAG 向量层；十探针；certified 恒 false。证据 `phase2-cross-tenant-graphrag-caller-evidence.md`。**未宣称** GraphIndex 图节点租户 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **跨租户 GraphIndex 图层（v4.3.1 N09 K5）** | `GraphRAGRetriever._find_node/_extract_subgraph/_extract_query_entities(tenant_id=)` → `GraphIndex.load(..., tenant_id=)` + 套件 `graphindex_no_leak` | ✅ | 图层按租户分库加载；十一探针；certified 恒 false。证据 `phase2-cross-tenant-graphindex-evidence.md`。**未宣称** 全写入路径强制 tenant / N09 certified。生成物适用：已接线（经 Facade 套件） | 本批 |
+| **跨租户图写入强制（v4.3.1 N09 K6）** | `write_extraction_to_graph_index(..., tenant_id=)` 必填 + confirm 透传 + 套件 `graph_write_tenant` | ✅ | 空 tenant → `tenant_id_required`；写入落到租户分库；十二探针；certified 恒 false。证据 `phase2-cross-tenant-graph-write-evidence.md`。**未宣称** publish/snapshot/跨域写边全量 / N09 certified。生成物适用：已接线（confirm） | 本批 |
+| **跨租户跨域写边/snapshot（v4.3.1 N09 K7）** | `CrossDomainResolver.resolve(tenant_id=)` 必填 + publish/list/rollback snapshot 透传 + `k_wave_arbit` 透传 + 套件 `cross_domain_resolve_tenant` | ✅ | 空 tenant → resolve 拒绝；边/快照按租户分库；十三探针；certified 恒 false。证据 `phase2-cross-tenant-cross-domain-snapshot-evidence.md`。**未宣称** ontology_editor HTTP JWT 强制 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **跨租户 ontology_editor HTTP（v4.3.1 N09 K8）** | `resolve_request_tenant` + `publish`/`list_rule_versions` 注入 → Facade `tenant_id=` | ✅ | 经 `_resolve_identity`（禁裸 header spoof）；证据 `phase2-cross-tenant-ontology-editor-http-evidence.md`。**未宣称** 全 CRUD / N09 certified。生成物适用：已接线（HTTP） | 本批 |
+| **跨租户 ontology_editor class/rollback（v4.3.1 N09 K9）** | rollback HTTP + upsert/delete class → Facade `tenant_id=` + `_invalidate_domain_caches(..., tenant_id=)` | ✅ | 按租户清 GraphIndex 缓存；证据 `phase2-cross-tenant-ontology-editor-crud-evidence.md`。**未宣称** view/monitor 旁路 / N09 certified。生成物适用：已接线（HTTP） | 本批 |
+| **跨租户 ontology_editor view/meta（v4.3.1 N09 K10）** | view upsert/delete + domain meta → Facade `tenant_id=` + `_invalidate_domain_caches(..., tenant_id=)` | ✅ | 证据 `phase2-cross-tenant-ontology-editor-side-crud-evidence.md`。**未宣称** process_monitor 物理 tenant / N09 certified。生成物适用：已接线（HTTP） | 本批 |
+| **跨租户 process_monitor / state_changes（v4.3.1 N09 K11）** | `state_changes.tenant_id` 物理列 + `record_transition`/`process_monitor` 过滤 + monitor HTTP `resolve_request_tenant` | ✅ | 监控库对齐 state_history；证据 `phase2-cross-tenant-process-monitor-evidence.md`。**未宣称** process_instances / engine 写路径强制 / N09 certified。生成物适用：已接线（HTTP） | 本批 |
+| **跨租户 process_instances / OntologyEngine（v4.3.1 N09 K12）** | `process_instances.tenant_id` + orchestrator 过滤 + engine/`record_transition` tenant + process HTTP 透传 | ✅ | 证据 `phase2-cross-tenant-process-instances-evidence.md`。**未宣称** auto_pipeline 强制非 default / N09 certified。生成物适用：已接线（HTTP） | 本批 |
+| **跨租户 auto_ontology_pipeline（v4.3.1 N09 K13）** | ingest/watch `tenant_id` → `auto_ontology_pipeline_for_doc` → `load_engine`/`process_chunks` | ✅ | 证据 `phase2-cross-tenant-auto-ontology-pipeline-evidence.md`。**未宣称** staleness 多租户 KB 路径 / N09 certified。生成物适用：已接线（ingest） | 本批 |
+| **跨租户 staleness/diagnostics（v4.3.1 N09 K14）** | `kb_sqlite_path_for_tenant` + `StalenessMonitor(tenant_id=)` + drift HTTP `tenant_id` | ✅ | 证据 `phase2-cross-tenant-staleness-diagnostics-evidence.md`。**未宣称** cron 全租户枚举 / N09 certified。生成物适用：已接线（diagnostics） | 本批 |
+| **跨租户 staleness cron/health（v4.3.1 N09 K15）** | `list_kb_tenant_ids` + `aggregate_stale_summary` + `auto_rebuild_stale_tenants` → governance cron / system_health | ✅ | 证据 `phase2-cross-tenant-staleness-cron-evidence.md`。**未宣称** N09 certified（garden/file/self_heal 见 K16）。生成物适用：已接线（cron） | 本批 |
+| **跨租户 staleness garden/file/self_heal（v4.3.1 N09 K16）** | AutoGarden/`sys_file_write`/SelfHeal `stale_mark` → `list_kb_tenant_ids` / `StalenessMonitor(tenant_id=)` | ✅ | 证据 `phase2-cross-tenant-staleness-garden-file-heal-evidence.md`。**未宣称** metric 旁路 / N09 certified（diagnostics 身份绑定见 K17）。生成物适用：已接线（garden/file/heal） | 本批 |
+| **跨租户 diagnostics drift 身份绑定（v4.3.1 N09 K17）** | `drift-status`/`drift-rebuild` → `actor_from_http`（禁 query tenant 旁路） | ✅ | 证据 `phase2-cross-tenant-diagnostics-drift-identity-evidence.md`。**未宣称** N09 certified（metric/scoring CRUD 见 K18）。生成物适用：已接线（diagnostics） | 本批 |
+| **跨租户 metric/scoring CRUD（v4.3.1 N09 K18）** | metric/scoring/scenario/governance → `resolve_request_tenant`；`compute`/`evaluate` 按租户 GraphIndex/state_changes | ✅ | 证据 `phase2-cross-tenant-metric-scoring-crud-evidence.md`。**未宣称** N09 certified（governance/maturity 见 K19）。生成物适用：已接线（ontology_editor） | 本批 |
+| **跨租户 governance/maturity（v4.3.1 N09 K19）** | `run_cycle`/`refresh_domain_maturity`/`compute_domain_maturity` → `GraphIndex.load(..., tenant_id=)` | ✅ | 证据 `phase2-cross-tenant-governance-maturity-evidence.md`。**未宣称** N09 certified（ontology quality 见 K20）。生成物适用：已接线（governance） | 本批 |
+| **跨租户 ontology quality（v4.3.1 N09 K20）** | completeness/audit/validator + diagnostics ontology-audit → `GraphIndex.load(..., tenant_id=)` / `actor_from_http` | ✅ | 证据 `phase2-cross-tenant-ontology-quality-evidence.md`。**未宣称** N09 certified（context_bus/health 见 K21）。生成物适用：已接线（diagnostics） | 本批 |
+| **跨租户 context_bus/system_health（v4.3.1 N09 K21）** | `_resolve_graph_tenant` + health `list_kb_tenant_ids` → `GraphIndex.load`/`audit_all_domains` | ✅ | 证据 `phase2-cross-tenant-context-bus-health-evidence.md`。**未宣称** N09 certified（evolver/SECI 见 K22）。生成物适用：已接线（context/health） | 本批 |
+| **跨租户 evolver/SECI/retrieval（v4.3.1 N09 K22）** | SystemEvolver/SECIEngine/orchestrated_retrieval/path_planner/candidate_pool → `GraphIndex.load(..., tenant_id=)` / `_resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-evolver-seci-retrieval-evidence.md`。**未宣称** N09 certified（diagnostician 见 K23）。生成物适用：已接线（evolver/SECI/retrieval） | 本批 |
+| **跨租户 diagnostician/convergence/case/recon（v4.3.1 N09 K23）** | SystemDiagnostician/ConvergenceEngine/OntologyCaseStore/ReconSubgraph.merge_to → `GraphIndex.load(..., tenant_id=)` / `_resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-diagnostician-convergence-evidence.md`。**未宣称** N09 certified（wiki/syscalls 见 K24）。生成物适用：已接线（diagnose/converge/case/recon） | 本批 |
+| **跨租户 wiki/graph syscall（v4.3.1 N09 K24）** | wiki.py GraphIndex + `sys_graph_neighbors` / `sys_graph_validate` → `tenant_id` / `_resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-wiki-graph-syscall-evidence.md`。**未宣称** N09 certified（wiki_ontology_engine 见 K25）。生成物适用：已接线（wiki/graph syscall） | 本批 |
+| **跨租户 wiki_ontology_engine（v4.3.1 N09 K25）** | wiki_ontology_engine `_graph_tenant` → 10× `GraphIndex.load(..., tenant_id=)` | ✅ | 证据 `phase2-cross-tenant-wiki-ontology-engine-evidence.md`。**未宣称** N09 certified（ontology_engine 见 K26）。生成物适用：已接线（wiki ontology engine） | 本批 |
+| **跨租户 ontology_engine（v4.3.1 N09 K26）** | OntologyEngine/`get_graph` 租户缓存键 + shard/cleanup/gap/action/business bridge → `tenant_id` / `_resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-ontology-engine-evidence.md`。**未宣称** N09 certified（builtin_handlers 见 K27）。生成物适用：已接线（ontology engine） | 本批 |
+| **跨租户 builtin_handlers（v4.3.1 N09 K27）** | builtin_handlers `_graph_tenant(params)` → 11× `GraphIndex.load(..., tenant_id=)` | ✅ | 证据 `phase2-cross-tenant-builtin-handlers-evidence.md`。**未宣称** N09 certified（FDE service 见 K28）。生成物适用：已接线（action handlers） | 本批 |
+| **跨租户 FDE service（v4.3.1 N09 K28）** | k_wave_reason/abox/pillars/rapid_insight/governance/clarify → `_resolve_graph_tenant` / `_ri_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-fde-service-evidence.md`。**未宣称** N09 certified（facade/system/infra 见 K29）。生成物适用：已接线（FDE service） | 本批 |
+| **跨租户 facade/system/eval/infra（v4.3.1 N09 K29）** | CoreFacade 残余 + system/wiki_ontology_domains/diagnostics + constraint_validator + dynamic_mapper/rule_validator/semantic_gate → `tenant_id` / `_resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-facade-system-infra-evidence.md`。**未宣称** N09 certified（skills/pipeline 见 K30）。生成物适用：已接线（facade/system/infra） | 本批 |
+| **跨租户 skills/pipeline/router（v4.3.1 N09 K30）** | skills/registry + org_kpi + pipeline_engine + execution router → `_skills_graph_tenant` / `_resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-skills-pipeline-router-evidence.md`。**未宣称** N09 certified（platform FDE API 见 K31）。生成物适用：已接线（skills/pipeline/router） | 本批 |
+| **跨租户 platform FDE API wave1（v4.3.1 N09 K31）** | `fde_graph_tenant` + CoreFacade `resolve_graph_tenant` + action/ask/delivery/dashboard/trends/sessions_compare/governance/rapid_insight → `GraphIndex.load(..., tenant_id=)` | ✅ | 证据 `phase2-cross-tenant-platform-fde-api-evidence.md`。**未宣称** N09 certified（wave2 见 K32）。生成物适用：已接线（platform FDE API wave1） | 本批 |
+| **跨租户 platform FDE API wave2（v4.3.1 N09 K32）** | fde.py/sessions_v2/diagnostics_v2/bootstrap/validate/manuals → `fde_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-platform-fde-api-wave2-evidence.md`。**未宣称** N09 certified（handlers/scripts 见 K33；ctor 见 K34）。生成物适用：已接线（platform FDE API wave2） | 本批 |
+| **跨租户 handlers/scripts（v4.3.1 N09 K33）** | custom_handlers + quick_seed `--tenant` / scaffold 模板 → `tenant_id` / `resolve_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-handlers-scripts-evidence.md`。**未宣称** 域名硬编码消除 / N09 certified。生成物适用：已接线（handlers/scripts） | 本批 |
+| **跨租户 GraphIndex 直构/branch（v4.3.1 N09 K34）** | ontology_branch DB 前缀 + okf/importer/recon/retrieval/validator/wiki/hallucination/doc_quality ctor + FDE API 透传 | ✅ | 证据 `phase2-cross-tenant-graphindex-ctor-evidence.md`。**未宣称** N09 certified；scripts ctor 见 K35。生成物适用：已接线（GraphIndex ctor/branch） | 本批 |
+| **跨租户 scripts GraphIndex 直构（v4.3.1 N09 K35）** | benchmark/seed/scaffold → `--tenant` / `_script_graph_tenant` | ✅ | 证据 `phase2-cross-tenant-scripts-ctor-evidence.md`。**未宣称** N09 certified。生成物适用：已接线（scripts ctor） | 本批 |
+| **跨租户 branch registry（v4.3.1 N09 K36）** | `ontology_branch.py` registry key=`tenant::domain::branch`（default 兼容 legacy）+ FDE list 透传 | ✅ | 证据 `phase2-cross-tenant-branch-registry-evidence.md`。**未宣称** N09 certified；YAML 路径见 K37。生成物适用：已接线（branch registry） | 本批 |
+| **跨租户 branch YAML（v4.3.1 N09 K37）** | `_branch_yaml_path` / fork·merge 写租户前缀 YAML（可读共享引导） | ✅ | 证据 `phase2-cross-tenant-branch-yaml-evidence.md`。**未宣称** N09 certified。生成物适用：已接线（branch YAML） | 本批 |
+| **跨租户 FDE tracking domain（v4.3.1 N09 K38）** | platform FDE API `fde_graph_domain()` → CoreFacade `get_domain_router().tracking_domain()` | ✅ | 证据 `phase2-cross-tenant-fde-tracking-domain-evidence.md`。**未宣称** 全域域名硬编码清零 / N09 certified。生成物适用：已接线（FDE tracking domain） | 本批 |
+| **跨租户 FDE terms/atom/kb domain（v4.3.1 N09 K39）** | `DomainRouter.terms_domain/knowledge_atom_domain/default_kb_domain` + `fde_terms_domain`/`fde_atom_domain`/`fde_kb_domain` | ✅ | 证据 `phase2-cross-tenant-fde-terms-atom-domain-evidence.md`。**未宣称** N09 certified；harness 见 K40。生成物适用：已接线（FDE terms/atom/kb） | 本批 |
+| **跨租户 harness atom/kb/terms domain（v4.3.1 N09 K40）** | SECI/convergence/diagnostician/evolver/context_bus/pipeline/wiki/skills → DomainRouter helpers | ✅ | 证据 `phase2-cross-tenant-harness-atom-domain-evidence.md`。**未宣称** N09 certified；`bell-competition` 见 K41。生成物适用：已接线（harness atom/kb/terms） | 本批 |
+| **跨租户 competition domain（v4.3.1 N09 K41）** | `DomainRouter.competition_domain` + rapid_insight GraphIndex / icebreaker | ✅ | 证据 `phase2-cross-tenant-competition-domain-evidence.md`。**未宣称** N09 certified；生产 `GraphIndex.load("…")` 字面量清零。生成物适用：已接线（rapid_insight competition） | 本批 |
+| **跨租户 GraphIndex ctor domain（v4.3.1 N09 K42）** | `DomainRouter.default_graph_domain` + hallucination/doc_quality/retrieval ctor | ✅ | 证据 `phase2-cross-tenant-graphindex-ctor-domain-evidence.md`。**未宣称** N09 certified；生产 `GraphIndex("…")` 域字面量清零。生成物适用：已接线（ctor domain SSOT） | 本批 |
+| **跨租户 KB/tracking domain fallbacks（v4.3.1 N09 K43）** | wiki_ontology_engine `_req_domain_id` + facade/pipeline/agents/action_routes/retrieval → DomainRouter helpers | ✅ | 证据 `phase2-cross-tenant-kb-domain-fallbacks-evidence.md`。**未宣称** N09 certified；签名默认见 K44。生成物适用：已接线（KB/tracking fallbacks） | 本批 |
+| **跨租户 KB domain 签名默认（v4.3.1 N09 K44）** | `domain_id: str = DomainRouter.PLATFORM_KB_DOMAIN` + FDE ask/export | ✅ | 证据 `phase2-cross-tenant-kb-domain-defaults-evidence.md`。**未宣称** N09 certified；`default` 签名默认见 K45。生成物适用：已接线（KB signature defaults） | 本批 |
+| **跨租户 default graph domain 签名默认（v4.3.1 N09 K45）** | `domain_id: str = DomainRouter.PLATFORM_DEFAULT_GRAPH_DOMAIN` | ✅ | 证据 `phase2-cross-tenant-default-graph-domain-defaults-evidence.md`。**未宣称** N09 certified；`it-ops`/`data-gov` 见 K46。生成物适用：已接线（default-graph signature defaults） | 本批 |
+| **跨租户 it-ops/data-gov domain 签名默认（v4.3.1 N09 K46）** | `PLATFORM_IT_OPS_DOMAIN` / `PLATFORM_DATA_GOV_DOMAIN` + helpers | ✅ | 证据 `phase2-cross-tenant-it-ops-domain-defaults-evidence.md`。**未宣称** N09 certified；`aiplat-system` 见 K47。生成物适用：已接线（org/gov signature defaults） | 本批 |
+| **跨租户 aiplat-system domain 签名默认（v4.3.1 N09 K47）** | `DomainRouter.PLATFORM_SYSTEM_DOMAIN` + `system_domain()` | ✅ | 证据 `phase2-cross-tenant-system-domain-defaults-evidence.md`。**未宣称** N09 certified；icebreaker 见 K48；tenant_id 仍开放。生成物适用：已接线（system signature defaults） | 本批 |
+| **跨租户 icebreaker 业务域键配置外置（v4.3.1 N09 K48）** | `workspace_seeds/fde/icebreaker_questions.yaml` + `_load_icebreaker_map` | ✅ | 证据 `phase2-cross-tenant-icebreaker-config-evidence.md`。**未宣称** N09 certified；tenant SSOT 见 K49。生成物适用：已接线（FDE icebreaker config） | 本批 |
+| **跨租户 default tenant SSOT（v4.3.1 N09 K49）** | `DomainRouter.PLATFORM_DEFAULT_TENANT` + `default_tenant()`（knowledge 层） | ✅ | 证据 `phase2-cross-tenant-default-tenant-ssot-evidence.md`。**未宣称** N09 certified；外层签名默认见 K50。生成物适用：已接线（knowledge tenant SSOT） | 本批 |
+| **跨租户 default tenant 外层签名默认（v4.3.1 N09 K50）** | facade/syscalls/memory/ontology_engine/platform → `default_tenant()` | ✅ | 证据 `phase2-cross-tenant-default-tenant-outer-evidence.md`。**未宣称** N09 certified；SQL 字面量见 K51。生成物适用：已接线（outer tenant signature defaults） | 本批 |
+| **跨租户 default tenant SQL/赋值字面量（v4.3.1 N09 K51）** | wiki/process/state DDL+UPDATE + assignment → `default_tenant()` | ✅ | 证据 `phase2-cross-tenant-default-tenant-sql-literals-evidence.md`。**未宣称** N09 certified；collection/profile 见 K52。生成物适用：已接线（tenant SQL SSOT） | 本批 |
+| **跨租户 default collection/profile SSOT（v4.3.1 N09 K52）** | `PLATFORM_DEFAULT_COLLECTION` / `PLATFORM_DEFAULT_PROFILE` + helpers | ✅ | 证据 `phase2-cross-tenant-default-collection-ssot-evidence.md`。**未宣称** N09 certified；session 见 K53。生成物适用：已接线（collection/profile SSOT） | 本批 |
+| **跨租户 default session SSOT（v4.3.1 N09 K53）** | `DomainRouter.PLATFORM_DEFAULT_SESSION` + `default_session()` | ✅ | 证据 `phase2-cross-tenant-default-session-ssot-evidence.md`。**未宣称** N09 certified；运行时 tenant 回退见 K54。生成物适用：已接线（session SSOT） | 本批 |
+| **跨租户 default tenant 运行时回退（v4.3.1 N09 K54）** | memory/retrieval/pipeline/agents → `default_tenant()` | ✅ | 证据 `phase2-cross-tenant-default-tenant-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；facade/diagnostics 见 K55。生成物适用：已接线（runtime tenant fallback SSOT） | 本批 |
+| **跨租户 facade/diagnostics tenant 运行时回退（v4.3.1 N09 K55）** | `core_facade` + `diagnostics` → `default_tenant()` | ✅ | 证据 `phase2-cross-tenant-facade-tenant-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；platform routes 见 K56。生成物适用：已接线（facade tenant fallback SSOT） | 本批 |
+| **跨租户 platform tenant 运行时回退（v4.3.1 N09 K56）** | routes/kb/delivery → `default_tenant()` | ✅ | 证据 `phase2-cross-tenant-platform-tenant-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；apps/ontology 见 K57。生成物适用：已接线（platform tenant fallback SSOT） | 本批 |
+| **跨租户 apps/ontology tenant 运行时回退（v4.3.1 N09 K57）** | ontology_branch/state_history + org/value/fde/prompt → `default_tenant()` | ✅ | 证据 `phase2-cross-tenant-apps-ontology-tenant-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；loop/agent 见 K58。生成物适用：已接线（apps/ontology tenant fallback SSOT） | 本批 |
+| **跨租户 loop/agent tenant+session 运行时回退（v4.3.1 N09 K58）** | `_facade` / operator / integration agent → `default_tenant()`/`default_session()` | ✅ | 证据 `phase2-cross-tenant-loop-agent-tenant-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；session 门禁/checkpoint 见 K59。生成物适用：已接线（loop/agent fallback SSOT） | 本批 |
+| **跨租户 session 运行时回退加深（v4.3.1 N09 K59）** | facade/gates/checkpoint/routes → `default_session()` | ✅ | 证据 `phase2-cross-tenant-session-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；agents/jobs/pipeline 见 K60。生成物适用：已接线（session runtime fallback SSOT） | 本批 |
+| **跨租户 agents/pipeline session 运行时回退（v4.3.1 N09 K60）** | agents/jobs/plugins/pipeline/tool/skill → `default_session()` | ✅ | 证据 `phase2-cross-tenant-agents-pipeline-session-fallbacks-evidence.md`。**未宣称** N09 certified；integration/server/memory 见 K61。生成物适用：已接线（agents/pipeline session SSOT） | 本批 |
+| **跨租户 integration/memory session 运行时回退（v4.3.1 N09 K61）** | integration/server/memory/approvals/gateway → `default_session()` | ✅ | 证据 `phase2-cross-tenant-integration-memory-session-fallbacks-evidence.md`。**未宣称** N09 certified；collection/namespace 见 K62。生成物适用：已接线（integration/memory session SSOT） | 本批 |
+| **跨租户 collection/namespace 运行时回退（v4.3.1 N09 K62）** | facade/kb/wiki/routes + MemoryManager → `default_collection()`/`default_session()` | ✅ | 证据 `phase2-cross-tenant-collection-namespace-fallbacks-evidence.md`。**未宣称** N09 certified；domain 见 K63。生成物适用：已接线（collection/namespace SSOT） | 本批 |
+| **跨租户 domain_id 运行时回退（v4.3.1 N09 K63）** | FDE/extraction/ontology/agents/diagnostics/wiki/CRAG → `default_graph_domain()`（classmethod） | ✅ | 证据 `phase2-cross-tenant-domain-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；view_name 见 K64。生成物适用：已接线（domain runtime fallback SSOT） | 本批 |
+| **跨租户 view_name 运行时回退（v4.3.1 N09 K64）** | CrossDomainResolver + K-wave arbit → `default_view_name()` | ✅ | 证据 `phase2-cross-tenant-view-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；workspace 见 K65。生成物适用：已接线（view_name runtime fallback SSOT） | 本批 |
+| **跨租户 workspace_id 运行时回退（v4.3.1 N09 K65）** | named_workspace + eval external targets → `default_workspace_id()` | ✅ | 证据 `phase2-cross-tenant-workspace-runtime-fallbacks-evidence.md`。**未宣称** N09 certified；profile/tenant-env 见 K66。生成物适用：已接线（workspace runtime fallback SSOT） | 本批 |
+| **跨租户 profile + AIPLAT_DEFAULT_TENANT 运行时回退（v4.3.1 N09 K66）** | ProfileConfig/kanban/cron/inference/diagnostics/judge + tenants manager → `default_profile()`/`default_tenant()` | ✅ | 证据 `phase2-cross-tenant-profile-tenant-env-fallbacks-evidence.md`。**未宣称** N09 certified；Query/Form 签名见 K67。生成物适用：已接线（profile/tenant-env fallback SSOT） | 本批 |
+| **跨租户 Query/Form/签名默认参数（v4.3.1 N09 K67）** | workbench/FDE/wiki/server/org/value + MemoryManager namespace → `default_*()` | ✅ | 证据 `phase2-cross-tenant-query-form-signature-defaults-evidence.md`。**未宣称** N09 certified；builder module_id 见 K68。生成物适用：已接线（HTTP signature default SSOT） | 本批 |
+| **跨租户 builder module_id 默认（v4.3.1 N09 K68）** | builder L2–L5 / project_service / schema_migration → `default_module_id()` | ✅ | 证据 `phase2-cross-tenant-builder-module-defaults-evidence.md`。**未宣称** N09 certified；misc label 见 K69。生成物适用：已接线（builder module SSOT） | 本批 |
+| **跨租户杂项 label 默认（v4.3.1 N09 K69）** | gateway channel / agent_type / benchmark / output_style → `default_label()` | ✅ | 证据 `phase2-cross-tenant-misc-label-defaults-evidence.md`。**未宣称** N09 certified；漏网清扫见 K70；`purpose="default"`（选模）刻意保留。生成物适用：已接线（misc label SSOT） | 本批 |
+| **跨租户运行时 default 漏网清扫（v4.3.1 N09 K70）** | wiki_* collection / builder module_id / gateway channel / tenant·domain 回退 → 既有 `default_*()` | ✅ | 证据 `phase2-cross-tenant-runtime-default-mop-evidence.md`。**未宣称** N09 certified；`purpose="default"` 刻意保留。生成物适用：已接线（runtime default mop SSOT） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
+| **Core 可认证路径（v4.3.1 Phase S/C/H）** | `evaluate_core_ready_gate` / `evaluate_pilot_core_certification` + Facade + FDE `/conformance-pack/core-ready` `/pilot-core-cert` | ✅ | 附录 N Core 12 项 + `core_ready`；非作者批准（朱鸿林）→ `pilot_certified`；N09 探针冻结。证据 `phase2-core-cert-path-evidence.md` + `pilot-core-approval-record.approved.json`。**未宣称** 24/24。生成物适用：已接线（HTTP） | 本批 |
+| **Extended 可认证路径（v4.3.1 Phase E）** | `evaluate_extended_ready_gate` / `evaluate_pilot_extended_certification` + Facade + FDE `/extended-ready` `/pilot-extended-cert` | ✅ | 附录 N.3 六项 + `extended_ready`；非作者批准（朱莹）→ `pilot_extended_certified`。证据 `phase2-extended-cert-path-evidence.md` + `pilot-extended-approval-record.approved.json`。**未宣称** 全量 certified。生成物适用：已接线（HTTP） | 本批 |
+| **Operational 可认证路径（v4.3.1 Phase O）** | `evaluate_operational_ready_gate` / `evaluate_pilot_operational_certification` + Facade + FDE `/operational-ready` `/pilot-operational-cert` | ✅ | 附录 N.4 六项 + `operational_ready`；非作者批准（朱莹）→ `pilot_operational_certified`。证据 `phase2-operational-cert-path-evidence.md` + `pilot-operational-approval-record.approved.json`。**未宣称** 全量 certified / 24/24。生成物适用：已接线（HTTP） | 本批 |
+| **全量可认证路径（v4.3.1 Phase F）** | `evaluate_full_ready_gate` / `evaluate_full_certification` + Facade + FDE `/full-ready` `/full-cert` | ✅ | 附录 N.6：24 exists + 三级徽章 + 独立全量批准（朱向群，conditional）→ `certified` / `n24_full_conformance`。证据 `phase2-full-cert-path-evidence.md` + `pilot-full-approval-record.approved.json`。**未宣称** 准确率 / 生产 SLO 遥测。生成物适用：已接线（HTTP） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
 | **Claim 证据硬门+冲突（v4.3.1 N03 F2）** | `put_claim` / `record_claim_conflict` / `run_claim_evidence_suite` / `evaluate_claim_evidence_gate` + Facade `fact_ledger_run_claim_evidence_suite` | ✅ | published 无证据拒；同 conflict_key 不同主张记 open 冲突；门槛门 certified 恒 false。证据 `phase2-claim-evidence-evidence.md`。**未宣称** Claim 全量状态机 / N03 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Fact→Graph 投影 + Action L1（v4.3.1 Phase 2 G2）** | `fact_projector.py` + `action_registry` Step 3.25 + `POST …/extractions/facts/rebuild` | ✅ | `project_facts_to_graph`（`exact_replay_from_facts`）；`required_permissions` 缺省 → `policy_denied`；试点合同 `lock_service_accept_order.yaml`。证据 `phase2-g2-evidence.md`。**未宣称** Wiki 只读/ObjectSet/N24 | 已合入 |
@@ -1350,6 +1434,59 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_full_certification_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_full_ready_gate_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_pilot_operational_certification_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_operational_ready_gate_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_pilot_extended_certification_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_extended_ready_gate_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_pilot_core_certification_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_core_ready_gate_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.default_label | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.default_module_id | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.default_workspace_id | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.default_view_name | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.default_session | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.default_profile | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.default_collection | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.default_tenant | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.system_domain | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.data_gov_domain | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.it_ops_domain | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.default_kb_domain | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| DomainRouter.knowledge_atom_domain | `core/harness/knowledge/domain_router.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_unified_audit_bus_gate_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| run_unified_audit_bus_suite_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| materialize_unified_audit_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| append_unified_audit_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_unified_audit_bus_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_fact_unified_audit_bus_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| run_fact_unified_audit_bus_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| materialize_fact_unified_audit_bus | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_fact_unified_audit_bus_events | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| append_fact_unified_audit_event | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_unified_audit_bus_gate | `core/harness/knowledge_pipeline/unified_audit_bus.py` | ✅ | 自动同步 | 已合入 |
+| run_unified_audit_bus_suite | `core/harness/knowledge_pipeline/unified_audit_bus.py` | ✅ | 自动同步 | 已合入 |
+| materialize_unified_audit_from_view | `core/harness/knowledge_pipeline/unified_audit_bus.py` | ✅ | 自动同步 | 已合入 |
+| list_unified_audit_bus_events | `core/harness/knowledge_pipeline/unified_audit_bus.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_unified_audit_gate_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| run_unified_audit_suite_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_unified_audit_route | `aiPlat-platform/apps/fde/api/unified_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_fact_unified_audit_view_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| run_fact_unified_audit_view_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_fact_unified_audit_events | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_unified_audit_view_gate | `core/harness/knowledge_pipeline/unified_audit_view.py` | ✅ | 自动同步 | 已合入 |
+| run_unified_audit_view_suite | `core/harness/knowledge_pipeline/unified_audit_view.py` | ✅ | 自动同步 | 已合入 |
+| list_action_executions | `core/harness/infrastructure/action_execution.py` | ✅ | 自动同步 | 已合入 |
+| list_package_versions | `core/harness/knowledge_pipeline/ontology_package.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_restore_approval_gate_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| run_restore_approval_suite_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_revision_action_bridges_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_revision_audit_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| reject_revision_restore_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| approve_revision_restore_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| request_revision_restore_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_revision_restore_requests_route | `aiPlat-platform/apps/fde/api/revision_restore_routes.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_fact_revision_action_bridge_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_run_revision_action_bridge_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_list_revision_action_bridges | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -3182,6 +3319,24 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| diagnosis_fixture_metrics | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| diagnosis_run_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| diagnosis_collect | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| diagnosis_health | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fixture_metrics_by_subset | `core/apps/diagnosis/service/metrics.py` | ✅ | 自动同步 | 已合入 |
+| diagnose_case | `core/apps/diagnosis/service/engine.py` | ✅ | 自动同步 | 已合入 |
+| build_recommendations | `core/apps/diagnosis/service/engine.py` | ✅ | 自动同步 | 已合入 |
+| infer_root_causes | `core/apps/diagnosis/service/engine.py` | ✅ | 自动同步 | 已合入 |
+| read_ontology_refs | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| read_evaluation_refs | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| collect_live_stubs | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| collect_from_fixture | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| load_fixture | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| resolve_fixture_id | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| fixture_root | `core/apps/diagnosis/service/adapters.py` | ✅ | 自动同步 | 已合入 |
+| default_db_path | `core/apps/diagnosis/service/store.py` | ✅ | 自动同步 | 已合入 |
+| get_diagnosis_store | `core/apps/diagnosis/service/store.py` | ✅ | 自动同步 | 已合入 |
+| DiagnosisStore | `core/apps/diagnosis/service/store.py` | ✅ | 自动同步 | 已合入 |
 | get_suite_exam_summary | `core/apps/eval/service/suite_exam_summary_store.py` | ✅ | 自动同步 | 已合入 |
 | record_suite_exam_summary | `core/apps/eval/service/suite_exam_summary_store.py` | ✅ | 自动同步 | 已合入 |
 | eval_freeze_all_subject_seed_pack_meta | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4617,9 +4772,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 672 | 1 | 673 |
+| Harness 执行引擎 | 755 | 1 | 756 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 568 | 9 | 577 |
+| 知识引擎（本体） | 621 | 9 | 630 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4630,7 +4785,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 177 | 1 | 178 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 583 | 0 | 583 |
+| 评估系统 | 601 | 0 | 601 |
 | MCP 协议 | 11 | 0 | 11 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4662,7 +4817,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3706** | **11** | **3717** |
+| **总计** | **3860** | **11** | **3871** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

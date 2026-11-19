@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from typing import Any, Dict, List
+from core.harness.knowledge.domain_router import DomainRouter
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,7 @@ def _to_markdown(pack: Dict[str, Any]) -> str:
 def build_evidence_pack(
     *,
     role: str,
-    domain_id: str = "it-ops",
+    domain_id: str = DomainRouter.it_ops_domain(),
     goal_id: str = "goal-it-ops-alert-sla",
     week: str = "",
     max_traces: int = _MAX_TRACES,

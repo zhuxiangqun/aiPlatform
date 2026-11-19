@@ -1,19 +1,26 @@
 ---
 doc_type: Standard
 status: active
-authority: supporting
+authority: canonical
 doc_id: NORMATIVE_APPENDIX_100261
-last_reviewed: 2026-11-15
+purpose: 知识体系 v4.3.1 规范性附录（字段/错误码/符合性清单/校准）
+scope_in: 附录 A–Q；附录 N 等级映射与 Core 最小符合集；附录 O 校准口径
+scope_out: 实现状态声明、业务域内容
+owner: 朱向群
+version: 4.3.1
+last_reviewed: 2026-11-19
+review_cycle: 90d
 ---
 # aiPlat 知识体系规范性附录 v4.3.1
 
 > **版本**：v4.3.1 · 2026-11-11
 > **性质**：规范性附录（Normative Annex）
-> **状态**：Approved Standard Annex（与正文同时批准）
+> **状态**：Approved Standard Annex（`status: active` = 当前标准版本；强制生效日 2027-01-01）
+> **权威**：`authority: canonical`（与正文同等效力）
 > **配套**：《aiPlat 知识体系技术白皮书 v4.3.1（已批准）》
-> **勘误**：2026-11-13 修正附录 P 的批准状态；不改变规范要求。
+> **勘误**：2026-11-13 修正附录 P 的批准状态；2026-11-19 闭合附录 N 等级映射与附录 O/`high_precision` 口径。
 > **效力**：本附录与正文具有同等效力。字段名、必填规则、类型、错误码、版本兼容和符合性清单为 MUST/SHOULD；示例值仅作说明。
-> **说明**：本附录不是“仅供参考”；实现必须满足本附录的规范性要求。
+> **说明**：本附录不是“仅供参考”；实现必须满足本附录的规范性要求。附录 N 为符合性清单的**机读权威**。
 
 ## 附录地图
 
@@ -832,30 +839,102 @@ Function ticket.priority_score -> ticket.priorityScore({ticket_id})
 
 ## N. Conformance Checklist
 
-- [ ] Raw 不可变；
-- [ ] 语义模型版本化；
-- [ ] Fact/Claim 有 evidence；
-- [ ] 来源策略与冲突裁决；
-- [ ] Wiki/索引有条件重建；
-- [ ] Gateway 查询契约；
-- [ ] 权限召回前过滤；
-- [ ] 动作执行走 Policy/Approval/Audit；
-- [ ] 跨租户 0 泄漏；
-- [ ] 评测有定义/数据集/门槛；
-- [ ] 迁移/回滚方案；
-- [ ] Fact 状态机；
-- [ ] confidence 校准规则；
-- [ ] 跨存储失败恢复/对账；
-- [ ] JSON Schema 与附录一致；
-- [ ] 附录示例通过 Schema 校验；
-- [ ] 记录级语义校验通过；
-- [ ] 实现方语义测试通过；
-- [ ] 运行时权威与审计快照；
-- [ ] L1/L2/L3 约束分层；
-- [ ] 防假绿；
-- [ ] 实例/字段级 ACL；
-- [ ] OCS 完整度；
-- [ ] 版本/变更/审计。
+本附录 N 为符合性清单机读权威；机器目录见 `reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml`（每项含 `level`）。
+
+### N.1 等级映射（MUST）
+
+| id | 标题 | level |
+|---|---|---|
+| N01 | Raw 不可变 | core |
+| N02 | 语义模型版本化 | core |
+| N03 | Fact/Claim 有 evidence | core |
+| N04 | 来源策略与冲突裁决 | core |
+| N05 | Wiki/索引有条件重建 | extended |
+| N06 | Gateway 查询契约 | core |
+| N07 | 权限召回前过滤 | extended |
+| N08 | 动作执行走 Policy/Approval/Audit | extended |
+| N09 | 跨租户 0 泄漏 | core |
+| N10 | 评测有定义/数据集/门槛 | operational |
+| N11 | 迁移/回滚方案 | operational |
+| N12 | Fact 状态机 | core |
+| N13 | confidence 校准规则 | operational |
+| N14 | 跨存储失败恢复/对账 | operational |
+| N15 | JSON Schema 与附录一致 | core |
+| N16 | 附录示例通过 Schema 校验 | core |
+| N17 | 记录级语义校验通过 | core |
+| N18 | 实现方语义测试通过 | core |
+| N19 | 运行时权威与审计快照 | extended |
+| N20 | L1/L2/L3 约束分层 | extended |
+| N21 | 防假绿 | core |
+| N22 | 实例/字段级 ACL | extended |
+| N23 | OCS 完整度 | operational |
+| N24 | 版本/变更/审计 | operational |
+
+### N.2 Core 最小符合集（MUST）
+
+试点域宣称 **Core 符合** 时，下列 12 项必须全部为目录 `status: exists`（或已登记 ADR 例外且未过期），并满足正文 §16.2 槽位与非作者批准记录：
+
+`N01, N02, N03, N04, N06, N09, N12, N15, N16, N17, N18, N21`
+
+- **N09**：以已登记跨租户隔离套件探针为 Core 足够条件；不以无限清扫 `"default"` 字面量为加深条件。
+- 结构门 `core_ready` ≠ `certified` / `pilot_certified`；后者仅可由批准记录置真。
+
+### N.3 Extended 最小符合集（MUST）
+
+试点域宣称 **Extended 符合** 时，下列 6 项必须全部为目录 `status: exists`（或已登记 ADR 例外且未过期），且 Core（N.2）已可宣称（`core_ready` + 非作者批准）：
+
+`N05, N07, N08, N19, N20, N22`
+
+- 结构门 `extended_ready` ≠ `certified` / `pilot_extended_certified`；后者仅可由批准记录置真。
+
+### N.4 Operational 最小符合集（MUST）
+
+试点域宣称 **Operational 符合** 时，下列 6 项必须全部为目录 `status: exists`（或已登记 ADR 例外且未过期），且 Core（N.2）与 Extended（N.3）已可宣称：
+
+`N10, N11, N13, N14, N23, N24`
+
+- 结构门 `operational_ready` ≠ `certified` / `pilot_operational_certified`；后者仅可由批准记录置真。
+- **全量 `certified` / 24/24** 仍须独立人工全量认证流程；本子集徽章不自动置 `certified=true`。
+
+### N.6 全量符合（MUST）
+
+试点域宣称 **全量符合 / `certified` / 24/24** 时，必须同时满足：
+
+1. 附录 N 全部 24 项目录 `status: exists`（或已登记全量 ADR 例外且未过期）；
+2. Core / Extended / Operational 三级结构门 `*_ready` 均 pass；
+3. 三级等级徽章均已由各自非作者批准置真；
+4. **独立**全量非作者批准记录（不得复用等级徽章批准文件）；
+5. §16.2 认证槽位齐（含 SLO 目标登记；生产遥测未接线时须在全量批准中注明 conditional）。
+
+- 结构门 `full_ready` ≠ `certified` / `n24_full_conformance`；后者仅可由第 4 条全量批准置真。
+- 三级徽章齐 **不足以** 自动置 `certified=true`。
+
+### N.5 勾选摘要
+
+- [ ] N01 Raw 不可变（core）
+- [ ] N02 语义模型版本化（core）
+- [ ] N03 Fact/Claim 有 evidence（core）
+- [ ] N04 来源策略与冲突裁决（core）
+- [ ] N05 Wiki/索引有条件重建（extended）
+- [ ] N06 Gateway 查询契约（core）
+- [ ] N07 权限召回前过滤（extended）
+- [ ] N08 动作执行走 Policy/Approval/Audit（extended）
+- [ ] N09 跨租户 0 泄漏（core）
+- [ ] N10 评测有定义/数据集/门槛（operational）
+- [ ] N11 迁移/回滚方案（operational）
+- [ ] N12 Fact 状态机（core）
+- [ ] N13 confidence 校准规则（operational）
+- [ ] N14 跨存储失败恢复/对账（operational）
+- [ ] N15 JSON Schema 与附录一致（core）
+- [ ] N16 附录示例通过 Schema 校验（core）
+- [ ] N17 记录级语义校验通过（core）
+- [ ] N18 实现方语义测试通过（core）
+- [ ] N19 运行时权威与审计快照（extended）
+- [ ] N20 L1/L2/L3 约束分层（extended）
+- [ ] N21 防假绿（core）
+- [ ] N22 实例/字段级 ACL（extended）
+- [ ] N23 OCS 完整度（operational）
+- [ ] N24 版本/变更/审计（operational）
 
 ---
 
@@ -873,17 +952,21 @@ Function ticket.priority_score -> ticket.priorityScore({ticket_id})
 | weights | object | 是 |
 | calibration_version | string | 是 |
 | ece / brier | number | 是 |
-| high_precision / coverage | number | 是 |
+| high_precision / coverage | number | 是（桶空时 `high_precision` 可为 null） |
 | approved_by / valid_until | string/date | 是 |
+| exception_adr | string | 门槛放宽时必填 |
 
-**最低门槛：**
+**`high_precision` 定义（MUST）：** 校准集中输出 `confidence=high` 的样本里，金标为「正确且关键断言均有可定位证据」的比例；分母 = high 桶样本量。
+
+**最低门槛（保守默认；放宽须 ADR）：**
 
 - 每个域/query_type 至少 100 条 gold；不足需统计论证；
 - 至少 20% 双人标注；
 - ECE ≤ 0.05；
-- high 精度 ≥ 0.90；
+- `high_precision` ≥ 0.90；
 - 样本不足/ECE 超标/分布漂移 → confidence 最高只能 `medium`；
-- 报告必须可复现，并绑定模型/索引/来源策略版本。
+- 报告必须可复现，并绑定模型/索引/来源策略版本；
+- Core 认证不以 ECE/`high_precision` 为阻塞项；未达标须挂 ADR，诚实封顶 `medium`。
 
 ---
 

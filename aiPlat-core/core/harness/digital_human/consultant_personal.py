@@ -5,6 +5,8 @@ Tenant isolation (G9):
   default     → prefer tenants/default/…；若无文件则回退旧路径 memory/xiaozhu.md
 """
 from __future__ import annotations
+
+from core.harness.knowledge.domain_router import DomainRouter
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import logging
@@ -66,7 +68,7 @@ def sanitize_tenant_id(tenant_id: Optional[str]) -> str:
     Args:
         tenant_id: 租户 ID。
     """
-    tid = str(tenant_id or "").strip() or "default"
+    tid = str(tenant_id or "").strip() or DomainRouter.default_tenant()
     if not _SAFE_TENANT.match(tid):
         return "default"
     return tid

@@ -26,20 +26,27 @@ logger = logging.getLogger(__name__)
 class ConvergenceEngine:
     """C→I layer: atom convergence → system behavior adjustment."""
 
-    def __init__(self):
+    def __init__(self, *, tenant_id: str = ""):
         """初始化。
+
+        Args:
+            tenant_id: 可选租户；空则从 ActiveRequestContext 解析（N09 K23）。
         """
         self._graph = None
         self._config = None
         self._initialized = False
         self._applied_atoms: set = set()  # track already-applied triggers
+        from core.harness.knowledge.context_bus import _resolve_graph_tenant
+        self._tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
 
     def _ensure_loaded(self):
         if self._initialized:
             return
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            self._graph = GraphIndex.load("knowledge-atom")
+            from core.harness.knowledge.domain_router import get_domain_router
+            # 为什么：N09 K23 — convergence 原子图须按租户分库
+            self._graph = GraphIndex.load(get_domain_router().knowledge_atom_domain(), tenant_id=self._tenant_id)
             self._config = self._load_config()
             self._initialized = True
         except Exception as e:

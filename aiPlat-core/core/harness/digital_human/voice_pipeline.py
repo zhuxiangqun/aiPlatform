@@ -31,6 +31,7 @@ import re
 import io
 
 from typing import AsyncIterator, Dict, Optional, Tuple
+from core.harness.knowledge.domain_router import DomainRouter
 
 
 
@@ -410,7 +411,7 @@ async def generate_answer(
     page_context="",
     session_id: str = "digital_human",
     page_data: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = DomainRouter.default_tenant(),
 ) -> Tuple[str, bytes]:
     """Platform consultant (text) with live status brief; optional TTS.
 
@@ -434,7 +435,7 @@ async def generate_answer(
 
         tenant_id = sanitize_tenant_id(tenant_id)
     except Exception:
-        tenant_id = "default"
+        tenant_id = DomainRouter.default_tenant()
 
     import asyncio as _aio
     answer = ""

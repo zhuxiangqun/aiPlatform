@@ -8,6 +8,7 @@ from __future__ import annotations
 import hmac
 import os
 from typing import Any, Mapping, Optional
+from core.api.core_facade import DomainRouter
 
 
 def _flag(name: str) -> bool:
@@ -124,3 +125,23 @@ def resolve_request_role(request: Any) -> str:
         request.headers,
         resolved_actor_role=getattr(ident, "actor_role", None),
     )
+
+
+def resolve_request_tenant(request: Any) -> str:
+    """Resolve tenant_id from a FastAPI Request via platform identity.
+
+    Uses ``_resolve_identity`` (JWT / API key / gated headers). Does **not**
+    trust raw ``X-AIPLAT-TENANT-ID`` alone.
+
+    Args:
+        request: FastAPI Request。
+
+    Returns:
+        非空租户字符串；未解析到时为 ``default``。
+    """
+    from api.rest.routes import _resolve_identity
+
+    # 为什么：N09 K8 — ontology_editor 等写 GraphIndex 的 HTTP 入口须经身份解析取租户
+    ident = _resolve_identity(request)
+    tid = str(getattr(ident, "tenant_id", "") or "").strip()
+    return tid or DomainRouter.default_tenant()

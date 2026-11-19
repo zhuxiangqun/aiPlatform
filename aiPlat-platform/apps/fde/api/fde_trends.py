@@ -1,6 +1,7 @@
 """FDE Trends — system trends + health history (split from fde.py)."""
 from __future__ import annotations
 
+from apps.fde.api.graph_tenant import fde_atom_domain, fde_graph_tenant
 from typing import Any, Dict, List
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
@@ -25,7 +26,7 @@ async def fde_system_trends(
     from datetime import datetime, timezone, timedelta
     import json as _json_st
 
-    kg = GraphIndex.load("knowledge-atom")
+    kg = GraphIndex.load(fde_atom_domain(), tenant_id=fde_graph_tenant())
     now = datetime.now(timezone.utc)
     cutoff_ts = int((now - timedelta(weeks=weeks)).timestamp())
 
@@ -87,7 +88,7 @@ async def fde_health_history(
     import json as _json_hh
     from datetime import datetime, timezone
 
-    kg = GraphIndex.load("knowledge-atom")
+    kg = GraphIndex.load(fde_atom_domain(), tenant_id=fde_graph_tenant())
     entries = []
     for nid, n in kg._nodes.items():
         if getattr(n, "class_name", "") == "SystemSnapshot" and nid.startswith("snap_"):

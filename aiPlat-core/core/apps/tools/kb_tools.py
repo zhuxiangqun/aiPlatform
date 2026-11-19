@@ -45,8 +45,8 @@ class KBIngestTool(BaseTool):
         Args:
             params: params 参数。
         """
-        tenant_id = str(params.get("tenant_id") or "").strip() or "default"
-        collection_id = str(params.get("collection_id") or "").strip() or "default"
+        tenant_id = str(params.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
+        collection_id = str(params.get("collection_id") or "").strip() or DomainRouter.default_collection()
         file_path = str(params.get("file_path") or "").strip()
         kind = str(params.get("kind") or "pdf").strip()
         ocr_lang = str(params.get("ocr_lang") or "zh").strip()
@@ -132,8 +132,8 @@ class KBQueryTool(BaseTool):
         Args:
             params: params 参数。
         """
-        tenant_id = str(params.get("tenant_id") or "").strip() or "default"
-        collection_id = str(params.get("collection_id") or "").strip() or "default"
+        tenant_id = str(params.get("tenant_id") or "").strip() or DomainRouter.default_tenant()
+        collection_id = str(params.get("collection_id") or "").strip() or DomainRouter.default_collection()
         question = str(params.get("question") or "").strip()
         year = params.get("year")
         year = int(year) if year is not None and str(year).strip() else None

@@ -14,6 +14,7 @@ import os
 import re
 import time
 from typing import Any, Dict, List
+from core.api.core_facade import DomainRouter
 
 
 
@@ -21,7 +22,7 @@ from typing import Any, Dict, List
 
 class BuilderL2L5Mixin:
     """L2 导入 / L3 合并 / L4 模块 / L4.5 迁移 / L5 发布 — 从 BuilderProjectService 拆出。"""
-    async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing_path: str = "", module_id: str = "default") -> Dict[str, Any]:
+    async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing_path: str = "", module_id: str = DomainRouter.default_module_id()) -> Dict[str, Any]:
         """import_repo。
 
         Args:
@@ -87,7 +88,7 @@ class BuilderL2L5Mixin:
             "module_id": module_id,
             "imported_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }
-        if module_id == "default":
+        if module_id == DomainRouter.default_module_id():
             proj["imported_repo"] = _repo
         else:
             # L4: multi-module — store per-module repo
@@ -122,17 +123,17 @@ class BuilderL2L5Mixin:
             "imported_at": imp.get("imported_at", ""),
             "total": len(manifest),
         }
-    def _module_root(self, project_id: str, module_id: str = "default") -> str:
+    def _module_root(self, project_id: str, module_id: str = DomainRouter.default_module_id()) -> str:
         """Resolve a module's imported/ root. default → legacy layout."""
         _apps_home = os.path.join(
             get_aiplat_home(), "apps", project_id)
-        if module_id == "default":
+        if module_id == DomainRouter.default_module_id():
             return os.path.join(_apps_home, "imported")
         return os.path.join(_apps_home, "modules", module_id, "imported")
-    def _module_repo(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+    def _module_repo(self, project_id: str, module_id: str = DomainRouter.default_module_id()) -> Dict[str, Any]:
         """Per-module imported repo payload (default → proj.imported_repo)."""
         proj = self._projects.get(project_id, {})
-        if module_id == "default":
+        if module_id == DomainRouter.default_module_id():
             return proj.get("imported_repo") or {}
         return (proj.get("module_repos") or {}).get(module_id) or {}
     def _module_roots(self, project_id: str) -> Dict[str, str]:
@@ -140,15 +141,15 @@ class BuilderL2L5Mixin:
         proj = self._projects.get(project_id, {})
         roots = {}
         if proj.get("imported_repo") or self._has_legacy_import(project_id):
-            roots["default"] = self._module_root(project_id, "default")
+            roots[DomainRouter.default_module_id()] = self._module_root(project_id, DomainRouter.default_module_id())
         for mid in (proj.get("modules") or []):
             mid_id = mid.get("module_id") if isinstance(mid, dict) else str(mid)
             if mid_id:
                 roots[mid_id] = self._module_root(project_id, mid_id)
         return roots
     def _has_legacy_import(self, project_id: str) -> bool:
-        return os.path.isdir(self._module_root(project_id, "default")) and any(
-            os.scandir(self._module_root(project_id, "default")))
+        return os.path.isdir(self._module_root(project_id, DomainRouter.default_module_id())) and any(
+            os.scandir(self._module_root(project_id, DomainRouter.default_module_id())))
     async def create_modules(self, project_id: str, modules: List[Dict]) -> Dict[str, Any]:
         """L4: declare project modules (modules.json semantics, stored on project).
 
@@ -166,7 +167,7 @@ class BuilderL2L5Mixin:
         for m in modules:
             mid = str(m.get("module_id") or "").strip()
             if not mid or mid == "default":
-                return {"status": "error", "detail": "module_id 必填且不能为 'default'（保留单模块语义）"}
+                return {"status": "error", "detail": f"module_id 必填且不能为 {DomainRouter.default_module_id()!r}（保留单模块语义）"}
             cleaned.append({
                 "module_id": mid,
                 "description": str(m.get("description") or ""),
@@ -186,7 +187,7 @@ class BuilderL2L5Mixin:
         proj = self._projects.get(project_id, {})
         modules = []
         if self._has_legacy_import(project_id):
-            modules.append({"module_id": "default", "description": "单模块（默认）",
+            modules.append({"module_id": DomainRouter.default_module_id(), "description": "单模块（默认）",
                             "root": "imported", "imported": True})
         for m in (proj.get("modules") or []):
             mid = m.get("module_id") if isinstance(m, dict) else str(m)
@@ -199,7 +200,7 @@ class BuilderL2L5Mixin:
                 "file_count": len((rep.get("manifest") or []) if isinstance(rep, dict) else []),
             })
         return {"status": "ok", "modules": modules, "total": len(modules)}
-    async def cross_module_impact(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+    async def cross_module_impact(self, project_id: str, module_id: str = DomainRouter.default_module_id()) -> Dict[str, Any]:
         """L4 §3.3: cross-module impact analysis for a changed module.
 
         Args:
@@ -294,7 +295,7 @@ class BuilderL2L5Mixin:
                 except OSError:
                     continue
         return out
-    async def migration_preview(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+    async def migration_preview(self, project_id: str, module_id: str = DomainRouter.default_module_id()) -> Dict[str, Any]:
         """L4.5: extract old (imported) vs new (post-merge) schema → migration (up/down).
 
         Args:
@@ -401,7 +402,7 @@ class BuilderL2L5Mixin:
         self._save_projects()
         return {"status": "ok", "migration_id": migration_id, "down_sql": mig.get("down_sql", ""),
                 "note": "down 脚本已应用（AIPLAT_DB_EXECUTE=true 时执行真实 SQL）；历史保留"}
-    async def create_release(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+    async def create_release(self, project_id: str, module_id: str = DomainRouter.default_module_id()) -> Dict[str, Any]:
         """L5: merge post-merge code into a versioned artifact (building → ready).
 
         Args:
@@ -500,7 +501,7 @@ class BuilderL2L5Mixin:
         proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         self._save_projects()
         return {"status": "ok", "release": rel}
-    async def merge_preview(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+    async def merge_preview(self, project_id: str, module_id: str = DomainRouter.default_module_id()) -> Dict[str, Any]:
         """merge_preview。
 
         Args:
@@ -559,7 +560,7 @@ class BuilderL2L5Mixin:
         proj["merge_impact"] = impact
         # L4 v1.5: cross-module contract status for multi-module projects
         cross_contracts: Dict[str, Any] = {"ok": True, "broken": [], "checked": [], "note": ""}
-        if module_id != "default" and (proj.get("module_repos") or {}):
+        if module_id != DomainRouter.default_module_id() and (proj.get("module_repos") or {}):
             try:
                 from builder.cross_module import analyze_cross_module, verify_changed_module_contracts
                 roots = self._module_roots(project_id)
@@ -598,7 +599,7 @@ class BuilderL2L5Mixin:
         previews = proj.get("merge_previews") or []
         if not previews:
             return {"status": "error", "detail": "没有合并预览，请先运行 merge-preview"}
-        module_id = str(proj.get("merge_module") or "default")
+        module_id = str(proj.get("merge_module") or DomainRouter.default_module_id())
         imp = self._module_repo(project_id, module_id)
         import_root = str(imp.get("root") or "")
         deploy_dir = proj.get("deploy_dir") or os.path.join(

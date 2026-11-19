@@ -19,19 +19,42 @@ if str(CORE) not in sys.path:
     sys.path.insert(0, str(CORE))
 
 
-def seed_orders(count: int, prefix: str, domain_id: str) -> list[str]:
+
+def _script_graph_tenant(tenant_id: str = "") -> str:
+    """Resolve tenant for script GraphIndex writes (N09 K35).
+
+    Args:
+        tenant_id: 显式租户；空则 CoreFacade resolve_graph_tenant，失败回落 default。
+    """
+    tid = (tenant_id or "").strip()
+    if tid:
+        return tid
+    try:
+        from core.api.core_facade import resolve_graph_tenant
+        return resolve_graph_tenant()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug(
+            "script resolve_graph_tenant failed; using default",
+            exc_info=True,
+        )
+        return "default"
+
+
+def seed_orders(count: int, prefix: str, domain_id: str, *, tenant_id: str = "") -> list[str]:
     """seed_orders。
 
     Args:
         count: count 参数。
         prefix: prefix 参数。
         domain_id: domain 标识。
+        tenant_id: 租户；空则 resolve（N09 K35）。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     # Clear cached instances so AIPLAT_HOME takes effect
     GraphIndex._loaded_instances.clear()
-    g = GraphIndex(domain_id)
+    g = GraphIndex(domain_id, tenant_id=_script_graph_tenant(tenant_id))
     ids: list[str] = []
     for i in range(1, count + 1):
         eid = f"{prefix}-{i:04d}"
@@ -58,10 +81,11 @@ def main(argv: list[str] | None = None) -> int:
         default="",
         help="Override AIPLAT_HOME (graph DB root)",
     )
+    p.add_argument("--tenant", default="", help="GraphIndex tenant id (N09 K35)")
     args = p.parse_args(argv)
     if args.home:
         os.environ["AIPLAT_HOME"] = args.home
-    ids = seed_orders(args.count, args.prefix, args.domain)
+    ids = seed_orders(args.count, args.prefix, args.domain, tenant_id=args.tenant)
     print(f"seeded {len(ids)} InstallOrder entities in domain={args.domain}")
     print(f"first={ids[0]} last={ids[-1]}")
     print(f"AIPLAT_HOME={os.environ.get('AIPLAT_HOME', '~/.aiplat')}")

@@ -5,6 +5,7 @@ Migrated from aiPlat-core/core/api/routers/approvals.py per architecture contrac
 """
 from __future__ import annotations
 import logging
+from core.api.core_facade import DomainRouter
 from datetime import datetime, timezone
 
 
@@ -320,7 +321,7 @@ async def set_unattended_attendance_route(
         return deny
     from core.api.core_facade import set_unattended_attendance
 
-    session_id = str((body or {}).get("session_id") or "default")
+    session_id = str((body or {}).get("session_id") or DomainRouter.default_session())
     mode = str((body or {}).get("attendance") or (body or {}).get("mode") or "attended")
     return set_unattended_attendance(session_id, mode)
 
@@ -682,7 +683,7 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
             target_id=str(tool_name),
             payload=payload,
             user_id=str(ctx.get("actor_id") or "system"),
-            session_id=str(ctx.get("session_id") or "default"),
+            session_id=str(ctx.get("session_id") or DomainRouter.default_session()),
             run_id=str(meta.get("run_id") or new_prefixed_id("run")),
         )
         result = await get_harness().execute(exec_req)
@@ -715,7 +716,7 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
             target_id=str(skill_id),
             payload=payload,
             user_id=str(ctx.get("actor_id") or "system"),
-            session_id=str(ctx.get("session_id") or "default"),
+            session_id=str(ctx.get("session_id") or DomainRouter.default_session()),
             run_id=str(meta.get("run_id") or new_prefixed_id("run")),
         )
         result = await get_harness().execute(exec_req)
@@ -779,7 +780,7 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
             raise HTTPException(status_code=400, detail="missing_operation_context")
         asset_type = str(opctx.get("asset_type") or "")
         scope = str(opctx.get("scope") or "workspace").strip().lower()
-        tenant_id = str(opctx.get("tenant_id") or meta.get("tenant_id") or "default")
+        tenant_id = str(opctx.get("tenant_id") or meta.get("tenant_id") or DomainRouter.default_tenant())
         channel = str(opctx.get("channel") or "stable").strip().lower()
         version = str(opctx.get("version") or "") or None
         to_version = str(opctx.get("to_version") or "") or None

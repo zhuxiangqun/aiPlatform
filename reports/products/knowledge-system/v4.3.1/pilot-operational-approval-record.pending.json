@@ -1,0 +1,12 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "pilot lock-service Operational certification (附录 N.4)",
+  "status": "pending",
+  "approvers": [],
+  "approval_date": null,
+  "effective_date": null,
+  "exceptions": [],
+  "decision": null,
+  "record_id": "PILOT-OPERATIONAL-lock-service-pending",
+  "note": "Superseded by pilot-operational-approval-record.approved.json (approver: 朱莹)."
+}
