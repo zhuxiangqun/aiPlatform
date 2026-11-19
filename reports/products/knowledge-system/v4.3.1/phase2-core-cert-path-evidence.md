@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / Core cert path 证据
 
 > 实施权威：白皮书 §16.1 / 附录 N.1–N.2 / 实施方案 §1.1·§14.1。  
-> 试点 Core：`pilot_certified=true`（批准人 **朱鸿林**，`pilot-core-approval-record.approved.json`）。  
+> 试点 Core：`pilot_certified=true`（非作者 **朱鸿林** 已复核确认，`pilot-core-approval-record.approved.json`）。  
 > **未宣称** 附录 N 24/24 / Extended / Operational；全量 `certified` 仍 false。
 
 ## 检查表
