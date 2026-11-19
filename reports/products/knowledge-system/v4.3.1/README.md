@@ -55,6 +55,7 @@ authority: supporting
 | [phase2-abox-acl-delete-evidence.md](./phase2-abox-acl-delete-evidence.md) | N07/N22 deepen：ABox ACL DELETE + 薄 UI 删除（非 certified / 非全量权限产品） |
 | [phase2-abox-acl-preview-evidence.md](./phase2-abox-acl-preview-evidence.md) | N07/N22 deepen：ABox ACL 按角色预览（非 certified / 非 H.1 condition 编辑器） |
 | [phase2-abox-acl-condition-evidence.md](./phase2-abox-acl-condition-evidence.md) | N07/N22 deepen：ABox ACL H.1 condition 最小等值匹配（非完整策略编辑器） |
+| [phase2-abox-acl-condition-ops-evidence.md](./phase2-abox-acl-condition-ops-evidence.md) | N07/N22 deepen：ABox ACL condition $eq/$ne/$in（非表达式语言 / 非 certified） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |

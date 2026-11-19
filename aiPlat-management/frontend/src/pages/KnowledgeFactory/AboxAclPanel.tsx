@@ -49,7 +49,7 @@ const AboxAclPanel: React.FC = () => {
   const [entityId, setEntityId] = useState('');
   const [denyRaw, setDenyRaw] = useState('viewer:read');
   const [allowRaw, setAllowRaw] = useState('');
-  const [conditionRaw, setConditionRaw] = useState('{"status":"open"}');
+  const [conditionRaw, setConditionRaw] = useState('{"status":{"$in":["open","pending"]}}');
   const [fieldEntity, setFieldEntity] = useState('');
   const [fieldName, setFieldName] = useState('');
   const [visibility, setVisibility] = useState('role:admin');
@@ -305,12 +305,12 @@ const AboxAclPanel: React.FC = () => {
             />
           </label>
           <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
-            condition（H.1 等值 JSON；空=`{}` 清除）
+            condition（H.1：标量等值 / $eq / $ne / $in；空=`{}` 清除；非表达式语言）
             <input
               className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
               value={conditionRaw}
               onChange={(e) => setConditionRaw(e.target.value)}
-              placeholder='{"status":"open"}'
+              placeholder='{"status":{"$in":["open","pending"]}}'
             />
           </label>
           <div className="flex items-end">

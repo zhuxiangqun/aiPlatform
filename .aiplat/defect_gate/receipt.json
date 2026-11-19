@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-20T00:48:00+08:00",
+  "reviewed_at": "2026-11-20T00:55:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "2a9f01d016aaa7464ce238932520a85baa61758b2ccd1ccd8c187f491fcb3fa5",
-  "head_sha": "d5f5d6bc0bba25c5b0b61b228068f9a64de46402",
+  "diff_sha256": "05460f700b8523f18ba3267640ed1bb2738dd86b78d3e71722726c925431dbd6",
+  "head_sha": "791dd8ff43dc2baf11c3ee22e03ab10883114f2c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "H.1 condition equality only; ObjectSet/link.traverse attrs wired. Not full policy editor / not N07 certified. Local lock only."
+  "note": "H.1 condition $eq/$ne/$in only; scalar eq preserved. Not expression language / not N07 certified. Local lock only."
 }
