@@ -46,4 +46,5 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 - N07/N22 certified 或关闭 ADR 例外
 - 完整权限产品（审批流 / 多租户策略中心 / 批量导入）
+- ABox 实例 ACL 薄 UI → 见 `phase2-abox-acl-thin-ui-evidence.md`
 - 无身份伪造 cron 角色（见 auto identity 证据）

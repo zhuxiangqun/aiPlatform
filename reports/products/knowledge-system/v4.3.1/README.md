@@ -51,6 +51,7 @@ authority: supporting
 | [phase2-evolution-runner-acl-evidence.md](./phase2-evolution-runner-acl-evidence.md) | N07/N22 deepen：EvolutionRunner suggestions OWL 落盘身份透传（非 certified / 非 UI） |
 | [phase2-wiki-auto-identity-passthrough-evidence.md](./phase2-wiki-auto-identity-passthrough-evidence.md) | N07/N22 deepen：platform ingest/watch/vault → wiki_auto_update 身份透传（非 certified / 非伪造 cron 角色） |
 | [phase2-field-acl-thin-ui-evidence.md](./phase2-field-acl-thin-ui-evidence.md) | N07/N22 deepen：字段 ACL 管理端薄 UI（非 certified / 非全量权限产品） |
+| [phase2-abox-acl-thin-ui-evidence.md](./phase2-abox-acl-thin-ui-evidence.md) | N07/N22 deepen：ABox 实例 ACL 管理端薄 UI（非 certified / 非全量权限产品） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |
