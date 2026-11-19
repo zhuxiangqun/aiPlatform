@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-20T00:22:00+08:00",
+  "reviewed_at": "2026-11-20T00:35:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "54f795dd82f623af7a2dce1674208d214e52a7cf13af64b63f7c5257e656ee71",
-  "head_sha": "263b1056fd7c35c0f96c5e0cdecc09793c24f60e",
+  "diff_sha256": "448902efff08bcfb998e0cd2b80a870f65b3ab3ebfa34ef617292c374cbc51bf",
+  "head_sha": "9b554f456e4dd16fea5394eba17eb8f46224ae30",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "ABox ACL DELETE + AboxAclPanel remove. certified=false. Not full H.1 editor / not N07 certified. Local lock only."
+  "note": "ABox ACL preview-as-role dry-run only; certified=false. Not H.1 condition editor / not N07 certified. Local lock only."
 }
