@@ -21,6 +21,7 @@ pilot_domain: lock-service
 | Core 12 项 exists（Core-scoped） | pass | catalog status |
 | N09 探针冻结 | pass | `n09_core_probe_freeze: true` |
 | `core_ready` 门 | pass | `evaluate_core_ready_gate` |
+| FDE HTTP 接线 | pass | `GET …/conformance-pack/core-ready` / `pilot-core-cert` |
 | 无批准时 pilot_certified 恒 false | pass | pending 记录 + honesty 测 |
 | certified 不自动置真 | pass | honesty |
 
