@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T11:57:12+08:00",
+  "reviewed_at": "2026-11-19T12:09:19+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "9cd02b43f6a2b4a20a0adc7f4bd28a9d12033e6d8e5129f5f684aea153b8be8f",
-  "head_sha": "2a86290c91d1728556e444ae0b730e8a8226754b",
+  "diff_sha256": "334eead6806e41a1d76d92d536339bac714c777276f5e1198e4d1053f8730b38",
+  "head_sha": "b70bbe557915720e6fcc156167235eb952af13ca",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Full cert path: full_ready true; certified/n24_full false until independent approval. Checks: three badges alone do not set certified; Facade/route signatures match; pending≠certified; single full-cert surface; ready≠certified."
+  "note": "Full approval 朱向群: certified/n24_full true (conditional SLO). Checks: independent full record required; pending still fails; accuracy_claim false; level badges alone insufficient; single full-cert path."
 }
