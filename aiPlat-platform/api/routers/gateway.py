@@ -6,6 +6,8 @@ API gateway management belongs in platform layer (docs/index.md §Layer 2).
 """
 
 from __future__ import annotations
+
+from core.api.core_facade import DomainRouter
 from api.schemas_response import StatusResponse
 import logging
 
@@ -204,7 +206,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
         target_id=str(request.target_id),
         payload=payload,
         user_id=str(resolved_user or "system"),
-        session_id=str(resolved_session or "default"),
+        session_id=str(resolved_session or DomainRouter.default_session()),
         request_id=request_id,
         run_id=reserved_run_id,
     )

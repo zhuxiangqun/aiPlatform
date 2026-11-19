@@ -39,5 +39,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- `harness/integration.py` / `integration/__init__.py` / `server.py` / platform approvals·gateway / memory manager·profile_builder / seci_engine 残留 → 后续批次
+- `harness/integration.py` / `integration/__init__.py` / `server.py` / platform approvals·gateway / memory manager·profile_builder / seci_engine 残留 → 见 K61
 - N09 / 附录 N 全量认证（certified 仍 false）

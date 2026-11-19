@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T08:41:27+08:00",
+  "reviewed_at": "2026-11-19T08:54:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "18d136cc1d4fd1bb174c4e74a75ead8c6ef1c0343989e874206bbe10476077f7",
-  "head_sha": "a63055a4ae94d92cb90d756b63af5b5d55ffb703",
+  "diff_sha256": "98b97c7cd20669bda65dbe8f0da227961d67a835354213afdb38c903d78e0dfc",
+  "head_sha": "a829309102ea95b86d101df75dd141ea67348529",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K60: agents/jobs/plugins/pipeline/compressor/langgraph/tool/skill/policy_gate session runtime fallbacks → DomainRouter.default_session(). Five checks clean. Honesty: not N09 certified; integration aggregate/server/memory leftovers deferred."
+  "note": "K61: integration/server/memory/seci/approvals/gateway session runtime fallbacks → DomainRouter.default_session(). Five checks clean. Honesty: not N09 certified; MemoryManager namespace or \"default\" cache key deferred."
 }

@@ -5,6 +5,8 @@ Provides REST API endpoints for agent, skill, tool, memory, knowledge, and harne
 Runs on port 8002.
 """
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import os as _os
 import sys as _sys
 # Diagnostic: dump Python stacks on SIGUSR1 (for busy-loop / spin debugging).
@@ -573,7 +575,7 @@ async def lifespan(app: FastAPI):
                                         "target_id": change_id_for_release_candidate(cand_id),
                                         "approval_request_id": request_id,
                                         "user_id": str(getattr(req, "user_id", None) or "system"),
-                                        "session_id": str(meta.get("session_id") or "default"),
+                                        "session_id": str(meta.get("session_id") or DomainRouter.default_session()),
                                         "tenant_id": str(meta.get("project_id") or meta.get("tenant_id") or "") or None,
                                     }
                                 )
@@ -596,7 +598,7 @@ async def lifespan(app: FastAPI):
                                         "target_id": repo_change_id,
                                         "approval_request_id": request_id,
                                         "user_id": str(getattr(req, "user_id", None) or "system"),
-                                        "session_id": str(meta.get("session_id") or "default"),
+                                        "session_id": str(meta.get("session_id") or DomainRouter.default_session()),
                                         "tenant_id": str(meta.get("project_id") or meta.get("tenant_id") or "") or None,
                                     }
                                 )
