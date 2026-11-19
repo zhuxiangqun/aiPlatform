@@ -43,5 +43,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做（后续）
 
-- 多语言包发布 / 写盘安装到 `aiplat-sdk` 树
+- 多语言包发布 / PyPI 发布（Python 写盘安装见 `phase2-sdk-write-install-evidence.md`）
 - 字段级 ACL；附录 N 全量符合

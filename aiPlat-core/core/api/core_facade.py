@@ -6725,6 +6725,38 @@ def list_knowledge_sdk_object_types(
     return list_sdk_object_types(permissions=permissions, bindings_path=path)
 
 
+def install_knowledge_sdk(
+    object_type: str,
+    *,
+    permissions: Optional[List[str]] = None,
+    bindings_path: Any = None,
+    install_root: Any = None,
+) -> Dict[str, Any]:
+    """W6 deepen：生成 Python SDK 并写盘到 allowlist ``aiplat-sdk/aiplat/knowledge``。
+
+    Args:
+        object_type: ObjectType id。
+        permissions: scopes（须含 kb:read）。
+        bindings_path: 可选绑定 JSON。
+        install_root: 可选显式安装根（须以 ``…/aiplat-sdk/aiplat/knowledge`` 结尾）。
+
+    Returns:
+        install_sdk_python 回执。**未宣称**多语言包发布。
+    """
+    from pathlib import Path
+
+    from core.harness.knowledge_pipeline.sdk_generator import install_sdk_python
+
+    bpath = Path(bindings_path) if bindings_path else None
+    iroot = Path(install_root) if install_root else None
+    return install_sdk_python(
+        object_type,
+        permissions=permissions,
+        bindings_path=bpath,
+        install_root=iroot,
+    )
+
+
 def record_knowledge_slo_sample(
     metric: str,
     value: float,
