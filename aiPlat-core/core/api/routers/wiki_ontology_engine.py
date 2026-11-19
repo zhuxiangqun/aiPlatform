@@ -2315,7 +2315,7 @@ async def submit_feedback(req: dict):
 
     helpful = req.get("is_helpful") if isinstance(req, dict) else None
 
-    domain = req.get("domain_id", "default") if isinstance(req, dict) else "default"
+    domain = (req.get("domain_id") or DomainRouter.default_graph_domain()) if isinstance(req, dict) else DomainRouter.default_graph_domain()
 
     record_feedback(session_id=sid, query_text=q, rating=rating, is_helpful=helpful, domain_id=domain)
 

@@ -3298,7 +3298,7 @@ async def record_roi(payload: dict = Body(...)):
     roi = KnowledgeROI()
     qid = roi.record_from_syscall(
         payload.get("query_text", ""),
-        payload.get("domain_id", "default"),
+        payload.get("domain_id") or DomainRouter.default_graph_domain(),
         payload.get("rag_tokens", 0),
         payload.get("wiki_tokens", 0),
         cache_hit=payload.get("cache_hit", False),

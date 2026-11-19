@@ -50,14 +50,14 @@ def _cases_dir() -> Path:
 
 
 def _domain_path(domain_id: str) -> Path:
-    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in (domain_id or "default"))
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in (domain_id or DomainRouter.default_graph_domain()))
     return _cases_dir() / f"{safe}.json"
 
 
 def _cold_path(domain_id: str) -> Path:
     d = _cases_dir() / "cold"
     d.mkdir(parents=True, exist_ok=True)
-    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in (domain_id or "default"))
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in (domain_id or DomainRouter.default_graph_domain()))
     return d / f"{safe}.json"
 
 
@@ -133,7 +133,7 @@ class OntologyCase:
         """
         return cls(
             case_id=str(raw.get("case_id") or ""),
-            domain_id=str(raw.get("domain_id") or "default"),
+            domain_id=str(raw.get("domain_id") or DomainRouter.default_graph_domain()),
             title=str(raw.get("title") or "")[:200],
             summary=str(raw.get("summary") or "")[:4000],
             outcome=str(raw.get("outcome") or "success"),
@@ -161,7 +161,7 @@ class OntologyCaseStore:
             domain_id: domain 标识。
             tenant_id: 可选租户；空则从 ActiveRequestContext 解析（N09 K23）。
         """
-        self.domain_id = (domain_id or "").strip() or "default"
+        self.domain_id = (domain_id or "").strip() or DomainRouter.default_graph_domain()
         from core.harness.knowledge.context_bus import _resolve_graph_tenant
         self._tenant_id = (tenant_id or "").strip() or _resolve_graph_tenant()
 

@@ -14,6 +14,8 @@ AsyncActionRegistry — enterprise action execution engine (v3, 2026-07-29).
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import asyncio
 import importlib
 import json
@@ -326,7 +328,7 @@ class AsyncActionRegistry:
             domain_id = entity_ref[0]
         else:
             entity_id = entity_ref
-            domain_id = c.domain_id or "default"
+            domain_id = c.domain_id or DomainRouter.default_graph_domain()
 
         mutex_lock_id = f"{domain_id}:{entity_id}:mutex"
 

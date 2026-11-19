@@ -13,6 +13,8 @@ Integrates with MultiAgent's existing pattern framework.
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import asyncio
 import logging
 from typing import Any, Dict, List, Optional
@@ -43,7 +45,7 @@ class GraphConsensusPattern(CoordinationPattern):
         """
         run_id = context.state.get("run_id", "")
         query = context.state.get("query", "")
-        domain_id = context.state.get("domain_id", "default")
+        domain_id = context.state.get("domain_id") or DomainRouter.default_graph_domain()
 
         if not run_id or not query:
             return {"status": "error", "error": "run_id and query required"}

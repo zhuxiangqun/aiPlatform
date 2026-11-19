@@ -5,6 +5,8 @@ Never applies YAML or writes GraphIndex. Human must approve → apply.
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 import re
 from pathlib import Path
@@ -35,7 +37,7 @@ def suggest_classes_from_snippets(
         author: author 参数。
         enqueue: enqueue 参数。
     """
-    did = (domain_id or "").strip() or "default"
+    did = (domain_id or "").strip() or DomainRouter.default_graph_domain()
     texts: List[str] = list(snippets or [])
     for fp in file_paths or []:
         p = Path(fp)
@@ -317,7 +319,7 @@ def suggest_classes_from_table_schema(
         author: author 参数。
         enqueue: enqueue 参数。
     """
-    did = (domain_id or "").strip() or "default"
+    did = (domain_id or "").strip() or DomainRouter.default_graph_domain()
     cols = _normalize_columns(columns)
     rows: List[Dict[str, Any]] = list(sample_rows or [])
 

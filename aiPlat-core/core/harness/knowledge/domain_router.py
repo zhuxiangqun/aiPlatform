@@ -390,13 +390,15 @@ class DomainRouter:
         """
         return self.PLATFORM_COMPETITION_DOMAIN
 
-    def default_graph_domain(self) -> str:
-        """Return catch-all / default ontology graph domain id (N09 K42).
+    @classmethod
+    def default_graph_domain(cls) -> str:
+        """Return catch-all / default ontology graph domain id (N09 K42/K63).
 
         Distinct from ``default_kb_domain()`` (``ai-knowledge``). Prefer this
-        over hardcoding ``\"default\"`` in GraphIndex constructors.
+        over hardcoding ``\"default\"`` in GraphIndex constructors / runtime
+        ``domain_id`` fallbacks (callable as ``DomainRouter.default_graph_domain()``).
         """
-        return self.PLATFORM_DEFAULT_GRAPH_DOMAIN
+        return cls.PLATFORM_DEFAULT_GRAPH_DOMAIN
 
     @classmethod
     def it_ops_domain(cls) -> str:

@@ -50,8 +50,8 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
                             "priority": "P0", "recommendation": "build_first"}]
 
     # ── Step 3: Domain Maturity — computed detail ──
-    primary = recommendations[0] if recommendations else {"domain_id": domain_id or "default"}
-    primary_domain = primary.get("domain_id", "default")
+    primary = recommendations[0] if recommendations else {"domain_id": domain_id or DomainRouter.default_graph_domain()}
+    primary_domain = primary.get("domain_id") or DomainRouter.default_graph_domain()
     maturity_details = {}
     try:
         from core.harness.knowledge.domain_maturity import compute_domain_maturity, compute_gap_cost
