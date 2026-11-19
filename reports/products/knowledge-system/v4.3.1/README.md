@@ -60,6 +60,7 @@ authority: supporting
 | [phase2-abox-acl-h1-apply-evidence.md](./phase2-abox-acl-h1-apply-evidence.md) | N07/N22 deepen：ABox ACL H.1 薄导入 apply_h1_policy（非完整策略编辑器） |
 | [phase2-abox-acl-h1-list-evidence.md](./phase2-abox-acl-h1-list-evidence.md) | N07/N22 deepen：ABox ACL H.1 薄导出 list_h1_policies（非完整策略编辑器） |
 | [phase2-abox-acl-h1-get-evidence.md](./phase2-abox-acl-h1-get-evidence.md) | N07/N22 deepen：ABox ACL H.1 单实体 GET + 加载到编辑区（非完整策略编辑器） |
+| [phase2-abox-acl-h1-form-evidence.md](./phase2-abox-acl-h1-form-evidence.md) | N07/N22 deepen：ABox ACL H.1 薄表单 effect/principals/actions（非矩阵编辑器） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |

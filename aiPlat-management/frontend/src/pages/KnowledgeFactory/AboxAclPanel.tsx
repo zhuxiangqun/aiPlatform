@@ -44,6 +44,67 @@ function parseRoleMap(raw: string): Record<string, string[]> | undefined {
   return Object.keys(out).length ? out : undefined;
 }
 
+function splitCsv(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/** 从 H.1 policy 抽出薄表单字段（非完整策略编辑器）。 */
+function formFieldsFromH1(policy: Record<string, unknown>): {
+  effect: 'allow' | 'deny';
+  principals: string;
+  actions: string;
+  conditionRaw: string;
+  masked: string;
+} {
+  const effect = String(policy.effect || 'allow').toLowerCase() === 'deny' ? 'deny' : 'allow';
+  const principals = Array.isArray(policy.principals)
+    ? (policy.principals as unknown[]).map(String).join(',')
+    : '';
+  const actions = Array.isArray(policy.actions)
+    ? (policy.actions as unknown[]).map(String).join(',')
+    : 'read';
+  const cond =
+    policy.condition && typeof policy.condition === 'object' && !Array.isArray(policy.condition)
+      ? JSON.stringify(policy.condition)
+      : '{}';
+  const masked = Array.isArray(policy.masked_properties)
+    ? (policy.masked_properties as unknown[]).map(String).join(',')
+    : '';
+  return { effect, principals, actions, conditionRaw: cond, masked };
+}
+
+function buildH1FromForm(fields: {
+  effect: 'allow' | 'deny';
+  principals: string;
+  actions: string;
+  conditionRaw: string;
+  masked: string;
+}): Record<string, unknown> | { error: string } {
+  let condition: Record<string, unknown> = {};
+  const ct = fields.conditionRaw.trim();
+  if (ct) {
+    try {
+      const parsed = JSON.parse(ct) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return { error: 'condition 须为 JSON 对象' };
+      }
+      condition = parsed as Record<string, unknown>;
+    } catch {
+      return { error: 'condition 须为合法 JSON' };
+    }
+  }
+  return {
+    effect: fields.effect,
+    principals: splitCsv(fields.principals),
+    actions: splitCsv(fields.actions).length ? splitCsv(fields.actions) : ['*'],
+    condition,
+    masked_properties: splitCsv(fields.masked),
+  };
+}
+
 const AboxAclPanel: React.FC = () => {
   const [domainId, setDomainId] = useState('lock-service');
   const [entityId, setEntityId] = useState('');
@@ -65,11 +126,48 @@ const AboxAclPanel: React.FC = () => {
   const [previewPayload, setPreviewPayload] = useState('{"ssn":"123-45-6789","name":"demo"}');
   const [previewOut, setPreviewOut] = useState('');
   const [h1Entity, setH1Entity] = useState('');
+  const [h1Effect, setH1Effect] = useState<'allow' | 'deny'>('deny');
+  const [h1Principals, setH1Principals] = useState('role:viewer');
+  const [h1Actions, setH1Actions] = useState('read');
+  const [h1ConditionRaw, setH1ConditionRaw] = useState('{"status":"open"}');
+  const [h1MaskedForm, setH1MaskedForm] = useState('ssn');
   const [h1Raw, setH1Raw] = useState(
     '{\n  "effect": "deny",\n  "principals": ["role:viewer"],\n  "actions": ["read"],\n  "condition": {"status": "open"},\n  "masked_properties": ["ssn"]\n}',
   );
   const [h1Policies, setH1Policies] = useState<Record<string, unknown>[]>([]);
   const [h1ListOut, setH1ListOut] = useState('');
+
+  const pushFormToRaw = useCallback(
+    (next?: {
+      effect?: 'allow' | 'deny';
+      principals?: string;
+      actions?: string;
+      conditionRaw?: string;
+      masked?: string;
+    }) => {
+      const built = buildH1FromForm({
+        effect: next?.effect ?? h1Effect,
+        principals: next?.principals ?? h1Principals,
+        actions: next?.actions ?? h1Actions,
+        conditionRaw: next?.conditionRaw ?? h1ConditionRaw,
+        masked: next?.masked ?? h1MaskedForm,
+      });
+      if ('error' in built) return;
+      setH1Raw(JSON.stringify(built, null, 2));
+    },
+    [h1Effect, h1Principals, h1Actions, h1ConditionRaw, h1MaskedForm],
+  );
+
+  const applyPolicyToForm = useCallback((policy: Record<string, unknown>) => {
+    const f = formFieldsFromH1(policy);
+    setH1Effect(f.effect);
+    setH1Principals(f.principals);
+    setH1Actions(f.actions);
+    setH1ConditionRaw(f.conditionRaw);
+    setH1MaskedForm(f.masked);
+    const { certified: _c, ...rest } = policy;
+    setH1Raw(JSON.stringify(rest, null, 2));
+  }, []);
 
   const reload = useCallback(async () => {
     if (!domainId.trim()) return;
@@ -266,8 +364,7 @@ const AboxAclPanel: React.FC = () => {
       const policy = (body.h1_policy || {}) as Record<string, unknown>;
       setH1Entity(id);
       // 编辑区不写回 certified 字段，避免误提交宣称
-      const { certified: _c, ...rest } = policy;
-      setH1Raw(JSON.stringify(rest, null, 2));
+      applyPolicyToForm(policy);
       if (body.certified) toast?.error?.('异常：单实体 H.1 返回 certified=true');
       else toast?.success?.('已加载 H.1 到编辑区');
     } catch (e: unknown) {
@@ -282,18 +379,21 @@ const AboxAclPanel: React.FC = () => {
       toast?.error?.('H.1 entity_id 必填');
       return;
     }
+    // 优先薄表单；失败再回退 JSON textarea
     let policy: Record<string, unknown>;
-    try {
-      const parsed = JSON.parse(h1Raw || '{}') as unknown;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        toast?.error?.('h1_policy 须为 JSON 对象');
-        return;
-      }
-      policy = parsed as Record<string, unknown>;
-    } catch {
-      toast?.error?.('h1_policy 须为合法 JSON');
+    const fromForm = buildH1FromForm({
+      effect: h1Effect,
+      principals: h1Principals,
+      actions: h1Actions,
+      conditionRaw: h1ConditionRaw,
+      masked: h1MaskedForm,
+    });
+    if ('error' in fromForm) {
+      toast?.error?.(fromForm.error);
       return;
     }
+    policy = fromForm;
+    setH1Raw(JSON.stringify(policy, null, 2));
     setLoading(true);
     try {
       const r = await fetch(
@@ -589,7 +689,7 @@ const AboxAclPanel: React.FC = () => {
 
         <div className="border-t border-gray-800 pt-3 space-y-2">
           <div className="text-[12px] text-gray-300">
-            应用 H.1 策略 JSON（薄导入 · 非完整策略编辑器 · 非 certified）
+            H.1 薄表单（effect/principals/actions · 非矩阵编辑器 · 非 certified）
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
             <label className="text-[11px] text-gray-400 space-y-1 block">
@@ -610,12 +710,93 @@ const AboxAclPanel: React.FC = () => {
               加载 H.1
             </Button>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label className="text-[11px] text-gray-400 space-y-1">
+              effect
+              <select
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                value={h1Effect}
+                onChange={(e) => {
+                  const v = e.target.value === 'deny' ? 'deny' : 'allow';
+                  setH1Effect(v);
+                  pushFormToRaw({ effect: v });
+                }}
+              >
+                <option value="deny">deny</option>
+                <option value="allow">allow</option>
+              </select>
+            </label>
+            <label className="text-[11px] text-gray-400 space-y-1">
+              actions（逗号分隔）
+              <input
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
+                value={h1Actions}
+                onChange={(e) => {
+                  setH1Actions(e.target.value);
+                  pushFormToRaw({ actions: e.target.value });
+                }}
+                placeholder="read,update"
+              />
+            </label>
+            <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
+              principals（逗号分隔，如 role:viewer）
+              <input
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
+                value={h1Principals}
+                onChange={(e) => {
+                  setH1Principals(e.target.value);
+                  pushFormToRaw({ principals: e.target.value });
+                }}
+                placeholder="role:viewer,role:analyst"
+              />
+            </label>
+            <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
+              condition（JSON 对象）
+              <input
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
+                value={h1ConditionRaw}
+                onChange={(e) => {
+                  setH1ConditionRaw(e.target.value);
+                  pushFormToRaw({ conditionRaw: e.target.value });
+                }}
+                placeholder='{"status":"open"}'
+              />
+            </label>
+            <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
+              masked_properties（逗号分隔）
+              <input
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
+                value={h1MaskedForm}
+                onChange={(e) => {
+                  setH1MaskedForm(e.target.value);
+                  pushFormToRaw({ masked: e.target.value });
+                }}
+                placeholder="ssn,customer_phone"
+              />
+            </label>
+          </div>
           <label className="text-[11px] text-gray-400 space-y-1 block">
-            h1_policy（effect / principals / actions / condition / masked_properties）
+            h1_policy JSON（与薄表单同步；高级编辑仍可用）
             <textarea
-              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono min-h-[120px]"
+              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono min-h-[96px]"
               value={h1Raw}
-              onChange={(e) => setH1Raw(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setH1Raw(v);
+                try {
+                  const parsed = JSON.parse(v || '{}') as unknown;
+                  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    const f = formFieldsFromH1(parsed as Record<string, unknown>);
+                    setH1Effect(f.effect);
+                    setH1Principals(f.principals);
+                    setH1Actions(f.actions);
+                    setH1ConditionRaw(f.conditionRaw);
+                    setH1MaskedForm(f.masked);
+                  }
+                } catch {
+                  // 输入中：不打断
+                }
+              }}
             />
           </label>
           <Button type="button" size="sm" disabled={loading} onClick={() => void applyH1()}>
