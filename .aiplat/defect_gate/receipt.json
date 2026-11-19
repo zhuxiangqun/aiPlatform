@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T10:15:43+08:00",
+  "reviewed_at": "2026-11-19T10:23:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "b520764000ae46dcd3b24ff255fd15ac9e5f64f7a72000d54779a4fa2d42363f",
-  "head_sha": "e354da144dd776f5568f9f8991d9c7459d10df94",
+  "diff_sha256": "24cbea828c2066fc90e16b412846fcef02997c1b73bbf7b7a709c9c92706fded",
+  "head_sha": "fcabf9b89e5fc281a3f056782e7a4be661f7d5b9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K69: channel/agent_type/benchmark/output_style → default_label(). Five checks clean. Honesty: not N09 certified; model purpose=\"default\" intentionally deferred."
+  "note": "K70: mop leftover wiki_* collection / builder module_id / gateway channel / tenant·domain onto existing DomainRouter.default_*. Five checks clean. Honesty: not N09 certified; purpose=\"default\" intentionally deferred."
 }
