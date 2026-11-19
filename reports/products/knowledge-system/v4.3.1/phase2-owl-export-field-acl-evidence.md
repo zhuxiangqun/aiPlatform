@@ -43,4 +43,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 - N07/N22 certified 或关闭 ADR 例外
 - 字段 ACL 管理 UI 大改
-- `export/learned` suggestions OWL / offline_owl_review 身份透传
+- `export/learned` suggestions OWL / offline_owl_review 身份透传 → 见 `phase2-owl-suggestions-offline-acl-evidence.md`

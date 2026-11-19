@@ -34,11 +34,20 @@ def _find_domain_yaml(domain_id: str) -> Optional[Path]:
     return None
 
 
-def review_domain_owl_offline(domain_id: str) -> Dict[str, Any]:
+def review_domain_owl_offline(
+    domain_id: str,
+    *,
+    actor_role: str = "",
+    actor_scopes: Optional[List[str]] = None,
+    collection_id: str = "",
+) -> Dict[str, Any]:
     """Export domain to TTL (best-effort) and optionally run owlready2 consistency.
 
     Args:
         domain_id: domain 标识。
+        actor_role: 调用方角色；透传到 OWL 导出字段 ACL。
+        actor_scopes: 调用方 scopes；透传到 OWL 导出字段 ACL。
+        collection_id: field_permissions collection；空则用 domain_id。
     """
     did = (domain_id or "").strip() or DomainRouter.default_graph_domain()
     result: Dict[str, Any] = {
@@ -52,12 +61,17 @@ def review_domain_owl_offline(domain_id: str) -> Dict[str, Any]:
         "runtime_authority": False,
     }
 
-    # Prefer knowledge_ontology export when available
+    # Prefer knowledge_ontology export when available（写盘/审稿前字段 ACL）
     ttl = ""
     try:
         from core.api.core_facade import export_to_owl_rdf
 
-        ttl = export_to_owl_rdf(format="turtle") or ""
+        ttl = export_to_owl_rdf(
+            format="turtle",
+            actor_role=actor_role or "",
+            actor_scopes=actor_scopes,
+            collection_id=collection_id or did,
+        ) or ""
         result["export"] = "knowledge_ontology"
     except Exception:
         logger.debug("OWL export via knowledge_ontology failed", exc_info=True)

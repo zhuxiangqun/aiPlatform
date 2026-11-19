@@ -1718,13 +1718,60 @@ def _infer_parent_from_label(label: str, existing: List[OntologyClass]) -> str:
     return f"{AI}ConceptPage"
 
 
-def export_suggestions_to_owl(collection_id: str = DomainRouter.default_collection(),
-                              format: str = "turtle") -> str:
+def _redact_suggestion_fields(
+    suggestion: Dict[str, Any],
+    *,
+    title: str,
+    actor_role: str = "",
+    actor_scopes: List[str] = None,
+    collection_id: str = "",
+) -> Dict[str, Any]:
+    """对 suggestion 扁平字段做 ACL；无身份时原样返回。
+
+    Args:
+        suggestion: pending 建议 dict。
+        title: 用作实体名的标签。
+        actor_role: 调用方角色。
+        actor_scopes: 调用方 scopes。
+        collection_id: field_permissions collection。
+
+    Returns:
+        脱敏后的 suggestion 副本。
+    """
+    if not suggestion or (not actor_role and actor_scopes is None):
+        return dict(suggestion)
+    try:
+        from core.harness.syscalls.retrieval import _apply_field_acl_to_results
+
+        payload = {"title": title, **{k: v for k, v in suggestion.items() if k != "title"}}
+        out = _apply_field_acl_to_results(
+            [payload],
+            actor_role=actor_role or "",
+            actor_scopes=actor_scopes,
+            collection_id=collection_id or DomainRouter.default_collection(),
+        )
+        safe = out[0] if out else payload
+        safe.pop("title", None)
+        return safe
+    except Exception:
+        logging.getLogger(__name__).debug("suggestion OWL field ACL soft-fail", exc_info=True)
+        return dict(suggestion)
+
+
+def export_suggestions_to_owl(
+    collection_id: str = DomainRouter.default_collection(),
+    format: str = "turtle",
+    *,
+    actor_role: str = "",
+    actor_scopes: List[str] = None,
+) -> str:
     """Ontology learning output: pending suggestions → standard OWL/Turtle.
 
     Args:
         collection_id: collection 标识。
         format: format 参数。
+        actor_role: 调用方角色；非空时对 description 等字段 ACL。
+        actor_scopes: 调用方 scopes。
     """
     suggestions = load_pending_suggestions(collection_id)
     lines = [
@@ -1744,6 +1791,14 @@ def export_suggestions_to_owl(collection_id: str = DomainRouter.default_collecti
             continue
         stype = s.get("type", "")
         label = _parse_suggestion_label(s)
+        # 为什么：learned TTL 写盘旁路 retrieve，description 须字段 ACL
+        s = _redact_suggestion_fields(
+            s,
+            title=label,
+            actor_role=actor_role,
+            actor_scopes=actor_scopes,
+            collection_id=collection_id,
+        )
         sname = _safe_uri(label)
         if stype == "new_class" and sname not in seen:
             seen.add(sname)
@@ -1777,15 +1832,27 @@ def export_suggestions_to_owl(collection_id: str = DomainRouter.default_collecti
     return "\n".join(lines)
 
 
-def write_suggestions_owl_file(collection_id: str = DomainRouter.default_collection(),
-                               format: str = "turtle") -> Optional[str]:
+def write_suggestions_owl_file(
+    collection_id: str = DomainRouter.default_collection(),
+    format: str = "turtle",
+    *,
+    actor_role: str = "",
+    actor_scopes: List[str] = None,
+) -> Optional[str]:
     """Persist learned suggestions as an OWL/Turtle file under ~/.aiplat/ontologies/.
 
     Args:
         collection_id: collection 标识。
         format: format 参数。
+        actor_role: 调用方角色；透传字段 ACL。
+        actor_scopes: 调用方 scopes。
     """
-    ttl = export_suggestions_to_owl(collection_id, format=format)
+    ttl = export_suggestions_to_owl(
+        collection_id,
+        format=format,
+        actor_role=actor_role,
+        actor_scopes=actor_scopes,
+    )
     if "owl:Class" not in ttl:
         return None
     import os as _os
