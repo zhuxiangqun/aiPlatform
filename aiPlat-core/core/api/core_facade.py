@@ -7321,6 +7321,29 @@ def set_graph_field_acl(
     )
 
 
+def remove_graph_entity_acl(domain_id: str, entity_id: str) -> bool:
+    """Remove ABox per-instance ACL entry（管理端薄 UI 删除）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    from core.policy.graph_abox_acl import remove_entity_acl
+    return remove_entity_acl(domain_id, entity_id)
+
+
+def remove_graph_field_acl(domain_id: str, entity_id: str, field_name: str) -> bool:
+    """Remove ABox field ACL entry（管理端薄 UI 删除）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        field_name: field_name 参数。
+    """
+    from core.policy.graph_abox_acl import remove_field_acl
+    return remove_field_acl(domain_id, entity_id, field_name)
+
+
 # ── Growth & Obsidian Facade (Phase E + Phase F) ──
 
 def get_growth_stats(days: int = 30, *, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:

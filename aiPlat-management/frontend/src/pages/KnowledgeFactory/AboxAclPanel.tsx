@@ -143,6 +143,49 @@ const AboxAclPanel: React.FC = () => {
     }
   };
 
+  const removeEntity = async (id: string) => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const r = await fetch(
+        API(`/graph/acl/${encodeURIComponent(domainId.trim())}/entities/${encodeURIComponent(id)}`),
+        { method: 'DELETE' },
+      );
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(d.detail));
+      toast?.success?.(d.status === 'ok' ? '已删除实例 ACL' : '未找到');
+      await reload();
+    } catch (e: unknown) {
+      toast?.error?.((e as Error)?.message || '删除失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeField = async (key: string) => {
+    const idx = key.lastIndexOf('.');
+    if (idx <= 0) return;
+    const eid = key.slice(0, idx);
+    const fname = key.slice(idx + 1);
+    setLoading(true);
+    try {
+      const r = await fetch(
+        API(
+          `/graph/acl/${encodeURIComponent(domainId.trim())}/fields/${encodeURIComponent(eid)}/${encodeURIComponent(fname)}`,
+        ),
+        { method: 'DELETE' },
+      );
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(d.detail));
+      toast?.success?.(d.status === 'ok' ? '已删除字段 ACL' : '未找到');
+      await reload();
+    } catch (e: unknown) {
+      toast?.error?.((e as Error)?.message || '删除失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const entityKeys = Object.keys(entities);
   const fieldKeys = Object.keys(fields);
 
@@ -262,11 +305,25 @@ const AboxAclPanel: React.FC = () => {
             ) : (
               <ul className="space-y-1.5 max-h-40 overflow-auto text-[11px] font-mono text-gray-400">
                 {entityKeys.map((id) => (
-                  <li key={id} className="rounded border border-gray-800 bg-gray-950/50 px-2 py-1.5 break-all">
-                    {id}
-                    <span className="ml-2 text-gray-500">
-                      deny={JSON.stringify(entities[id]?.deny_roles || {})}
+                  <li
+                    key={id}
+                    className="rounded border border-gray-800 bg-gray-950/50 px-2 py-1.5 break-all flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <span>
+                      {id}
+                      <span className="ml-2 text-gray-500">
+                        deny={JSON.stringify(entities[id]?.deny_roles || {})}
+                      </span>
                     </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={loading}
+                      onClick={() => void removeEntity(id)}
+                    >
+                      删除
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -279,11 +336,25 @@ const AboxAclPanel: React.FC = () => {
             ) : (
               <ul className="space-y-1.5 max-h-40 overflow-auto text-[11px] font-mono text-gray-400">
                 {fieldKeys.map((key) => (
-                  <li key={key} className="rounded border border-gray-800 bg-gray-950/50 px-2 py-1.5 break-all">
-                    {key}
-                    <span className="ml-2 text-gray-500">
-                      {fields[key]?.visibility}/{fields[key]?.redaction}
+                  <li
+                    key={key}
+                    className="rounded border border-gray-800 bg-gray-950/50 px-2 py-1.5 break-all flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <span>
+                      {key}
+                      <span className="ml-2 text-gray-500">
+                        {fields[key]?.visibility}/{fields[key]?.redaction}
+                      </span>
                     </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={loading}
+                      onClick={() => void removeField(key)}
+                    >
+                      删除
+                    </Button>
                   </li>
                 ))}
               </ul>

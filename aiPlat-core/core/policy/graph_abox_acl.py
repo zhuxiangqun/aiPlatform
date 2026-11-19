@@ -186,6 +186,42 @@ def set_field_acl(
     return entry
 
 
+def remove_entity_acl(domain_id: str, entity_id: str) -> bool:
+    """Remove per-instance ACL entry. Returns True if an entry was removed.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    acl = load_abox_acl(domain_id)
+    entities = acl.get("entities") or {}
+    if entity_id not in entities:
+        return False
+    del entities[entity_id]
+    acl["entities"] = entities
+    save_abox_acl(domain_id, acl)
+    return True
+
+
+def remove_field_acl(domain_id: str, entity_id: str, field_name: str) -> bool:
+    """Remove ABox field ACL for entity_id.field_name. Returns True if removed.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        field_name: field_name 参数。
+    """
+    acl = load_abox_acl(domain_id)
+    key = f"{entity_id}.{field_name}"
+    fields = acl.get("fields") or {}
+    if key not in fields:
+        return False
+    del fields[key]
+    acl["fields"] = fields
+    save_abox_acl(domain_id, acl)
+    return True
+
+
 def check_entity_acl(
     domain_id: str,
     entity_id: str,

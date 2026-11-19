@@ -1038,6 +1038,54 @@ async def put_graph_field_acl(
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
+@router.delete("/graph/acl/{domain_id}/entities/{entity_id}")
+async def delete_graph_entity_acl(domain_id: str, entity_id: str):
+    """Remove instance ACL entry（薄 UI 删除；非 certified）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    try:
+        from core.api.core_facade import remove_graph_entity_acl
+
+        ok = remove_graph_entity_acl(domain_id, entity_id)
+        return {
+            "domain_id": domain_id,
+            "entity_id": entity_id,
+            "status": "ok" if ok else "not_found",
+            "certified": False,
+        }
+    except Exception as e:
+        logger.error("delete_graph_entity_acl failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.delete("/graph/acl/{domain_id}/fields/{entity_id}/{field_name}")
+async def delete_graph_field_acl(domain_id: str, entity_id: str, field_name: str):
+    """Remove ABox field ACL entry（薄 UI 删除；非 certified）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        field_name: field_name 参数。
+    """
+    try:
+        from core.api.core_facade import remove_graph_field_acl
+
+        ok = remove_graph_field_acl(domain_id, entity_id, field_name)
+        return {
+            "domain_id": domain_id,
+            "entity_id": entity_id,
+            "field": field_name,
+            "status": "ok" if ok else "not_found",
+            "certified": False,
+        }
+    except Exception as e:
+        logger.error("delete_graph_field_acl failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
 @router.post("/actions/from-yaml")
 async def register_from_yaml(body: Dict[str, Any]):
     """Register actions from a YAML file (business expert entry point).
