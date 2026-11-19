@@ -1005,17 +1005,35 @@ def reset_ontology() -> None:
     _onto = None
 
 
-def export_to_owl_rdf(format: str = "turtle") -> str:
+def export_to_owl_rdf(
+    format: str = "turtle",
+    *,
+    actor_role: str = "",
+    actor_scopes: List[str] = None,
+    collection_id: str = "",
+) -> str:
     """Export T-Box + A-Box as standard OWL/RDF serialization.
 
     Args:
         format: "turtle" (default), "rdfxml", or "ntriples"
+        actor_role: 调用方角色；非空时对 A-Box 敏感字段三元组脱敏
+        actor_scopes: 调用方 scopes；与 actor_role 一起触发字段 ACL
+        collection_id: field_permissions collection；空则 default_collection
 
     Returns:
         RDF serialization string compatible with Protégé, GraphDB, Stardog.
     """
+    from core.harness.knowledge.domain_router import DomainRouter
+
     onto = get_ontology()
     lines = []
+    # 为什么：OWL 导出旁路 retrieve，A-Box 字面量须同口径字段 ACL
+    abox = _redact_owl_abox_triples(
+        list(onto.triples or []),
+        actor_role=actor_role or "",
+        actor_scopes=actor_scopes,
+        collection_id=collection_id or DomainRouter.default_collection(),
+    )
 
     if format == "turtle":
         lines.append("@prefix aiplat: <http://aiplat.local/knowledge#> .")
@@ -1079,15 +1097,15 @@ def export_to_owl_rdf(format: str = "turtle") -> str:
                 lines[-1] = lines[-1].rstrip(" ;") + " ."
             lines.append("")
 
-        # A-Box: Triples
-        for t in onto.triples:
+        # A-Box: Triples（已按身份脱敏）
+        for t in abox:
             s = _turtle_id(t.subject)
             p = _turtle_id(t.predicate)
             o = _turtle_id(t.object) if not t.object.startswith('"') else t.object
             lines.append(f"{s} {p} {o} .")
 
     elif format == "ntriples":
-        for t in onto.triples:
+        for t in abox:
             s = _turtle_id(t.subject)
             p = _turtle_id(t.predicate)
             o = _turtle_id(t.object) if not t.object.startswith('"') else t.object
@@ -1096,14 +1114,95 @@ def export_to_owl_rdf(format: str = "turtle") -> str:
     else:
         # Fallback: export as N-Triples (subset of Turtle)
         lines.append(f"# RDF export: {format} format not directly supported, using N-Triples fallback")
-        lines.append(f"# {len(onto.triples)} triples, {len(onto.classes)} classes")
-        for t in onto.triples:
+        lines.append(f"# {len(abox)} triples, {len(onto.classes)} classes")
+        for t in abox:
             s = _turtle_id(t.subject)
             p = _turtle_id(t.predicate)
             o = _turtle_id(t.object) if not t.object.startswith('"') else t.object
             lines.append(f"{s} {p} {o} .")
 
     return "\n".join(lines)
+
+
+def _predicate_local_name(predicate: str) -> str:
+    """从谓词 URI 取字段名（# 或 / 后缀）。
+
+    Args:
+        predicate: 谓词 URI 或 compact 名。
+
+    Returns:
+        本地字段名。
+    """
+    pred = (predicate or "").strip()
+    if "#" in pred:
+        return pred.rsplit("#", 1)[-1]
+    if "/" in pred:
+        return pred.rsplit("/", 1)[-1]
+    if ":" in pred:
+        return pred.rsplit(":", 1)[-1]
+    return pred
+
+
+def _redact_owl_abox_triples(
+    triples: List[OntologyTriple],
+    *,
+    actor_role: str = "",
+    actor_scopes: List[str] = None,
+    collection_id: str = "",
+) -> List[OntologyTriple]:
+    """按 field_permissions 对 A-Box 三元组对象脱敏；无身份时原样返回。
+
+    Args:
+        triples: A-Box 三元组列表。
+        actor_role: 调用方角色。
+        actor_scopes: 调用方 scopes。
+        collection_id: field_permissions collection。
+
+    Returns:
+        脱敏后的三元组列表。
+    """
+    if not triples or (not actor_role and actor_scopes is None):
+        return list(triples)
+    scopes = list(actor_scopes or [])
+    if actor_role == "admin" or "admin" in scopes:
+        return list(triples)
+    try:
+        from core.policy.field_level_security import (
+            load_field_permissions,
+            _can_see_field,
+        )
+        from core.harness.knowledge.domain_router import DomainRouter
+
+        cid = collection_id or DomainRouter.default_collection()
+        perms = load_field_permissions(cid)
+        if not perms:
+            return list(triples)
+        scopes_set = set(scopes)
+        out: List[OntologyTriple] = []
+        for t in triples:
+            field = _predicate_local_name(t.predicate)
+            applicable = [
+                p
+                for p in perms
+                if p.field_name == field
+                and (p.entity_uri == t.subject or p.entity_uri == "*")
+            ]
+            denied = [p for p in applicable if not _can_see_field(p, actor_role, scopes_set)]
+            if denied:
+                repl = denied[0].replace_with or "[REDACTED]"
+                # 字面量保持引号形态，URI 对象改为字面量脱敏
+                obj = t.object
+                if obj.startswith('"'):
+                    obj = f'"{repl}"'
+                else:
+                    obj = f'"{repl}"'
+                out.append(OntologyTriple(subject=t.subject, predicate=t.predicate, object=obj))
+            else:
+                out.append(t)
+        return out
+    except Exception:
+        logging.getLogger(__name__).debug("OWL A-Box field ACL soft-fail", exc_info=True)
+        return list(triples)
 
 
 def _turtle_id(uri: str) -> str:
