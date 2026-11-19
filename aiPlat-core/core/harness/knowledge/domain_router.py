@@ -77,12 +77,13 @@ class DomainRouter:
     PLATFORM_IT_OPS_DOMAIN = "it-ops"
     PLATFORM_DATA_GOV_DOMAIN = "data-gov"
     PLATFORM_SYSTEM_DOMAIN = "aiplat-system"
-    # Tenant / collection / profile / session / view fallback SSOT (N09 K49/K52/K53/K64) — not ontology domain ids.
+    # Tenant / collection / profile / session / view / workspace fallback SSOT (N09 K49–K65) — not ontology domain ids.
     PLATFORM_DEFAULT_TENANT = "default"
     PLATFORM_DEFAULT_COLLECTION = "default"
     PLATFORM_DEFAULT_PROFILE = "default"
     PLATFORM_DEFAULT_SESSION = "default"
     PLATFORM_DEFAULT_VIEW = "default"
+    PLATFORM_DEFAULT_WORKSPACE = "default"
 
     @staticmethod
     def _home() -> str:
@@ -470,6 +471,15 @@ class DomainRouter:
         runtime fallbacks (CrossDomainResolver / K-wave arbit).
         """
         return cls.PLATFORM_DEFAULT_VIEW
+
+    @classmethod
+    def default_workspace_id(cls) -> str:
+        """Return platform default named-workspace id (N09 K65).
+
+        Prefer this over hardcoding ``\"default\"`` in named_workspace
+        registry / resolve fallbacks (legacy AIPLAT_HOME agents layout).
+        """
+        return cls.PLATFORM_DEFAULT_WORKSPACE
 
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).
