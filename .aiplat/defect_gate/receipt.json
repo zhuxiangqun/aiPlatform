@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T17:20:23+08:00",
+  "reviewed_at": "2026-11-19T17:23:46+08:00",
   "base_ref": "origin/main",
   "merge_base": "4d5c584aae1a8c63adbffce637bbc80e18d2dfed",
-  "diff_sha256": "1b9aecc5981e3ac05e7ccf3ed57e28b0ba5f21f2085a0d9cddd1fee8a4168709",
-  "head_sha": "660934c6886c8291df131179ddcc5c79bf10b8f2",
+  "diff_sha256": "882d9bd5968363009c0188e3b42b6bf13cec78b54e1f503ac6330049e3e3ff49",
+  "head_sha": "20e18a9a5508c082607b771dbd467980a58e46e7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "F1 deepen SLO telemetry wiring; Facade+FDE; wiring\u2260attainment; Full remains conditional. Local lock only."
+  "note": "F1 deepen SLO telemetry wiring; Facade+FDE; wiring\u2260attainment; Full remains conditional; clause-sync \u00a7151. Local lock only."
 }
