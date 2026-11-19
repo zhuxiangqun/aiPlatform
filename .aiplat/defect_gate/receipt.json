@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T13:02:34+08:00",
+  "reviewed_at": "2026-11-19T13:23:28+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "34a223e356048293d6b12500da23b6fbcbf5591c9756abd15ca825eff0d73d1b",
-  "head_sha": "f94c4572d56c5a58c3d6f4ae17303793cca67cd0",
+  "diff_sha256": "80f766d2c4f11de4419bb1f2aa0308cdc9271616f6fb324e006b74c90da0d247",
+  "head_sha": "53ebed9e97bbef4ea85777def0a4752e95d74e81",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Platform test sync for DomainRouter SSOT; enables tip→main #873 CI."
+  "note": "Test-only SSOT/async/path alignment for #873 tip\u2192main; no product behavior change. Local lock only."
 }
