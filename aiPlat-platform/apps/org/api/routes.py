@@ -555,7 +555,7 @@ async def org_value_roi_preview_route(
 @router.get("/value/baseline")
 async def org_value_baseline_get_route(
     request: Request,
-    tenant_id: str = Query("default"),
+    tenant_id: str = Query(DomainRouter.default_tenant()),
 ):
     """S2: read tenant value baseline.
 

@@ -2934,7 +2934,7 @@ async def check_security_3d(
 @router.get("/security/markings/check")
 async def check_marking_level(
     entity_uri: str = Query(""),
-    collection_id: str = Query("default"),
+    collection_id: str = Query(DomainRouter.default_collection()),
 ):
     """检查实体的标记级别.
 

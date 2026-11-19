@@ -81,7 +81,7 @@ async def rapid_insight_upload(
         DomainRouter().register_domain(domain_id, {
             "name": f"快速行业认知-{industry_name}",
             "description": f"临时域：{industry_name} 行业知识图谱",
-            "collection_id": "default",
+            "collection_id": DomainRouter.default_collection(),
             "namespace": f"http://aiplat.local/ontology/{domain_id}/",
             "maturity": "seeding",
             "maturity_score": 0.0,

@@ -261,7 +261,7 @@ class MemoryManager:
 
 
 
-    def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = "default",
+    def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = DomainRouter.default_session(),
 
                  *, tenant_id: Optional[str] = None, session_id: Optional[str] = None):
 
@@ -2625,7 +2625,7 @@ _default_manager: Optional[MemoryManager] = None
 
 
 
-def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = "default",
+def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = DomainRouter.default_session(),
 
                        *, tenant_id: Optional[str] = None,
 

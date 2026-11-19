@@ -2666,7 +2666,7 @@ async def gateway_dlq_retry(entry_id: str):
 
 
 @app.get("/api/core/quota/snapshot")
-async def quota_snapshot(tenant_id: str = Query("default")):
+async def quota_snapshot(tenant_id: str = Query(DomainRouter.default_tenant())):
     """Return a quota snapshot — aggregate execution store stats.
 
     Args:
@@ -2690,7 +2690,7 @@ async def quota_snapshot(tenant_id: str = Query("default")):
 
 @app.get("/api/core/quota/usage")
 async def quota_usage(
-    tenant_id: str = Query("default"),
+    tenant_id: str = Query(DomainRouter.default_tenant()),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):

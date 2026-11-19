@@ -647,7 +647,7 @@ async def ontology_record_case(body: Dict[str, Any]):
 
 @router.get("/ontology/cases/search")
 async def ontology_search_cases(
-    domain_id: str = Query("default"),
+    domain_id: str = Query(DomainRouter.default_graph_domain()),
     q: str = Query(""),
     top_k: int = Query(5, ge=1, le=50),
     outcome: str = Query(""),

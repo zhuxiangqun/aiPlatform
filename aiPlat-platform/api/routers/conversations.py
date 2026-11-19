@@ -109,7 +109,7 @@ async def create_conversation(request: ConversationCreateRequest, http_request: 
         tenant_id=tenant_id,
         user_id=user_id,
         title=request.title or "资料对话",
-        scope=(request.scope.model_dump(exclude_none=True) if request.scope else {"collection_id": "default", "doc_ids": []}),
+        scope=(request.scope.model_dump(exclude_none=True) if request.scope else {"collection_id": DomainRouter.default_collection(), "doc_ids": []}),
         profile=request.profile.model_dump(exclude_none=True) if request.profile else {"citation_required": True, "answer_style": "concise", "language": "zh-CN"},
         agent_type=request.agent_type or "materials_chat",
     )
