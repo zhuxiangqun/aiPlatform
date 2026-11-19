@@ -248,6 +248,35 @@ const AboxAclPanel: React.FC = () => {
     }
   };
 
+  const loadH1Entity = async (eid?: string) => {
+    const id = (eid || h1Entity).trim();
+    if (!id) {
+      toast?.error?.('H.1 entity_id 必填');
+      return;
+    }
+    setLoading(true);
+    try {
+      const r = await fetch(
+        API(
+          `/graph/acl/${encodeURIComponent(domainId.trim())}/entities/${encodeURIComponent(id)}/h1`,
+        ),
+      );
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(body.detail));
+      const policy = (body.h1_policy || {}) as Record<string, unknown>;
+      setH1Entity(id);
+      // 编辑区不写回 certified 字段，避免误提交宣称
+      const { certified: _c, ...rest } = policy;
+      setH1Raw(JSON.stringify(rest, null, 2));
+      if (body.certified) toast?.error?.('异常：单实体 H.1 返回 certified=true');
+      else toast?.success?.('已加载 H.1 到编辑区');
+    } catch (e: unknown) {
+      toast?.error?.((e as Error)?.message || '加载 H.1 失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const applyH1 = async () => {
     if (!h1Entity.trim()) {
       toast?.error?.('H.1 entity_id 必填');
@@ -530,9 +559,23 @@ const AboxAclPanel: React.FC = () => {
           ) : (
             <ul className="space-y-1.5 max-h-32 overflow-auto text-[11px] font-mono text-gray-400">
               {h1Policies.map((p, i) => (
-                <li key={`${String(p.resource || i)}-${i}`} className="rounded border border-gray-800 bg-gray-950/50 px-2 py-1.5">
-                  {String(p.resource || '?')} · {String(p.effect || '')} ·{' '}
-                  {JSON.stringify(p.principals || [])}
+                <li
+                  key={`${String(p.resource || i)}-${i}`}
+                  className="rounded border border-gray-800 bg-gray-950/50 px-2 py-1.5 flex flex-wrap items-center justify-between gap-2"
+                >
+                  <span>
+                    {String(p.resource || '?')} · {String(p.effect || '')} ·{' '}
+                    {JSON.stringify(p.principals || [])}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={loading || !p.resource}
+                    onClick={() => void loadH1Entity(String(p.resource))}
+                  >
+                    加载到编辑区
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -548,14 +591,25 @@ const AboxAclPanel: React.FC = () => {
           <div className="text-[12px] text-gray-300">
             应用 H.1 策略 JSON（薄导入 · 非完整策略编辑器 · 非 certified）
           </div>
-          <label className="text-[11px] text-gray-400 space-y-1 block">
-            entity_id
-            <input
-              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
-              value={h1Entity}
-              onChange={(e) => setH1Entity(e.target.value)}
-            />
-          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+            <label className="text-[11px] text-gray-400 space-y-1 block">
+              entity_id
+              <input
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
+                value={h1Entity}
+                onChange={(e) => setH1Entity(e.target.value)}
+              />
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={loading}
+              onClick={() => void loadH1Entity()}
+            >
+              加载 H.1
+            </Button>
+          </div>
           <label className="text-[11px] text-gray-400 space-y-1 block">
             h1_policy（effect / principals / actions / condition / masked_properties）
             <textarea
