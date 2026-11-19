@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T09:57:31+08:00",
+  "reviewed_at": "2026-11-19T10:03:08+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "fc630530c3b4465734fabb9f350fa62a58fd7bac6783dbaf6a72902b08f11ef6",
-  "head_sha": "825f4371145a0175631546093ebd547dbb5230d1",
+  "diff_sha256": "78a4badedf8e0cc15e5f6356a280a3052e4a635a3b84f774d10b1e5607ad8cc5",
+  "head_sha": "dbb0cffca09e8f846762e083b207c54cfa8370f1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Follow-up: Step 1.8 scoped to harness/engine; diagnosis-system SECTION_ALIASES + 18 CAPABILITIES backfill. Clears recurring advisory noise. Honesty: not N09 certified."
+  "note": "K67: Query/Form/signature defaults → default_*(); MemoryManager namespace; pre-commit grep -c fix. Five checks clean. Honesty: not N09 certified; builder module_id deferred."
 }
