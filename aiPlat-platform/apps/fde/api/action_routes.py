@@ -1005,6 +1005,30 @@ async def get_graph_acl_h1(domain_id: str):
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
+@router.get("/graph/acl/{domain_id}/entities/{entity_id}/h1")
+async def get_graph_entity_acl_h1(domain_id: str, entity_id: str):
+    """Get one entity ABox ACL as appendix H.1 projection（薄导出；非 certified）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    try:
+        from core.api.core_facade import get_graph_h1_policy
+
+        return {
+            "domain_id": domain_id,
+            "entity_id": entity_id,
+            "h1_policy": get_graph_h1_policy(domain_id, entity_id),
+            "certified": False,
+        }
+    except KeyError:
+        raise HTTPException(status_code=404, detail="h1_entity_not_found")
+    except Exception as e:
+        logger.error("get_graph_entity_acl_h1 failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
 @router.put("/graph/acl/{domain_id}/entities/{entity_id}")
 async def put_graph_entity_acl(domain_id: str, entity_id: str, body: Dict[str, Any]):
     """Upsert instance ACL (deny/allow / condition / masked_properties / h1_policy)。

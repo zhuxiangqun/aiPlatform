@@ -7336,6 +7336,20 @@ def list_graph_h1_policies(domain_id: str) -> List[Dict[str, Any]]:
     return list_h1_policies(domain_id)
 
 
+def get_graph_h1_policy(domain_id: str, entity_id: str) -> Dict[str, Any]:
+    """Get one entity ABox ACL as appendix H.1 projection（certified=false）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    from core.policy.graph_abox_acl import entity_acl_to_h1, load_abox_acl
+    entities = (load_abox_acl(domain_id).get("entities") or {})
+    if entity_id not in entities:
+        raise KeyError("h1_entity_not_found")
+    return entity_acl_to_h1(domain_id, entity_id)
+
+
 def set_graph_field_acl(
     domain_id: str,
     entity_id: str,
