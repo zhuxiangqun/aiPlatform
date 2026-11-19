@@ -4230,7 +4230,7 @@ domains:
       - symbol: "match_abox_condition"
         module: core/policy/graph_abox_acl.py
         type: function
-        signature: "H.1 equality condition match (empty→True; no attrs→False)"
+        signature: "H.1 condition match: scalar|$eq|$ne|$in (empty→True; no attrs→False)"
       - symbol: "resolve_abox_actor_role"
         module: core/policy/graph_abox_acl.py
         type: function

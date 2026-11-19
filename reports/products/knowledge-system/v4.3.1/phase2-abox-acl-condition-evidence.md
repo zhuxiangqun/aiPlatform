@@ -47,4 +47,4 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 - N07/N22 certified 或关闭 ADR 例外
 - 完整 H.1 策略编辑器（principals/effect/actions 矩阵 UI）
-- condition 运算符（`in` / 比较 / 表达式）
+- condition 运算符 `$eq/$ne/$in` → 见 `phase2-abox-acl-condition-ops-evidence.md`（仍非表达式语言）

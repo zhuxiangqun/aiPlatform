@@ -129,11 +129,39 @@ def save_abox_acl(domain_id: str, data: Dict[str, Any]) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+def _match_condition_value(got: Any, want: Any) -> bool:
+    """单键条件值：标量等值；``{$eq}`` / ``{$ne}`` / ``{$in}`` 最小运算符。
+
+    Args:
+        got: 实例属性值（可为 None）。
+        want: 条件期望；标量或单运算符 dict。
+    """
+    # 为什么：仅开放 $eq/$ne/$in，禁止表达式语言扩大攻击面与语义漂移
+    if isinstance(want, dict) and want:
+        if len(want) != 1:
+            return False
+        op, arg = next(iter(want.items()))
+        op_s = str(op)
+        if op_s == "$eq":
+            return str(got) == str(arg)
+        if op_s == "$ne":
+            return str(got) != str(arg)
+        if op_s == "$in":
+            if not isinstance(arg, (list, tuple, set)):
+                return False
+            got_s = str(got)
+            return any(got_s == str(x) for x in arg)
+        return False
+    return str(got) == str(want)
+
+
 def match_abox_condition(
     condition: Optional[Dict[str, Any]],
     attrs: Optional[Dict[str, Any]],
 ) -> bool:
-    """H.1 最小 condition：全键等值匹配；空 condition 恒 True。
+    """H.1 最小 condition：全键匹配；空 condition 恒 True。
+
+    每键支持标量等值，或 ``{$eq|$ne|$in: …}``（非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。
@@ -154,7 +182,7 @@ def match_abox_condition(
             got = meta.get(key)
         if got is None:
             got = props.get(key)
-        if str(got) != str(want):
+        if not _match_condition_value(got, want):
             return False
     return True
 
