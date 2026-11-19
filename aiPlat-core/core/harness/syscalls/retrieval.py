@@ -831,6 +831,10 @@ def sys_wiki_retrieve(
 
     inference_expand: bool = True,
 
+    actor_role: str = "",
+
+    actor_scopes: List[str] = None,
+
 ) -> List[Dict[str, Any]]:
 
     u"""Retrieve relevant text from wiki knowledge pages via semantic embedding.
@@ -854,6 +858,10 @@ def sys_wiki_retrieve(
         relation_filter: Only return pages related to target via relation_type.
 
         relation_boost: Boost scores for pages with specific relation types.
+
+        actor_role: 调用方角色；非空时对命中做字段 ACL。
+
+        actor_scopes: 调用方 scopes；与 actor_role 一起触发字段 ACL。
 
 
 
@@ -929,7 +937,7 @@ def sys_wiki_retrieve(
 
                     class_uri, expand_subclasses, relation_filter, relation_boost, inference_expand,
 
-                    tenant_id
+                    tenant_id, actor_role, actor_scopes,
 
                 )
 
@@ -941,7 +949,7 @@ def sys_wiki_retrieve(
 
                                        class_uri, expand_subclasses, relation_filter, relation_boost,
 
-                                       inference_expand, tenant_id)
+                                       inference_expand, tenant_id, actor_role, actor_scopes)
 
     except RuntimeError:
 
@@ -949,7 +957,7 @@ def sys_wiki_retrieve(
 
                                    class_uri, expand_subclasses, relation_filter, relation_boost,
 
-                                   inference_expand, tenant_id)
+                                   inference_expand, tenant_id, actor_role, actor_scopes)
 
 
 
@@ -971,7 +979,11 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
 
                         inference_expand: bool = False,
 
-                        tenant_id: str = "") -> List[Dict[str, Any]]:
+                        tenant_id: str = "",
+
+                        actor_role: str = "",
+
+                        actor_scopes: List[str] = None) -> List[Dict[str, Any]]:
 
     from core.harness.knowledge.wiki_retriever import WikiPageRetriever
 
@@ -1007,7 +1019,7 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
 
 
 
-    return [
+    out = [
 
         {
 
@@ -1028,6 +1040,16 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
         for r in results
 
     ]
+
+    # 为什么：N07/N22 deepen — 裸 wiki 入口也必须字段 ACL，不能只靠 unified retrieve
+    if actor_role or actor_scopes is not None:
+        out = _apply_field_acl_to_results(
+            out,
+            actor_role=actor_role or "",
+            actor_scopes=actor_scopes,
+            collection_id=(cids[0] if cids else DomainRouter.default_collection()),
+        )
+    return out
 
 
 
@@ -1295,6 +1317,10 @@ def sys_knowledge_retrieve(
                 class_uri=target_class, expand_subclasses=expand_subclasses,
 
                 inference_expand=inference_expand,
+
+                actor_role=actor_role,
+
+                actor_scopes=actor_scopes,
 
             )
 
