@@ -43,6 +43,7 @@ authority: supporting
 | [phase2-claim-evidence-evidence.md](./phase2-claim-evidence-evidence.md) | Batch F2 N03 Claim 证据硬门+冲突记录（门槛门；非全量认证） |
 | [phase2-slo-target-evidence.md](./phase2-slo-target-evidence.md) | Batch F1 §9.4 SLO 目标登记（非生产遥测达标） |
 | [phase2-slo-telemetry-wiring-evidence.md](./phase2-slo-telemetry-wiring-evidence.md) | F1 deepen：生产 SLO 遥测接线（wiring≠attainment；Full 仍 conditional） |
+| [phase2-wiki-kb-field-acl-evidence.md](./phase2-wiki-kb-field-acl-evidence.md) | N07/N22 deepen：Wiki/KB 统一检索字段 ACL（非全入口 certified） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |
