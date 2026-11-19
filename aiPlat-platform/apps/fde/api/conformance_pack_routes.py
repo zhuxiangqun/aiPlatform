@@ -171,3 +171,55 @@ async def evaluate_pilot_operational_certification_route(
         pilot_domain=pilot_domain,
         approval_record_path=approval_record_path,
     )
+
+
+@router.get("/conformance-pack/full-ready")
+async def evaluate_full_ready_gate_route(
+    pilot_domain: Optional[str] = Query(None),
+    catalog_path: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """全量结构门（full_ready ≠ certified）。
+
+    Args:
+        pilot_domain: 可选试点域。
+        catalog_path: 可选目录路径。
+    """
+    from core.api.core_facade import evaluate_full_ready_gate
+
+    return evaluate_full_ready_gate(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+
+
+@router.get("/conformance-pack/full-cert")
+async def evaluate_full_certification_route(
+    pilot_domain: Optional[str] = Query(None),
+    catalog_path: Optional[str] = Query(None),
+    approval_record_path: Optional[str] = Query(
+        None,
+        description="path to full approval JSON; omit → certified false",
+    ),
+    core_approval_record_path: Optional[str] = Query(None),
+    extended_approval_record_path: Optional[str] = Query(None),
+    operational_approval_record_path: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """全量认证裁决；无独立非作者全量批准时 certified 恒 false。
+
+    Args:
+        pilot_domain: 可选试点域。
+        catalog_path: 可选目录路径。
+        approval_record_path: 全量批准记录路径；缺省则不认证。
+        core_approval_record_path: Core 批准；空则默认 approved。
+        extended_approval_record_path: Extended 批准；空则默认 approved。
+        operational_approval_record_path: Operational 批准；空则默认 approved。
+    """
+    from core.api.core_facade import evaluate_full_certification
+
+    return evaluate_full_certification(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=approval_record_path,
+        core_approval_record_path=core_approval_record_path,
+        extended_approval_record_path=extended_approval_record_path,
+        operational_approval_record_path=operational_approval_record_path,
+    )

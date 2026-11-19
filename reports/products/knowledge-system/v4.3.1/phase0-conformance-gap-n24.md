@@ -33,5 +33,5 @@ catalog: reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml
 | partial | 0 | — |
 | missing | 0 | — |
 
-**目标等级**：Core（朱鸿林）+ Extended（朱莹）+ Operational（朱莹）已等级徽章。  
-**禁止话术**：不得因三级徽章 / 24×scoped exists 自动宣称全量 `certified` 或 24/24 认证。
+**目标等级**：Core（朱鸿林）+ Extended（朱莹）+ Operational（朱莹）已等级徽章；`full_ready` 已绿；全量签字仍 pending。  
+**禁止话术**：不得因三级徽章 / `full_ready` / 24×scoped exists 自动宣称全量 `certified` 或 24/24 认证。

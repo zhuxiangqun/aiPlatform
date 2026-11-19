@@ -1340,6 +1340,8 @@ Wiki 规模化、对象浏览器、动作台、审核台、场景/分支、Agent
 
 **N09 Core 探针集**：跨租户隔离套件已登记探针为 Core 足够条件；不以无限清扫运行时 `"default"` 字面量作为 Core 加深条件。
 
+**全量符合**：附录 N.6 — 24 项 exists + 三级 `*_ready`/徽章 + **独立**全量非作者批准后，方可宣称 `certified` / 24/24。结构门 `full_ready` ≠ `certified`；三级徽章不足以自动置全量真。
+
 ### 16.2 认证证据
 
 - 架构说明；
@@ -1356,7 +1358,8 @@ Wiki 规模化、对象浏览器、动作台、审核台、场景/分支、Agent
 - 例外必须记录范围/期限/补偿；
 - 认证不等于安全认证/合规认证；
 - 版本变更需重新认证受影响范围；
-- 代码不得在无批准记录时自动置 `certified` / `pilot_certified`。
+- 代码不得在无批准记录时自动置 `certified` / `pilot_certified` / `pilot_extended_certified` / `pilot_operational_certified` / `n24_full_conformance`；
+- 全量 `certified` 不得复用等级徽章批准文件，须独立全量批准（附录 N.6）。
 
 ### 16.4 符合性清单
 

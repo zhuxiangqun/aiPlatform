@@ -1,8 +1,8 @@
 """W10 Conformance / 认证证据包最小切片（附录 N + 计划 §9.4）。
 
 职责：加载 N24 目录；校验证据路径；组装认证槽位；门槛门（结构完整 ≠ 24/24 认证）；
-      按 level 的 core_ready / extended_ready 门；试点就绪包；人工批准后才可徽章。
-非目标：不自动改写差距表；无批准记录时不宣称 Core/Extended/认证通过；不做生产 SLO 采集。
+      按 level 的 *_ready 门；全量 full_ready；试点就绪包；人工批准后才可徽章/certified。
+非目标：不自动改写差距表；无批准记录时不宣称等级徽章或全量 certified；不做生产 SLO 采集。
 """
 from __future__ import annotations
 
@@ -48,6 +48,10 @@ EXTENDED_MINIMUM_IDS = frozenset(
 # 附录 N.4 Operational 最小符合集
 OPERATIONAL_MINIMUM_IDS = frozenset(
     {"N10", "N11", "N13", "N14", "N23", "N24"}
+)
+# 全量 24 项 = Core ∪ Extended ∪ Operational
+FULL_MINIMUM_IDS = (
+    CORE_MINIMUM_IDS | EXTENDED_MINIMUM_IDS | OPERATIONAL_MINIMUM_IDS
 )
 
 
@@ -813,6 +817,247 @@ def evaluate_pilot_operational_certification(
             "approval; never auto full certified"
         ),
         "operational_gate": op,
+    }
+
+
+def _default_level_approval_path(kind: str) -> Path:
+    """等级批准记录默认路径（approved 文件）。
+
+    Args:
+        kind: ``core`` / ``extended`` / ``operational``。
+    """
+    product = "knowledge" + "-" + "system"
+    name = f"pilot-{kind}-approval-record.approved.json"
+    return (
+        _repo_root()
+        / "reports"
+        / "products"
+        / product
+        / "v4.3.1"
+        / name
+    )
+
+
+def evaluate_full_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """全量结构门：三级 *_ready + 24 项 exists + 槽位齐。
+
+    Args:
+        catalog_path: 可选目录路径。
+        pilot_domain: 试点域覆盖。
+
+    Returns:
+        ``full_ready`` 可 true；``certified`` / ``n24_full_conformance`` 恒 false。
+    """
+    core = evaluate_core_ready_gate(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    ext = evaluate_extended_ready_gate(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    op = evaluate_operational_ready_gate(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    pack = build_conformance_pack(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    issues: List[str] = []
+    if not core.get("core_ready"):
+        issues.append("core_ready_required")
+        issues.extend(f"core:{i}" for i in (core.get("issues") or []))
+    if not ext.get("extended_ready"):
+        issues.append("extended_ready_required")
+        issues.extend(f"extended:{i}" for i in (ext.get("issues") or []))
+    if not op.get("operational_ready"):
+        issues.append("operational_ready_required")
+        issues.extend(f"operational:{i}" for i in (op.get("issues") or []))
+
+    if not pack.get("ok"):
+        issues.append("catalog_missing")
+        ready = False
+        return {
+            "gate": "full_ready",
+            "pass": False,
+            "full_ready": False,
+            "issues": sorted(set(issues)),
+            "certified": False,
+            "n24_full_conformance": False,
+            "accuracy_claim": False,
+            "core_gate": core,
+            "extended_gate": ext,
+            "operational_gate": op,
+            "pack": pack,
+            "note": "full_ready ≠ certified / n24_full_conformance",
+        }
+
+    n24 = pack.get("n24") or {}
+    by_id = {str(it.get("id")): it for it in (n24.get("items") or [])}
+    missing: List[str] = []
+    for iid in sorted(FULL_MINIMUM_IDS):
+        it = by_id.get(iid)
+        if it is None:
+            missing.append(iid)
+            issues.append(f"{iid}:full_item_missing")
+            continue
+        if str(it.get("status") or "") != "exists":
+            missing.append(iid)
+            issues.append(f"{iid}:full_not_exists")
+            for iss in it.get("issues") or []:
+                issues.append(f"{iid}:{iss}")
+
+    slots = (pack.get("certification") or {}).get("slots") or []
+    have = {s.get("id") for s in slots}
+    for req in REQUIRED_CERT_SLOTS:
+        if req not in have:
+            issues.append(f"cert_slot_missing:{req}")
+    for s in slots:
+        for iss in s.get("issues") or []:
+            if iss == "slot_path_missing":
+                issues.append(f"{s.get('id')}:{iss}")
+
+    blocking = sorted(
+        {
+            i
+            for i in issues
+            if not str(i).endswith(":slot_explicitly_missing")
+        }
+    )
+    ready = not blocking
+    return {
+        "gate": "full_ready",
+        "pass": ready,
+        "full_ready": ready,
+        "issues": blocking,
+        "full_pending": missing,
+        "full_ids": sorted(FULL_MINIMUM_IDS),
+        "certified": False,
+        "n24_full_conformance": False,
+        "accuracy_claim": False,
+        "core_gate": core,
+        "extended_gate": ext,
+        "operational_gate": op,
+        "pack": pack,
+        "note": "full_ready ≠ certified / n24_full_conformance",
+    }
+
+
+def evaluate_full_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+    core_approval_record_path: Optional[str] = None,
+    extended_approval_record_path: Optional[str] = None,
+    operational_approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """全量认证：full_ready + 三级徽章 + 独立全量非作者批准 → certified。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 试点域覆盖。
+        approval_record_path: 全量批准记录路径（独立于等级徽章）。
+        core_approval_record_path: Core 批准；空则用默认 approved 路径。
+        extended_approval_record_path: Extended 批准；空则用默认 approved 路径。
+        operational_approval_record_path: Operational 批准；空则用默认 approved 路径。
+
+    Returns:
+        仅当条件齐备时 ``certified`` / ``n24_full_conformance`` 为 true。
+    """
+    full = evaluate_full_ready_gate(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    issues: List[str] = list(full.get("issues") or [])
+    if not full.get("full_ready"):
+        issues.append("full_ready_required")
+
+    core_path = core_approval_record_path or str(
+        _default_level_approval_path("core")
+    )
+    ext_path = extended_approval_record_path or str(
+        _default_level_approval_path("extended")
+    )
+    op_path = operational_approval_record_path or str(
+        _default_level_approval_path("operational")
+    )
+
+    core_b = evaluate_pilot_core_certification(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=core_path,
+    )
+    ext_b = evaluate_pilot_extended_certification(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=ext_path,
+    )
+    op_b = evaluate_pilot_operational_certification(
+        catalog_path=catalog_path,
+        pilot_domain=pilot_domain,
+        approval_record_path=op_path,
+    )
+    if not core_b.get("pilot_certified"):
+        issues.append("pilot_core_badge_required")
+        issues.extend(f"core_badge:{i}" for i in (core_b.get("issues") or []))
+    if not ext_b.get("pilot_extended_certified"):
+        issues.append("pilot_extended_badge_required")
+        issues.extend(
+            f"extended_badge:{i}" for i in (ext_b.get("issues") or [])
+        )
+    if not op_b.get("pilot_operational_certified"):
+        issues.append("pilot_operational_badge_required")
+        issues.extend(
+            f"operational_badge:{i}" for i in (op_b.get("issues") or [])
+        )
+
+    approved = False
+    approval_issues: List[str] = []
+    rec: Dict[str, Any] = {}
+    if not approval_record_path:
+        approval_issues.append("approval_record_path_required")
+    else:
+        rec = _load_approval_record(Path(approval_record_path))
+        ok, approval_issues = _approval_allows_non_author(rec)
+        approved = ok
+    issues.extend(approval_issues)
+
+    badges_ok = (
+        bool(core_b.get("pilot_certified"))
+        and bool(ext_b.get("pilot_extended_certified"))
+        and bool(op_b.get("pilot_operational_certified"))
+    )
+    # 为什么：全量 certified 仅可由独立全量批准置真，三级徽章不够
+    badge = bool(full.get("full_ready")) and badges_ok and approved
+    return {
+        "gate": "full_certification",
+        "pass": badge,
+        "full_ready": bool(full.get("full_ready")),
+        "level_badges_ok": badges_ok,
+        "approval_ok": approved,
+        "issues": sorted(set(issues)),
+        "approval_record_path": approval_record_path,
+        "approval_status": rec.get("status") if rec else None,
+        "core_approval_record_path": core_path,
+        "extended_approval_record_path": ext_path,
+        "operational_approval_record_path": op_path,
+        "certified": badge,
+        "n24_full_conformance": badge,
+        "pilot_certified": bool(core_b.get("pilot_certified")),
+        "pilot_extended_certified": bool(ext_b.get("pilot_extended_certified")),
+        "pilot_operational_certified": bool(
+            op_b.get("pilot_operational_certified")
+        ),
+        "accuracy_claim": False,
+        "note": (
+            "certified/n24_full_conformance requires full_ready + three level "
+            "badges + independent non-author full approval"
+        ),
+        "full_gate": full,
+        "core_badge": core_b,
+        "extended_badge": ext_b,
+        "operational_badge": op_b,
     }
 
 

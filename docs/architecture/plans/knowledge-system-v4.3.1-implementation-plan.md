@@ -672,13 +672,17 @@ operational_ready 结构门 pass
 
 （2026-11-19：Operational 徽章已开；全量 certified 仍另开。）
 
-### 14.4 后续 DoD — 全量 certified（另开）
+### 14.4 近端 DoD — 全量 certified（三级徽章后）
 
 ```text
-三级徽章齐 + 独立全量批准记录
-certified / n24_full_conformance 仅可由全量批准置真
-KPI / 生产 SLO 达标证据
+附录 N 24 项 status=exists
+full_ready 结构门 pass（三级 *_ready + 槽位）
+三级徽章齐（Core/Extended/Operational）
+独立全量非作者批准后才可 certified / n24_full_conformance
+SLO：目标登记证据；生产遥测未接线须 conditional 批准
 ```
+
+（2026-11-19：`full_ready` 已绿；全量签字仍 pending。）
 
 ## 15. 明确不做
 

@@ -896,6 +896,19 @@ Function ticket.priority_score -> ticket.priorityScore({ticket_id})
 - 结构门 `operational_ready` ≠ `certified` / `pilot_operational_certified`；后者仅可由批准记录置真。
 - **全量 `certified` / 24/24** 仍须独立人工全量认证流程；本子集徽章不自动置 `certified=true`。
 
+### N.6 全量符合（MUST）
+
+试点域宣称 **全量符合 / `certified` / 24/24** 时，必须同时满足：
+
+1. 附录 N 全部 24 项目录 `status: exists`（或已登记全量 ADR 例外且未过期）；
+2. Core / Extended / Operational 三级结构门 `*_ready` 均 pass；
+3. 三级等级徽章均已由各自非作者批准置真；
+4. **独立**全量非作者批准记录（不得复用等级徽章批准文件）；
+5. §16.2 认证槽位齐（含 SLO 目标登记；生产遥测未接线时须在全量批准中注明 conditional）。
+
+- 结构门 `full_ready` ≠ `certified` / `n24_full_conformance`；后者仅可由第 4 条全量批准置真。
+- 三级徽章齐 **不足以** 自动置 `certified=true`。
+
 ### N.5 勾选摘要
 
 - [ ] N01 Raw 不可变（core）
