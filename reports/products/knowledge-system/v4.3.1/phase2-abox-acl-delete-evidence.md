@@ -45,5 +45,6 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
+- 按角色预览 → 见 `phase2-abox-acl-preview-evidence.md`
 - H.1 condition 选择器 / 完整策略编辑器
 - 批量导入 / 审批流权限产品

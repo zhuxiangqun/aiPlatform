@@ -57,6 +57,11 @@ const AboxAclPanel: React.FC = () => {
   const [fields, setFields] = useState<Record<string, FieldEntry>>({});
   const [loading, setLoading] = useState(false);
   const [certified, setCertified] = useState(false);
+  const [previewEntity, setPreviewEntity] = useState('');
+  const [previewRole, setPreviewRole] = useState('viewer');
+  const [previewAction, setPreviewAction] = useState('read');
+  const [previewPayload, setPreviewPayload] = useState('{"ssn":"123-45-6789","name":"demo"}');
+  const [previewOut, setPreviewOut] = useState('');
 
   const reload = useCallback(async () => {
     if (!domainId.trim()) return;
@@ -181,6 +186,42 @@ const AboxAclPanel: React.FC = () => {
       await reload();
     } catch (e: unknown) {
       toast?.error?.((e as Error)?.message || '删除失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runPreview = async () => {
+    if (!previewEntity.trim()) {
+      toast?.error?.('preview entity_id 必填');
+      return;
+    }
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = JSON.parse(previewPayload || '{}') as Record<string, unknown>;
+    } catch {
+      toast?.error?.('payload 须为合法 JSON');
+      return;
+    }
+    setLoading(true);
+    try {
+      const r = await fetch(API(`/graph/acl/${encodeURIComponent(domainId.trim())}/preview`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entity_id: previewEntity.trim(),
+          role: previewRole.trim(),
+          action: previewAction.trim() || 'read',
+          payload,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(d.detail));
+      setPreviewOut(JSON.stringify(d, null, 2));
+      if (d.certified) toast?.error?.('异常：预览返回 certified=true');
+    } catch (e: unknown) {
+      setPreviewOut('');
+      toast?.error?.((e as Error)?.message || '预览失败');
     } finally {
       setLoading(false);
     }
@@ -360,6 +401,54 @@ const AboxAclPanel: React.FC = () => {
               </ul>
             )}
           </div>
+        </div>
+
+        <div className="border-t border-gray-800 pt-3 space-y-2">
+          <div className="text-[12px] text-gray-300">按角色预览（dry-run · 非 certified）</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label className="text-[11px] text-gray-400 space-y-1">
+              entity_id
+              <input
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
+                value={previewEntity}
+                onChange={(e) => setPreviewEntity(e.target.value)}
+              />
+            </label>
+            <label className="text-[11px] text-gray-400 space-y-1">
+              role
+              <input
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                value={previewRole}
+                onChange={(e) => setPreviewRole(e.target.value)}
+              />
+            </label>
+            <label className="text-[11px] text-gray-400 space-y-1">
+              action
+              <input
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                value={previewAction}
+                onChange={(e) => setPreviewAction(e.target.value)}
+              />
+            </label>
+            <div className="flex items-end">
+              <Button type="button" size="sm" disabled={loading} onClick={() => void runPreview()}>
+                预览
+              </Button>
+            </div>
+          </div>
+          <label className="text-[11px] text-gray-400 space-y-1 block">
+            sample payload (JSON)
+            <textarea
+              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono min-h-[64px]"
+              value={previewPayload}
+              onChange={(e) => setPreviewPayload(e.target.value)}
+            />
+          </label>
+          {previewOut ? (
+            <pre className="max-h-40 overflow-auto rounded border border-gray-800 bg-gray-950/70 p-2 text-[11px] text-gray-400 whitespace-pre-wrap">
+              {previewOut}
+            </pre>
+          ) : null}
         </div>
       </CardContent>
     </Card>

@@ -337,6 +337,38 @@ def redact_entity_fields(
     return out
 
 
+def preview_abox_acl(
+    domain_id: str,
+    entity_id: str,
+    payload: Optional[Dict[str, Any]] = None,
+    *,
+    role: str = "",
+    action: str = "read",
+) -> Dict[str, Any]:
+    """Dry-run ABox ACL for an actor role（管理端预览；不写盘、不宣称 certified）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        payload: 可选样例载荷；缺省用空 dict。
+        role: 预览角色。
+        action: 预览动作（默认 read）。
+    """
+    sample = dict(payload or {})
+    allowed = check_entity_acl(domain_id, entity_id, role, action)
+    redacted = redact_entity_fields(domain_id, entity_id, sample, role) if allowed else {}
+    return {
+        "domain_id": domain_id,
+        "entity_id": entity_id,
+        "role": normalize_abox_role(role) or (role or ""),
+        "action": (action or "read").strip().lower() or "read",
+        "allowed": bool(allowed),
+        "redacted": redacted,
+        # 为什么：预览仅辅助排障，结构门 ≠ certified
+        "certified": False,
+    }
+
+
 def seed_demo_data_gov_acl(domain_id: str = DomainRouter.data_gov_domain()) -> Dict[str, Any]:
     """Demo ACL: viewer cannot read ghost table; owner_contact admin-only.
 
