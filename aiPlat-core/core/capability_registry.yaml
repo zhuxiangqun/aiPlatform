@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2986
+total_capabilities: 2987
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 520
+    caps_count: 521
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3010,6 +3010,10 @@ domains:
         module: core/harness/knowledge/domain_router.py
         type: method
         signature: "default_session()→str platform default session SSOT (N09 K53)"
+      - symbol: "DomainRouter.default_view_name"
+        module: core/harness/knowledge/domain_router.py
+        type: method
+        signature: "default_view_name()→str platform default cross-domain view SSOT (N09 K64)"
       - symbol: "get_domain_router"
         module: core/harness/knowledge/domain_router.py
         type: function
