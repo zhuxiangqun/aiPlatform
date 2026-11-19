@@ -1,0 +1,26 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "pilot lock-service full N24 certification (附录 N 全量)",
+  "status": "approved",
+  "decision": "conditional",
+  "approvers": [
+    {
+      "name": "朱向群",
+      "role": "Reviewer",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-19"
+    }
+  ],
+  "approval_date": "2026-11-19",
+  "effective_date": "2026-11-19",
+  "exceptions": [
+    {
+      "id": "SLO",
+      "scope": "目标登记；生产遥测未接线",
+      "compensation": "phase2-slo-target-evidence.md + phase2-exception-adr.md"
+    }
+  ],
+  "record_id": "PILOT-FULL-lock-service-2026-11-19",
+  "note": "Non-author 朱向群已复核确认。Conditional: full_ready + three level badges + independent full approval → certified / n24_full_conformance; SLO target-registered only (not production telemetry); not accuracy claim."
+}

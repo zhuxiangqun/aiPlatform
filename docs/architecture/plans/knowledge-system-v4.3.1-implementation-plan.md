@@ -682,7 +682,7 @@ full_ready 结构门 pass（三级 *_ready + 槽位）
 SLO：目标登记证据；生产遥测未接线须 conditional 批准
 ```
 
-（2026-11-19：`full_ready` 已绿；全量签字仍 pending。）
+（2026-11-19：`full_ready` 已绿；朱向群独立全量批准 → `certified` / `n24_full_conformance`（conditional，SLO 非生产遥测）。）
 
 ## 15. 明确不做
 

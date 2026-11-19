@@ -8,5 +8,5 @@
   "exceptions": [],
   "decision": null,
   "record_id": "PILOT-FULL-lock-service-pending",
-  "note": "Independent of Core/Extended/Operational badges. Fill non-author approvers and set status=approved to unlock certified / n24_full_conformance via evaluate_full_certification. Conditional expected: SLO target-registered only (not production telemetry)."
+  "note": "Superseded by pilot-full-approval-record.approved.json (approver: 朱向群)."
 }

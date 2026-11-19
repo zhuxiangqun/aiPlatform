@@ -132,6 +132,6 @@ authority: supporting
 | [phase2-core-cert-path-evidence.md](./phase2-core-cert-path-evidence.md) | Core 可认证路径：等级映射 + core_ready + 人工徽章（朱鸿林已确认） |
 | [phase2-extended-cert-path-evidence.md](./phase2-extended-cert-path-evidence.md) | Extended 可认证路径：N.3 六项 + extended_ready + 人工徽章（朱莹已确认） |
 | [phase2-operational-cert-path-evidence.md](./phase2-operational-cert-path-evidence.md) | Operational 可认证路径：N.4 六项 + operational_ready + 人工徽章（朱莹已确认） |
-| [phase2-full-cert-path-evidence.md](./phase2-full-cert-path-evidence.md) | 全量可认证路径：full_ready + 三级徽章（签字仍 pending） |
+| [phase2-full-cert-path-evidence.md](./phase2-full-cert-path-evidence.md) | 全量可认证路径：full_ready + 三级徽章 + 人工全量徽章（朱向群已确认，conditional） |
 
 试点域：`lock-service` · 目标等级：Core（`core_ready` 可判定；**签字认证**见 `pilot-core-approval-record.pending.json`）· G0/G1/G2 测量通过 ≠ 附录 N 全量符合。

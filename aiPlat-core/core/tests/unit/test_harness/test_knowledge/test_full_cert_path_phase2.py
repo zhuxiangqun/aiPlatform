@@ -31,6 +31,18 @@ def test_full_cert_requires_independent_approval():
     assert g1["n24_full_conformance"] is False
     assert g1["approval_ok"] is False
 
+    approved = (
+        Path(cp._repo_root())
+        / "reports/products/knowledge-system/v4.3.1/pilot-full-approval-record.approved.json"
+    )
+    g2 = cp.evaluate_full_certification(approval_record_path=str(approved))
+    assert g2["full_ready"] is True
+    assert g2["level_badges_ok"] is True
+    assert g2["approval_ok"] is True
+    assert g2["certified"] is True
+    assert g2["n24_full_conformance"] is True
+    assert g2["accuracy_claim"] is False
+
 
 def test_full_minimum_covers_all_24():
     assert len(cp.FULL_MINIMUM_IDS) == 24

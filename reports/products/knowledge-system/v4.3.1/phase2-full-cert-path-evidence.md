@@ -11,7 +11,8 @@ pilot_domain: lock-service
 
 > 实施权威：附录 N.6 / 实施方案 §14.4。  
 > 前置：Core（朱鸿林）+ Extended（朱莹）+ Operational（朱莹）等级徽章已齐。  
-> **未宣称** 全量 `certified` / 24/24（签字仍 pending）。
+> 全量：`certified=true` / `n24_full_conformance=true`（非作者 **朱向群** 已复核确认；decision=conditional）。  
+> **未宣称** 准确率 / 生产 SLO 遥测达标。
 
 ## 检查表
 
@@ -23,6 +24,7 @@ pilot_domain: lock-service
 | 三级徽章 | pass | 三份 `*.approved.json` |
 | FDE HTTP | pass | `/full-ready` `/full-cert` |
 | 无全量批准时 certified false | pass | pending 记录 |
+| 有独立全量批准时 certified | pass | `pilot-full-approval-record.approved.json`（朱向群） |
 | SLO | conditional | 目标登记（非生产遥测） |
 
 ## 命令
@@ -34,6 +36,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- 非作者全量签字（`pilot-full-approval-record.pending.json`）
 - 生产 SLO 遥测达标
 - 准确率宣称
