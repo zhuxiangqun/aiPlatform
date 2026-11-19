@@ -1,0 +1,12 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "pilot lock-service Core certification (附录 N.2)",
+  "status": "pending",
+  "approvers": [],
+  "approval_date": null,
+  "effective_date": null,
+  "exceptions": [],
+  "decision": null,
+  "record_id": "PILOT-CORE-lock-service-pending",
+  "note": "Fill non-author approvers and set status=approved / decision=approved|conditional to unlock pilot_certified via evaluate_pilot_core_certification."
+}

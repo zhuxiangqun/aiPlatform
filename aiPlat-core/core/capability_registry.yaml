@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2990
+total_capabilities: 2992
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 524
+    caps_count: 526
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4759,6 +4759,14 @@ domains:
       - symbol: "evaluate_pilot_cert_readiness_gate"
         type: "function"
         signature: "pilot readiness gate (pilot_certified=false)"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_core_ready_gate"
+        type: "function"
+        signature: "Core minimum set structural gate (core_ready≠certified)"
+        module: "core/harness/knowledge_pipeline/conformance_pack.py"
+      - symbol: "evaluate_pilot_core_certification"
+        type: "function"
+        signature: "pilot Core badge only with non-author approval+core_ready"
         module: "core/harness/knowledge_pipeline/conformance_pack.py"
       - symbol: "load_conformance_catalog"
         type: "function"

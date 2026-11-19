@@ -1,11 +1,12 @@
 """W10 Conformance / 认证证据包最小切片（附录 N + 计划 §9.4）。
 
 职责：加载 N24 目录；校验证据路径；组装认证槽位；门槛门（结构完整 ≠ 24/24 认证）；
-      试点 N01/N06/N09 就绪包（加深汇总，不自动 certified）。
-非目标：不自动改写差距表；不宣称 Core/认证通过；不做生产 SLO 采集。
+      按 level 的 core_ready 门；试点 N01/N06/N09 就绪包；人工批准后才可 pilot_certified。
+非目标：不自动改写差距表；无批准记录时不宣称 Core/认证通过；不做生产 SLO 采集。
 """
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -13,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 ALLOWED_STATUS = frozenset({"exists", "partial", "missing"})
+ALLOWED_LEVELS = frozenset({"core", "extended", "operational"})
 REQUIRED_CERT_SLOTS = (
     "architecture",
     "data_contracts",
@@ -21,6 +23,23 @@ REQUIRED_CERT_SLOTS = (
     "migration_rollback",
     "slo",
     "exception_adr",
+)
+# 附录 N.2 Core 最小符合集（与 catalog core_minimum_ids / 白皮书 §16.1 同文）
+CORE_MINIMUM_IDS = frozenset(
+    {
+        "N01",
+        "N02",
+        "N03",
+        "N04",
+        "N06",
+        "N09",
+        "N12",
+        "N15",
+        "N16",
+        "N17",
+        "N18",
+        "N21",
+    }
 )
 
 
@@ -129,10 +148,14 @@ def _verify_item_evidence(
     # 为什么：exists/partial 宣称证据必须可解析；missing 可挂说明性路径且不强制存在
     if missing_paths and status in ("exists", "partial"):
         issues.append("evidence_path_missing")
+    level = str(item.get("level") or "").lower()
+    if level and level not in ALLOWED_LEVELS:
+        issues.append("invalid_level")
     return {
         "id": item.get("id"),
         "title": item.get("title"),
         "status": status,
+        "level": level or None,
         "phase": item.get("phase"),
         "gap_type": item.get("gap_type"),
         "note": item.get("note") or "",
@@ -215,9 +238,233 @@ def build_conformance_pack(
         },
         # 诚实锁：本切片不宣称认证/全量符合
         "certified": False,
+        "pilot_certified": False,
         "n24_full_conformance": False,
         "accuracy_claim": False,
         "core_claim": False,
+        "core_minimum_ids": sorted(
+            cat.get("core_minimum_ids") or sorted(CORE_MINIMUM_IDS)
+        ),
+        "n09_core_probe_freeze": bool(cat.get("n09_core_probe_freeze")),
+    }
+
+
+def _core_exception_ids(cat: Dict[str, Any]) -> frozenset:
+    """catalog 中登记的 Core ADR 例外项 id。
+
+    Args:
+        cat: 已加载 catalog。
+    """
+    out = set()
+    for row in list(cat.get("core_adr_exceptions") or []):
+        iid = str((row or {}).get("id") or "").strip()
+        if iid:
+            out.add(iid)
+    return frozenset(out)
+
+
+def evaluate_core_ready_gate(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+) -> Dict[str, Any]:
+    """按 level=core 的结构门：Core 子集 exists 或 ADR 例外 + 槽位齐。
+
+    Args:
+        catalog_path: 可选目录路径。
+        pilot_domain: 试点域覆盖。
+
+    Returns:
+        ``core_ready`` 可 true；``certified`` / ``pilot_certified`` 恒 false。
+    """
+    pack = build_conformance_pack(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    issues: List[str] = []
+    if not pack.get("ok"):
+        return {
+            "gate": "core_ready",
+            "pass": False,
+            "core_ready": False,
+            "issues": ["catalog_missing"],
+            "certified": False,
+            "pilot_certified": False,
+            "core_claim": False,
+            "pack": pack,
+        }
+
+    cat = load_conformance_catalog(catalog_path)
+    core_ids = [
+        str(x)
+        for x in (cat.get("core_minimum_ids") or sorted(CORE_MINIMUM_IDS))
+    ]
+    exc = _core_exception_ids(cat)
+    by_id = {
+        str(it.get("id")): it for it in ((pack.get("n24") or {}).get("items") or [])
+    }
+    missing_core: List[str] = []
+    for cid in core_ids:
+        it = by_id.get(cid)
+        if it is None:
+            missing_core.append(cid)
+            issues.append(f"{cid}:core_item_missing")
+            continue
+        if str(it.get("level") or "") != "core":
+            issues.append(f"{cid}:level_not_core")
+        st = str(it.get("status") or "")
+        if st == "exists":
+            continue
+        if cid in exc:
+            continue
+        missing_core.append(cid)
+        issues.append(f"{cid}:core_not_exists_or_excepted")
+        for iss in it.get("issues") or []:
+            issues.append(f"{cid}:{iss}")
+
+    slots = (pack.get("certification") or {}).get("slots") or []
+    have = {s.get("id") for s in slots}
+    for req in REQUIRED_CERT_SLOTS:
+        if req not in have:
+            issues.append(f"cert_slot_missing:{req}")
+    for s in slots:
+        for iss in s.get("issues") or []:
+            if iss == "slot_path_missing":
+                issues.append(f"{s.get('id')}:{iss}")
+
+    blocking = sorted(
+        {
+            i
+            for i in issues
+            if not str(i).endswith(":slot_explicitly_missing")
+        }
+    )
+    ready = not blocking
+    return {
+        "gate": "core_ready",
+        "pass": ready,
+        "core_ready": ready,
+        "issues": blocking,
+        "core_ids": core_ids,
+        "core_pending": missing_core,
+        "core_adr_exceptions": sorted(exc),
+        "n09_core_probe_freeze": bool(pack.get("n09_core_probe_freeze")),
+        # 为什么：结构门不得冒充认证
+        "certified": False,
+        "pilot_certified": False,
+        "n24_full_conformance": False,
+        "accuracy_claim": False,
+        "core_claim": False,
+        "note": "core_ready ≠ certified / pilot_certified",
+        "pack": pack,
+    }
+
+
+def _load_approval_record(path: Path) -> Dict[str, Any]:
+    """读取批准记录 JSON。
+
+    Args:
+        path: 批准记录路径。
+    """
+    if not path.is_file():
+        return {"error": f"approval_missing:{path}"}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        return {"error": f"approval_invalid:{e}"}
+
+
+def _approval_allows_pilot_core(rec: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """非作者批准记录是否足以开启 pilot Core 徽章。
+
+    Args:
+        rec: 批准记录对象。
+    """
+    issues: List[str] = []
+    if rec.get("error"):
+        return False, [str(rec["error"])]
+    status = str(rec.get("status") or "").lower()
+    decision = str(rec.get("decision") or "").lower()
+    if status != "approved" or decision not in ("approved", "conditional"):
+        issues.append("approval_not_approved")
+    approvers = list(rec.get("approvers") or [])
+    if not approvers:
+        issues.append("approvers_required")
+    # 附录 P：至少一名非作者（显式 is_author=false，或 ≥2 名批准人，或 conflict_waiver）
+    # 为什么：不匹配业务域名词；角色名不参与判定，避免 harness 域名扫描误报
+    non_author = False
+    for a in approvers:
+        if isinstance(a, dict) and a.get("is_author") is False:
+            non_author = True
+        elif isinstance(a, dict) and a.get("is_author") is True:
+            continue
+        elif isinstance(a, str) and "author" not in a.lower():
+            non_author = True
+    if len(approvers) >= 2:
+        non_author = True
+    if rec.get("conflict_waiver"):
+        non_author = True
+    if approvers and not non_author:
+        issues.append("non_author_approver_required")
+    if not str(rec.get("effective_date") or "").strip():
+        issues.append("effective_date_required")
+    return not issues, issues
+
+
+def evaluate_pilot_core_certification(
+    *,
+    catalog_path: Optional[str] = None,
+    pilot_domain: Optional[str] = None,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """试点 Core 认证裁决：core_ready + 非作者批准记录 → 允许 pilot_certified。
+
+    Args:
+        catalog_path: 可选 N24 catalog。
+        pilot_domain: 试点域覆盖。
+        approval_record_path: 批准记录 JSON；默认标准包 approved 记录不自动用于试点 Core
+            （须显式传入试点 Core 批准文件）。
+
+    Returns:
+        仅当 core_ready 且批准有效时 ``pilot_certified=True``；否则恒 false。
+    """
+    core = evaluate_core_ready_gate(
+        catalog_path=catalog_path, pilot_domain=pilot_domain
+    )
+    issues: List[str] = list(core.get("issues") or [])
+    if not core.get("core_ready"):
+        issues.append("core_ready_required")
+
+    approved = False
+    approval_issues: List[str] = []
+    rec: Dict[str, Any] = {}
+    if not approval_record_path:
+        approval_issues.append("approval_record_path_required")
+    else:
+        rec = _load_approval_record(Path(approval_record_path))
+        ok, approval_issues = _approval_allows_pilot_core(rec)
+        approved = ok
+
+    issues.extend(approval_issues)
+    # 为什么：无有效批准时禁止徽章；有批准且 core_ready 才允许
+    pilot_certified = bool(core.get("core_ready")) and approved
+    return {
+        "gate": "pilot_core_certification",
+        "pass": pilot_certified,
+        "core_ready": bool(core.get("core_ready")),
+        "approval_ok": approved,
+        "issues": sorted(set(issues)),
+        "approval_record_path": approval_record_path,
+        "approval_status": rec.get("status") if rec else None,
+        "certified": False,
+        "pilot_certified": pilot_certified,
+        "n24_full_conformance": False,
+        "accuracy_claim": False,
+        "core_claim": pilot_certified,
+        "note": (
+            "pilot_certified requires core_ready + non-author approval record; "
+            "never auto without approval"
+        ),
+        "core_gate": core,
     }
 
 

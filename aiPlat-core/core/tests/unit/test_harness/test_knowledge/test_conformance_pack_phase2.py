@@ -20,8 +20,8 @@ def test_repo_catalog_has_exactly_24_and_gate_passes():
     assert gate["n24_full_conformance"] is False
     counts = gate["n24_counts"]
     assert counts["exists"] + counts["partial"] + counts["missing"] == 24
-    # 刷新后不应仍是「11 missing 主导」的过期基线
-    assert counts["partial"] >= 10
+    # Core 12 项 Core-scoped exists 后 partial 下降；仍不应回到 missing 主导
+    assert counts["exists"] >= 12
     assert counts["missing"] <= 6
 
 
