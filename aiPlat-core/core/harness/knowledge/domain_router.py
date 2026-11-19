@@ -85,6 +85,7 @@ class DomainRouter:
     PLATFORM_DEFAULT_VIEW = "default"
     PLATFORM_DEFAULT_WORKSPACE = "default"
     PLATFORM_DEFAULT_MODULE = "default"
+    PLATFORM_DEFAULT_LABEL = "default"
 
     @staticmethod
     def _home() -> str:
@@ -490,6 +491,16 @@ class DomainRouter:
         signature defaults / single-module path branches.
         """
         return cls.PLATFORM_DEFAULT_MODULE
+
+    @classmethod
+    def default_label(cls) -> str:
+        """Return catch-all string fallback for non-isolation ids (N09 K69).
+
+        Prefer this over hardcoding ``"default"`` in gateway ``channel``,
+        memory ``agent_type``, learning ``benchmark_name``, builder
+        ``output_style`` and similar label defaults.
+        """
+        return cls.PLATFORM_DEFAULT_LABEL
 
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).

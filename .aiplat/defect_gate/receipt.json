@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T10:10:09+08:00",
+  "reviewed_at": "2026-11-19T10:15:43+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "b045d92928d9a40c179a8ed1b2f70430c97ebc234c9d7cce4d8b74af1d4d99b1",
-  "head_sha": "2e8129ae63c2db1d731e4ba6529d3545d3882df5",
+  "diff_sha256": "b520764000ae46dcd3b24ff255fd15ac9e5f64f7a72000d54779a4fa2d42363f",
+  "head_sha": "e354da144dd776f5568f9f8991d9c7459d10df94",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K68: builder module_id → default_module_id(). Five checks clean. Honesty: not N09 certified; channel/agent_type/purpose deferred."
+  "note": "K69: channel/agent_type/benchmark/output_style → default_label(). Five checks clean. Honesty: not N09 certified; model purpose=\"default\" intentionally deferred."
 }
