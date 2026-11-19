@@ -12,7 +12,7 @@ pilot_domain: lock-service
 > 实施权威：附录 N.6 / 实施方案 §14.4。  
 > 前置：Core（朱鸿林）+ Extended（朱莹）+ Operational（朱莹）等级徽章已齐。  
 > 全量：`certified=true` / `n24_full_conformance=true`（非作者 **朱向群** 已复核确认；decision=conditional）。  
-> **未宣称** 准确率 / 生产 SLO 遥测达标。
+> **未宣称** 准确率 / Full unconditional；SLO 达标窗口见 `phase2-slo-attainment-window-evidence.md`（`certified` 恒假）。
 
 ## 检查表
 
@@ -25,7 +25,7 @@ pilot_domain: lock-service
 | FDE HTTP | pass | `/full-ready` `/full-cert` |
 | 无全量批准时 certified false | pass | pending 记录 |
 | 有独立全量批准时 certified | pass | `pilot-full-approval-record.approved.json`（朱向群） |
-| SLO | conditional | 目标登记 + 遥测接线（非生产达标） |
+| SLO | conditional | 目标登记 + 遥测接线 + 达标窗口（须专用批准；certified 恒假） |
 
 ## 命令
 
@@ -36,5 +36,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- 生产 SLO 遥测达标（接线见 `phase2-slo-telemetry-wiring-evidence.md`）
+- Full unconditional / certified 因 SLO 自动变绿（达标窗口见 `phase2-slo-attainment-window-evidence.md`；接线见 `phase2-slo-telemetry-wiring-evidence.md`）
 - 准确率宣称
