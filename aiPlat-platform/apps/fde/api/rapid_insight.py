@@ -9,6 +9,8 @@ POST /re-patch        — 回补修正后重新三问
 """
 from __future__ import annotations
 
+from core.api.core_facade import DomainRouter
+
 from apps.fde.api.graph_tenant import fde_graph_tenant
 import logging
 import os
@@ -297,7 +299,7 @@ def _compute_reuse_rate(session: dict) -> dict:
         from core.api.core_facade import GraphIndex
         from core.apps.fde.service.rapid_insight_service import calculate_reuse_rate
         domain_id = session.get("domain_id", "")
-        tenant_id = session.get("tenant_id", "default")
+        tenant_id = session.get("tenant_id") or DomainRouter.default_tenant()
         g = GraphIndex.load(domain_id, tenant_id)
         return calculate_reuse_rate(g)
     except Exception:

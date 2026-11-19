@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.governance.changeset import record_changeset
-from core.api.core_facade import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime, DomainRouter
 from core.schemas_prompts import PromptTemplateRollbackRequest, PromptTemplateUpsertRequest
 import logging
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
@@ -107,7 +107,7 @@ def _select_release_version(
     if total <= 0 or not items:
         return {"version": current_version, "strategy": "current"}
 
-    key = str(session_id or user_id or tenant_id or "default")
+    key = str(session_id or user_id or tenant_id or DomainRouter.default_tenant())
     h = hashlib.sha256(key.encode("utf-8")).hexdigest()
     bucket = int(h[:8], 16) % total
     acc = 0

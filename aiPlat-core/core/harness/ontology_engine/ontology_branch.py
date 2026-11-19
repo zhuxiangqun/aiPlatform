@@ -126,8 +126,8 @@ def _branch_key(domain_id: str, branch_name: str, tenant_id: str = DomainRouter.
         branch_name: 分支名。
         tenant_id: 租户；default 写旧格式键。
     """
-    tid = (tenant_id or "default").strip() or "default"
-    if tid == "default":
+    tid = (tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
+    if tid == DomainRouter.default_tenant():
         return f"{domain_id}::{branch_name}"
     return f"{tid}::{domain_id}::{branch_name}"
 
@@ -159,12 +159,12 @@ def _find_branch_entry(
     Returns:
         (canonical_key_for_writes, data_or_None)
     """
-    tid = (tenant_id or "default").strip() or "default"
+    tid = (tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
     key = _branch_key(domain_id, branch_name, tid)
     data = branches.get(key)
     if data is not None:
         return key, data
-    if tid == "default":
+    if tid == DomainRouter.default_tenant():
         legacy = _legacy_branch_key(domain_id, branch_name)
         if legacy in branches:
             return legacy, branches[legacy]
@@ -179,8 +179,8 @@ def _branch_db_path(domain_id: str, branch_name: str, tenant_id: str = DomainRou
         branch_name: 分支名；main 对应域主库。
         tenant_id: 租户；default 无前缀。
     """
-    tid = (tenant_id or "default").strip() or "default"
-    prefix = f"{tid}:" if tid != "default" else ""
+    tid = (tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
+    prefix = f"{tid}:" if tid != DomainRouter.default_tenant() else ""
     if branch_name == "main":
         return GRAPH_DIR / f"{prefix}{domain_id}.db"
     return GRAPH_DIR / f"{prefix}{domain_id}__{branch_name}.db"
@@ -197,8 +197,8 @@ def _branch_yaml_path(domain_id: str, branch_name: str, tenant_id: str = DomainR
         branch_name: 分支名；main 对应域主 YAML。
         tenant_id: 租户；default 无前缀。
     """
-    tid = (tenant_id or "default").strip() or "default"
-    prefix = f"{tid}:" if tid != "default" else ""
+    tid = (tenant_id or DomainRouter.default_tenant()).strip() or DomainRouter.default_tenant()
+    prefix = f"{tid}:" if tid != DomainRouter.default_tenant() else ""
     ont_dir = HOME / "ontologies"
     if branch_name == "main":
         return ont_dir / f"{prefix}{domain_id}.yaml"
@@ -222,8 +222,8 @@ def _resolve_branch_yaml_source(
     if primary.exists():
         return primary
     # 为什么：新租户尚无隔离副本时允许从共享域 YAML 引导，写路径仍走租户前缀
-    if (tenant_id or "default") != "default":
-        legacy = _branch_yaml_path(domain_id, branch_name, "default")
+    if (tenant_id or DomainRouter.default_tenant()) != DomainRouter.default_tenant():
+        legacy = _branch_yaml_path(domain_id, branch_name, DomainRouter.default_tenant())
         if legacy.exists():
             return legacy
     return None
@@ -369,12 +369,12 @@ class OntologyBranchManager:
         tenant_prefix = f"{tid}::{domain_id}::"
         legacy_prefix = f"{domain_id}::"
         for key, data in registry.get("branches", {}).items():
-            if tid != "default" and key.startswith(tenant_prefix):
+            if tid != DomainRouter.default_tenant() and key.startswith(tenant_prefix):
                 branches.append(BranchInfo(**data))
                 seen_names.add(data.get("branch_name", key.rsplit("::", 1)[-1]))
-            elif tid == "default":
-                # 新格式 default::{domain}::{branch} 或旧格式 domain::branch
-                if key.startswith(f"default::{domain_id}::"):
+            elif tid == DomainRouter.default_tenant():
+                # 新格式 {default_tenant}::{domain}::{branch} 或旧格式 domain::branch
+                if key.startswith(f"{DomainRouter.default_tenant()}::{domain_id}::"):
                     branches.append(BranchInfo(**data))
                     seen_names.add(data.get("branch_name", key.rsplit("::", 1)[-1]))
                 elif key.startswith(legacy_prefix) and key.count("::") == 1:

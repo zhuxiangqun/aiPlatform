@@ -136,7 +136,7 @@ def record_transition(
         chunk_id: chunk 标识。
         tags: tags 参数。
     """
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     with _lock:
         get_conn().execute(
             """INSERT INTO state_changes
@@ -162,7 +162,7 @@ def get_entity_history(
         entity_name: entity_name 参数。
         tenant_id: 租户；召回前过滤（N09 K11）。
     """
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     with _lock:
         rows = get_conn().execute(
             """SELECT id, entity_name, class_name, from_state, to_state,
@@ -185,7 +185,7 @@ def get_domain_history(
         limit: 返回条数上限。
         tenant_id: 租户；召回前过滤（N09 K11）。
     """
-    tid = (tenant_id or "").strip() or "default"
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
     with _lock:
         rows = get_conn().execute(
             """SELECT id, entity_name, class_name, from_state, to_state,

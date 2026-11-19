@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T08:09:57+08:00",
+  "reviewed_at": "2026-11-19T08:17:07+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "79d38ab3334bf518e22a8e0d43437467687592347363e5544cf1178db48f2cef",
-  "head_sha": "47b1b2ba1daa2a3ec97b13fda4bd79430b192fd2",
+  "diff_sha256": "67266a1a6e62792fa0d0f6f65ce31618ae3b28222ac5b517fc391840167ec6d9",
+  "head_sha": "1ae47cdcffb9ac77e915813092fa69640750bf1c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K56: platform routes/kb/delivery tenant runtime fallbacks → DomainRouter.default_tenant(). Five checks clean on merge diff. Honesty: not N09 certified; apps/org·value and ontology_branch leftovers deferred. k13 runtime mock AttributeError (default_kb_domain) pre-existing, source-assert test updated/passing."
+  "note": "K57: ontology_branch/state_history/code_review_gold + apps org/value/fde/prompt tenant runtime fallbacks → DomainRouter.default_tenant(). Five checks clean. Honesty: not N09 certified."
 }
