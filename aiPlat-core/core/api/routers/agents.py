@@ -975,7 +975,7 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
 
                     "user_id": (request or {}).get("user_id", "system"),
 
-                    "session_id": (request or {}).get("session_id", "default"),
+                    "session_id": (request or {}).get("session_id") or DomainRouter.default_session(),
 
                     "approval_request_id": approval_id,
 
@@ -1182,7 +1182,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
             "context": kr.get("context", {}),
 
-            "session_id": kr.get("session_id", "default"),
+            "session_id": kr.get("session_id") or DomainRouter.default_session(),
 
             "user_id": kr.get("user_id", "system"),
 
@@ -1361,7 +1361,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
                     "context": {"_reject_feedback": feedback or "决策被人工拒绝，请重新生成"},
 
-                    "session_id": paused.get("session_id", "default"),
+                    "session_id": paused.get("session_id") or DomainRouter.default_session(),
 
                     "user_id": paused.get("user_id", "system"),
 

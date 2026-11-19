@@ -1,6 +1,8 @@
 """Auto-extracted from integration.py — 2026-07-13"""
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import asyncio
 import logging
 import os
@@ -82,7 +84,7 @@ async def _execute_tool_impl(self, req: ExecutionRequest) -> ExecutionResult:
             request_token = set_active_request_context(
                 ActiveRequestContext(
                     user_id=str(req.user_id or "system"),
-                    session_id=str(sess_id or "default"),
+                    session_id=str(sess_id or DomainRouter.default_session()),
                     tenant_id=str(ctx0.get("tenant_id")) if isinstance(ctx0, dict) and ctx0.get("tenant_id") else None,
                     actor_id=str(ctx0.get("actor_id")) if isinstance(ctx0, dict) and ctx0.get("actor_id") else str(req.user_id or "system"),
                     actor_role=str(ctx0.get("actor_role")) if isinstance(ctx0, dict) and ctx0.get("actor_role") else None,
@@ -219,7 +221,7 @@ async def _execute_tool_impl(self, req: ExecutionRequest) -> ExecutionResult:
         # Roadmap-4: persist session messages for cross-session search (best-effort).
         if runtime and runtime.execution_store:
             try:
-                sess_id = str(req.session_id or "default")
+                sess_id = str(req.session_id or DomainRouter.default_session())
                 await runtime.execution_store.add_memory_message(
                     session_id=sess_id,
                     user_id=str(req.user_id or "system"),

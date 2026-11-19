@@ -8072,7 +8072,7 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                 from core.harness.memory.manager import get_memory_manager, TaskSkill
 
-                mm = get_memory_manager(namespace=state.get("session_id", "default"))
+                mm = get_memory_manager(namespace=state.get("session_id") or DomainRouter.default_session())
 
                 task_skill = TaskSkill(
 

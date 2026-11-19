@@ -1,5 +1,7 @@
 """base：模块接口。"""
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 """
 Agent Base Module
@@ -162,7 +164,7 @@ class BaseAgent(IAgent):
                         "task": context.messages[-1].get("content", "") if context.messages else "",
                         "session_id": context.session_id,
                         "user_id": context.user_id,
-                        "_agent_namespace": context.session_id or "default",
+                        "_agent_namespace": context.session_id or DomainRouter.default_session(),
                         **context.variables
                     },
                     step_count=0
