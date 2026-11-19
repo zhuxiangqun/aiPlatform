@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T23:52:00+08:00",
+  "reviewed_at": "2026-11-20T00:02:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "97005aadef35ee6d37f09178a5a879b9b7ec372fb732d24220c01ed933222053",
-  "head_sha": "08fbf4cc5cd939e8bcdf37d4aca1f68f754a17f9",
+  "diff_sha256": "56ea6230dcba649d3664e3c2a3161fab7b3040b44b792f01cc64550c31d67d37",
+  "head_sha": "2796f3bac4cead0ae096d9ff92fed162409fca53",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Platform ingest/watch/vault identity passthrough only; empty identity stays empty (no forged cron role). Not certified/UI. Local lock only."
+  "note": "Thin FieldAclPanel + list API with certified=false. Not full permissions product / not N07 certified. Local lock only."
 }
