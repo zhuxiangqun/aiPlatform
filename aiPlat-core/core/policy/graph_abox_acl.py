@@ -340,6 +340,20 @@ def apply_h1_policy(
     )
 
 
+def list_h1_policies(domain_id: str) -> List[Dict[str, Any]]:
+    """列出域内全部实例 ACL 的 H.1 只读投影（非完整策略编辑器 / certified=false）。
+
+    Args:
+        domain_id: domain 标识。
+    """
+    acl = load_abox_acl(domain_id)
+    entities = acl.get("entities") or {}
+    out: List[Dict[str, Any]] = []
+    for eid in sorted(entities.keys()):
+        out.append(entity_acl_to_h1(domain_id, str(eid)))
+    return out
+
+
 def set_entity_acl(
     domain_id: str,
     entity_id: str,

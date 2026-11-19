@@ -960,23 +960,48 @@ async def execute_action(
 
 @router.get("/graph/acl/{domain_id}")
 async def get_graph_acl(domain_id: str):
-    """Load ABox ACL document + CRUD matrix (T9 / Phase 3 lite).
+    """Load ABox ACL document + CRUD matrix + H.1 投影列表 (T9 / Phase 3 lite).
 
     Args:
         domain_id: domain 标识。
     """
     try:
-        from core.api.core_facade import get_abox_acl_doc, get_abox_crud_matrix
+        from core.api.core_facade import (
+            get_abox_acl_doc,
+            get_abox_crud_matrix,
+            list_graph_h1_policies,
+        )
 
         return {
             "domain_id": domain_id,
             "acl": get_abox_acl_doc(domain_id),
             "crud_matrix": get_abox_crud_matrix(),
+            "h1_policies": list_graph_h1_policies(domain_id),
             # 为什么：诚实锁 — 管理端薄 UI 可读 ACL，不宣称 N07/N22 certified
             "certified": False,
         }
     except Exception as e:
         logger.error("get_graph_acl failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.get("/graph/acl/{domain_id}/h1")
+async def get_graph_acl_h1(domain_id: str):
+    """List domain ABox ACL as appendix H.1 projections（薄导出；非 certified）。
+
+    Args:
+        domain_id: domain 标识。
+    """
+    try:
+        from core.api.core_facade import list_graph_h1_policies
+
+        return {
+            "domain_id": domain_id,
+            "h1_policies": list_graph_h1_policies(domain_id),
+            "certified": False,
+        }
+    except Exception as e:
+        logger.error("get_graph_acl_h1 failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 

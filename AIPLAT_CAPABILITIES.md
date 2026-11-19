@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3900
+total_capabilities: 3901
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1326,7 +1326,7 @@ scan_hash: 8f9548ec24f4
 | **Fact State Machine（v4.3.1 W3 / N12）** | `harness/knowledge_pipeline/fact_state_machine.py` + FactLedger `put_fact` 硬门/`get_fact` + CoreFacade review/lifecycle/claim/gate + FDE `/fact-state*` | ✅ | §7.5 + 写入硬门：禁直发 published；禁裸改状态；transition 审计；retracted 不删。证据 `phase2-fact-state-evidence.md` / `test_fact_write_gates_phase2.py`。**未宣称** reviewer RBAC / N12 全量。生成物适用：已接线（经 Facade） | 本批 |
 | **Knowledge SDK（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/sdk_generator.py` + CoreFacade + `GET/POST …/fde/sdk/*` | ✅ | 附录 E.3；ObjectType→Client 表面/Python 源码仅经 Facade；`kb:read` L1。证据 `phase2-sdk-evidence.md`。**未宣称** 多语言包发布/字段 ACL/N24 | 本批 |
 | **Knowledge SLO 遥测接线（v4.3.1 F1 deepen）** | `harness/knowledge_pipeline/slo_telemetry.py` + CoreFacade + `GET/POST …/fde/slo/*` | ✅ | 白皮书 §14 三指标采集/快照/接线门；wiring≠attainment。证据 `phase2-slo-telemetry-wiring-evidence.md`。**未宣称** 生产达标/告警/Full unconditional | 本批 |
-| **Wiki/KB 字段 ACL（v4.3.1 N07/N22 deepen）** | `syscalls/retrieval.py` + `knowledge_pipeline/retriever.py` + `knowledge/okf_exporter.py` + `knowledge/knowledge_ontology.py` + `knowledge/evolution_runner.py` + `policy/field_level_security.py` + `graph_abox_acl.py` + `wiki_field_security.py` + FDE `graph/acl` + `FieldAclPanel.tsx` / `AboxAclPanel.tsx` | ✅ | 统一检索/KB/CRAG + 导出字段脱敏 + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition/$eq/$ne/$in + masked_properties + apply_h1_policy；证据含 `phase2-abox-acl-masked-props-evidence.md` + `phase2-abox-acl-h1-apply-evidence.md`。**未宣称** certified / 表达式语言 / 完整策略编辑器。生成物适用：已接线 | 本批 |
+| **Wiki/KB 字段 ACL（v4.3.1 N07/N22 deepen）** | `syscalls/retrieval.py` + `knowledge_pipeline/retriever.py` + `knowledge/okf_exporter.py` + `knowledge/knowledge_ontology.py` + `knowledge/evolution_runner.py` + `policy/field_level_security.py` + `graph_abox_acl.py` + `wiki_field_security.py` + FDE `graph/acl` + `FieldAclPanel.tsx` / `AboxAclPanel.tsx` | ✅ | 统一检索/KB/CRAG + 导出字段脱敏 + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition/$eq/$ne/$in + masked_properties + apply/list_h1_policy；证据含 `phase2-abox-acl-h1-apply-evidence.md` + `phase2-abox-acl-h1-list-evidence.md`。**未宣称** certified / 表达式语言 / 完整策略编辑器。生成物适用：已接线 | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
 | **service-domain 参考实现** | `~/.aiplat/ontologies/service-domain.yaml` + `~/.aiplat/actions/service-domain_actions.yaml` + `custom_handlers/service_handlers.py` + `~/.aiplat/tests/service-domain_tests.yaml` + `scripts/sop_validate.py` + `docs/manuals/fde/06-sop-domain-delivery.md` | ✅ | 生产级参考实现：6类实体+6种关系+4态状态机+inference_rules + 5个动作（assign/start/submit/complete/reopen）+ 5个async handler + 12条测试用例 + SOP验证脚本6/6 PASS + 5天标准交付流程文档 | 已合入 |
@@ -1437,6 +1437,9 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| list_graph_h1_policies | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_h1_policies | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| apply_h1_policy | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
 | apply_graph_h1_policy | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | entity_acl_to_h1 | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
 | list_masked_properties | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
@@ -4804,7 +4807,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 758 | 1 | 759 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 647 | 9 | 656 |
+| 知识引擎（本体） | 648 | 9 | 657 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4847,7 +4850,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3889** | **11** | **3900** |
+| **总计** | **3890** | **11** | **3901** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

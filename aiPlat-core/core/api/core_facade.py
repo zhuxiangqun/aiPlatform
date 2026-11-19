@@ -7326,6 +7326,16 @@ def apply_graph_h1_policy(
     return apply_h1_policy(domain_id, entity_id, policy)
 
 
+def list_graph_h1_policies(domain_id: str) -> List[Dict[str, Any]]:
+    """List domain ABox entity ACLs as appendix H.1 projections（certified=false）。
+
+    Args:
+        domain_id: domain 标识。
+    """
+    from core.policy.graph_abox_acl import list_h1_policies
+    return list_h1_policies(domain_id)
+
+
 def set_graph_field_acl(
     domain_id: str,
     entity_id: str,
