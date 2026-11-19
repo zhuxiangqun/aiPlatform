@@ -45,5 +45,5 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- 字段 ACL 管理 UI 大改
+- 字段 ACL 管理 UI 大改 → 见 `phase2-field-acl-thin-ui-evidence.md`（薄面板已接线；非全量权限产品）
 - 无调用方 / 无启动身份时的伪造 service 角色（空身份保持空，不做自动推断）
