@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import hashlib
 import json
 from typing import Any, Dict, List, Optional
@@ -12,7 +14,7 @@ from core.services.execution_store import ExecutionStore
 def _scope_hash(scope: Dict[str, Any]) -> str:
     raw = json.dumps(
         {
-            "collection_id": str(scope.get("collection_id") or "default"),
+            "collection_id": str(scope.get("collection_id") or DomainRouter.default_collection()),
             "doc_ids": sorted([str(x) for x in (scope.get("doc_ids") or []) if str(x).strip()]),
             "version": int(scope.get("version") or 1),
         },
@@ -31,7 +33,7 @@ def normalize_scope(scope: Optional[Dict[str, Any]], fallback: Optional[Dict[str
     """
     base = dict(fallback or {})
     cur = dict(scope or {})
-    collection_id = str(cur.get("collection_id") or base.get("collection_id") or "default").strip() or "default"
+    collection_id = str(cur.get("collection_id") or base.get("collection_id") or DomainRouter.default_collection()).strip() or DomainRouter.default_collection()
     doc_ids = [str(x).strip() for x in (cur.get("doc_ids") if cur.get("doc_ids") is not None else base.get("doc_ids") or []) if str(x).strip()]
     version = int(cur.get("version") or base.get("version") or 1)
     out = {

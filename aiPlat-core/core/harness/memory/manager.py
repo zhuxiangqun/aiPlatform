@@ -2646,19 +2646,19 @@ def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = "
 
         if _default_manager is None:
 
-            _default_manager = MemoryManager(config, namespace="default")
+            _default_manager = MemoryManager(config, namespace=DomainRouter.default_session())
 
             _wire_persist_callback(_default_manager)
 
         return _default_manager
 
-    key = (namespace or "default", tenant_id, session_id)
+    key = (namespace or DomainRouter.default_session(), tenant_id, session_id)
 
     if key not in _memory_managers:
 
         _memory_managers[key] = MemoryManager(
 
-            config, namespace=namespace or "default",
+            config, namespace=namespace or DomainRouter.default_session(),
 
             tenant_id=tenant_id, session_id=session_id)
 
@@ -2683,7 +2683,7 @@ def _wire_persist_callback(mgr: MemoryManager) -> None:
             # New-style: namespace, user_message, assistant_message
             interaction = {
                 "user_id": str(kwargs.get("user_id", "system")),
-                "session_id": str(kwargs.get("namespace", "default")),
+                "session_id": str(kwargs.get("namespace") or DomainRouter.default_session()),
                 "summary": str(kwargs.get("assistant_message", ""))[:5000],
                 "metadata": str(kwargs.get("user_message", ""))[:2000],
                 "timestamp": kwargs.get("timestamp", None),

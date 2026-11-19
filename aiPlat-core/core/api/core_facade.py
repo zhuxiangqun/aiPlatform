@@ -1615,7 +1615,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                summary=body[:300].replace("\n", " "),
                source_articles=[f"kb:{doc_id}"],
                images=image_descriptions,
-               collection_id=collection_id or "default")
+               collection_id=collection_id or DomainRouter.default_collection())
 
     # LLM curation: extract knowledge atoms, generate proper metadata (with retry)
     import asyncio as _asyncio
@@ -1654,10 +1654,10 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                 summary=curated.get("summary", body[:300].replace("\n", " ")),
                 source_articles=[f"kb:{doc_id}"],
                 images=image_descriptions,
-                collection_id=collection_id or "default")
+                collection_id=collection_id or DomainRouter.default_collection())
             if curated["title"] != old_title:
                 from core.harness.knowledge.wiki_engine import delete_page
-                try: delete_page(old_title, collection_id=collection_id or "default")
+                try: delete_page(old_title, collection_id=collection_id or DomainRouter.default_collection())
                 except Exception: logging.debug(f"Failed to delete old page {old_title}", exc_info=True)
             # Create knowledge atom pages with evidence tracking
             from core.harness.knowledge.wiki_engine import write_atom
@@ -1678,7 +1678,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                         "tags": atom_tags,
                         "contradicts_atom_index": atom.get("contradicts_atom_index"),
                         "supports_atom_index": atom.get("supports_atom_index"),
-                    }, collection_id=collection_id or "default")
+                    }, collection_id=collection_id or DomainRouter.default_collection())
 
             # Track curation success for metrics
             try:
@@ -1728,7 +1728,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     # ── Evolution: auto-trigger if enough new pages accumulated ──
     try:
         from core.harness.knowledge.evolution_runner import EvolutionRunner
-        runner = EvolutionRunner(collection_id=collection_id or "default", max_mutations=3)
+        runner = EvolutionRunner(collection_id=collection_id or DomainRouter.default_collection(), max_mutations=3)
         if runner.can_evolve():
             await runner.run_one_generation(force=False)
     except Exception as e:
@@ -1755,7 +1755,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     # Phase G: LLM Wiki contradiction detection — flag contradictions at ingest time
     try:
         from core.harness.knowledge.wiki_engine import search_pages, update_page
-        pages = search_pages(limit=1000, collection_id=collection_id or "default")
+        pages = search_pages(limit=1000, collection_id=collection_id or DomainRouter.default_collection())
         for p in pages:
             ptitle = p.get("title", "")
             if ptitle == title:
@@ -1768,7 +1768,7 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                 contradictions = list(p.get("contradictions") or [])
                 if title not in contradictions:
                     contradictions.append(title)
-                    update_page(ptitle, contradictions=contradictions, collection_id=collection_id or "default")
+                    update_page(ptitle, contradictions=contradictions, collection_id=collection_id or DomainRouter.default_collection())
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 

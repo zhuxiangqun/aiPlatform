@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform:. .venv/bin/python -m pytest
 
 ## 明确未做
 
-- MemoryManager `namespace or "default"` 缓存键（namespace 语义，非 session_id 字段）
-- collection/domain_id/workspace_id 字面量回退
+- MemoryManager `namespace or "default"` 缓存键 → 见 K62
+- collection 字面量回退 → 见 K62；domain_id/workspace_id 仍后续
 - N09 / 附录 N 全量认证（certified 仍 false）

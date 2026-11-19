@@ -57,7 +57,7 @@ async def kb_qa_retrieve(
     return await sys_crag_retrieve(
         query,
         domain_id=domain_id,
-        collection_id=collection_id or "default",
+        collection_id=collection_id or DomainRouter.default_collection(),
         tenant_id=tenant_id or "system",
         doc_ids=doc_ids,
         top_k=int(top_k or 8),

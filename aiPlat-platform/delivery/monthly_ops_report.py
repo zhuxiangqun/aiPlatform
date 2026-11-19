@@ -79,7 +79,7 @@ def build_monthly_ops_report(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "tenant_id": tenant_id or DomainRouter.default_tenant(),
         "project_id": project_id or "",
-        "collection_id": collection_id or "default",
+        "collection_id": collection_id or DomainRouter.default_collection(),
         "window_hours": window_hours,
         "period": period,
         "sku": "L1",

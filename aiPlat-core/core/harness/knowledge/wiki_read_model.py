@@ -11,6 +11,8 @@ docs_sync / write_page 直调）不经过本门。
 """
 from __future__ import annotations
 
+from core.harness.knowledge.domain_router import DomainRouter
+
 import logging
 import os
 from typing import FrozenSet
@@ -63,7 +65,7 @@ def is_wiki_read_model_collection(collection_id: str) -> bool:
     Args:
         collection_id: Wiki collection 标识。
     """
-    cid = (collection_id or "default").strip() or "default"
+    cid = (collection_id or DomainRouter.default_collection()).strip() or DomainRouter.default_collection()
     return cid in read_model_collections()
 
 
@@ -76,7 +78,7 @@ def assert_manual_wiki_write_allowed(collection_id: str) -> None:
     Raises:
         WikiManualWriteDenied: 已配置为读模型且未开破窗。
     """
-    cid = (collection_id or "default").strip() or "default"
+    cid = (collection_id or DomainRouter.default_collection()).strip() or DomainRouter.default_collection()
     if not is_wiki_read_model_collection(cid):
         return
     if wiki_manual_write_break_glass():

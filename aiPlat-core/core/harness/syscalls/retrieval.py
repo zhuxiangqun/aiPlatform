@@ -1670,7 +1670,7 @@ def sys_knowledge_retrieve(
         roi = KnowledgeROI()
         roi.record_from_syscall(
             query_text=query[:200],
-            domain_id=domain_id or collection_id or "default",
+            domain_id=domain_id or collection_id or DomainRouter.default_collection(),
             rag_tokens=rag_tokens,
             wiki_tokens=wiki_tokens,
             cache_hit=bool(graph_early_exit),

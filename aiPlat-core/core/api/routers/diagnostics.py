@@ -3238,7 +3238,7 @@ async def trigger_drift_rebuild(request: Request, max_pages: int = 10):
     for report in reports:
         for page in report.affected_pages[:max_pages]:
             title = page["title"]
-            cid = report.collection_id or "default"
+            cid = report.collection_id or DomainRouter.default_collection()
 
             # Extract KB doc_ids from stale sources
             stale_refs = page.get("stale_sources", [])

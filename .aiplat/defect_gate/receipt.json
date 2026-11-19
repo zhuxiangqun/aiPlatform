@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T08:54:30+08:00",
+  "reviewed_at": "2026-11-19T09:11:11+08:00",
   "base_ref": "origin/main",
   "merge_base": "acda4728c5350c4b87e34855d6416b69916d1421",
-  "diff_sha256": "98b97c7cd20669bda65dbe8f0da227961d67a835354213afdb38c903d78e0dfc",
-  "head_sha": "a829309102ea95b86d101df75dd141ea67348529",
+  "diff_sha256": "895f3482814d3904284290a488e1c01a3861a8bf851ae238e6d8b15ca0642f91",
+  "head_sha": "fc32e3a40605382f5bd6d7c3de2ec26c575fba0a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "K61: integration/server/memory/seci/approvals/gateway session runtime fallbacks → DomainRouter.default_session(). Five checks clean. Honesty: not N09 certified; MemoryManager namespace or \"default\" cache key deferred."
+  "note": "K62: collection_id runtime fallbacks → default_collection(); MemoryManager namespace → default_session(). Five checks clean. Honesty: not N09 certified; domain_id/workspace_id/view_name/AIPLAT_DEFAULT_TENANT deferred."
 }
