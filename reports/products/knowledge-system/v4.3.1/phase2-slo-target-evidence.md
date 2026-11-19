@@ -38,5 +38,9 @@ standard: docs/standards/knowledge-system/v4.3.1/technical-whitepaper.md §14
 
 ## 明确未做
 
-- 生产环境 SLO 采集 / 告警 / 仪表盘接线
+- 生产告警 / Grafana / PagerDuty 仪表盘
 - 用本文件冒充生产达标或附录 N 认证
+
+## 加深
+
+- 遥测接线（采集/快照/接线门）→ 见 `phase2-slo-telemetry-wiring-evidence.md`（仍非达标）

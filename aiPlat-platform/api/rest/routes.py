@@ -4603,6 +4603,9 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
 
     from kb.platform_query import execute_platform_kb_query
+    import time as _slo_time
+
+    _slo_t0 = _slo_time.time()
 
 
 
@@ -4619,6 +4622,7 @@ async def kb_query(req: KBQueryRequest, request: Request):
         normalize_citations=_normalize_citations_with_assets,
 
     )
+    _slo_dur_ms = (_slo_time.time() - _slo_t0) * 1000.0
 
 
 
@@ -4643,6 +4647,8 @@ async def kb_query(req: KBQueryRequest, request: Request):
             out=out,
 
             error=(None if out.get("ok", True) else str(out.get("error") or "kb_query_failed")[:500]),
+
+            duration_ms=_slo_dur_ms,
 
         )
 
@@ -4673,6 +4679,9 @@ async def collection_query(request: Request):
     body = await request.json()
 
     from kb.platform_query import execute_platform_kb_query
+    import time as _slo_time
+
+    _slo_t0 = _slo_time.time()
 
 
 
@@ -4689,6 +4698,7 @@ async def collection_query(request: Request):
         normalize_citations=_normalize_citations_with_assets,
 
     )
+    _slo_dur_ms = (_slo_time.time() - _slo_t0) * 1000.0
 
 
 
@@ -4713,6 +4723,8 @@ async def collection_query(request: Request):
             out=out,
 
             error=(None if out.get("ok", True) else str(out.get("error") or "collection_query_failed")[:500]),
+
+            duration_ms=_slo_dur_ms,
 
         )
 

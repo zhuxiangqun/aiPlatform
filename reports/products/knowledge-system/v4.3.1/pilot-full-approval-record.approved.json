@@ -17,10 +17,10 @@
   "exceptions": [
     {
       "id": "SLO",
-      "scope": "目标登记；生产遥测未接线",
-      "compensation": "phase2-slo-target-evidence.md + phase2-exception-adr.md"
+      "scope": "目标登记；遥测已接线；生产达标未宣称",
+      "compensation": "phase2-slo-target-evidence.md + phase2-slo-telemetry-wiring-evidence.md + phase2-exception-adr.md"
     }
   ],
   "record_id": "PILOT-FULL-lock-service-2026-11-19",
-  "note": "Non-author 朱向群已复核确认。Conditional: full_ready + three level badges + independent full approval → certified / n24_full_conformance; SLO target-registered only (not production telemetry); not accuracy claim."
+  "note": "Non-author 朱向群已复核确认。Conditional: full_ready + three level badges + independent full approval → certified / n24_full_conformance; SLO target-registered + telemetry wired (not production attainment); not accuracy claim."
 }

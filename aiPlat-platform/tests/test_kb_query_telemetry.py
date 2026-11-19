@@ -46,6 +46,7 @@ def test_record_kb_query_syscall_calls_store():
             actor_id="u1",
             out={"kb": {"items": [{"source": "a.md", "text": "x"}]}},
             store=_Store(),
+            duration_ms=42.5,
         )
     )
     assert ok is True
@@ -58,6 +59,7 @@ def test_record_kb_query_syscall_calls_store():
     assert ev["tenant_id"] == "t1"
     assert ev["args"]["question"].startswith("什么是")
     assert ev["result"]["count"] == 1
+    assert ev["duration_ms"] == 42.5
 
 
 def test_record_kb_query_syscall_soft_fail():
