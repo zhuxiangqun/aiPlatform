@@ -1,0 +1,26 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "pilot lock-service SLO attainment window (白皮书 §14)",
+  "status": "approved",
+  "decision": "conditional",
+  "approvers": [
+    {
+      "name": "朱莹",
+      "role": "Reviewer",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-19"
+    }
+  ],
+  "approval_date": "2026-11-19",
+  "effective_date": "2026-11-19",
+  "exceptions": [
+    {
+      "id": "SLO-WINDOW",
+      "scope": "仅三指标窗口达标徽章；不含 ingest/object-sync/索引重建；不含告警仪表盘",
+      "compensation": "phase2-slo-attainment-window-evidence.md"
+    }
+  ],
+  "record_id": "PILOT-SLO-ATTAINMENT-lock-service-2026-11-19",
+  "note": "Non-author 朱莹已复核。Conditional: attainment_ok only when window_meets_targets + this approval; certified / n24_full_conformance / Full unconditional remain false."
+}

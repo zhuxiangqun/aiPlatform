@@ -57,5 +57,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 - ingest / object-sync / 索引重建 SLI
 - 生产告警 / Grafana / PagerDuty
-- 用接线冒充生产达标或清除 Full `conditional`
+- 用接线冒充生产达标或清除 Full `conditional`（达标窗口见 `phase2-slo-attainment-window-evidence.md`）
 - 准确率宣称

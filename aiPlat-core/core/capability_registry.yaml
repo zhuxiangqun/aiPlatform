@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3020
+total_capabilities: 3023
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 554
+    caps_count: 557
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3942,6 +3942,10 @@ domains:
         module: core/harness/knowledge_pipeline/slo_telemetry.py
         type: function
         signature: "F1 deepen: wiring_ok gate; attainment/certified false"
+      - symbol: "evaluate_slo_attainment_window"
+        module: core/harness/knowledge_pipeline/slo_telemetry.py
+        type: function
+        signature: "F1 deepen: window+approval → attainment_ok; certified false"
       - symbol: "record_knowledge_slo_sample"
         module: core/api/core_facade.py
         type: function
@@ -3954,10 +3958,18 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "CoreFacade: SLO wiring gate"
+      - symbol: "evaluate_knowledge_slo_attainment_window"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: SLO attainment window gate"
       - symbol: "slo_snapshot_route"
         module: aiPlat-platform/apps/fde/api/slo_routes.py
         type: function
         signature: "GET /fde/slo/snapshot via Facade"
+      - symbol: "slo_evaluate_attainment_route"
+        module: aiPlat-platform/apps/fde/api/slo_routes.py
+        type: function
+        signature: "POST /fde/slo/evaluate-attainment via Facade"
       - symbol: "traverse_links_route"
         module: aiPlat-platform/apps/fde/api/link_traverse_routes.py
         type: function

@@ -10,7 +10,7 @@ authority: supporting
 > 实施权威：[`docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md`](../../../../docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md)  
 > 标准包：[`docs/standards/knowledge-system/v4.3.1/`](../../../../docs/standards/knowledge-system/v4.3.1/)  
 > **本目录是测量证据，不是第二份标准或实施方案。**  
-> **试点认证状态（lock-service，2026-11-19）**：Core 朱鸿林 / Extended 朱莹 / Operational 朱莹 / Full 朱向群（conditional，SLO 已接线非达标）；未宣称准确率。
+> **试点认证状态（lock-service，2026-11-19）**：Core 朱鸿林 / Extended 朱莹 / Operational 朱莹 / Full 朱向群（conditional；SLO 接线+达标窗口可评估，certified 恒假）；未宣称准确率。
 
 | 文件 | 内容 |
 |------|------|
@@ -43,6 +43,7 @@ authority: supporting
 | [phase2-claim-evidence-evidence.md](./phase2-claim-evidence-evidence.md) | Batch F2 N03 Claim 证据硬门+冲突记录（门槛门；非全量认证） |
 | [phase2-slo-target-evidence.md](./phase2-slo-target-evidence.md) | Batch F1 §9.4 SLO 目标登记（非生产遥测达标） |
 | [phase2-slo-telemetry-wiring-evidence.md](./phase2-slo-telemetry-wiring-evidence.md) | F1 deepen：生产 SLO 遥测接线（wiring≠attainment；Full 仍 conditional） |
+| [phase2-slo-attainment-window-evidence.md](./phase2-slo-attainment-window-evidence.md) | F1 deepen：生产 SLO 达标窗口（窗口+批准→attainment_ok；certified 恒假） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |
