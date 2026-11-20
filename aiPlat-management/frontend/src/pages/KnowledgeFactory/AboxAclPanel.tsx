@@ -511,12 +511,12 @@ const AboxAclPanel: React.FC = () => {
             />
           </label>
           <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
-            condition（H.1：标量等值 / $eq / $ne / $in / $exists / $gt / $gte / $lt / $lte（数值或 str 字典序） / $regex（$options 仅 i） / 浅层 $and|$or|$not（一层≤8，$not 为单字段子句）；空=`{}` 清除；非表达式语言）
+            condition（H.1：标量等值 / $eq / $ne / $in / $nin / $exists / $gt / $gte / $lt / $lte（数值或 str 字典序） / $regex（$options 仅 i） / 浅层 $and|$or|$not（一层≤8，$not 为单字段子句）；空=`{}` 清除；非表达式语言）
             <input
               className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
               value={conditionRaw}
               onChange={(e) => setConditionRaw(e.target.value)}
-              placeholder='{"$not":{"status":"archived"}}'
+              placeholder='{"status":{"$nin":["archived","closed"]}}'
             />
           </label>
           <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">

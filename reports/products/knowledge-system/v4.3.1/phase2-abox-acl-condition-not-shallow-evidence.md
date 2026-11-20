@@ -45,5 +45,6 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
+- `$nin` → 见 `phase2-abox-acl-condition-nin-evidence.md`
 - 多层嵌套布尔 / 完整表达式语言
 - 完整 H.1 矩阵编辑器（多角色×多动作网格）

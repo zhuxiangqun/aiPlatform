@@ -185,7 +185,7 @@ def _match_regex_condition(got: Any, pattern: Any, options: Any = "") -> bool:
 
 
 def _match_condition_value(got: Any, want: Any) -> bool:
-    """单键条件值：标量等值；``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
+    """单键条件值：标量等值；``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
 
     Args:
         got: 实例属性值（可为 None；None 视为字段缺失）。
@@ -212,6 +212,12 @@ def _match_condition_value(got: Any, want: Any) -> bool:
                 return False
             got_s = str(got)
             return any(got_s == str(x) for x in arg)
+        if op_s == "$nin":
+            # 为什么：$in 对偶；非 list/tuple/set 拒配（与 $in 对称）
+            if not isinstance(arg, (list, tuple, set)):
+                return False
+            got_s = str(got)
+            return all(got_s != str(x) for x in arg)
         if op_s == "$exists":
             # 为什么：true→字段存在；false→字段缺失；arg 用 bool() 规范化
             present = got is not None
@@ -273,7 +279,7 @@ def match_abox_condition(
 ) -> bool:
     """H.1 最小 condition：全键匹配；空 condition 恒 True。
 
-    每键支持标量等值，或 ``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex: …}``
+    每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
     顶层可单独使用浅层 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
     （一层；``$and``/``$or`` 子句 ≤8；``$not`` 仅单个字段子句 dict；
