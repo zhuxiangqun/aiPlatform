@@ -188,7 +188,7 @@ def _match_condition_value(got: Any, want: Any) -> bool:
         got: 实例属性值（可为 None；None 视为字段缺失）。
         want: 条件期望；标量或单运算符 dict（``$regex`` 可与 ``$options`` 同级）。
     """
-    # 为什么：仅开放等值/集合/存在/数值比较/有界正则(+i)；禁止嵌套布尔扩大攻击面
+    # 为什么：仅开放等值/集合/存在/数值或 str 字典序比较/有界正则(+i)；禁止嵌套布尔
     if isinstance(want, dict) and want:
         keys = set(want.keys())
         if "$regex" in keys:
@@ -214,17 +214,26 @@ def _match_condition_value(got: Any, want: Any) -> bool:
             present = got is not None
             return present if bool(arg) else (not present)
         if op_s in ("$gt", "$gte", "$lt", "$lte"):
-            left = _as_comparable_number(got)
-            right = _as_comparable_number(arg)
-            if left is None or right is None:
-                return False
-            if op_s == "$gt":
-                return left > right
-            if op_s == "$gte":
-                return left >= right
-            if op_s == "$lt":
-                return left < right
-            return left <= right
+            left_n = _as_comparable_number(got)
+            right_n = _as_comparable_number(arg)
+            if left_n is not None and right_n is not None:
+                if op_s == "$gt":
+                    return left_n > right_n
+                if op_s == "$gte":
+                    return left_n >= right_n
+                if op_s == "$lt":
+                    return left_n < right_n
+                return left_n <= right_n
+            # 为什么：两端均为 str 时走字典序；混合类型 / bool / None 拒配（非表达式语言）
+            if isinstance(got, str) and isinstance(arg, str):
+                if op_s == "$gt":
+                    return got > arg
+                if op_s == "$gte":
+                    return got >= arg
+                if op_s == "$lt":
+                    return got < arg
+                return got <= arg
+            return False
         return False
     return str(got) == str(want)
 
@@ -236,7 +245,8 @@ def match_abox_condition(
     """H.1 最小 condition：全键匹配；空 condition 恒 True。
 
     每键支持标量等值，或 ``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex: …}``
-    （``$regex`` 可附 ``$options:"i"``；数值比较仅 int/float；非完整表达式语言）。
+    （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序；
+    非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。

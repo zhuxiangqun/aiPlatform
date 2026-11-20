@@ -46,5 +46,6 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 - N07/N22 certified 或关闭 ADR 例外
 - `$regex` → 见 `phase2-abox-acl-condition-regex-evidence.md`
-- 嵌套布尔表达式 / 字符串字典序
+- 字符串字典序 → 见 `phase2-abox-acl-condition-strcmp-evidence.md`
+- 嵌套布尔表达式
 - 完整 H.1 矩阵编辑器（多角色×多动作网格）
