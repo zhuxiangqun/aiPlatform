@@ -121,7 +121,7 @@ class ProcessResult:
 
         self.errors: List[str] = []
 
-        # 为什么：N01 opt-in Raw ingest 回执；默认 None 表示未启用
+        # 为什么：N01 Raw ingest 回执；默认强制启用时填充，opt-out 时为 None
         self.raw_ingest: Optional[Dict[str, Any]] = None
 
         self.stats: Dict[str, Any] = {"total_chunks": 0, "mapped_entities": 0, "extracted_instances": 0, "valid_instances": 0, "state_transitions": 0}
@@ -1451,7 +1451,7 @@ class OntologyEngine:
             source_id: source 标识。
             doc_id: doc 标识。
             model_name: model_name 参数。
-            require_raw_ingest: N01 Raw ingest 开关；None 时读环境 opt-in（默认关）。
+            require_raw_ingest: N01 Raw ingest 开关；None 时读环境（默认强制；可 opt-out）。
             collection_id: FactLedger collection；空则用 domain id。
             tenant_id: 租户覆盖；空则用引擎构造 tenant。
         """
@@ -1506,7 +1506,7 @@ class OntologyEngine:
 
         raw_receipt = None
 
-        # 为什么：opt-in 才走 N01 Raw；默认不强制，避免静默改变现有 process 路径
+        # 为什么：默认强制 N01 Raw；显式 False / env=0 才跳过
         if datasource_require_raw_ingest_enabled(explicit=require_raw_ingest):
 
             if config is None:
