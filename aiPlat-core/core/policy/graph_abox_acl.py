@@ -148,15 +148,54 @@ def _as_comparable_number(value: Any) -> Optional[float]:
     return None
 
 
+def _match_regex_condition(got: Any, pattern: Any, options: Any = "") -> bool:
+    """有界 ``$regex``；``$options`` 仅允许 ``i``（大小写不敏感）。
+
+    Args:
+        got: 实例属性值；None → 不匹配。
+        pattern: 正则模式（须为非空 str 且长度 ≤ `_REGEX_MAX_PATTERN_LEN`）。
+        options: 可选 flags 字符串；空 / 缺省 = 无 flags；含非 ``i`` 字符 → 拒配。
+    """
+    # 为什么：仅开放 IGNORECASE，拒绝 m/s/x 等扩大匹配面的 flags
+    if got is None:
+        return False
+    if not isinstance(pattern, str) or not pattern or len(pattern) > _REGEX_MAX_PATTERN_LEN:
+        return False
+    flags = 0
+    if options is None or options == "":
+        pass
+    elif isinstance(options, str):
+        for ch in options:
+            if ch == "i":
+                flags |= re.IGNORECASE
+            else:
+                return False
+    else:
+        return False
+    subject = str(got)
+    if len(subject) > _REGEX_MAX_SUBJECT_LEN:
+        subject = subject[:_REGEX_MAX_SUBJECT_LEN]
+    try:
+        return re.search(pattern, subject, flags) is not None
+    except re.error:
+        return False
+
+
 def _match_condition_value(got: Any, want: Any) -> bool:
-    """单键条件值：标量等值；``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex}``。
+    """单键条件值：标量等值；``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
 
     Args:
         got: 实例属性值（可为 None；None 视为字段缺失）。
-        want: 条件期望；标量或单运算符 dict。
+        want: 条件期望；标量或单运算符 dict（``$regex`` 可与 ``$options`` 同级）。
     """
-    # 为什么：仅开放等值/集合/存在/数值比较/有界正则；禁止嵌套布尔/$options 扩大攻击面
+    # 为什么：仅开放等值/集合/存在/数值比较/有界正则(+i)；禁止嵌套布尔扩大攻击面
     if isinstance(want, dict) and want:
+        keys = set(want.keys())
+        if "$regex" in keys:
+            # 为什么：只允许 {$regex} 或 {$regex,$options}；其它键组合一律拒配
+            if keys - {"$regex", "$options"}:
+                return False
+            return _match_regex_condition(got, want.get("$regex"), want.get("$options", ""))
         if len(want) != 1:
             return False
         op, arg = next(iter(want.items()))
@@ -186,19 +225,6 @@ def _match_condition_value(got: Any, want: Any) -> bool:
             if op_s == "$lt":
                 return left < right
             return left <= right
-        if op_s == "$regex":
-            # 为什么：仅 str 模式、无 flags；非法/过长模式与缺失字段一律拒配
-            if got is None:
-                return False
-            if not isinstance(arg, str) or not arg or len(arg) > _REGEX_MAX_PATTERN_LEN:
-                return False
-            subject = str(got)
-            if len(subject) > _REGEX_MAX_SUBJECT_LEN:
-                subject = subject[:_REGEX_MAX_SUBJECT_LEN]
-            try:
-                return re.search(arg, subject) is not None
-            except re.error:
-                return False
         return False
     return str(got) == str(want)
 
@@ -210,7 +236,7 @@ def match_abox_condition(
     """H.1 最小 condition：全键匹配；空 condition 恒 True。
 
     每键支持标量等值，或 ``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex: …}``
-    （数值比较仅 int/float；``$regex`` 为有界 str 模式；非完整表达式语言）。
+    （``$regex`` 可附 ``$options:"i"``；数值比较仅 int/float；非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。
