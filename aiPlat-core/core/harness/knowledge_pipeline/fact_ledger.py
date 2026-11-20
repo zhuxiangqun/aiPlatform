@@ -3850,6 +3850,231 @@ def evaluate_datasource_raw_gate(
     }
 
 
+_N01_CONNECTOR_MATRIX_CASES = (
+    "matrix_declares_file_sql_api",
+    "file_hash_snapshot_ok",
+    "sql_hash_snapshot_ok",
+    "api_hash_snapshot_ok",
+    "sql_hash_mismatch_rejected",
+    "api_hash_mismatch_rejected",
+)
+
+
+async def run_datasource_connector_matrix_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n01-matrix-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N01 Core 连接器矩阵：file/sql/api 均走 hash 强制快照 → Raw。
+
+    Args:
+        ledger: 可选账本；默认临时目录。
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+
+    Returns:
+        套件汇总；``certified`` / ``n01_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    from core.harness.ontology_engine.data_source import (
+        DataSourceConfig,
+        DataSourceIntegrityError,
+        DATASOURCE_RAW_CONNECTOR_MATRIX,
+        datasource_raw_connector_matrix,
+        sha256_bytes,
+        snapshot_datasource_bytes,
+        validate_datasource_content_hash,
+    )
+
+    matrix_meta = datasource_raw_connector_matrix()
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n01-connector-matrix-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+        work = root
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+        work = Path(tempfile.mkdtemp(prefix="n01-matrix-files-"))
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        meta = matrix_meta
+        matrix_ok = (
+            list(meta.get("connectors") or []) == list(DATASOURCE_RAW_CONNECTOR_MATRIX)
+            and meta.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "matrix_declares_file_sql_api",
+                "ok": matrix_ok,
+                "detail": "" if matrix_ok else "matrix_mismatch",
+            }
+        )
+
+        # file
+        fpath = work / "matrix-file.json"
+        fpath.write_bytes(b'[{"id":1}]')
+        fcfg = DataSourceConfig(
+            name="matrix-file",
+            source_type="file",
+            connection={"file_path": str(fpath), "format": "json"},
+            content_hash="",
+            locator=str(fpath),
+        )
+        fblob = snapshot_datasource_bytes(fcfg)
+        fcfg.content_hash = sha256_bytes(fblob)
+        freceipt = await ingest_datasource_raw(
+            tenant_id=tenant_id,
+            collection_id="n01-matrix",
+            content=fblob,
+            content_hash=fcfg.content_hash,
+            name=fcfg.name,
+            locator=fcfg.locator,
+            connector="datasource:file",
+            require_hash=True,
+            ledger=lg,
+            domain_id=domain_id,
+        )
+        file_ok = (
+            freceipt.get("integrity", {}).get("ok") is True
+            and freceipt.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "file_hash_snapshot_ok",
+                "ok": file_ok,
+                "detail": "" if file_ok else "file_ingest_failed",
+            }
+        )
+
+        # sql / api：稳定 JSON 快照 + hash 强制
+        records = [{"b": 2, "a": 1}]
+        for st, case_ok, case_bad in (
+            ("sql", "sql_hash_snapshot_ok", "sql_hash_mismatch_rejected"),
+            ("api", "api_hash_snapshot_ok", "api_hash_mismatch_rejected"),
+        ):
+            cfg = DataSourceConfig(
+                name=f"matrix-{st}",
+                source_type=st,
+                connection={},
+                mapping={},
+                content_hash="",
+                locator=f"{st}://matrix",
+            )
+            blob = snapshot_datasource_bytes(cfg, records=records)
+            cfg.content_hash = sha256_bytes(blob)
+            receipt = await ingest_datasource_raw(
+                tenant_id=tenant_id,
+                collection_id="n01-matrix",
+                content=blob,
+                content_hash=cfg.content_hash,
+                name=cfg.name,
+                locator=cfg.locator,
+                connector=f"datasource:{st}",
+                require_hash=True,
+                ledger=lg,
+                domain_id=domain_id,
+            )
+            ok_ingest = (
+                receipt.get("integrity", {}).get("ok") is True
+                and receipt.get("certified") is False
+            )
+            cases.append(
+                {
+                    "id": case_ok,
+                    "ok": ok_ingest,
+                    "detail": "" if ok_ingest else f"{st}_ingest_failed",
+                }
+            )
+
+            bad = DataSourceConfig(
+                name=f"matrix-{st}-bad",
+                source_type=st,
+                connection={},
+                content_hash="0" * 64,
+            )
+            mismatch_ok = False
+            try:
+                validate_datasource_content_hash(
+                    bad,
+                    snapshot_datasource_bytes(bad, records=records),
+                    require_hash=True,
+                )
+            except DataSourceIntegrityError:
+                mismatch_ok = True
+            cases.append(
+                {
+                    "id": case_bad,
+                    "ok": mismatch_ok,
+                    "detail": "" if mismatch_ok else f"{st}_mismatch_accepted",
+                }
+            )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N01_CONNECTOR_MATRIX_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "datasource_connector_matrix",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "matrix": matrix_meta,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": (
+            "Core file/sql/api hash-forced snapshots; "
+            "not vendor-driver matrix / not N01 certified"
+        ),
+    }
+
+
+def evaluate_datasource_connector_matrix_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N01 连接器矩阵门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_datasource_connector_matrix_suite`` 回执。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n01_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "datasource_connector_matrix",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": "Core source_type matrix; not vendor / N01 certified",
+    }
+
+
 _N09_CASES = (
     "query_facts_no_leak",
     "get_source_no_leak",

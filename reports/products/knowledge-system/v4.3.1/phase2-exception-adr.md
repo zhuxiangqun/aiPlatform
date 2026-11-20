@@ -3,7 +3,7 @@ doc_type: Report
 title: Phase 2 — 知识系统符合性例外 ADR 包（Batch F1 §9.4 exception_adr 槽位）
 status: active
 authority: supporting
-measured_at: 2026-11-19
+measured_at: 2026-11-21
 pilot_domain: lock-service
 standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 ---
@@ -18,7 +18,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 
 | ID | 范围 | 期限 | 补偿 |
 |----|------|------|------|
-| N01 | FactLedger 读时 hash + DataSourceConfig content_hash→Raw + process_from_datasource Raw 默认强制（可 opt-out）；非全连接器矩阵 | 至 N01 全量/试点签字 | 见 raw-integrity + datasource-raw + process-raw + `phase2-datasource-process-raw-default-force-evidence.md` |
+| N01 | FactLedger 读时 hash + DataSourceConfig content_hash→Raw + process Raw 默认强制（可 opt-out）+ Core file/sql/api 连接器矩阵；非 vendor 驱动矩阵 / 非 certified | 至 N01 全量/试点签字 | 见 raw-integrity + datasource-raw + process-raw + default-force + `phase2-datasource-connector-matrix-evidence.md` |
 | N03 | Claim 证据硬门+冲突记录最小切片；非全量 Claim 状态机 | 至 N03 全量加深 | suite/gate；见 `phase2-claim-evidence-evidence.md` |
 | N06 | FactLedger F.1 契约；非统一 Query Gateway | 至 Gateway 统一入口 | confidence_factors + 契约门 |
 | N09 | Core 探针集已冻结（`n09_core_probe_freeze`）；K1–K70 加深证据保留；**停止**无等级 default mop 作为 Core 条件；未宣称全域 0 泄漏 / N09 certified | Core 足够；全域深度开放 | 跨租户套件门槛门 + `phase2-core-cert-path-evidence.md` |

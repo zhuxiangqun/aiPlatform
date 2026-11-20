@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / DataSource process → Raw 默认强制（N01 deepen）
 
 > 实施权威：附录 N N01；叠在 process→Raw opt-in 之上。  
-> **未宣称** 全连接器矩阵 / N01 certified / 关闭 ADR 例外。
+> **未宣称** vendor 驱动矩阵 / N01 certified / 关闭 ADR 例外（Core 轴见 `phase2-datasource-connector-matrix-evidence.md`）。
 
 ## 检查表
 
@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- SQL/API 全连接器矩阵
+- PG/MySQL 等 vendor 驱动全量矩阵（Core file/sql/api 轴另见 connector-matrix 证据）
 - N01 certified / 关闭 ADR 例外
 - 取消 opt-out 逃生舱
