@@ -42,5 +42,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做
 
 - SQL/API 连接器全路径自动抓取+hash 强制（本切片以 file 字节/显式 content 为主）
-- `process_from_datasource` 默认强制 ingest（opt-in 未绑死引擎）
+- `process_from_datasource` 默认强制 ingest → 见 `phase2-datasource-process-raw-evidence.md`（仍为 opt-in，非默认强制）
 - N01 / 附录 N 全量认证

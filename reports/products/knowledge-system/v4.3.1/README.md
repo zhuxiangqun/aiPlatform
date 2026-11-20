@@ -45,6 +45,7 @@ authority: supporting
 | [phase2-slo-telemetry-wiring-evidence.md](./phase2-slo-telemetry-wiring-evidence.md) | F1 deepen：生产 SLO 遥测接线（wiring≠attainment；Full 仍 conditional） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
+| [phase2-datasource-process-raw-evidence.md](./phase2-datasource-process-raw-evidence.md) | N01 deepen：process_from_datasource → Raw ingest opt-in（非默认强制/非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |
 | [phase2-claim-revision-evidence.md](./phase2-claim-revision-evidence.md) | Batch H1 N24 Claim Revision 归档/抬号（非 Source/回滚 UI/非 certified） |
 | [phase2-source-revision-evidence.md](./phase2-source-revision-evidence.md) | Batch H2 N24 Source Revision 归档/抬号（非回滚 UI/非 certified） |

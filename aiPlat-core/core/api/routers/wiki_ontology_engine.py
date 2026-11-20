@@ -2471,7 +2471,27 @@ async def process_from_datasource(req: dict):
 
 
 
-    result = await engine.process_from_datasource(source_id)
+    require_raw = req.get("require_raw_ingest") if isinstance(req, dict) else None
+
+    if require_raw is not None:
+
+        require_raw = bool(require_raw)
+
+    collection_id = str((req.get("collection_id") if isinstance(req, dict) else "") or "").strip()
+
+    tenant_id = str((req.get("tenant_id") if isinstance(req, dict) else "") or "").strip()
+
+    result = await engine.process_from_datasource(
+
+        source_id,
+
+        require_raw_ingest=require_raw,
+
+        collection_id=collection_id,
+
+        tenant_id=tenant_id,
+
+    )
 
     return {
 
@@ -2486,6 +2506,10 @@ async def process_from_datasource(req: dict):
         "warnings": result.warnings[:5],
 
         "errors": result.errors,
+
+        "raw_ingest": result.raw_ingest,
+
+        "certified": False,
 
     }
 
