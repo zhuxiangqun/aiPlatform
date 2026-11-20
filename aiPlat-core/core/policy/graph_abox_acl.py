@@ -13,12 +13,17 @@ from core.harness.knowledge.domain_router import DomainRouter
 import json
 import logging
 import os
+import re
 import time
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 _VALID_ACTIONS = frozenset({"read", "update", "state_change", "delete", "admin"})
+
+# 为什么：H.1 $regex 仅开放短模式 + 有界主语，降低 ReDoS / 任意编译风险（非完整正则引擎产品）
+_REGEX_MAX_PATTERN_LEN = 128
+_REGEX_MAX_SUBJECT_LEN = 4096
 
 # Identity / PolicyGate role → ABox ACL role (T9 productization)
 _ROLE_ALIASES: Dict[str, str] = {
@@ -144,13 +149,13 @@ def _as_comparable_number(value: Any) -> Optional[float]:
 
 
 def _match_condition_value(got: Any, want: Any) -> bool:
-    """单键条件值：标量等值；``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte}``。
+    """单键条件值：标量等值；``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex}``。
 
     Args:
         got: 实例属性值（可为 None；None 视为字段缺失）。
         want: 条件期望；标量或单运算符 dict。
     """
-    # 为什么：仅开放等值/集合/存在/数值比较；禁止 $regex/嵌套布尔扩大攻击面
+    # 为什么：仅开放等值/集合/存在/数值比较/有界正则；禁止嵌套布尔/$options 扩大攻击面
     if isinstance(want, dict) and want:
         if len(want) != 1:
             return False
@@ -181,6 +186,19 @@ def _match_condition_value(got: Any, want: Any) -> bool:
             if op_s == "$lt":
                 return left < right
             return left <= right
+        if op_s == "$regex":
+            # 为什么：仅 str 模式、无 flags；非法/过长模式与缺失字段一律拒配
+            if got is None:
+                return False
+            if not isinstance(arg, str) or not arg or len(arg) > _REGEX_MAX_PATTERN_LEN:
+                return False
+            subject = str(got)
+            if len(subject) > _REGEX_MAX_SUBJECT_LEN:
+                subject = subject[:_REGEX_MAX_SUBJECT_LEN]
+            try:
+                return re.search(arg, subject) is not None
+            except re.error:
+                return False
         return False
     return str(got) == str(want)
 
@@ -191,8 +209,8 @@ def match_abox_condition(
 ) -> bool:
     """H.1 最小 condition：全键匹配；空 condition 恒 True。
 
-    每键支持标量等值，或 ``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte: …}``
-    （数值比较仅 int/float；非完整表达式语言）。
+    每键支持标量等值，或 ``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex: …}``
+    （数值比较仅 int/float；``$regex`` 为有界 str 模式；非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。
