@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-20T20:36:56+08:00",
+  "reviewed_at": "2026-11-20T21:12:17+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "dc78b3a17cdaefe513c454dd2b8eb271e2922261a9246df6bf1fdef78d28ac69",
-  "head_sha": "1ea6762018591483ef13425ce5c1db0fc8f48f7c",
+  "diff_sha256": "1bc8855cdb8f97d16d59ea63ea3cdb1452a186a84940ea6e8ddf3e836ad34246",
+  "head_sha": "90d11c57d3c69f6dc8e9826f6b7d60d48914df98",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N07/N22 shallow $not: top-level {$not:{field}} only; nested bool rejected before negate (avoids fail-open). Residual: deep nest / full expression / matrix / certified still out. Local lock only; CI unlock needs non-author Approve."
+  "note": "N07/N22 $nin deepen: dual of $in; non-list arg \u2192 no-match; empty list \u2192 always match. Residual: deep nest / matrix / certified still out. Stock arch-pattern done_verify git-tag false positive tracked in #903 (not this slice). Local lock only; CI unlock needs non-author Approve."
 }
