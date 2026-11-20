@@ -4222,7 +4222,7 @@ domains:
       - symbol: "match_abox_condition"
         module: core/policy/graph_abox_acl.py
         type: function
-        signature: "H.1 condition match: scalar|$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex(+$options:i)|shallow $and|$or|$not (num/str lex; bounded; empty→True; no attrs→False)"
+        signature: "H.1 condition match: scalar|$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex(+$options:i)|shallow $and|$or|$not (num/str lex; bounded; empty→True; no attrs→False)"
       - symbol: "list_masked_properties"
         module: core/policy/graph_abox_acl.py
         type: function
