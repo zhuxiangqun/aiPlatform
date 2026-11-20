@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T17:23:46+08:00",
+  "reviewed_at": "2026-11-20T23:54:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4d5c584aae1a8c63adbffce637bbc80e18d2dfed",
-  "diff_sha256": "882d9bd5968363009c0188e3b42b6bf13cec78b54e1f503ac6330049e3e3ff49",
-  "head_sha": "20e18a9a5508c082607b771dbd467980a58e46e7",
+  "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
+  "diff_sha256": "bf9383774e8524809aad1bf93a1450a9252f6966998409e6eca9d4783cdc937d",
+  "head_sha": "d563bae8673f6d90422a1f41e119839a2a7158a6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "F1 deepen SLO telemetry wiring; Facade+FDE; wiring\u2260attainment; Full remains conditional; clause-sync \u00a7151. Local lock only."
+  "note": "N01 process_from_datasource Raw ingest is opt-in (default off); hash failure hard-stops before process_chunks; certified stays false. Local lock only."
 }
