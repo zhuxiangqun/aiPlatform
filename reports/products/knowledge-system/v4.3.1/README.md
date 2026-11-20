@@ -69,7 +69,8 @@ authority: supporting
 | [phase2-abox-acl-condition-bool-shallow-evidence.md](./phase2-abox-acl-condition-bool-shallow-evidence.md) | N07/N22 deepen：ABox ACL condition 浅层 $and/$or（一层≤8 / 非 certified） |
 | [phase2-abox-acl-condition-not-shallow-evidence.md](./phase2-abox-acl-condition-not-shallow-evidence.md) | N07/N22 deepen：ABox ACL condition 浅层 $not（单字段子句 / 非多层嵌套 / 非 certified） |
 | [phase2-abox-acl-condition-nin-evidence.md](./phase2-abox-acl-condition-nin-evidence.md) | N07/N22 deepen：ABox ACL condition $nin（$in 对偶 / 非表达式语言 / 非 certified） |
-| [phase2-abox-acl-h1-matrix-thin-evidence.md](./phase2-abox-acl-h1-matrix-thin-evidence.md) | N07/N22 deepen：H.1 薄矩阵（共享 actions / 非 per-role / 非 certified） |
+| [phase2-abox-acl-h1-matrix-thin-evidence.md](./phase2-abox-acl-h1-matrix-thin-evidence.md) | N07/N22 deepen：H.1 薄矩阵回退（共享 actions / 非 certified） |
+| [phase2-abox-acl-h1-matrix-per-role-evidence.md](./phase2-abox-acl-h1-matrix-per-role-evidence.md) | N07/N22 deepen：H.1 per-role 矩阵（role_actions / 固定轴 / 非任意 RBAC / 非 certified） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |
