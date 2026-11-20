@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3896
+total_capabilities: 3899
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1299,7 +1299,7 @@ scan_hash: 8f9548ec24f4
 | **Operational 可认证路径（v4.3.1 Phase O）** | `evaluate_operational_ready_gate` / `evaluate_pilot_operational_certification` + Facade + FDE `/operational-ready` `/pilot-operational-cert` | ✅ | 附录 N.4 六项 + `operational_ready`；非作者批准（朱莹）→ `pilot_operational_certified`。证据 `phase2-operational-cert-path-evidence.md` + `pilot-operational-approval-record.approved.json`。**未宣称** 全量 certified / 24/24。生成物适用：已接线（HTTP） | 本批 |
 | **全量可认证路径（v4.3.1 Phase F）** | `evaluate_full_ready_gate` / `evaluate_full_certification` + Facade + FDE `/full-ready` `/full-cert` | ✅ | 附录 N.6：24 exists + 三级徽章 + 独立全量批准（朱向群，conditional）→ `certified` / `n24_full_conformance`。证据 `phase2-full-cert-path-evidence.md` + `pilot-full-approval-record.approved.json`。**未宣称** 准确率 / 生产 SLO 遥测。生成物适用：已接线（HTTP） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
-| **Claim 证据硬门+冲突（v4.3.1 N03 F2）** | `put_claim` / `record_claim_conflict` / `run_claim_evidence_suite` / `evaluate_claim_evidence_gate` + Facade `fact_ledger_run_claim_evidence_suite` | ✅ | published 无证据拒；同 conflict_key 不同主张记 open 冲突；门槛门 certified 恒 false。证据 `phase2-claim-evidence-evidence.md`。**未宣称** Claim 全量状态机 / N03 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Claim 证据硬门+冲突+状态写（v4.3.1 N03 F2+write）** | `put_claim` / `record_claim_conflict` / `transition_claim_status`→`put_claim` / suite/gate + Facade 同名 + `POST …/claims/{id}/status-transition` | ✅ | published 无证据拒；同键冲突；状态写路径（合法边+审计+持久化）；certified 恒 false。证据 `phase2-claim-status-write-evidence.md`。**未宣称** 全量 Claim 生命周期产品 / N03 certified。生成物适用：已接线（经 Facade/HTTP） | 本批 |
 | **Fact→Graph 投影 + Action L1（v4.3.1 Phase 2 G2）** | `fact_projector.py` + `action_registry` Step 3.25 + `POST …/extractions/facts/rebuild` | ✅ | `project_facts_to_graph`（`exact_replay_from_facts`）；`required_permissions` 缺省 → `policy_denied`；试点合同 `lock_service_accept_order.yaml`。证据 `phase2-g2-evidence.md`。**未宣称** Wiki 只读/ObjectSet/N24 | 已合入 |
 | **重建条件三分类（v4.3.1 N05 partial）** | `classify_rebuild` / `validate_rebuild_receipt` + Facade `validate_fact_rebuild_receipt` | ✅ | `rebuild_mode∈{exact,semantic,non}` + `rebuild_reason`；禁不可重建标 exact；certified 恒 false。证据 `phase2-rebuild-taxonomy-evidence.md`。**未宣称** Wiki 全量/N05 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **抽取 confirm→ActionRegistry（G2 收口）** | `platform_action:knowledge:confirm_extraction` + `CoreFacade.run_confirm_extraction` + `POST …/extractions/{id}/confirm` | ✅ | confirm 经 L1（`kb:write`/`admin`/`*`）；HTTP scopes→permissions；证据 `phase2-g2-evidence.md`。**未宣称** ObjectSet/N24 | 已合入 |
@@ -1436,6 +1436,9 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_claim_status_write_gate | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写门槛门；certified 恒 false | 本批 |
+| run_claim_status_write_suite | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写套件；certified 恒 false | 本批 |
+| transition_claim_status | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写路径；certified 恒 false | 本批 |
 | evaluate_fact_datasource_connector_matrix_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_run_datasource_connector_matrix_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | ensure_datasource_raw_connector | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4799,7 +4802,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 757 | 1 | 758 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 644 | 9 | 653 |
+| 知识引擎（本体） | 647 | 9 | 656 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4842,7 +4845,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3885** | **11** | **3896** |
+| **总计** | **3888** | **11** | **3899** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

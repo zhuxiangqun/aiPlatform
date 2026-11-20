@@ -25,13 +25,11 @@ class ValidateSequenceBody(BaseModel):
 
 
 class ClaimTransitionBody(BaseModel):
-    """Claim 状态转换（审计）。"""
+    """Claim 状态写转换（读当前态 → 合法边 → 审计 → put_claim）。"""
 
-    from_status: str = Field(..., min_length=1)
     to_status: str = Field(..., min_length=1)
     actor: str = Field(..., min_length=1)
     reason: str = Field(..., min_length=1)
-    revision: int = Field(1, ge=1)
 
 
 class FactStateGateBody(BaseModel):
@@ -146,24 +144,22 @@ async def transition_claim_status_route(
     body: ClaimTransitionBody = Body(...),
     tenant_id: str = Query(..., description="tenant id (required)"),
 ):
-    """Claim 状态边校验 + 审计。
+    """Claim 状态写转换（N03 deepen；非全量认证）。
 
     Args:
         claim_id: Claim ID。
-        body: 边与人因。
+        body: 目标态与人因。
         tenant_id: 租户。
     """
     from core.api.core_facade import transition_claim_status
 
     try:
-        return transition_claim_status(
+        return await transition_claim_status(
             claim_id=claim_id,
             tenant_id=tenant_id,
-            from_status=body.from_status,
             to_status=body.to_status,
             actor=body.actor,
             reason=body.reason,
-            revision=body.revision,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

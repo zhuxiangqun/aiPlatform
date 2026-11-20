@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3030
+total_capabilities: 3033
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 564
+    caps_count: 567
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -5026,7 +5026,19 @@ domains:
         module: "core/harness/knowledge_pipeline/fact_state_machine.py"
       - symbol: "transition_claim_status_pure"
         type: "function"
-        signature: "W3 N12: claim status edge + audit"
+        signature: "W3 N12/N03: claim status edge + audit (no write)"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "transition_claim_status"
+        type: "function"
+        signature: "N03: claim status write path (put_claim + audit; certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "run_claim_status_write_suite"
+        type: "function"
+        signature: "N03: claim status write suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "evaluate_claim_status_write_gate"
+        type: "function"
+        signature: "N03: claim status write gate (certified=false)"
         module: "core/harness/knowledge_pipeline/fact_state_machine.py"
       - symbol: "evaluate_fact_state_gate"
         type: "function"

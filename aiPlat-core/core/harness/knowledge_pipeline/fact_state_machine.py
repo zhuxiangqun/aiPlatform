@@ -1,15 +1,15 @@
-"""Fact/Claim 状态机最小切片（附录 N12 / 白皮书 §7.5）。
+"""Fact/Claim 状态机最小切片（附录 N12 / N03 / 白皮书 §7.5）。
 
 职责：
   - 审核态 ``review_status`` 与生命周期 ``status`` 分机、合法边校验
   - 转换必须带 actor/time/reason，并落审计 + 抬升 revision
-  - Claim ``status`` 独立状态机（accepted/contested/…）
+  - Claim ``status`` 写路径（``transition_claim_status`` → ``put_claim``）
   - 门槛门；``certified`` 恒 false
 
 非目标：
   - 不做 reviewer RBAC 角色源替换
-  - 不宣称 N12 全量 / 附录 N 认证
-  - transition 写回 ``put_fact(..., enforce_write_gates=False)``（边已在外层校验）
+  - 不宣称 N03/N12 全量 / 附录 N 认证
+  - transition 写回 ``put_fact`` / ``put_claim(..., enforce_write_gates=False)``（边已在外层校验）
 """
 from __future__ import annotations
 
@@ -452,7 +452,7 @@ def transition_claim_status_pure(
     db_path: Optional[str] = None,
     revision: int = 1,
 ) -> Dict[str, Any]:
-    """Claim 生命周期边校验 + 审计（不写 Claim 表；供上层接线）。
+    """Claim 生命周期边校验 + 审计（不写 Claim 表；供诊断/纯边探针）。
 
     Args:
         from_status / to_status: 边。
@@ -475,6 +475,337 @@ def transition_claim_status_pure(
         revision=revision,
         db_path=db_path,
     )
+
+
+async def transition_claim_status(
+    ledger: Any,
+    *,
+    claim_id: str,
+    tenant_id: str,
+    to_status: str,
+    actor: str,
+    reason: str,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Claim 状态写路径：读当前态 → 合法边 → 审计 → ``put_claim`` 写回。
+
+    Args:
+        ledger: FactLedger。
+        claim_id: Claim ID。
+        tenant_id: 租户。
+        to_status: 目标 Claim ``status``。
+        actor: 操作人。
+        reason: 理由。
+        db_path: 审计库路径。
+
+    Returns:
+        ``claim`` + ``transition``；``certified`` 不在此回执宣称。
+
+    Raises:
+        FactStateMachineError: Claim 缺失或非法边。
+    """
+    claim = await ledger.get_claim(claim_id, tenant_id=tenant_id)
+    if claim is None:
+        raise FactStateMachineError(f"claim not found: {claim_id}")
+    from_state = str(claim.get("status") or "")
+    to_s = (to_status or "").strip()
+    _assert_transition_allowed("claim_status", from_state, to_s)
+    new_rev = int(claim.get("revision") or 1) + 1
+    audit = _record_audit(
+        tenant_id=tenant_id,
+        record_kind="claim",
+        record_id=claim_id,
+        machine="claim_status",
+        from_state=from_state,
+        to_state=to_s,
+        actor=actor,
+        reason=reason,
+        revision=new_rev,
+        db_path=db_path,
+    )
+    # 为什么关硬门：边已在外层校验；避免「改状态须走 transition」自锁
+    updated = await ledger.put_claim(
+        tenant_id=tenant_id,
+        collection_id=claim["collection_id"],
+        text=claim["text"],
+        evidence=list(claim.get("evidence") or []),
+        source_policy=claim["source_policy"],
+        extractor_version=claim["extractor_version"],
+        review_status=str(claim.get("review_status") or "draft"),
+        confidence=float(claim.get("confidence") or 0.0),
+        domain_id=claim.get("domain_id") or "",
+        claim_id=claim_id,
+        status=to_s,
+        valid_from=claim.get("valid_from"),
+        valid_to=claim.get("valid_to"),
+        revision=new_rev,
+        conflict_key=str(claim.get("conflict_key") or ""),
+        enforce_write_gates=False,
+        revision_actor=actor,
+        revision_reason=reason,
+    )
+    return {"claim": updated, "transition": audit}
+
+
+_N03_CLAIM_STATUS_WRITE_CASES = (
+    "accepted_to_contested_persisted",
+    "illegal_edge_rejected",
+    "actor_reason_required",
+    "audit_recorded",
+)
+
+
+async def run_claim_status_write_suite(
+    *,
+    ledger: Any = None,
+    tenant_id: str = "n03-claim-status-tenant",
+    domain_id: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N03 Claim 状态写路径加深套件（合法边写回 + 非法边拒 + 审计）。
+
+    Args:
+        ledger: 可选 FactLedger；默认临时目录。
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+        db_path: 状态机审计库；默认临时文件。
+
+    Returns:
+        套件汇总；``certified`` / ``n03_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    from core.harness.knowledge_pipeline.fact_ledger import FactLedger
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    orphan_audit: Optional[str] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n03-claim-status-write-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+        audit_db = str(root / "fact_state.sqlite3")
+    else:
+        lg = ledger
+        await lg.initialize()
+        if db_path:
+            audit_db = db_path
+        else:
+            orphan_audit = str(
+                Path(tempfile.mkdtemp(prefix="n03-claim-status-aud-"))
+                / "fact_state.sqlite3"
+            )
+            audit_db = orphan_audit
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n03-claim-status",
+            kind="file",
+            uri="file://n03/claim-status.txt",
+            content=b"n03-claim-status",
+            connector="n03",
+            domain_id=domain_id,
+        )
+        evidence = [
+            {
+                "source_id": src["source_id"],
+                "locator": "extract",
+                "quote": "n03-status",
+                "fetched_at": src["fetched_at"],
+            }
+        ]
+        claim = await lg.put_claim(
+            tenant_id=tenant_id,
+            collection_id="n03-claim-status",
+            text="door is locked",
+            evidence=evidence,
+            source_policy="n03_policy",
+            extractor_version="n03",
+            review_status="published",
+            confidence=0.8,
+            domain_id=domain_id,
+            status="accepted",
+        )
+        cid = claim["claim_id"]
+
+        mid = await transition_claim_status(
+            lg,
+            claim_id=cid,
+            tenant_id=tenant_id,
+            to_status="contested",
+            actor="reviewer-1",
+            reason="peer conflict",
+            db_path=audit_db,
+        )
+        roundtrip = await lg.get_claim(cid, tenant_id=tenant_id)
+        persist_ok = (
+            mid["claim"].get("status") == "contested"
+            and roundtrip is not None
+            and roundtrip.get("status") == "contested"
+            and int(mid["claim"].get("revision") or 0)
+            > int(claim.get("revision") or 1)
+            and mid.get("transition", {}).get("machine") == "claim_status"
+        )
+        cases.append(
+            {
+                "id": "accepted_to_contested_persisted",
+                "ok": persist_ok,
+                "detail": "" if persist_ok else "write_or_persist_failed",
+            }
+        )
+
+        # archived 终态不可回到 accepted
+        archived_claim = await lg.put_claim(
+            tenant_id=tenant_id,
+            collection_id="n03-claim-status",
+            text="archived claim",
+            evidence=evidence,
+            source_policy="n03_policy",
+            extractor_version="n03",
+            review_status="published",
+            confidence=0.5,
+            domain_id=domain_id,
+            status="archived",
+        )
+        illegal_ok = False
+        try:
+            await transition_claim_status(
+                lg,
+                claim_id=archived_claim["claim_id"],
+                tenant_id=tenant_id,
+                to_status="accepted",
+                actor="reviewer-1",
+                reason="illegal reopen",
+                db_path=audit_db,
+            )
+        except FactStateMachineError:
+            illegal_ok = True
+        cases.append(
+            {
+                "id": "illegal_edge_rejected",
+                "ok": illegal_ok,
+                "detail": "" if illegal_ok else "illegal_edge_accepted",
+            }
+        )
+
+        actor_ok = False
+        claim2 = await lg.put_claim(
+            tenant_id=tenant_id,
+            collection_id="n03-claim-status",
+            text="window is open",
+            evidence=evidence,
+            source_policy="n03_policy",
+            extractor_version="n03",
+            review_status="published",
+            confidence=0.7,
+            domain_id=domain_id,
+            status="accepted",
+        )
+        try:
+            await transition_claim_status(
+                lg,
+                claim_id=claim2["claim_id"],
+                tenant_id=tenant_id,
+                to_status="contested",
+                actor="",
+                reason="missing actor",
+                db_path=audit_db,
+            )
+        except FactStateMachineError:
+            actor_ok = True
+        cases.append(
+            {
+                "id": "actor_reason_required",
+                "ok": actor_ok,
+                "detail": "" if actor_ok else "empty_actor_accepted",
+            }
+        )
+
+        audits = list_fact_transitions(
+            tenant_id=tenant_id,
+            record_id=cid,
+            machine="claim_status",
+            db_path=audit_db,
+        )
+        audit_ok = len(audits) >= 1 and all(
+            a.get("actor") and a.get("reason") for a in audits
+        )
+        cases.append(
+            {
+                "id": "audit_recorded",
+                "ok": audit_ok,
+                "detail": "" if audit_ok else "audit_missing",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+        if orphan_audit is not None:
+            try:
+                Path(orphan_audit).unlink(missing_ok=True)
+                Path(orphan_audit).parent.rmdir()
+            except OSError:  # noqa: best-effort temp audit cleanup
+                pass
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N03_CLAIM_STATUS_WRITE_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "claim_status_write",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n03_full_conformance": False,
+        "note": (
+            "Claim status write path (put_claim + audit); "
+            "not full Claim lifecycle product / not N03 certified"
+        ),
+    }
+
+
+def evaluate_claim_status_write_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N03 Claim 状态写路径门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_claim_status_write_suite`` 回执。
+
+    Returns:
+        gate 字典。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n03_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "claim_status_write",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n03_full_conformance": False,
+        "note": "Claim status write deepen; not N03 certified",
+    }
 
 
 def evaluate_fact_state_gate(
