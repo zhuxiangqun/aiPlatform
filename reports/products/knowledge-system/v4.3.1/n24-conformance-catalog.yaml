@@ -80,8 +80,10 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-claim-evidence-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-claim-status-write-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_claim_evidence_phase2.py
-    note: "Core-scoped exists (附录 N.2); Claim 证据硬门+冲突记录+门槛门；非全量 Claim 状态机/非认证"
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_claim_status_write_phase2.py
+    note: "Core-scoped exists (附录 N.2); Claim 证据硬门+冲突+状态写路径；非全量 Claim 生命周期产品/非认证"
   - id: N04
     level: core
     title: 来源策略与冲突裁决

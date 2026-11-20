@@ -41,6 +41,7 @@ authority: supporting
 | [phase2-source-policy-evidence.md](./phase2-source-policy-evidence.md) | W3 N04 Source Policy / Conflict（策略登记 + 冲突不自动选边 + 人审；非全写入强制） |
 | [phase2-fact-state-evidence.md](./phase2-fact-state-evidence.md) | W3 N12 Fact 状态机（review/lifecycle/claim + 审计；非裸 put_fact 唯一强制） |
 | [phase2-claim-evidence-evidence.md](./phase2-claim-evidence-evidence.md) | Batch F2 N03 Claim 证据硬门+冲突记录（门槛门；非全量认证） |
+| [phase2-claim-status-write-evidence.md](./phase2-claim-status-write-evidence.md) | N03 deepen：Claim 状态写路径（transition→put_claim；非全量/非 certified） |
 | [phase2-slo-target-evidence.md](./phase2-slo-target-evidence.md) | Batch F1 §9.4 SLO 目标登记（非生产遥测达标） |
 | [phase2-slo-telemetry-wiring-evidence.md](./phase2-slo-telemetry-wiring-evidence.md) | F1 deepen：生产 SLO 遥测接线（wiring≠attainment；Full 仍 conditional） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |

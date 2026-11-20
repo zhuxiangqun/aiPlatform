@@ -6069,7 +6069,7 @@ async def transition_fact_lifecycle(
     )
 
 
-def transition_claim_status(
+def transition_claim_status_pure(
     *,
     claim_id: str,
     tenant_id: str,
@@ -6080,7 +6080,7 @@ def transition_claim_status(
     revision: int = 1,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """W3 N12：Claim 状态边校验 + 审计。
+    """W3 N12 / N03：Claim 状态边校验 + 审计（不写 Claim 表；诊断用）。
 
     Args:
         claim_id: Claim ID。
@@ -6104,6 +6104,82 @@ def transition_claim_status(
         revision=revision,
         db_path=db_path,
     )
+
+
+async def transition_claim_status(
+    *,
+    claim_id: str,
+    tenant_id: str,
+    to_status: str,
+    actor: str,
+    reason: str,
+    db_path: Optional[str] = None,
+    ledger: Any = None,
+) -> Dict[str, Any]:
+    """N03 deepen：Claim 状态写路径（读当前态 → 合法边 → 审计 → put_claim）。
+
+    Args:
+        claim_id: Claim ID。
+        tenant_id: 租户。
+        to_status: 目标 Claim ``status``。
+        actor: 操作人。
+        reason: 理由。
+        db_path: 审计库。
+        ledger: 可选 FactLedger。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        transition_claim_status as _tr,
+    )
+
+    lg = ledger
+    if lg is None:
+        from core.harness.knowledge_pipeline.fact_ledger import get_fact_ledger
+
+        lg = get_fact_ledger()
+    return await _tr(
+        lg,
+        claim_id=claim_id,
+        tenant_id=tenant_id,
+        to_status=to_status,
+        actor=actor,
+        reason=reason,
+        db_path=db_path,
+    )
+
+
+async def run_claim_status_write_suite(
+    *,
+    tenant_id: str = "n03-claim-status-tenant",
+    domain_id: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N03 deepen：Claim 状态写路径套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+        db_path: 可选审计库。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        run_claim_status_write_suite as _run,
+    )
+
+    return await _run(tenant_id=tenant_id, domain_id=domain_id, db_path=db_path)
+
+
+def evaluate_claim_status_write_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N03 deepen：Claim 状态写路径门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_claim_status_write_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        evaluate_claim_status_write_gate as _gate,
+    )
+
+    return _gate(suite)
 
 
 def evaluate_fact_state_gate(
