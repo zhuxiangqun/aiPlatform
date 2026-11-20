@@ -380,12 +380,23 @@ def entity_acl_to_h1(domain_id: str, entity_id: str) -> Dict[str, Any]:
         actions_src = allow
     acts: List[str] = []
     seen_a = set()
-    for lst in actions_src.values():
+    role_actions: Dict[str, List[str]] = {}
+    for role, lst in actions_src.items():
+        role_s = str(role).strip()
+        if not role_s:
+            continue
+        per: List[str] = []
+        seen_r: set = set()
         for a in lst or []:
             s = str(a).strip()
-            if s and s not in seen_a:
+            if not s or s in seen_r:
+                continue
+            seen_r.add(s)
+            per.append(s)
+            if s not in seen_a:
                 seen_a.add(s)
                 acts.append(s)
+        role_actions[role_s] = per
     return {
         "resource": entity_id,
         "effect": effect,
@@ -393,6 +404,8 @@ def entity_acl_to_h1(domain_id: str, entity_id: str) -> Dict[str, Any]:
         "condition": entry.get("condition") or None,
         "masked_properties": list_masked_properties(domain_id, entity_id),
         "actions": acts,
+        # 为什么：role_actions 保留每角色独立动作集；actions 仍为并集以兼容薄表单
+        "role_actions": role_actions,
         "certified": False,
     }
 
@@ -421,7 +434,7 @@ def apply_h1_policy(
     Args:
         domain_id: domain 标识。
         entity_id: entity 标识（优先；policy.resource 仅校验）。
-        policy: H.1 dict（effect/principals/actions/condition/masked_properties）。
+        policy: H.1 dict（effect/principals/actions[/role_actions]/condition/masked_properties）。
     """
     if not isinstance(policy, dict):
         raise ValueError("h1_policy_must_be_object")
@@ -440,10 +453,25 @@ def apply_h1_policy(
         raise ValueError("h1_actions_must_be_list")
     act_list = [str(a).strip() for a in actions if str(a).strip()] or ["*"]
     role_map: Dict[str, List[str]] = {}
-    for p in principals:
-        role = _principal_to_role(p)
-        if role:
-            role_map[role] = list(act_list)
+    raw_role_actions = policy.get("role_actions")
+    # 为什么：有 role_actions 时按角色独立写入；否则 principals×共享 actions（薄表单兼容）
+    if isinstance(raw_role_actions, dict) and raw_role_actions:
+        for rk, rv in raw_role_actions.items():
+            role = _principal_to_role(rk) or normalize_abox_role(str(rk).strip()) or str(rk).strip()
+            if not role:
+                continue
+            if not isinstance(rv, list):
+                raise ValueError("h1_role_actions_values_must_be_list")
+            per = [str(a).strip() for a in rv if str(a).strip()]
+            if per:
+                role_map[role] = per
+        if not role_map:
+            raise ValueError("h1_role_actions_empty")
+    else:
+        for p in principals:
+            role = _principal_to_role(p)
+            if role:
+                role_map[role] = list(act_list)
     cond = policy.get("condition")
     if cond is None:
         cond_arg: Optional[Dict[str, Any]] = {}

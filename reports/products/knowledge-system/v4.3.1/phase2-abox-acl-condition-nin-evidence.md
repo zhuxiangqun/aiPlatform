@@ -46,5 +46,5 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 - N07/N22 certified 或关闭 ADR 例外
 - 多层嵌套布尔 / 完整表达式语言
-- H.1 薄矩阵 → 见 `phase2-abox-acl-h1-matrix-thin-evidence.md`（仍非完整 per-role 差异矩阵）
-- 完整 per-role 差异矩阵编辑器
+- H.1 薄矩阵 / per-role 矩阵 → 见 `phase2-abox-acl-h1-matrix-thin-evidence.md` / `phase2-abox-acl-h1-matrix-per-role-evidence.md`（仍非任意 RBAC / 非 certified）
+- 任意角色/动作轴 RBAC 产品
