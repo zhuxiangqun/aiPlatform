@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T00:50:00+08:00",
+  "reviewed_at": "2026-11-21T06:31:24+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "b0cc3315ade3b8dc1be8d0bc226fa8781e03c8b42bca863fd6eaf47d1cd84457",
-  "head_sha": "e5cbc6492d57507219ec77adebb88d36eb9c8ed5",
+  "diff_sha256": "7cd6327c9e688cce70f2281abb183716cf572549a8f1bc6e6a24d2e0dd992895",
+  "head_sha": "1e5c4809e7c23ad16af58e35b88ef4367ddc526a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N01 Core file/sql/api connector matrix: require_datasource_raw_connector gates snapshot; suite/gate certified=false honesty lock; vendor drivers / N01 certified out of scope. Local lock only."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. N03 claim status write: HTTP/Facade now async put_claim path; pure kept as transition_claim_status_pure; suite/gate certified false."
 }
