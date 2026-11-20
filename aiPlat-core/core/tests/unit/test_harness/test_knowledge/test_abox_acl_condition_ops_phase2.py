@@ -21,7 +21,7 @@ def test_match_condition_ops_eq_ne_in():
     assert match_abox_condition({"status": {"$in": ["open"]}}, {"status": "closed"}) is False
     # 非法：多运算符 / 未知算子 → 不匹配
     assert match_abox_condition({"status": {"$eq": "a", "$ne": "b"}}, {"status": "a"}) is False
-    assert match_abox_condition({"status": {"$gt": 1}}, {"status": 2}) is False
+    assert match_abox_condition({"status": {"$regex": "x"}}, {"status": "x"}) is False
     # 标量仍等值
     assert match_abox_condition({"status": "open"}, {"status": "open"}) is True
 
