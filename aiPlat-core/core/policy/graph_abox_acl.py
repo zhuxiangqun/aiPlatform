@@ -129,14 +129,28 @@ def save_abox_acl(domain_id: str, data: Dict[str, Any]) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+def _as_comparable_number(value: Any) -> Optional[float]:
+    """将值规范为可比较数值；bool / 非数字 → None。
+
+    Args:
+        value: 属性或条件参数。
+    """
+    # 为什么：bool 是 int 子类，必须排除，避免 True>$gt:0 误匹配
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
 def _match_condition_value(got: Any, want: Any) -> bool:
-    """单键条件值：标量等值；``{$eq}`` / ``{$ne}`` / ``{$in}`` / ``{$exists}``。
+    """单键条件值：标量等值；``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte}``。
 
     Args:
         got: 实例属性值（可为 None；None 视为字段缺失）。
         want: 条件期望；标量或单运算符 dict。
     """
-    # 为什么：仅开放 $eq/$ne/$in/$exists，禁止 $gt/$regex/嵌套布尔扩大攻击面
+    # 为什么：仅开放等值/集合/存在/数值比较；禁止 $regex/嵌套布尔扩大攻击面
     if isinstance(want, dict) and want:
         if len(want) != 1:
             return False
@@ -155,6 +169,18 @@ def _match_condition_value(got: Any, want: Any) -> bool:
             # 为什么：true→字段存在；false→字段缺失；arg 用 bool() 规范化
             present = got is not None
             return present if bool(arg) else (not present)
+        if op_s in ("$gt", "$gte", "$lt", "$lte"):
+            left = _as_comparable_number(got)
+            right = _as_comparable_number(arg)
+            if left is None or right is None:
+                return False
+            if op_s == "$gt":
+                return left > right
+            if op_s == "$gte":
+                return left >= right
+            if op_s == "$lt":
+                return left < right
+            return left <= right
         return False
     return str(got) == str(want)
 
@@ -165,7 +191,8 @@ def match_abox_condition(
 ) -> bool:
     """H.1 最小 condition：全键匹配；空 condition 恒 True。
 
-    每键支持标量等值，或 ``{$eq|$ne|$in|$exists: …}``（非完整表达式语言）。
+    每键支持标量等值，或 ``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte: …}``
+    （数值比较仅 int/float；非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。

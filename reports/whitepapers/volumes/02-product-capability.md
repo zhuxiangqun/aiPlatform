@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-19T23:01:54Z"
+generated_at: "2026-11-20T02:14:53Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "d1f0808dc836d35a0dbc8cf23404961a339355285d043aaaef0d49291cbc3b86"
+caps_sha256: "ed6ec63a3a166ccf3c4c7e8461318243141b01bb7103c968f69625dfe803c4e4"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=d1f0808dc836d35a0dbc8cf23404961a339355285d043aaaef0d49291cbc3b86 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=ed6ec63a3a166ccf3c4c7e8461318243141b01bb7103c968f69625dfe803c4e4 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-19T23:01:54Z` |
-| CAPABILITIES sha256 | `d1f0808dc836…` |
+| 生成时间 (UTC) | `2026-11-20T02:14:53Z` |
+| CAPABILITIES sha256 | `ed6ec63a3a16…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1496,75 +1496,23 @@ git pull origin main
 
 #### Consumer-to-Capability Dependencies
 
-##### .github/workflows/aiplat-contracts-guard.yml
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 14 | Phase D critical-path static smoke in CI |
-
 ##### aiPlat-infra/infra/management/model/config_loader.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | infra-infrastructure | §二十二 Infra 基础设施 | 6 | adapters 发现与 CredentialPool 共用 DB 路径 |
 
-##### aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx
+##### aiPlat-management/frontend/src/components/Builder/RunEventTimeline.tsx
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | MoA 卡片交互 |
-| model-infrastructure | §九 模型基础设施 | 7 | T1-T5 前端展示 |
+| orchestration-system | §二十四 编排系统 | 4 | RunEventTimeline UI |
 
-##### aiPlat-management/frontend/src/pages/Core/Memory/Memory.tsx
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| memory-white-boxing | §二十八 记忆系统白盒化 | 5 | 记忆管理页面 |
-
-##### aiPlat-management/frontend/src/pages/Diagnostics
+##### aiPlat-management/management/auth.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| management-and-quality | §二十五 管理 & 质量 | 119 | 诊断仪表盘 |
-| observability | §八 可观测性 | 23 | 诊断仪表盘 |
-
-##### aiPlat-management/frontend/src/pages/Infra
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| infra-infrastructure | §二十二 Infra 基础设施 | 6 | Infra 管理前端 |
-
-##### aiPlat-platform/apps/diagnosis/api/cases.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| diagnosis-system | §十三-b 诊断系统 | 20 | canonical diagnosis HTTP API |
-
-##### aiPlat-platform/apps/eval/api/arena_wiring.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| arena-and-scheduling | §二十 Arena & 调度 | 6 | P0-B3 arena/wake-agent REST 端点 |
-
-##### aiPlat-platform/apps/fde/api/fde.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| deploy-and-canary | §十八 部署与灰度 | 3 | FDE canary 端点 |
-
-##### aiPlat-platform/apps/fde/api/fde_ask.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 10 | FDE 追问 → 检索增强 |
-
-##### aiPlat-platform/apps/fde/api/fde_dashboard_v2.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| memory-subsystem | §二 记忆子系统 | 59 | L6 记忆指标展示 |
-| platform-governance | §二十一 平台治理 | 14 | 仪表盘治理指标 |
-| l6-autonomy | §二十七 L6 自主能力 | 5 | _get_goal_decomposition_stats |
+| management-and-quality | §二十五 管理 & 质量 | 119 | management_api_token / assert_bind_allowed 鉴权 |
 
 ##### aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py
 
@@ -1572,60 +1520,35 @@ git pull origin main
 |--------|---------|:---:|--------|
 | knowledge-engine-ontology | §三 知识引擎（本体） | 571 | FDE 能力自描述 |
 
-##### aiPlat-platform/apps/fde/api/fde_pipeline.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 642 | FDE Pipeline 状态查询 |
-
-##### aiPlat-platform/apps/fde/api/fde_quality_summary.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| evaluation-system | §十三 评估系统 | 646 | FDE 质量摘要 |
-
 ##### aiPlat-platform/apps/fde/api/router.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | core-api-unified-entry | §二十三 核心API统一入口 | 2 | FDE 路由挂载 |
 
-##### aiPlat-platform/server.py
+##### core/api/core_facade.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| core-api-unified-entry | §二十三 核心API统一入口 | 2 | Platform server 入口 |
+| arena-and-scheduling | §二十 Arena & 调度 | 6 | CoreFacade 暴露 DarwinArena |
+| skill-system | §六 Skill 系统 | 213 | CoreFacade 暴露 skill compat |
+| evaluation-system | §十三 评估系统 | 646 | CoreFacade 暴露 m2 deferred estimate |
+| diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
+| tool-ecosystem | §十六 工具生态 | 73 | CoreFacade 暴露 tool compat |
+| a2a-protocol | §十四附 A2A 协议 | 2 | CoreFacade 再导出 A2A 能力 |
 
 ##### core/api/routers/adapters.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | /model-override/moa 端点 |
 | runtime-intervention | §十九 运行时干预 | 66 | /model-override 端点 |
-
-##### core/api/routers/agents.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 333 | Agent REST 端点 |
-
-##### core/api/routers/builder_project_service.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 642 | PipelineEngine 调度入口 |
 
 ##### core/api/routers/diagnostics.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
+| observability | §八 可观测性 | 23 | 诊断 API 消费 observability contract / AgentEventIngress |
 | runtime-intervention | §十九 运行时干预 | 66 | adoption-metrics 附带 Howl 干预次数 |
-
-##### core/api/routers/mcp.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| mcp-protocol | §十四 MCP 协议 | 14 | MCP REST 端点 |
 
 ##### core/api/routers/memory.py
 
@@ -1633,17 +1556,79 @@ git pull origin main
 |--------|---------|:---:|--------|
 | memory-subsystem | §二 记忆子系统 | 59 | 全量 REST 端点 |
 | memory-runtime-filtering | §二十九 记忆运行时过滤 | 2 | GET/PUT /memory/rules |
-| memory-white-boxing | §二十八 记忆系统白盒化 | 5 | 全量记忆 REST 端点 |
 
-##### core/api/routers/pipeline_execution.py
+##### core/api/routers/runs.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| orchestration-system | §二十四 编排系统 | 4 | fork/forks 端点经 CoreFacade 取 store |
+| orchestration-system | §二十四 编排系统 | 4 | list_run_events REST |
 
 ##### core/api/routers/wiki.py
 
-| Domain | Section
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| knowledge-engine-ontology | §三 知识引擎（本体） | 571 | Wiki CRUD + index + ingest 端点 |
+| ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
+
+##### core/api/routers/wiki_ontology_engine.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| knowledge-engine-ontology | §三 知识引擎（本体） | 571 | 本体引擎 REST API |
+
+##### core/api/routers/workspace_tools.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| tool-ecosystem | §十六 工具生态 | 73 | workspace tools 跑 tool compat |
+
+##### core/apps/agents/discovery.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| a2a-protocol | §十四附 A2A 协议 | 2 | AgentDiscovery 实现/导出 |
+
+##### core/apps/agents/materials_chat.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| rag-retrieval | §四 RAG 检索 | 10 | CRAG + HyDE + RRF 自身 |
+
+##### core/apps/mcp/runtime.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| mcp-protocol | §十四 MCP 协议 | 14 | MCP runtime 消费 finalize_mcp_compat / mark_mcp_connection |
+
+##### core/harness/coordination/swarm_broker.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| orchestration-layer | §二十六 编排层 | 5 | 动态组队 |
+
+##### core/harness/evolution_engine.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| deploy-and-operations | §十 部署与运维 | 3 | self-harness cycle |
+| fine-tuning-system | §十七 微调系统 | 2 | nightly LoRA trigger |
+
+##### core/harness/execution/pipeline_engine.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| harness-execution-engine | §一 Harness 执行引擎 | 642 | 自身消费 PipelineStageConfig + StageRunner |
+| moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
+| model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
+| memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
+| orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
+| extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
+
+##### core/harness/integration/agent.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| gate-system | §十二 Gate 系统 | 153 | Agent 集成路径消费 ErrorTranslator / Comple
 
 …
 

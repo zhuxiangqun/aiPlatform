@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-20T10:15:00+08:00",
+  "reviewed_at": "2026-11-20T10:20:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "3b1842cbad5ce522fcd3549ed6d66f716e3cf1292b61f29183901a9ded826898",
-  "head_sha": "e803ddfa6ffb568f841bf0fd8adf5f997b8f0d7a",
+  "diff_sha256": "a442c93569d95505d062781b224ddfe20031c3eb50a0399b9d3d9e8e8b608ed2",
+  "head_sha": "a1a23b7913b62bf7d54a4644fe9447923dd70b45",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Verifier soft-by-default unchanged. consumers_expected trimmed to Check3 evidence (first 2 code provides); broader domain callers may be omitted. Local lock only; CI needs non-author Approve."
+  "note": "Cmp ops numeric-only; $regex/nested bool/string order still denied. Not N07/N22 certified. Local lock only; CI needs non-author Approve."
 }
