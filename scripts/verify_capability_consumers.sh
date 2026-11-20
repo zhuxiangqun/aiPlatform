@@ -36,18 +36,40 @@ fi
 # ── Check 1: Provider symbols exist in code ──
 echo "  [1/3] Provider symbols → code existence..."
 python3 -c "
-import yaml, sys, os
+import re, yaml, sys, os
 root = '$ROOT'
 data = yaml.safe_load(open('$REG_FILE'))
 violations = []
 # Search prefixes for mono-repo layout
 PREFIXES = ['', 'aiPlat-core/', 'aiPlat-platform/', 'aiPlat-management/']
+# 为什么：script/agent/check 登记的是入口文件，不是 def 名；只校验路径存在
+FILE_ONLY_TYPES = (
+    'config_file', 'react_component', 'api_endpoint', 'pattern', 'doc', 'module',
+    'script', 'agent', 'check',
+)
 def find_module(rel_path):
+    if not rel_path or rel_path.startswith('~') or os.path.isabs(rel_path):
+        return None
     for pfx in PREFIXES:
         full = os.path.join(root, pfx + rel_path)
-        if os.path.exists(full):
+        if os.path.isfile(full):
             return full
     return None
+def symbol_present(content, search):
+    # def/class/赋值/调用 + re-export（as X / from … import X）
+    if re.search(r'\bclass\s+' + re.escape(search) + r'\b', content):
+        return True
+    if re.search(r'\b(?:async\s+)?def\s+' + re.escape(search) + r'\b', content):
+        return True
+    if search + ' =' in content or search + '(' in content or search + ':' in content:
+        return True
+    if re.search(r'\bas\s+' + re.escape(search) + r'\b', content):
+        return True
+    if re.search(r'\bfrom\s+\S+\s+import\s+\([^)]*\b' + re.escape(search) + r'\b', content, re.S):
+        return True
+    if re.search(r'\bfrom\s+\S+\s+import\s+[^\n]*\b' + re.escape(search) + r'\b', content):
+        return True
+    return False
 for domain_id, domain in (data.get('domains') or {}).items():
     if not isinstance(domain, dict):
         continue
@@ -57,16 +79,20 @@ for domain_id, domain in (data.get('domains') or {}).items():
         mod = prov.get('module', '') or ''
         sym = prov.get('symbol', '') or ''
         ptype = prov.get('type', '') or ''
-        if not mod or ptype in ('config_file', 'react_component', 'api_endpoint', 'pattern', 'doc', 'module'):
+        if not mod:
             continue
         fpath = find_module(mod)
         if not fpath:
             violations.append(f'{domain_id}: module {mod} not found')
             continue
+        if ptype in FILE_ONLY_TYPES:
+            continue
         search = sym.split('.')[-1]
-        with open(fpath) as f:
+        if not search:
+            continue
+        with open(fpath, encoding='utf-8', errors='ignore') as f:
             content = f.read()
-        if 'class ' + search not in content and 'def ' + search not in content and search + ' =' not in content and search + '(' not in content and search + ':' not in content:
+        if not symbol_present(content, search):
             violations.append(f'{domain_id}: symbol \"{search}\" not found in {mod}')
 if violations:
     for v in violations:
@@ -86,24 +112,43 @@ import yaml, sys, os, subprocess
 root = '$ROOT'
 PREFIXES = ['', 'aiPlat-core/', 'aiPlat-platform/', 'aiPlat-management/']
 def find_module(rel_path):
+    if not rel_path or rel_path.startswith('~') or os.path.isabs(rel_path):
+        return None
     for pfx in PREFIXES:
         full = os.path.join(root, pfx + rel_path)
-        if os.path.exists(full):
+        if os.path.isfile(full):
             return full
     return None
 data = yaml.safe_load(open('$REG_FILE'))
 gaps = []
+# 与 Check1 对齐：doc/script/endpoint 等不是可 grep 的代码符号
+FILE_ONLY_TYPES = {
+    'config_file', 'react_component', 'api_endpoint', 'pattern', 'doc', 'module',
+    'script', 'agent', 'check',
+}
+def is_code_symbol(sym):
+    # 为什么：带空格/路径/括号的登记名无法作为消费者代码证据探针
+    if not sym or not isinstance(sym, str):
+        return False
+    if any(c in sym for c in (' ', '/', '(', ')', '|')):
+        return False
+    return True
 for domain_id, domain in (data.get('domains') or {}).items():
     if not isinstance(domain, dict):
         continue
     avoids = domain.get('provides') or []
     search_terms = []
-    for prov in avoids[:2]:
+    for prov in avoids:
         if not isinstance(prov, dict):
             continue
+        if (prov.get('type') or '') in FILE_ONLY_TYPES:
+            continue
         search = str(prov.get('symbol') or '').split('.')[-1]
-        if search:
+        if is_code_symbol(search):
             search_terms.append(search)
+        if len(search_terms) >= 2:
+            break
+    # 为什么：须用 ERE；裸 grep 会把 | 当字面量，造成假阳性 gap
     pattern = '|'.join(search_terms[:2])
     if not pattern:
         continue
@@ -118,7 +163,10 @@ for domain_id, domain in (data.get('domains') or {}).items():
             gaps.append(f'  ⚠️  {domain_id}: consumer module not found: {mod}')
             continue
         try:
-            result = subprocess.run(['grep', '-c', pattern, fpath], capture_output=True, text=True)
+            result = subprocess.run(
+                ['grep', '-Ec', pattern, fpath],
+                capture_output=True, text=True,
+            )
             count = int(result.stdout.strip() or 0)
             if count == 0:
                 gaps.append(f'  ⚠️  {domain_id}: \"{mod}\" listed as consumer but \"{pattern}\" not found')
