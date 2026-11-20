@@ -51,6 +51,46 @@ function splitCsv(raw: string): string[] {
     .filter(Boolean);
 }
 
+/** H.1 薄矩阵固定轴（非完整 per-role 差异产品）。 */
+const H1_MATRIX_ROLES = ['viewer', 'analyst', 'admin'] as const;
+const H1_MATRIX_ACTIONS = ['read', 'update', 'state_change', 'delete'] as const;
+
+function principalRoleName(p: string): string {
+  const s = p.trim();
+  return s.toLowerCase().startsWith('role:') ? s.slice(5).trim() : s;
+}
+
+/** 从 principals/actions 展开薄矩阵单元格（H.1 共享 actions → 各选中角色同勾）。 */
+function matrixCellsFromForm(principals: string, actions: string): Record<string, Set<string>> {
+  const roles = new Set(splitCsv(principals).map(principalRoleName).filter(Boolean));
+  const acts = splitCsv(actions);
+  const out: Record<string, Set<string>> = {};
+  for (const r of H1_MATRIX_ROLES) {
+    out[r] = new Set(roles.has(r) ? acts : []);
+  }
+  return out;
+}
+
+/** 薄矩阵 → principals + 共享 actions 并集（写入 H.1 时折叠差异）。 */
+function formFromMatrixCells(cells: Record<string, Set<string>>): {
+  principals: string;
+  actions: string;
+} {
+  const principals: string[] = [];
+  const actUnion = new Set<string>();
+  for (const r of H1_MATRIX_ROLES) {
+    const set = cells[r];
+    if (set && set.size > 0) {
+      principals.push(`role:${r}`);
+      set.forEach((a) => actUnion.add(a));
+    }
+  }
+  return {
+    principals: principals.join(','),
+    actions: Array.from(actUnion).join(',') || 'read',
+  };
+}
+
 /** 从 H.1 policy 抽出薄表单字段（非完整策略编辑器）。 */
 function formFieldsFromH1(policy: Record<string, unknown>): {
   effect: 'allow' | 'deny';
@@ -689,7 +729,7 @@ const AboxAclPanel: React.FC = () => {
 
         <div className="border-t border-gray-800 pt-3 space-y-2">
           <div className="text-[12px] text-gray-300">
-            H.1 薄表单（effect/principals/actions · 非矩阵编辑器 · 非 certified）
+            H.1 薄表单 + 薄矩阵（effect/principals/actions · 写入共享 actions · 非完整 per-role 矩阵 · 非 certified）
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
             <label className="text-[11px] text-gray-400 space-y-1 block">
@@ -775,8 +815,65 @@ const AboxAclPanel: React.FC = () => {
               />
             </label>
           </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <div className="text-[11px] text-gray-400">
+              薄矩阵（角色×动作 · 勾选写入 principals + 共享 actions 并集 · 非完整 per-role 差异矩阵）
+            </div>
+            <div className="overflow-auto rounded border border-gray-800">
+              <table className="w-full text-[11px] text-gray-300 border-collapse">
+                <thead>
+                  <tr className="bg-gray-950/80 text-gray-500">
+                    <th className="px-2 py-1.5 text-left font-normal">role</th>
+                    {H1_MATRIX_ACTIONS.map((a) => (
+                      <th key={a} className="px-2 py-1.5 text-center font-normal font-mono">
+                        {a}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const cells = matrixCellsFromForm(h1Principals, h1Actions);
+                    return H1_MATRIX_ROLES.map((role) => (
+                      <tr key={role} className="border-t border-gray-800">
+                        <td className="px-2 py-1 font-mono text-gray-400">{role}</td>
+                        {H1_MATRIX_ACTIONS.map((act) => {
+                          const on = cells[role]?.has(act) ?? false;
+                          return (
+                            <td key={act} className="px-2 py-1 text-center">
+                              <input
+                                type="checkbox"
+                                checked={on}
+                                aria-label={`${role}-${act}`}
+                                disabled={loading}
+                                onChange={() => {
+                                  const next: Record<string, Set<string>> = {};
+                                  for (const r of H1_MATRIX_ROLES) {
+                                    next[r] = new Set(cells[r] || []);
+                                  }
+                                  if (on) next[role].delete(act);
+                                  else next[role].add(act);
+                                  const folded = formFromMatrixCells(next);
+                                  setH1Principals(folded.principals);
+                                  setH1Actions(folded.actions);
+                                  pushFormToRaw({
+                                    principals: folded.principals,
+                                    actions: folded.actions,
+                                  });
+                                }}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
           <label className="text-[11px] text-gray-400 space-y-1 block">
-            h1_policy JSON（与薄表单同步；高级编辑仍可用）
+            h1_policy JSON（与薄表单/薄矩阵同步；高级编辑仍可用）
             <textarea
               className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono min-h-[96px]"
               value={h1Raw}
