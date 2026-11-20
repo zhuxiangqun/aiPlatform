@@ -24,6 +24,9 @@ _VALID_ACTIONS = frozenset({"read", "update", "state_change", "delete", "admin"}
 # 为什么：H.1 $regex 仅开放短模式 + 有界主语，降低 ReDoS / 任意编译风险（非完整正则引擎产品）
 _REGEX_MAX_PATTERN_LEN = 128
 _REGEX_MAX_SUBJECT_LEN = 4096
+# 为什么：浅层 $and/$or 限制子句数，避免把 condition 做成任意表达式引擎
+_BOOL_MAX_CLAUSES = 8
+_BOOL_OPS = frozenset({"$and", "$or"})
 
 # Identity / PolicyGate role → ABox ACL role (T9 productization)
 _ROLE_ALIASES: Dict[str, str] = {
@@ -238,26 +241,18 @@ def _match_condition_value(got: Any, want: Any) -> bool:
     return str(got) == str(want)
 
 
-def match_abox_condition(
-    condition: Optional[Dict[str, Any]],
-    attrs: Optional[Dict[str, Any]],
+def _match_field_conditions(
+    condition: Dict[str, Any],
+    attrs: Dict[str, Any],
 ) -> bool:
-    """H.1 最小 condition：全键匹配；空 condition 恒 True。
-
-    每键支持标量等值，或 ``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex: …}``
-    （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序；
-    非完整表达式语言）。
+    """字段级全键 AND；子句不得含 ``$and``/``$or``。
 
     Args:
-        condition: 可选条件 dict（如 status/tenant_id）。
-        attrs: 实例属性；含 metadata/props 回退。无 attrs 且有 condition → False
-            （规则不生效，避免无上下文误杀）。
+        condition: 字段条件 dict。
+        attrs: 实例属性（含 metadata/props 回退源）。
     """
-    if not condition:
-        return True
-    if not isinstance(condition, dict) or not condition:
-        return True
-    if not attrs or not isinstance(attrs, dict):
+    # 为什么：浅层布尔的子句只允许字段算子，禁止再嵌套 $and/$or
+    if _BOOL_OPS.intersection(condition.keys()):
         return False
     meta = attrs.get("metadata") if isinstance(attrs.get("metadata"), dict) else {}
     props = attrs.get("props") if isinstance(attrs.get("props"), dict) else {}
@@ -270,6 +265,49 @@ def match_abox_condition(
         if not _match_condition_value(got, want):
             return False
     return True
+
+
+def match_abox_condition(
+    condition: Optional[Dict[str, Any]],
+    attrs: Optional[Dict[str, Any]],
+) -> bool:
+    """H.1 最小 condition：全键匹配；空 condition 恒 True。
+
+    每键支持标量等值，或 ``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex: …}``
+    （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
+    顶层可单独使用浅层 ``{$and: [...]}`` / ``{$or: [...]}``（一层、子句 ≤8、
+    子句不可再含 ``$and``/``$or``；无 ``$not``；非完整表达式语言）。
+
+    Args:
+        condition: 可选条件 dict（如 status/tenant_id）。
+        attrs: 实例属性；含 metadata/props 回退。无 attrs 且有 condition → False
+            （规则不生效，避免无上下文误杀）。
+    """
+    if not condition:
+        return True
+    if not isinstance(condition, dict) or not condition:
+        return True
+    if not attrs or not isinstance(attrs, dict):
+        return False
+    keys = set(condition.keys())
+    bool_hit = keys & _BOOL_OPS
+    if bool_hit:
+        # 为什么：只允许纯 {$and:[]} 或 {$or:[]}；与字段键混用 / 双算子 → 拒配
+        if len(keys) != 1 or len(bool_hit) != 1:
+            return False
+        op = next(iter(bool_hit))
+        clauses = condition.get(op)
+        if not isinstance(clauses, list) or not clauses or len(clauses) > _BOOL_MAX_CLAUSES:
+            return False
+        matched = []
+        for clause in clauses:
+            if not isinstance(clause, dict) or not clause:
+                return False
+            matched.append(_match_field_conditions(clause, attrs))
+        if op == "$and":
+            return all(matched)
+        return any(matched)
+    return _match_field_conditions(condition, attrs)
 
 
 def _normalize_masked_properties(props: Optional[List[Any]]) -> List[str]:
