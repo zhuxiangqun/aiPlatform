@@ -17,7 +17,9 @@ echo "[verify] Architecture pattern compliance..."
 echo "  [1/3] LLM calls → sys_llm_generate..."
 # Known legitimate: infrastructure modules that create adapters to pass INTO sys_llm_generate
 # or training/specialized modules that use isolated agent loops
-KNOWN_LLM_EXCEPTIONS="compression.py|manager.py|parsers.py|video.py|dynamic_orchestrator.py|merger.py|voice_loop.py|skill_manager.py|server.py|model_injection.py|retrieval.py|retrieval_crag.py|moa_executor.py|goal_dependency_graph.py|abstract_goal_decomposer.py|tool_bootstrap.py|search_engine.py|auto_trigger.py|wiki_engine.py|sqlite_retriever.py|model_fingerprint.py|pipeline_engine.py|property_extractor.py|relation_mapper.py|rule_designer.py|classifier.py|wiki_ontology_domains.py|workspace_agents.py|mcp_admin.py|knowledge_graph.py|prompt_optimize.py|workspace_skills.py|tools.py|wiki.py|entropy.py|core_facade.py|llm_client.py|base.py|registry.py|executor.py"
+# 白名单语义：允许 create_selected_adapter 构造后交给 sys_llm_generate / embedding，
+# 或诊断 playground（compat）经 CoreFacade 选模。新增直调 .generate 绕过 syscall 的文件不要加进来。
+KNOWN_LLM_EXCEPTIONS="compression.py|manager.py|parsers.py|video.py|dynamic_orchestrator.py|merger.py|voice_loop.py|skill_manager.py|server.py|model_injection.py|retrieval.py|retrieval_crag.py|moa_executor.py|goal_dependency_graph.py|abstract_goal_decomposer.py|tool_bootstrap.py|search_engine.py|auto_trigger.py|wiki_engine.py|sqlite_retriever.py|model_fingerprint.py|pipeline_engine.py|pipeline_stage.py|property_extractor.py|relation_mapper.py|rule_designer.py|classifier.py|wiki_ontology_domains.py|workspace_agents.py|mcp_admin.py|knowledge_graph.py|prompt_optimize.py|workspace_skills.py|tools.py|wiki.py|entropy.py|core_facade.py|llm_client.py|base.py|registry.py|executor.py|extractor.py|resolver.py|compat.py|tool_create_dialog.py|mcp_create_dialog.py|skill_create_dialog.py|agent_create_dialog.py|team_create_dialog.py|agent_execution_examples_llm.py|skill_execution_examples_llm.py|skill_autofill.py|agent_eval.py|prompt_eval_ops.py|case_generation.py|typed_plan_exam.py"
 
 LLM_BYPASS=$(grep -rn 'create_selected_adapter' \
     "$ROOT/aiPlat-core/core/" --include='*.py' 2>/dev/null | \

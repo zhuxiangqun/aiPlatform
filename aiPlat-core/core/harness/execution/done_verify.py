@@ -228,7 +228,7 @@ def rollback_checkpoint_missing(context: Dict[str, Any]) -> Optional[str]:
         return None
     return (
         "done_verify: rollback checkpoint required — "
-        "overwrite via sys_file_* (auto checkpoint) or record a git tag / before-refactor marker"
+        "overwrite via sys_file_* (auto checkpoint) or record a VCS tag / before-refactor marker"
     )
 
 
