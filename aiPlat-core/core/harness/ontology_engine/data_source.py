@@ -154,6 +154,66 @@ def validate_datasource_content_hash(
     }
 
 
+def snapshot_datasource_bytes(
+    config: DataSourceConfig,
+    *,
+    records: Optional[List[Dict[str, Any]]] = None,
+) -> bytes:
+    """生成 DataSource Raw 快照字节（N01 process 接线）。
+
+    file：原始文件字节；sql/api：抓取 records 的稳定 JSON 快照。
+
+    Args:
+        config: 数据源配置。
+        records: sql/api 必填的抓取结果；file 可省略。
+
+    Returns:
+        用于 content_hash 校验与 FactLedger 登记的字节。
+
+    Raises:
+        DataSourceIntegrityError: 类型不支持或缺 records。
+    """
+    st = (config.source_type or "").strip().lower()
+    if st == "file":
+        return read_file_datasource_bytes(config)
+    if st not in ("sql", "api"):
+        raise DataSourceIntegrityError(
+            f"snapshot_datasource_bytes unsupported source_type={config.source_type!r}"
+        )
+    if records is None:
+        raise DataSourceIntegrityError(
+            f"datasource {config.name or '(unnamed)'!r} sql/api snapshot requires records"
+        )
+    # 为什么：稳定序列化，避免键序漂移导致同内容不同 hash
+    payload = {
+        "name": config.name or "",
+        "records": records,
+        "source_type": st,
+    }
+    return _json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def datasource_require_raw_ingest_enabled(
+    *,
+    explicit: Optional[bool] = None,
+) -> bool:
+    """是否启用 process_from_datasource → Raw ingest（opt-in；非默认强制）。
+
+    Args:
+        explicit: 调用方显式开关；None 时读 ``AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST``。
+    """
+    if explicit is not None:
+        return bool(explicit)
+    return str(_os.getenv("AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST", "0")).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
 class DataSource(ABC):
     """Abstract base for external data sources."""
 

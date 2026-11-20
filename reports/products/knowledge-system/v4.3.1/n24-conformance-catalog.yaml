@@ -50,11 +50,13 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-raw-integrity-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-datasource-raw-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-datasource-process-raw-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/harness/ontology_engine/data_source.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_raw_integrity_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_raw_phase2.py
-    note: "Core-scoped exists (附录 N.2); 读时验+DataSourceConfig content_hash→FactLedger ingest；非全连接器矩阵/非 N01 certified"
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_process_raw_phase2.py
+    note: "Core-scoped exists (附录 N.2); 读时验+DataSourceConfig content_hash→FactLedger ingest+process_from_datasource opt-in Raw；非默认强制/非全连接器矩阵/非 N01 certified"
   - id: N02
     level: core
     title: 语义模型版本化
