@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / ABox ACL condition 浅层 $and/$or（N07/N22 deepen）
 
 > 实施权威：附录 H.1 / N07/N22；叠在字符串字典序之上。  
-> **未宣称** N07/N22 certified / 完整表达式语言 / 矩阵编辑器 / `$not` / 多层嵌套。
+> **未宣称** N07/N22 certified / 完整表达式语言 / 矩阵编辑器 / 多层嵌套（浅层 `$not` → 见 not-shallow 证据）。
 
 ## 检查表
 
@@ -39,11 +39,12 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 | 入口 | 路径 |
 |------|------|
 | Policy | `match_abox_condition` ← 顶层 `$and`/`$or` |
-| 语义 | 纯 `{$and| $or: [字段子句…]}`；一层、≤8 子句；子句不可再含 `$and`/`$or`；无 `$not` |
+| 语义 | 纯 `{$and| $or: [字段子句…]}`；一层、≤8 子句；子句不可再含 `$and`/`$or`/`$not` |
 | UI | `AboxAclPanel` condition 提示含浅层 `$and|$or` |
 
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- `$not` / 多层嵌套布尔 / 完整表达式语言
+- 浅层 `$not` → 见 `phase2-abox-acl-condition-not-shallow-evidence.md`
+- 多层嵌套布尔 / 完整表达式语言
 - 完整 H.1 矩阵编辑器（多角色×多动作网格）

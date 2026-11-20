@@ -24,9 +24,9 @@ _VALID_ACTIONS = frozenset({"read", "update", "state_change", "delete", "admin"}
 # 为什么：H.1 $regex 仅开放短模式 + 有界主语，降低 ReDoS / 任意编译风险（非完整正则引擎产品）
 _REGEX_MAX_PATTERN_LEN = 128
 _REGEX_MAX_SUBJECT_LEN = 4096
-# 为什么：浅层 $and/$or 限制子句数，避免把 condition 做成任意表达式引擎
+# 为什么：浅层 $and/$or/$not 限制子句数与形态，避免把 condition 做成任意表达式引擎
 _BOOL_MAX_CLAUSES = 8
-_BOOL_OPS = frozenset({"$and", "$or"})
+_BOOL_OPS = frozenset({"$and", "$or", "$not"})
 
 # Identity / PolicyGate role → ABox ACL role (T9 productization)
 _ROLE_ALIASES: Dict[str, str] = {
@@ -245,13 +245,13 @@ def _match_field_conditions(
     condition: Dict[str, Any],
     attrs: Dict[str, Any],
 ) -> bool:
-    """字段级全键 AND；子句不得含 ``$and``/``$or``。
+    """字段级全键 AND；子句不得含 ``$and``/``$or``/``$not``。
 
     Args:
         condition: 字段条件 dict。
         attrs: 实例属性（含 metadata/props 回退源）。
     """
-    # 为什么：浅层布尔的子句只允许字段算子，禁止再嵌套 $and/$or
+    # 为什么：浅层布尔的子句只允许字段算子，禁止再嵌套 $and/$or/$not
     if _BOOL_OPS.intersection(condition.keys()):
         return False
     meta = attrs.get("metadata") if isinstance(attrs.get("metadata"), dict) else {}
@@ -275,8 +275,9 @@ def match_abox_condition(
 
     每键支持标量等值，或 ``{$eq|$ne|$in|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
-    顶层可单独使用浅层 ``{$and: [...]}`` / ``{$or: [...]}``（一层、子句 ≤8、
-    子句不可再含 ``$and``/``$or``；无 ``$not``；非完整表达式语言）。
+    顶层可单独使用浅层 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
+    （一层；``$and``/``$or`` 子句 ≤8；``$not`` 仅单个字段子句 dict；
+    子句不可再含 ``$and``/``$or``/``$not``；非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。
@@ -292,15 +293,23 @@ def match_abox_condition(
     keys = set(condition.keys())
     bool_hit = keys & _BOOL_OPS
     if bool_hit:
-        # 为什么：只允许纯 {$and:[]} 或 {$or:[]}；与字段键混用 / 双算子 → 拒配
+        # 为什么：只允许纯 {$and:[]} / {$or:[]} / {$not:{}}；与字段键混用 / 双算子 → 拒配
         if len(keys) != 1 or len(bool_hit) != 1:
             return False
         op = next(iter(bool_hit))
-        clauses = condition.get(op)
-        if not isinstance(clauses, list) or not clauses or len(clauses) > _BOOL_MAX_CLAUSES:
+        arg = condition.get(op)
+        if op == "$not":
+            # 为什么：浅层 $not 只否定一个字段子句 dict；list/空/嵌套布尔一律拒配
+            # （嵌套布尔若先当字段匹配失败再取反，会 fail-open 成 True）
+            if not isinstance(arg, dict) or not arg:
+                return False
+            if _BOOL_OPS.intersection(arg.keys()):
+                return False
+            return not _match_field_conditions(arg, attrs)
+        if not isinstance(arg, list) or not arg or len(arg) > _BOOL_MAX_CLAUSES:
             return False
         matched = []
-        for clause in clauses:
+        for clause in arg:
             if not isinstance(clause, dict) or not clause:
                 return False
             matched.append(_match_field_conditions(clause, attrs))
