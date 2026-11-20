@@ -21,7 +21,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger(__name__)
@@ -3506,6 +3506,394 @@ def evaluate_gateway_contract_gate(
         "certified": False,
         "n06_full_conformance": False,
         "note": "FactLedger query gateway F.1 slice; not unified Appendix-F Gateway",
+    }
+
+
+# 为什么：N06 统一入口按 Core 路由轴加深；Wiki/Index 全量统一仍未做
+UNIFIED_QUERY_GATEWAY_ROUTES: Tuple[str, ...] = ("fact", "object_set")
+
+
+def unified_query_gateway_routes() -> Dict[str, Any]:
+    """返回 N06 统一 Query Gateway 当前支持的路由轴。
+
+    Returns:
+        routes；``certified`` 恒 false。
+    """
+    return {
+        "routes": list(UNIFIED_QUERY_GATEWAY_ROUTES),
+        "certified": False,
+        "n06_full_conformance": False,
+        "note": (
+            "Core unified entry for fact+object_set F.1 envelopes; "
+            "not Wiki/Index full Gateway / not N06 certified"
+        ),
+    }
+
+
+def require_unified_query_route(route: str) -> str:
+    """校验统一 Gateway 路由名。
+
+    Args:
+        route: ``fact`` / ``object_set``。
+
+    Returns:
+        规范化小写路由名。
+
+    Raises:
+        FactLedgerError: 不在矩阵内。
+    """
+    r = (route or "").strip().lower()
+    if r not in UNIFIED_QUERY_GATEWAY_ROUTES:
+        raise FactLedgerError(
+            f"unified_query_gateway unsupported route={route!r}; "
+            f"routes={list(UNIFIED_QUERY_GATEWAY_ROUTES)}"
+        )
+    return r
+
+
+def _empty_f1_envelope(
+    *,
+    tenant_id: str,
+    route_reason: str,
+    abstained: bool = True,
+    answer: str = "",
+    citations: Optional[List[Dict[str, str]]] = None,
+    facts: Optional[List[Dict[str, Any]]] = None,
+    confidence: str = "low",
+) -> Dict[str, Any]:
+    """构造附录 F.1 最小信封（统一 Gateway 共用）。"""
+    cites = list(citations or [])
+    cov = 1.0 if cites and not abstained else 0.0
+    resp = {
+        "answer": answer if not abstained else "",
+        "citations": [] if abstained else cites,
+        "route_plan": [route_reason.split(":", 1)[0] if ":" in route_reason else route_reason],
+        "route_reason": route_reason,
+        "confidence": confidence if not abstained else "low",
+        "confidence_factors": {
+            "evidence_coverage": cov,
+            "source_authority": "high" if cites and not abstained else "low",
+            "conflict": False,
+            "coverage": cov,
+            "freshness": "valid" if cites and not abstained else "unknown",
+        },
+        "partial": False,
+        "degraded": False,
+        "abstained": abstained,
+        "conflicts": [],
+        "facts": list(facts or []),
+        "tenant_id": tenant_id,
+    }
+    gate = validate_gateway_response(resp)
+    resp["gateway_contract_ok"] = gate["ok"]
+    return resp
+
+
+async def unified_query_gateway(
+    *,
+    tenant_id: str,
+    query: str = "",
+    route: str = "fact",
+    collection_id: Optional[str] = None,
+    domain_id: Optional[str] = None,
+    top_k: int = 8,
+    object_set_request: Optional[Dict[str, Any]] = None,
+    permissions: Optional[List[str]] = None,
+    role: str = "",
+    ledger: Optional["FactLedger"] = None,
+) -> Dict[str, Any]:
+    """N06 deepen：统一 Query Gateway 入口（fact / object_set → F.1）。
+
+    Args:
+        tenant_id: 租户。
+        query: 查询串（fact 路由使用）。
+        route: ``fact`` 或 ``object_set``。
+        collection_id / domain_id / top_k: fact 路由参数。
+        object_set_request: object_set 路由请求 dict。
+        permissions / role: object_set L1/ACL。
+        ledger: 可选 FactLedger。
+
+    Returns:
+        附录 F.1 信封；``certified`` 不在此回执宣称。
+
+    Raises:
+        FactLedgerError: 路由不在矩阵内。
+    """
+    r = require_unified_query_route(route)
+    tid = (tenant_id or "").strip()
+    if not tid:
+        raise FactLedgerError("tenant_id required")
+
+    if r == "fact":
+        lg = ledger or get_fact_ledger()
+        await lg.initialize()
+        resp = await lg.query_facts_gateway(
+            tenant_id=tid,
+            query=query,
+            collection_id=collection_id,
+            domain_id=domain_id,
+            top_k=top_k,
+        )
+        # 统一入口标记（不改变 F.1 字段）
+        plan = list(resp.get("route_plan") or [])
+        if "unified" not in plan:
+            resp["route_plan"] = ["unified", *plan]
+        resp["route_reason"] = f"unified:fact:{resp.get('route_reason') or 'fact_ledger'}"
+        gate = validate_gateway_response(resp)
+        resp["gateway_contract_ok"] = gate["ok"]
+        return resp
+
+    # object_set → F.1 信封（无命中则 abstain）
+    from core.harness.knowledge_pipeline.object_set import (
+        query_object_set as _query_os,
+    )
+
+    req = dict(object_set_request or {})
+    if not req.get("object_type") and (query or "").strip():
+        req.setdefault("object_type", (query or "").strip())
+    if "limit" not in req:
+        req["limit"] = int(top_k)
+    out = await _query_os(
+        req,
+        tenant_id=tid,
+        permissions=permissions,
+        role=role or "",
+    )
+    objects = list(out.get("objects") or out.get("items") or [])
+    if out.get("status") in ("policy_denied", "not_found") or not objects:
+        return _empty_f1_envelope(
+            tenant_id=tid,
+            route_reason="unified:object_set:abstain",
+            abstained=True,
+        )
+    citations = [
+        {
+            "fact_id": "",
+            "source_id": str(obj.get("id") or obj.get("object_id") or ""),
+            "locator": "object_set",
+        }
+        for obj in objects[: int(top_k)]
+    ]
+    first = objects[0]
+    answer = str(
+        first.get("name")
+        or first.get("id")
+        or first.get("object_id")
+        or "object_set_hit"
+    )
+    return _empty_f1_envelope(
+        tenant_id=tid,
+        route_reason="unified:object_set:hit",
+        abstained=False,
+        answer=answer,
+        citations=citations,
+        confidence="medium",
+    )
+
+
+_N06_UNIFIED_GATEWAY_CASES = (
+    "routes_declare_fact_object_set",
+    "fact_route_f1_ok",
+    "object_set_route_f1_ok",
+    "wiki_route_rejected",
+    "honesty_certified_false",
+)
+
+
+async def run_unified_query_gateway_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n06-unified-gw-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N06 统一 Gateway 加深套件（fact+object_set；非 Wiki/非 certified）。
+
+    Args:
+        ledger: 可选账本。
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总；``certified`` / ``n06_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n06-unified-gw-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        meta = unified_query_gateway_routes()
+        routes_ok = (
+            list(meta.get("routes") or []) == list(UNIFIED_QUERY_GATEWAY_ROUTES)
+            and meta.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "routes_declare_fact_object_set",
+                "ok": routes_ok,
+                "detail": "" if routes_ok else "routes_mismatch",
+            }
+        )
+
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n06-unified",
+            kind="file",
+            uri="file://n06/unified.txt",
+            content=b"n06-unified",
+            connector="n06",
+            domain_id=domain_id,
+        )
+        await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n06-unified",
+            subject="door",
+            predicate="state",
+            object="locked",
+            evidence=[
+                {
+                    "source_id": src["source_id"],
+                    "locator": "x",
+                    "quote": "locked",
+                    "fetched_at": src["fetched_at"],
+                }
+            ],
+            source_policy="n06",
+            extractor_version="n06",
+            review_status="published",
+            confidence=0.9,
+            domain_id=domain_id,
+            allow_bootstrap_published=True,
+        )
+        fact_resp = await unified_query_gateway(
+            tenant_id=tenant_id,
+            query="door",
+            route="fact",
+            collection_id="n06-unified",
+            domain_id=domain_id,
+            ledger=lg,
+        )
+        fact_ok = (
+            validate_gateway_response(fact_resp).get("ok") is True
+            and fact_resp.get("abstained") is False
+            and "unified" in (fact_resp.get("route_plan") or [])
+        )
+        cases.append(
+            {
+                "id": "fact_route_f1_ok",
+                "ok": fact_ok,
+                "detail": "" if fact_ok else "fact_route_failed",
+            }
+        )
+
+        os_resp = await unified_query_gateway(
+            tenant_id=tenant_id,
+            query="NonexistentTypeXYZ",
+            route="object_set",
+            object_set_request={"object_type": "NonexistentTypeXYZ", "limit": 3},
+            permissions=["kb:read", "*"],
+            ledger=lg,
+        )
+        os_ok = validate_gateway_response(os_resp).get("ok") is True
+        cases.append(
+            {
+                "id": "object_set_route_f1_ok",
+                "ok": os_ok,
+                "detail": "" if os_ok else "object_set_route_failed",
+            }
+        )
+
+        wiki_ok = False
+        try:
+            require_unified_query_route("wiki")
+        except FactLedgerError:
+            wiki_ok = True
+        cases.append(
+            {
+                "id": "wiki_route_rejected",
+                "ok": wiki_ok,
+                "detail": "" if wiki_ok else "wiki_accepted",
+            }
+        )
+
+        honesty_ok = (
+            meta.get("certified") is False
+            and meta.get("n06_full_conformance") is False
+            and fact_resp.get("certified") is not True
+        )
+        cases.append(
+            {
+                "id": "honesty_certified_false",
+                "ok": honesty_ok,
+                "detail": "" if honesty_ok else "honesty_broken",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N06_UNIFIED_GATEWAY_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "unified_query_gateway",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "routes": unified_query_gateway_routes(),
+        "certified": False,
+        "n06_full_conformance": False,
+        "note": (
+            "Unified fact+object_set F.1 entry; "
+            "not Wiki/Index full Gateway / not N06 certified"
+        ),
+    }
+
+
+def evaluate_unified_query_gateway_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N06 统一 Gateway 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_unified_query_gateway_suite`` 回执。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n06_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "unified_query_gateway",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n06_full_conformance": False,
+        "note": "fact+object_set unify; not Wiki / N06 certified",
     }
 
 

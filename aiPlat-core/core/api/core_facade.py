@@ -16415,10 +16415,12 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     evaluate_fact_revision_gate,
     evaluate_gateway_contract_gate,
     evaluate_raw_integrity_gate,
+    evaluate_unified_query_gateway_gate,
     get_fact_ledger,
     ingest_datasource_raw,
     load_object_type_bindings,
     record_extraction_as_claim,
+    require_unified_query_route,
     run_claim_evidence_suite,
     run_claim_revision_suite,
     run_source_revision_suite,
@@ -16430,6 +16432,9 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_datasource_connector_matrix_suite,
     run_datasource_raw_suite,
     run_fact_revision_suite,
+    run_unified_query_gateway_suite,
+    unified_query_gateway,
+    unified_query_gateway_routes,
     validate_gateway_response,
 )
 from core.harness.ontology_engine.data_source import (  # noqa: boundary
@@ -16674,6 +16679,80 @@ def evaluate_fact_gateway_contract_gate(responses: list | None = None) -> dict:
         gate 结果。
     """
     return evaluate_gateway_contract_gate(responses)
+
+
+def get_unified_query_gateway_routes() -> dict:
+    """CoreFacade：N06 统一 Gateway 路由轴声明（certified 恒 false）。"""
+    return unified_query_gateway_routes()
+
+
+def ensure_unified_query_route(route: str) -> str:
+    """CoreFacade：校验统一 Gateway 路由名。
+
+    Args:
+        route: fact / object_set。
+    """
+    return require_unified_query_route(route)
+
+
+async def fact_ledger_unified_query_gateway(
+    *,
+    tenant_id: str,
+    query: str = "",
+    route: str = "fact",
+    collection_id: str | None = None,
+    domain_id: str | None = None,
+    top_k: int = 8,
+    object_set_request: dict | None = None,
+    permissions: list | None = None,
+    role: str = "",
+) -> dict:
+    """CoreFacade：N06 统一 Query Gateway（fact/object_set → F.1；非 Wiki）。
+
+    Args:
+        tenant_id: 租户。
+        query: 查询串。
+        route: fact / object_set。
+        collection_id / domain_id / top_k: fact 参数。
+        object_set_request: object_set 请求。
+        permissions / role: object_set L1/ACL。
+    """
+    return await unified_query_gateway(
+        tenant_id=tenant_id,
+        query=query,
+        route=route,
+        collection_id=collection_id,
+        domain_id=domain_id,
+        top_k=top_k,
+        object_set_request=object_set_request,
+        permissions=permissions,
+        role=role,
+    )
+
+
+async def fact_ledger_run_unified_query_gateway_suite(
+    *,
+    tenant_id: str = "n06-unified-gw-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N06 统一 Gateway 套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+    """
+    return await run_unified_query_gateway_suite(
+        tenant_id=tenant_id, domain_id=domain_id
+    )
+
+
+def evaluate_fact_unified_query_gateway_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N06 统一 Gateway 门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+    """
+    return evaluate_unified_query_gateway_gate(suite)
 
 
 async def fact_ledger_run_cross_tenant_suite(
