@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / ABox ACL condition 字符串字典序（N07/N22 deepen）
 
 > 实施权威：附录 H.1 / N07/N22；叠在 `$regex+$options:i` 之上。  
-> **未宣称** N07/N22 certified / 表达式语言 / 矩阵编辑器 / 嵌套布尔。
+> **未宣称** N07/N22 certified / 完整表达式语言 / 矩阵编辑器（浅层 `$and`/`$or` → 见 bool-shallow 证据）。
 
 ## 检查表
 
@@ -45,5 +45,6 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- 嵌套布尔表达式（`$and`/`$or`）
+- 浅层 `$and`/`$or` → 见 `phase2-abox-acl-condition-bool-shallow-evidence.md`
+- `$not` / 多层嵌套布尔 / 完整表达式语言
 - 完整 H.1 矩阵编辑器（多角色×多动作网格）
