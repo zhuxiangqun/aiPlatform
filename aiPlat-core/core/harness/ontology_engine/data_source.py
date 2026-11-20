@@ -24,13 +24,59 @@ import os as _os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path as _Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# 为什么：N01 Raw 强制快照按 Core source_type 轴声明矩阵；非 PG/MySQL 等 vendor 全量认证
+DATASOURCE_RAW_CONNECTOR_MATRIX: Tuple[str, ...] = ("file", "sql", "api")
 
 
 class DataSourceIntegrityError(ValueError):
     """DataSource 内容 hash / 快照契约错误（N01 加深）。"""
+
+
+def datasource_raw_connector_matrix() -> Dict[str, Any]:
+    """返回 N01 Raw 强制快照支持的连接器矩阵（Core ``source_type`` 轴）。
+
+    Returns:
+        connectors / snapshot_modes；``certified`` 恒 false。
+    """
+    return {
+        "connectors": list(DATASOURCE_RAW_CONNECTOR_MATRIX),
+        "snapshot_modes": {
+            "file": "raw_file_bytes",
+            "sql": "stable_json_records",
+            "api": "stable_json_records",
+        },
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": (
+            "Core source_type matrix (file/sql/api) with hash-forced snapshots; "
+            "not vendor-driver matrix / not N01 certified"
+        ),
+    }
+
+
+def require_datasource_raw_connector(source_type: str) -> str:
+    """校验 ``source_type`` 属于 Raw 连接器矩阵。
+
+    Args:
+        source_type: 数据源类型（file/sql/api）。
+
+    Returns:
+        规范化小写类型名。
+
+    Raises:
+        DataSourceIntegrityError: 不在矩阵内。
+    """
+    st = (source_type or "").strip().lower()
+    if st not in DATASOURCE_RAW_CONNECTOR_MATRIX:
+        raise DataSourceIntegrityError(
+            f"snapshot_datasource_bytes unsupported source_type={source_type!r}; "
+            f"matrix={list(DATASOURCE_RAW_CONNECTOR_MATRIX)}"
+        )
+    return st
 
 
 @dataclass
@@ -171,15 +217,11 @@ def snapshot_datasource_bytes(
         用于 content_hash 校验与 FactLedger 登记的字节。
 
     Raises:
-        DataSourceIntegrityError: 类型不支持或缺 records。
+        DataSourceIntegrityError: 类型不在矩阵或缺 records。
     """
-    st = (config.source_type or "").strip().lower()
+    st = require_datasource_raw_connector(config.source_type)
     if st == "file":
         return read_file_datasource_bytes(config)
-    if st not in ("sql", "api"):
-        raise DataSourceIntegrityError(
-            f"snapshot_datasource_bytes unsupported source_type={config.source_type!r}"
-        )
     if records is None:
         raise DataSourceIntegrityError(
             f"datasource {config.name or '(unnamed)'!r} sql/api snapshot requires records"

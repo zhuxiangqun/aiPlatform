@@ -16334,6 +16334,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     evaluate_restore_approval_gate,
     evaluate_revision_action_bridge_gate,
     evaluate_cross_tenant_gate,
+    evaluate_datasource_connector_matrix_gate,
     evaluate_datasource_raw_gate,
     evaluate_fact_revision_gate,
     evaluate_gateway_contract_gate,
@@ -16350,9 +16351,14 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_restore_approval_suite,
     run_revision_action_bridge_suite,
     run_cross_tenant_isolation_suite,
+    run_datasource_connector_matrix_suite,
     run_datasource_raw_suite,
     run_fact_revision_suite,
     validate_gateway_response,
+)
+from core.harness.ontology_engine.data_source import (  # noqa: boundary
+    datasource_raw_connector_matrix,
+    require_datasource_raw_connector,
 )
 from core.harness.knowledge_pipeline.unified_audit_view import (  # noqa: boundary
     evaluate_unified_audit_view_gate,
@@ -16488,6 +16494,52 @@ def evaluate_fact_datasource_raw_gate(suite: dict | None = None) -> dict:
         suite: 套件回执。
     """
     return evaluate_datasource_raw_gate(suite)
+
+
+def get_datasource_raw_connector_matrix() -> dict:
+    """CoreFacade：N01 Raw 连接器矩阵声明（Core source_type 轴；certified 恒 false）。
+
+    Returns:
+        connectors / snapshot_modes；非 vendor 全量矩阵。
+    """
+    return datasource_raw_connector_matrix()
+
+
+def ensure_datasource_raw_connector(source_type: str) -> str:
+    """CoreFacade：校验 source_type 属于 Raw 连接器矩阵。
+
+    Args:
+        source_type: file/sql/api。
+
+    Returns:
+        规范化小写类型名。
+    """
+    return require_datasource_raw_connector(source_type)
+
+
+async def fact_ledger_run_datasource_connector_matrix_suite(
+    *,
+    tenant_id: str = "n01-matrix-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N01 Core file/sql/api 连接器矩阵套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+    """
+    return await run_datasource_connector_matrix_suite(
+        tenant_id=tenant_id, domain_id=domain_id
+    )
+
+
+def evaluate_fact_datasource_connector_matrix_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N01 连接器矩阵门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+    """
+    return evaluate_datasource_connector_matrix_gate(suite)
 
 
 async def fact_ledger_query_gateway(
