@@ -20,7 +20,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 |----|------|------|------|
 | N01 | FactLedger 读时 hash + DataSourceConfig content_hash→Raw + process Raw 默认强制（可 opt-out）+ Core file/sql/api 连接器矩阵；非 vendor 驱动矩阵 / 非 certified | 至 N01 全量/试点签字 | 见 raw-integrity + datasource-raw + process-raw + default-force + `phase2-datasource-connector-matrix-evidence.md` |
 | N03 | Claim 证据硬门+冲突记录 + 状态写路径（transition→put_claim）；非全量 Claim 生命周期产品 / 非 certified | 至 N03 全量/试点签字 | 见 claim-evidence + `phase2-claim-status-write-evidence.md` |
-| N06 | FactLedger F.1 契约；非统一 Query Gateway | 至 Gateway 统一入口 | confidence_factors + 契约门 |
+| N06 | FactLedger F.1 契约 + 统一入口（fact/object_set → F.1）；非 Wiki/Index 全量 Gateway / 非 certified | 至 N06 全量/试点签字 | 见 gateway-contract + `phase2-unified-query-gateway-evidence.md` |
 | N09 | Core 探针集已冻结（`n09_core_probe_freeze`）；K1–K70 加深证据保留；**停止**无等级 default mop 作为 Core 条件；未宣称全域 0 泄漏 / N09 certified | Core 足够；全域深度开放 | 跨租户套件门槛门 + `phase2-core-cert-path-evidence.md` |
 | N13/校准 | ECE/`high_precision` 保守默认；Core 不以校准为阻塞；未达标诚实封顶 medium | 至 Operational 校准流水线 | 附录 O + ADR |
 | N23/OCS | 阈值须预注册；属 Operational，非 Core 阻塞 | 开放 | 白皮书 §13.4 |

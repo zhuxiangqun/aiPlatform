@@ -118,7 +118,9 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-gateway-contract-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_gateway_contract_phase2.py
-    note: "Core-scoped exists (附录 N.2); FactLedger F.1 契约+confidence_factors+门槛门；非统一 Query Gateway/非 certified"
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-query-gateway-evidence.md
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_unified_query_gateway_phase2.py
+    note: "Core-scoped exists (附录 N.2); F.1 契约 + fact/object_set 统一入口；非 Wiki/Index 全量 Gateway/非认证"
   - id: N07
     level: extended
     title: 权限召回前过滤
