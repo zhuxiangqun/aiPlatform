@@ -41,8 +41,7 @@ def test_snapshot_file_and_sql_stable(tmp_path: Path):
 
 
 def test_require_raw_ingest_opt_in(monkeypatch):
-    monkeypatch.delenv("AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST", raising=False)
-    assert datasource_require_raw_ingest_enabled() is False
+    """兼容旧用例名：现默认强制；本测仅覆盖显式 True / env=1。"""
     assert datasource_require_raw_ingest_enabled(explicit=True) is True
     monkeypatch.setenv("AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST", "1")
     assert datasource_require_raw_ingest_enabled() is True

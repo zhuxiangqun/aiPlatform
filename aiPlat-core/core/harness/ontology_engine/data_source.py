@@ -199,19 +199,19 @@ def datasource_require_raw_ingest_enabled(
     *,
     explicit: Optional[bool] = None,
 ) -> bool:
-    """是否启用 process_from_datasource → Raw ingest（opt-in；非默认强制）。
+    """是否启用 process_from_datasource → Raw ingest（默认强制；可显式/环境 opt-out）。
 
     Args:
-        explicit: 调用方显式开关；None 时读 ``AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST``。
+        explicit: 调用方显式开关；None 时读 ``AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST``
+            （缺省 ``1``=强制；``0``/false/off 关闭）。
     """
     if explicit is not None:
         return bool(explicit)
-    return str(_os.getenv("AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST", "0")).strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
+    # 为什么：N01 加深默认强制；无 env 时视为 on，避免静默跳过 Raw
+    raw = str(_os.getenv("AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST", "1")).strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        return False
+    return True
 
 
 class DataSource(ABC):
