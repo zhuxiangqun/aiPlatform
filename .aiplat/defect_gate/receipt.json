@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-20T10:20:00+08:00",
+  "reviewed_at": "2026-11-20T19:09:49+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "a442c93569d95505d062781b224ddfe20031c3eb50a0399b9d3d9e8e8b608ed2",
-  "head_sha": "a1a23b7913b62bf7d54a4644fe9447923dd70b45",
+  "diff_sha256": "f1805019f95bc9605d7778aedd7366e7718f9ae246ba392b4d18f872efac5d23",
+  "head_sha": "668cf4e7473e7f1c87dc47b961dfd367b6fc17be",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Cmp ops numeric-only; $regex/nested bool/string order still denied. Not N07/N22 certified. Local lock only; CI needs non-author Approve."
+  "note": "N07/N22 $regex deepen: bounded pattern/subject; no $options; invalid regex\u2192no-match (same fail-open as other ops). Residual: nested bool / matrix / certified still out of scope. Local lock only; CI unlock needs non-author Approve."
 }
