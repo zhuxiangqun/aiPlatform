@@ -2549,14 +2549,10 @@ domains:
         module: aiPlat-core/core/harness/maintenance/asset_secure_scan.py
     breaks: []
     consumers_expected:
-      - module: "core/api/routers/builder_project_service.py"
-        reason: "PipelineEngine 调度入口"
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "自身消费 PipelineStageConfig + StageRunner"
       - module: "core/harness/interfaces/loop.py"
         reason: "ReActLoop 运行时"
-      - module: "aiPlat-platform/apps/fde/api/fde_pipeline.py"
-        reason: "FDE Pipeline 状态查询"
 
   # ══════════════════════════════════════════════════════════════
   # 二、记忆子系统 (59 caps)
@@ -2812,10 +2808,6 @@ domains:
         reason: "_crystallize_skill → save_task_skill"
       - module: "core/api/routers/memory.py"
         reason: "全量 REST 端点"
-      - module: "core/harness/syscalls/retrieval.py"
-        reason: "语义记忆检索"
-      - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
-        reason: "L6 记忆指标展示"
 
   # ══════════════════════════════════════════════════════════════
   # 三、知识引擎（本体）(284 caps)
@@ -5102,18 +5094,10 @@ domains:
         reason: "Wiki CRUD + index + ingest 端点"
       - module: "core/api/routers/wiki_ontology_engine.py"
         reason: "本体引擎 REST API"
-      - module: "core/harness/syscalls/retrieval.py"
-        reason: "GraphIndex 遍历检索"
       - module: "core/harness/knowledge/context_bus.py"
         reason: "10层上下文注入"
-      - module: "core/harness/knowledge/knowledge_synthesis.py"
-        reason: "KnowledgeSynthesizer 合成 Wiki 页"
       - module: "aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py"
         reason: "FDE 能力自描述"
-      - module: "core/harness/knowledge/domain_maturity.py"
-        reason: "域成熟度评分"
-      - module: "core/harness/knowledge/ontology_completeness.py"
-        reason: "OCS 本体完整性六维评分"
 
   # ══════════════════════════════════════════════════════════════
   # 四、RAG 检索 (10 caps)
@@ -5169,10 +5153,6 @@ domains:
         reason: "CRAG + HyDE + RRF 自身"
       - module: "core/harness/syscalls/retrieval.py"
         reason: "检索路由 + 多路融合"
-      - module: "core/harness/knowledge/domain_router.py"
-        reason: "域分类 → 检索范围确定"
-      - module: "aiPlat-platform/apps/fde/api/fde_ask.py"
-        reason: "FDE 追问 → 检索增强"
 
   # ══════════════════════════════════════════════════════════════
   # 四附、知识基础设施 (5 caps)
@@ -5205,12 +5185,8 @@ domains:
         signature: "nodes → {stale, reason}; capability graph cache fingerprint"
     breaks: []
     consumers_expected:
-      - module: "core/harness/knowledge/seci_engine.py"
-        reason: "SECI 消费 KnowledgeSynthesizer"
       - module: "core/harness/memory/manager.py"
         reason: "build_context 注入 ContextBus"
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "RunContext 运行时上下文"
 
   # ══════════════════════════════════════════════════════════════
   # 五、Agent 系统 (155 caps)
@@ -5506,9 +5482,10 @@ domains:
         type: class
         signature: "decision-support: severity, impact, recommended_actions"
       - symbol: "test_report_orchestrator"
-        module: ~/.aiplat/agents/test_report_orchestrator/AGENT.md
-        type: agent
+        module: ""
+        type: doc
         signature: "workspace agent — tests→bug→regenerate per-stage auto-fix"
+        notes: "Runtime-installed under ~/.aiplat/agents/test_report_orchestrator/AGENT.md; not vendored in-repo"
       - symbol: "load_delivery_template"
         module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
         type: function
@@ -6345,11 +6322,11 @@ domains:
       - symbol: load_prompt_set_json
         type: function
         signature: 'load_prompt_set_json(set_id)→Dict engine prompt/* JSON'
-        module: aiPlat-core/core/apps/eval/service/prompt_plan_ops.py
+        module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
       - symbol: score_prompt_output
         type: function
         signature: 'score_prompt_output(output,criteria)→Dict status/summary'
-        module: aiPlat-core/core/apps/eval/service/prompt_plan_ops.py
+        module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
       - symbol: NoRedirectHandler
         type: class
         signature: 'redirect_request'
@@ -6544,12 +6521,8 @@ domains:
         module: aiPlat-core/core/apps/eval/service/security_tool_retrieval_live_p1.py
     breaks: []
     consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline 调度 Agent"
-      - module: "core/apps/builder/builder_project_service.py"
-        reason: "Builder 创建 Agent"
-      - module: "core/api/routers/agents.py"
-        reason: "Agent REST 端点"
+      - module: "core/management/asset_installer.py"
+        reason: "安装/升级时跑 agent compat 门禁"
 
   # ══════════════════════════════════════════════════════════════
   # 六、Skill 系统 (187 caps)
@@ -7464,14 +7437,10 @@ domains:
         signature: "Static scan. Blocked when a hostile pattern matches. SARIF-shaped results."
     breaks: []
     consumers_expected:
-      - module: "core/harness/syscalls/tool.py"
-        reason: "sys_tool_call → PolicyGate.check_tool"
-      - module: "core/harness/syscalls/skill.py"
-        reason: "sys_skill_call → PolicyGate"
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "HITL → PolicyGate + ApprovalGate"
-      - module: "core/harness/syscalls/llm.py"
-        reason: "_guard_messages → PII masking"
+      - module: "core/management/skill_installer.py"
+        reason: "skill install 跑 finalize_skill_compat"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 暴露 skill compat"
 
   # ══════════════════════════════════════════════════════════════
   # 八、可观测性 (23 caps)
@@ -7575,12 +7544,8 @@ domains:
         signature: "RuntimeError：生产要求 OS sandbox 但未激活"
     breaks: []
     consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline trace 事件"
-      - module: "core/harness/syscalls/tool.py"
-        reason: "工具调用审计"
-      - module: "aiPlat-management/frontend/src/pages/Diagnostics"
-        reason: "诊断仪表盘"
+      - module: "core/api/routers/diagnostics.py"
+        reason: "诊断 API 消费 observability contract / AgentEventIngress"
 
   # ══════════════════════════════════════════════════════════════
   # 九、模型基础设施 (7 caps)
@@ -7629,8 +7594,6 @@ domains:
         reason: "MoA 引擎多模型路由"
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline 阶段模型选择"
-      - module: "aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx"
-        reason: "T1-T5 前端展示"
 
   # ══════════════════════════════════════════════════════════════
   # 十、部署与运维 (3 caps)
@@ -7718,8 +7681,6 @@ domains:
         reason: "Pipeline 故障→StrategySearchEngine"
       - module: "core/server.py"
         reason: "GoalExecutor + WakeScheduler 启动"
-      - module: "core/harness/memory/manager.py"
-        reason: "build_context → SharedKnowledgePool 注入"
 
   # ══════════════════════════════════════════════════════════════
   # 十二、Gate 系统 (153 caps)
@@ -8345,12 +8306,8 @@ domains:
         signature: "Copy kernel _common + workspace_seeds/prd_gates → ~/.aiplat/prd_gates when missing"
     breaks: []
     consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline 阶段 Gate 检查"
-      - module: "core/harness/infrastructure/integration.py"
-        reason: "8 Gate 统一出口"
-      - module: "core/server.py"
-        reason: "BackpressureMiddleware 挂载 + backpressure_stats 诊断"
+      - module: "core/harness/integration/agent.py"
+        reason: "Agent 集成路径消费 ErrorTranslator / CompletionChecklistGate"
 
   # ══════════════════════════════════════════════════════════════
   # 十三-b、诊断系统 DIAGNOSIS_V1 C1
@@ -8442,8 +8399,8 @@ domains:
         module: "core/api/core_facade.py"
     breaks: []
     consumers_expected:
-      - module: "aiPlat-platform/apps/diagnosis/api/cases.py"
-        reason: "canonical diagnosis HTTP API"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 暴露 get_diagnosis_store"
 
   # ══════════════════════════════════════════════════════════════
   # 十三、评估系统 (408 caps)
@@ -11039,10 +10996,8 @@ domains:
         module: "core/harness/utils/task_model_lock.py"
     breaks: []
     consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline 质量评分"
-      - module: "aiPlat-platform/apps/fde/api/fde_quality_summary.py"
-        reason: "FDE 质量摘要"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 暴露 m2 deferred estimate"
 
   # ══════════════════════════════════════════════════════════════
   # 十四、MCP 协议 (3 caps)
@@ -11110,10 +11065,8 @@ domains:
         module: "core/apps/mcp/adapter.py"
     breaks: []
     consumers_expected:
-      - module: "core/apps/mcp/server.py"
-        reason: "MCP server lifecycle"
-      - module: "core/api/routers/mcp.py"
-        reason: "MCP REST 端点"
+      - module: "core/apps/mcp/runtime.py"
+        reason: "MCP runtime 消费 finalize_mcp_compat / mark_mcp_connection"
 
   # ══════════════════════════════════════════════════════════════
   # 十四附、A2A 协议 (2 caps)
@@ -11133,10 +11086,10 @@ domains:
         signature: "TASK_ASSIGN/PROGRESS_UPDATE/RESULT/ERROR/CANCEL"
     breaks: []
     consumers_expected:
-      - module: "core/apps/agents/multi_agent.py"
-        reason: "MultiAgent 通信"
-      - module: "core/harness/coordination/swarm_broker.py"
-        reason: "SwarmBroker agent discovery"
+      - module: "core/apps/agents/discovery.py"
+        reason: "AgentDiscovery 实现/导出"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 再导出 A2A 能力"
 
   # ══════════════════════════════════════════════════════════════
   # 十五、文档智能 (3 caps)
@@ -11162,10 +11115,8 @@ domains:
         notes: "conceptual or non-export; retained for domain map"
     breaks: []
     consumers_expected:
-      - module: "core/harness/ontology_engine/engine.py"
-        reason: "OntologyEngine 文档输入"
-      - module: "core/api/routers/wiki.py"
-        reason: "Upload/ingest 端点"
+      - module: "core/harness/multimodal/integrator.py"
+        reason: "多模态集成消费 VideoParser"
 
   # ══════════════════════════════════════════════════════════════
   # 十六、工具生态 (61 caps)
@@ -11479,10 +11430,10 @@ domains:
         signature: "infer_recency_days(query)→int|None from 「最近N天」/last week phrases"
     breaks: []
     consumers_expected:
-      - module: "core/harness/syscalls/tool.py"
-        reason: "sys_tool_call → ToolRegistry"
-      - module: "core/apps/mcp/adapter.py"
-        reason: "MCPToolAdapter → BaseTool"
+      - module: "core/api/routers/workspace_tools.py"
+        reason: "workspace tools 跑 tool compat"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 暴露 tool compat"
 
   # ══════════════════════════════════════════════════════════════
   # 十七、微调系统 (2 caps)
@@ -11504,8 +11455,6 @@ domains:
     consumers_expected:
       - module: "core/harness/evolution_engine.py"
         reason: "nightly LoRA trigger"
-      - module: "core/harness/optimization/goal_generator.py"
-        reason: "微调缺口扫描"
 
   # ══════════════════════════════════════════════════════════════
   # 十八、部署与灰度 (3 caps)
@@ -11533,8 +11482,6 @@ domains:
         reason: "tool_gap → DeployEngine.deploy"
       - module: "core/harness/optimization/tool_bootstrap.py"
         reason: "_trigger_deploy"
-      - module: "aiPlat-platform/apps/fde/api/fde.py"
-        reason: "FDE canary 端点"
 
   # ══════════════════════════════════════════════════════════════
   # 十九、运行时干预 (64 caps)
@@ -11812,8 +11759,6 @@ domains:
     consumers_expected:
       - module: "core/api/routers/adapters.py"
         reason: "/model-override 端点"
-      - module: "core/harness/syscalls/llm.py"
-        reason: "最佳模型选择"
       - module: "core/api/routers/diagnostics.py"
         reason: "adoption-metrics 附带 Howl 干预次数"
 
@@ -11851,12 +11796,10 @@ domains:
         module: "core/apps/tools/wake_agent_tool.py"
     breaks: []
     consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline routing_mode dispatch"
-      - module: "core/harness/coordination/swarm_broker.py"
-        reason: "SwarmBroker 蜂群协作"
-      - module: "aiPlat-platform/apps/eval/api/arena_wiring.py"
-        reason: "P0-B3 arena/wake-agent REST 端点"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 暴露 DarwinArena"
+      - module: "core/server.py"
+        reason: "server 挂载 VoiceLoopTool"
 
   # ══════════════════════════════════════════════════════════════
   # 二十一、平台治理 (14 caps)
@@ -11929,20 +11872,8 @@ domains:
         signature: "run_smoke(live=False)→dict; critical-path static/live behavior smoke (Phase D)"
     breaks: []
     consumers_expected:
-      - module: "core/server.py"
-        reason: "Governance cron 定时任务"
-      - module: "core/harness/ontology_engine/engine.py"
-        reason: "本体引擎治理"
-      - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
-        reason: "仪表盘治理指标"
-      - module: "scripts/verify_capability_truth.py"
-        reason: "统一门禁调用 audit_registry / run_smoke"
-      - module: "scripts/verify_doc_sync.sh"
-        reason: "doc sync / pre-commit / contracts-guard 向下传 --ci"
-      - module: "scripts/generate_capability_stats.py"
-        reason: "Phase C 统计表生成入口"
-      - module: ".github/workflows/aiplat-contracts-guard.yml"
-        reason: "Phase D critical-path static smoke in CI"
+      - module: "core/services/execution_store/__init__.py"
+        reason: "default_execution_db_path 出口"
 
   # ══════════════════════════════════════════════════════════════
   # 二十二、Infra 基础设施 (6 caps)
@@ -11979,12 +11910,8 @@ domains:
         notes: "conceptual or non-export; retained for domain map"
     breaks: []
     consumers_expected:
-      - module: "core/harness/infrastructure/infra_llm_adapter.py"
-        reason: "LLM 适配器 → infra"
       - module: "core/harness/utils/model_injection.py"
         reason: "ModelManager 缓存"
-      - module: "aiPlat-management/frontend/src/pages/Infra"
-        reason: "Infra 管理前端"
       - module: "aiPlat-infra/infra/management/model/config_loader.py"
         reason: "adapters 发现与 CredentialPool 共用 DB 路径"
 
@@ -12009,8 +11936,8 @@ domains:
     consumers_expected:
       - module: "aiPlat-platform/apps/fde/api/router.py"
         reason: "FDE 路由挂载"
-      - module: "aiPlat-platform/server.py"
-        reason: "Platform server 入口"
+      - module: "core/server.py"
+        reason: "Core server 入口挂载 CoreFacade"
 
   # ══════════════════════════════════════════════════════════════
   # 二十四、编排系统 (4 caps)
@@ -12040,10 +11967,10 @@ domains:
         notes: "conceptual or non-export; retained for domain map"
     breaks: []
     consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline 编排"
-      - module: "core/api/routers/pipeline_execution.py"
-        reason: "fork/forks 端点经 CoreFacade 取 store"
+      - module: "core/api/routers/runs.py"
+        reason: "list_run_events REST"
+      - module: "aiPlat-management/frontend/src/components/Builder/RunEventTimeline.tsx"
+        reason: "RunEventTimeline UI"
 
   # ══════════════════════════════════════════════════════════════
   # 二十五、管理 & 质量 (101 caps)
@@ -12540,10 +12467,8 @@ domains:
         notes: "conceptual; not an AST export"
     breaks: []
     consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline 质量评分"
-      - module: "aiPlat-management/frontend/src/pages/Diagnostics"
-        reason: "诊断仪表盘"
+      - module: "aiPlat-management/management/auth.py"
+        reason: "management_api_token / assert_bind_allowed 鉴权"
 
   # ══════════════════════════════════════════════════════════════
   # 二十六、编排层 (Orchestration) (5 caps)
@@ -12579,8 +12504,6 @@ domains:
         reason: "Pipeline → Swarm/Debate/Roundtable/MoA dispatch"
       - module: "core/harness/coordination/swarm_broker.py"
         reason: "动态组队"
-      - module: "core/harness/optimization/goal_executor.py"
-        reason: "Goal 分解后并行执行"
 
   # ══════════════════════════════════════════════════════════════
   # 二十七、L6 自主能力 (5 caps)
@@ -12618,10 +12541,6 @@ domains:
         reason: "_execute_business_objective"
       - module: "core/harness/scheduler/wake_scheduler.py"
         reason: "_try_decompose_pending"
-      - module: "core/server.py"
-        reason: "DiscoveryListener 启动"
-      - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
-        reason: "_get_goal_decomposition_stats"
 
   # ══════════════════════════════════════════════════════════════
   # 二十八、记忆系统白盒化 (5 caps)
@@ -12653,10 +12572,10 @@ domains:
         module: "aiPlat-management/frontend/src/components/core/SemanticMemoryModal.tsx"
     breaks: []
     consumers_expected:
-      - module: "core/api/routers/memory.py"
-        reason: "全量记忆 REST 端点"
-      - module: "aiPlat-management/frontend/src/pages/Core/Memory/Memory.tsx"
-        reason: "记忆管理页面"
+      - module: "core/harness/memory/manager.py"
+        reason: "MemoryManager 混入 LongTermMemoryMixin"
+      - module: "core/services/execution_store/__init__.py"
+        reason: "execution_store 组装 LTM"
 
   # ══════════════════════════════════════════════════════════════
   # 二十九、记忆运行时过滤 (2 caps)
@@ -12717,12 +12636,6 @@ domains:
         reason: "_run_moa 路由模式"
       - module: "core/harness/utils/model_injection.py"
         reason: "is_moa_session/get_moa_preset + override filtering"
-      - module: "core/api/routers/adapters.py"
-        reason: "/model-override/moa 端点"
-      - module: "aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx"
-        reason: "MoA 卡片交互"
-      - module: "core/harness/execution/loop/command_parser.py"
-        reason: "/moa --preset 命令解析"
 
   # ══════════════════════════════════════════════════════════════
   # 三十一、AI知识层增强 (3 caps)
@@ -12748,8 +12661,6 @@ domains:
     consumers_expected:
       - module: "core/api/routers/wiki.py"
         reason: "/wiki/index-md + /ingest/url 端点"
-      - module: "core/harness/memory/manager.py"
-        reason: "build_context 注入 brand_rules"
 
   # ══════════════════════════════════════════════════════════════
   # 三十二、Hermes压缩对标 (3 caps)
@@ -12775,8 +12686,6 @@ domains:
     breaks:
       - "reminders.check_and_inject: 返回类型 Optional[str] → Optional[dict] (backward-compatible)"
     consumers_expected:
-      - module: "core/harness/execution/loop/compressor.py"
-        reason: "5-stage compression pipeline → micro_compress"
       - module: "core/harness/memory/manager.py"
         reason: "build_context → normalize_roles + reminder dict injection"
       - module: "core/harness/memory/reminders.py"
