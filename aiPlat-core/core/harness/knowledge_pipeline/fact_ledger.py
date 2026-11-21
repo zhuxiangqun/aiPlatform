@@ -3385,6 +3385,7 @@ class FactLedger:
         calibration_db_path: Optional[str] = None,
         calibration_query_type: str = "fact_gateway",
         record_hotpath_audit: bool = True,
+        attach_constraint_hotpath: bool = True,
     ) -> Dict[str, Any]:
         """附录 M 最小查询入口：租户前置 + 无证据 abstain + N13 校准封顶。
 
@@ -3398,6 +3399,7 @@ class FactLedger:
             calibration_db_path: 可选校准库（测试/探针）。
             calibration_query_type: 校准 query_type（默认 fact_gateway）。
             record_hotpath_audit: N19 旁路热路径落快照；统一 Gateway 调用时关以免双写。
+            attach_constraint_hotpath: N20 旁路挂约束信封；统一 Gateway 调用时关以免双挂。
 
         Returns:
             查询响应（含 abstained / citations）。
@@ -3498,6 +3500,19 @@ class FactLedger:
             except Exception:
                 logger.warning(
                     "fact_query_audit query_facts_gateway hotpath failed",
+                    exc_info=True,
+                )
+        if attach_constraint_hotpath:
+            # 为什么：N20 — 直调旁路挂约束观测信封（统一入口由 _finish 挂，关此开关）
+            try:
+                from core.harness.knowledge_pipeline.constraint_layers import (
+                    maybe_attach_query_facts_gateway_constraint_hotpath,
+                )
+
+                resp = maybe_attach_query_facts_gateway_constraint_hotpath(resp)
+            except Exception:
+                logger.warning(
+                    "constraint_layers query_facts_gateway hotpath failed",
                     exc_info=True,
                 )
         return resp
@@ -3926,8 +3941,9 @@ async def unified_query_gateway(
             top_k=top_k,
             calibration_db_path=calibration_db_path,
             calibration_query_type=calibration_query_type,
-            # 为什么：统一入口由 _finish 落 N19 快照，避免旁路+统一双写
+            # 为什么：统一入口由 _finish 落 N19/N20，避免旁路+统一双写
             record_hotpath_audit=False,
+            attach_constraint_hotpath=False,
         )
         # 统一入口标记（不改变 F.1 字段）
         plan = list(resp.get("route_plan") or [])
