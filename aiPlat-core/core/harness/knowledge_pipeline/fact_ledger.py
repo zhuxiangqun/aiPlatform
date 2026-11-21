@@ -3280,6 +3280,7 @@ class FactLedger:
         predicate: Optional[str] = None,
         review_status: Optional[str] = None,
         limit: int = 50,
+        record_hotpath_audit: bool = True,
     ) -> List[Dict[str, Any]]:
         """查询 Fact；``tenant_id`` 必填且在 SQL WHERE 中过滤。
 
@@ -3290,6 +3291,7 @@ class FactLedger:
             subject / predicate: 可选三元组过滤。
             review_status: 可选审核状态。
             limit: 上限。
+            record_hotpath_audit: N19 list 旁路热路径；gateway 调用时关以免双写。
 
         Returns:
             Fact 列表（永不返回其他租户行）。
@@ -3331,7 +3333,32 @@ class FactLedger:
             db.row_factory = aiosqlite.Row
             cur = await db.execute(sql, params)
             rows = await cur.fetchall()
-        return [self._row_to_fact(row) for row in rows]
+        hits = [self._row_to_fact(row) for row in rows]
+        if record_hotpath_audit:
+            # 为什么：N19 — 直调 query_facts list 旁路也落审计（gateway 已关此开关）
+            try:
+                from core.harness.knowledge_pipeline.fact_query_audit import (
+                    maybe_record_query_facts_list_hotpath,
+                )
+
+                maybe_record_query_facts_list_hotpath(
+                    tenant_id=tenant_id,
+                    hits=hits,
+                    filters={
+                        "collection_id": collection_id or "",
+                        "domain_id": domain_id or "",
+                        "subject": subject or "",
+                        "predicate": predicate or "",
+                        "review_status": review_status or "",
+                        "limit": int(limit),
+                    },
+                )
+            except Exception:
+                logger.warning(
+                    "fact_query_audit query_facts list hotpath failed",
+                    exc_info=True,
+                )
+        return hits
 
     async def query_facts_gateway(
         self,
@@ -3367,6 +3394,8 @@ class FactLedger:
             collection_id=collection_id,
             domain_id=domain_id,
             limit=top_k * 3,
+            # 为什么：gateway 自有 N19 热路径；关 list 审计防双写
+            record_hotpath_audit=False,
         )
         q = (query or "").strip().lower()
         if q:

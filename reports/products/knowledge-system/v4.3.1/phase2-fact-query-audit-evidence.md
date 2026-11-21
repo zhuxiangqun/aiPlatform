@@ -9,7 +9,7 @@ pilot_domain: lock-service
 
 # Phase 2 / N19 Fact/Query 统一审计证据
 
-> 实施权威：附录 N N19 deepen（运行时权威与审计快照统一 + put_fact/Gateway 热路径）。  
+> 实施权威：附录 N N19 deepen（运行时权威与审计快照统一 + put_fact/Gateway/query_facts 热路径）。  
 > **未宣称** N19 certified / 全部旁路入口强制落盘 / N24 全量总线合并。
 
 ## 检查表
@@ -25,6 +25,7 @@ pilot_domain: lock-service
 | put_fact 热路径入口 | pass | suite `put_fact_hotpath_entry` |
 | Gateway 热路径入口 | pass | suite `query_gateway_hotpath_entry` |
 | query_facts_gateway 旁路 | pass | suite `query_facts_gateway_hotpath_entry` |
+| query_facts list 旁路 | pass | suite `query_facts_list_hotpath_entry` |
 | certified 恒 false | pass | suite / gate honesty |
 
 ## 命令
@@ -40,13 +41,13 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 | 入口 | 路径 |
 |------|------|
 | 核心 | `record_audit_snapshot` / `maybe_record_*_hotpath` / suite/gate |
-| 热路径 | `put_fact` + `unified_query_gateway` + `query_facts_gateway`（统一调用关旁路防双写）→ best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`） |
+| 热路径 | `put_fact` + `unified_query_gateway` + `query_facts_gateway` + `query_facts` list（上层调用关下层防双写）→ best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`） |
 | Facade / HTTP | 同名 + `/fde/fact-query-audit*` |
 | 配置 | `AIPLAT_FACT_QUERY_AUDIT_DB` / `AIPLAT_FACT_QUERY_AUDIT_HOTPATH` |
 
 ## 明确未做
 
-- 全部旁路入口强制落盘（直调 `query_facts` list / 非 Gateway MaterialsChat 等）
+- 全部旁路入口强制落盘（MaterialsChat 直出 / 其它 Agent 等）
 - 热路径失败阻断主写入/查询（刻意 best-effort）
 - Package+Action 统一审计总线全量合并（N24）
 - N19 certified / 关闭 ADR 例外冒充签字
