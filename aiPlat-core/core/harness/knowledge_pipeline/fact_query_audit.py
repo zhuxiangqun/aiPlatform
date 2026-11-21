@@ -4,11 +4,11 @@
   - 统一 Fact 变更与 Query 响应的审计快照 schema（同库同表）
   - 标记 ``runtime_authority`` 与 ActionExecution 快照字段对齐（before/after）
   - put_fact / unified_query_gateway / query_facts_gateway / query_facts list
-    热路径 best-effort 落快照（可 env 关闭）
+    / MaterialsChat 直出热路径 best-effort 落快照（可 env 关闭）
   - 套件/门槛门：``certified`` / ``n19_full`` 恒 false
 
 非目标：
-  - 不宣称全部旁路入口（MaterialsChat 直出 / 其它 Agent 等）已强制落盘
+  - 不宣称全部旁路入口（其它 Agent 等）已强制落盘
   - 不合并 Package+Action 全量审计总线（N24）
   - 不宣称 N19 certified
 """
@@ -38,6 +38,7 @@ _SUITE_CASES = (
     "query_gateway_hotpath_entry",
     "query_facts_gateway_hotpath_entry",
     "query_facts_list_hotpath_entry",
+    "materials_chat_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -408,6 +409,59 @@ def maybe_record_query_facts_list_hotpath(
     )
 
 
+def maybe_record_materials_chat_hotpath(
+    *,
+    tenant_id: str,
+    output: Dict[str, Any],
+    exit_kind: str = "rag",
+    query: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """MaterialsChat 直出旁路热路径落 Query 快照；原样返回 output。
+
+    Args:
+        tenant_id: 租户（空则跳过）。
+        output: N21 enforce 后的 Agent 输出。
+        exit_kind: ``rag`` / ``shortcut`` / ``cache_hit``。
+        query: 可选原始问题摘要。
+        db_path: 可选库路径。
+    """
+    out = output if isinstance(output, dict) else {}
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return out
+    kind = (exit_kind or "rag").strip() or "rag"
+    g1 = out.get("gateway_f1") if isinstance(out.get("gateway_f1"), dict) else {}
+    citations = list(out.get("citations") or g1.get("citations") or [])[:20]
+    maybe_record_hotpath_audit(
+        tenant_id=tid,
+        kind="query",
+        subject_ref=f"mc:{kind}:{uuid.uuid4().hex[:12]}",
+        before_snapshot={
+            "query": (query or "")[:500],
+            "route": "materials_chat",
+            "exit": kind,
+        },
+        after_snapshot={
+            "abstained": bool(out.get("abstained") if "abstained" in out else g1.get("abstained")),
+            "citations": citations,
+            "route_reason": f"materials_chat_{kind}",
+            "answer": str(out.get("answer") or g1.get("answer") or "")[:500],
+            "has_gateway_f1": bool(g1),
+            "n21_enforced": bool(out.get("n21_enforced")),
+        },
+        runtime_authority="materials_chat",
+        meta={
+            "hotpath": True,
+            "op": "materials_chat",
+            "route": "materials_chat",
+            "exit": kind,
+        },
+        db_path=db_path,
+    )
+    return out
+
+
 def list_audit_snapshots(
     *,
     tenant_id: str,
@@ -499,8 +553,8 @@ def evaluate_fact_query_audit_gate(
         "certified": False,
         "n19_full_conformance": False,
         "note": (
-            "Fact/Query audit + put_fact/unified/query_facts(_gateway) hotpath; "
-            "not N19 certified / not all bypass paths"
+            "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
+            "MaterialsChat hotpath; not N19 certified / not all bypass paths"
         ),
     }
 
@@ -644,6 +698,13 @@ def run_fact_query_audit_suite(
         ug_src = inspect.getsource(fl.unified_query_gateway)
         qfg_src = inspect.getsource(fl.FactLedger.query_facts_gateway)
         qfl_src = inspect.getsource(fl.FactLedger.query_facts)
+        from core.apps.agents import materials_chat as mc
+
+        mc_src = (
+            inspect.getsource(mc._n21_enforce_rag_output)
+            + inspect.getsource(mc._n21_enforce_shortcut_output)
+            + inspect.getsource(mc._n21_enforce_cache_hit_output)
+        )
         cases.append(
             {
                 "id": "put_fact_hotpath_entry",
@@ -672,6 +733,13 @@ def run_fact_query_audit_suite(
                 "detail": "",
             }
         )
+        cases.append(
+            {
+                "id": "materials_chat_hotpath_entry",
+                "ok": "maybe_record_materials_chat_hotpath" in mc_src,
+                "detail": "",
+            }
+        )
 
         passed = sum(1 for c in cases if c.get("ok"))
         return {
@@ -683,8 +751,8 @@ def run_fact_query_audit_suite(
             "certified": False,
             "n19_full_conformance": False,
             "note": (
-                "Fact/Query audit + put_fact/unified/query_facts(_gateway) hotpath; "
-                "not all bypass paths / not certified"
+                "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
+                "MaterialsChat hotpath; not all bypass paths / not certified"
             ),
         }
     finally:

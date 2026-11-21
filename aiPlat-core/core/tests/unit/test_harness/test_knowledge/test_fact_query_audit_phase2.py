@@ -18,6 +18,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "query_gateway_hotpath_entry" in ids
     assert "query_facts_gateway_hotpath_entry" in ids
     assert "query_facts_list_hotpath_entry" in ids
+    assert "materials_chat_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -55,6 +56,42 @@ def test_hotpath_helper_writes_and_env_off(tmp_path, monkeypatch):
     assert skip is None
     listed = fqa.list_audit_snapshots(tenant_id="t-hp", db_path=db)
     assert listed["count"] == 1
+
+
+def test_materials_chat_hotpath_writes(tmp_path, monkeypatch):
+    """MaterialsChat 直出热路径落 Query 快照；空 tenant 跳过。"""
+    db = str(tmp_path / "fqa-mc.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+    out = fqa.maybe_record_materials_chat_hotpath(
+        tenant_id="t-mc",
+        output={
+            "answer": "ok",
+            "citations": [{"source_id": "s1"}],
+            "abstained": False,
+            "n21_enforced": True,
+            "gateway_f1": {"abstained": False},
+        },
+        exit_kind="rag",
+        query="q?",
+        db_path=db,
+    )
+    assert out.get("answer") == "ok"
+    listed = fqa.list_audit_snapshots(tenant_id="t-mc", db_path=db)
+    assert listed["count"] == 1
+    item = listed["items"][0]
+    assert item["runtime_authority"] == "materials_chat"
+    assert (item.get("meta") or {}).get("op") == "materials_chat"
+    assert (item.get("after_snapshot") or {}).get("has_gateway_f1") is True
+
+    skipped = fqa.maybe_record_materials_chat_hotpath(
+        tenant_id="",
+        output={"answer": "x", "citations": [], "abstained": True},
+        exit_kind="shortcut",
+        db_path=db,
+    )
+    assert skipped.get("answer") == "x"
+    assert fqa.list_audit_snapshots(tenant_id="t-mc", db_path=db)["count"] == 1
 
 
 def test_fact_requires_after_snapshot(tmp_path):
