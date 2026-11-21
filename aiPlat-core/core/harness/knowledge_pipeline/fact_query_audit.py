@@ -1075,13 +1075,11 @@ def run_fact_query_audit_suite(
         ug_src = inspect.getsource(fl.unified_query_gateway)
         qfg_src = inspect.getsource(fl.FactLedger.query_facts_gateway)
         qfl_src = inspect.getsource(fl.FactLedger.query_facts)
-        from core.apps.agents import materials_chat as mc
-
-        mc_src = (
-            inspect.getsource(mc._n21_enforce_rag_output)
-            + inspect.getsource(mc._n21_enforce_shortcut_output)
-            + inspect.getsource(mc._n21_enforce_cache_hit_output)
+        # 为什么：读源文本验接线，避免 harness→apps 直导（constitution 边界）
+        _mc = (
+            Path(__file__).resolve().parents[2] / "apps" / "agents" / "materials_chat.py"
         )
+        mc_src = _mc.read_text(encoding="utf-8") if _mc.is_file() else ""
         cases.append(
             {
                 "id": "put_fact_hotpath_entry",

@@ -812,17 +812,22 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         }
     )
 
-    from core.apps.agents import materials_chat as mc
+    # 为什么：读源文本验接线，避免 harness→apps 直导（constitution 边界）
+    from pathlib import Path as _Path
 
-    mc_src = (
-        inspect.getsource(mc._n21_enforce_rag_output)
-        + inspect.getsource(mc._n21_enforce_shortcut_output)
-        + inspect.getsource(mc._n21_enforce_cache_hit_output)
+    _mc = (
+        _Path(__file__).resolve().parents[2] / "apps" / "agents" / "materials_chat.py"
     )
+    mc_src = _mc.read_text(encoding="utf-8") if _mc.is_file() else ""
     cases.append(
         {
             "id": "materials_chat_hotpath_entry",
-            "ok": "maybe_attach_materials_chat_constraint_hotpath" in mc_src,
+            "ok": (
+                "maybe_attach_materials_chat_constraint_hotpath" in mc_src
+                and "_n21_enforce_rag_output" in mc_src
+                and "_n21_enforce_shortcut_output" in mc_src
+                and "_n21_enforce_cache_hit_output" in mc_src
+            ),
             "detail": "",
         }
     )
