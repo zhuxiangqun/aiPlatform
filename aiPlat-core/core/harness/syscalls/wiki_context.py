@@ -69,9 +69,16 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
         pass  # noqa: optional-dependency
 
     # Semantic search via wiki retriever
-    results = sys_wiki_retrieve(question, wiki_titles=wiki_titles, top_k=top_k,
-                                 link_depth=link_depth, collection_ids=cids,
-                                 tenant_id=tenant_id)
+    # 为什么：attach_n21 时信封侧落 N19；关裸 list 防双写
+    results = sys_wiki_retrieve(
+        question,
+        wiki_titles=wiki_titles,
+        top_k=top_k,
+        link_depth=link_depth,
+        collection_ids=cids,
+        tenant_id=tenant_id,
+        record_hotpath_audit=not attach_n21_query,
+    )
 
     # Link-graph traversed related pages for top results
     related_pages: List[Dict[str, Any]] = []

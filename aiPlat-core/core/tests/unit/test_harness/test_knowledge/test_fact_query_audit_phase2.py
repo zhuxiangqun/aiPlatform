@@ -21,6 +21,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "materials_chat_hotpath_entry" in ids
     assert "graphrag_hotpath_entry" in ids
     assert "wiki_kb_hotpath_entry" in ids
+    assert "bare_list_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -166,6 +167,34 @@ def test_wiki_kb_hotpath_writes(tmp_path, monkeypatch):
     )
     assert skipped.get("answer") == "x"
     assert fqa.list_audit_snapshots(tenant_id="t-wk", db_path=db)["count"] == 1
+
+
+def test_bare_list_hotpath_writes(tmp_path, monkeypatch):
+    """裸 wiki/kb list 热路径落 Query 快照；空 tenant 跳过。"""
+    db = str(tmp_path / "fqa-bl.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+    fqa.maybe_record_bare_list_hotpath(
+        tenant_id="t-bl",
+        hits=[{"title": "p1", "source": "s1", "text": "x"}],
+        channel="wiki",
+        query="bare?",
+        db_path=db,
+    )
+    listed = fqa.list_audit_snapshots(tenant_id="t-bl", db_path=db)
+    assert listed["count"] == 1
+    item = listed["items"][0]
+    assert item["runtime_authority"] == "bare_list_retrieve"
+    assert (item.get("meta") or {}).get("op") == "bare_list_retrieve"
+    assert (item.get("meta") or {}).get("channel") == "wiki"
+
+    fqa.maybe_record_bare_list_hotpath(
+        tenant_id="",
+        hits=[{"title": "x"}],
+        channel="kb",
+        db_path=db,
+    )
+    assert fqa.list_audit_snapshots(tenant_id="t-bl", db_path=db)["count"] == 1
 
 
 def test_fact_requires_after_snapshot(tmp_path):

@@ -9,7 +9,7 @@ pilot_domain: lock-service
 
 # Phase 2 / N19 Fact/Query 统一审计证据
 
-> 实施权威：附录 N N19 deepen（运行时权威与审计快照统一 + put_fact/Gateway/query_facts/MaterialsChat/GraphRAG/Wiki-KB 热路径）。  
+> 实施权威：附录 N N19 deepen（运行时权威与审计快照统一 + put_fact/Gateway/query_facts/MaterialsChat/GraphRAG/Wiki-KB/裸 list syscall 热路径）。  
 > **未宣称** N19 certified / 全部旁路入口强制落盘 / N24 全量总线合并。
 
 ## 检查表
@@ -29,6 +29,7 @@ pilot_domain: lock-service
 | MaterialsChat 直出旁路 | pass | suite `materials_chat_hotpath_entry` |
 | GraphRAG 旁路 | pass | suite `graphrag_hotpath_entry` |
 | Wiki/KB 旁路 | pass | suite `wiki_kb_hotpath_entry` |
+| 裸 list syscall 旁路 | pass | suite `bare_list_hotpath_entry` |
 | certified 恒 false | pass | suite / gate honesty |
 
 ## 命令
@@ -36,7 +37,7 @@ pilot_domain: lock-service
 ```bash
 PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
   aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_fact_query_audit_phase2.py -v
-# 预期：8 passed
+# 预期：9 passed
 ```
 
 ## 接线
@@ -44,7 +45,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 | 入口 | 路径 |
 |------|------|
 | 核心 | `record_audit_snapshot` / `maybe_record_*_hotpath` / suite/gate |
-| 热路径 | `put_fact` + `unified_query_gateway` + `query_facts_gateway` + `query_facts` list + MaterialsChat `_n21_enforce_*` + GraphRAG `attach_graphrag_n21_envelope` + Wiki/KB `attach_list_retrieve_n21_envelope` / `query_*_with_abstain`（上层调用关下层防双写；直出与 Gateway 分立）→ best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`） |
+| 热路径 | `put_fact` + `unified_query_gateway` + `query_facts_gateway` + `query_facts` list + MaterialsChat `_n21_enforce_*` + GraphRAG `attach_graphrag_n21_envelope` + Wiki/KB `attach_list_retrieve_n21_envelope` / `query_*_with_abstain` + 裸 `sys_wiki_retrieve`/`sys_kb_retrieve`（上层信封调用关 `record_hotpath_audit` 防双写；直出与 Gateway 分立）→ best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`） |
 | Facade / HTTP | 同名 + `/fde/fact-query-audit*` |
 | 配置 | `AIPLAT_FACT_QUERY_AUDIT_DB` / `AIPLAT_FACT_QUERY_AUDIT_HOTPATH` |
 

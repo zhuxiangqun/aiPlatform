@@ -31,7 +31,14 @@ def kb_retrieve(
 
     from core.harness.syscalls.retrieval import sys_kb_retrieve
 
-    hits = sys_kb_retrieve(query, doc_ids, **kwargs)
+    call_kwargs = dict(kwargs)
+    tid = str(tenant_id or call_kwargs.get("tenant_id") or "")
+    if tenant_id is not None and "tenant_id" not in call_kwargs:
+        call_kwargs["tenant_id"] = tenant_id
+    if attach_n21_query:
+        # 为什么：信封侧 maybe_record_wiki_kb_hotpath；关裸 list 防双写
+        call_kwargs["record_hotpath_audit"] = False
+    hits = sys_kb_retrieve(query, doc_ids, **call_kwargs)
     if not attach_n21_query:
         return hits
     from core.harness.knowledge_pipeline.query_abstain_citations import (
@@ -42,6 +49,7 @@ def kb_retrieve(
         hits if isinstance(hits, list) else [],
         channel="kb",
         query=str(query or ""),
+        tenant_id=tid or str(call_kwargs.get("tenant_id") or ""),
     )
 
 
@@ -108,7 +116,12 @@ def wiki_retrieve(
     """
     from core.harness.syscalls.retrieval import sys_wiki_retrieve
 
-    hits = sys_wiki_retrieve(query, wiki_titles, **kwargs)
+    call_kwargs = dict(kwargs)
+    tid = str(call_kwargs.get("tenant_id") or "")
+    if attach_n21_query:
+        # 为什么：信封侧 maybe_record_wiki_kb_hotpath；关裸 list 防双写
+        call_kwargs["record_hotpath_audit"] = False
+    hits = sys_wiki_retrieve(query, wiki_titles, **call_kwargs)
     if not attach_n21_query:
         return hits
     from core.harness.knowledge_pipeline.query_abstain_citations import (
@@ -119,6 +132,7 @@ def wiki_retrieve(
         hits if isinstance(hits, list) else [],
         channel="wiki",
         query=str(query or ""),
+        tenant_id=tid,
     )
 
 

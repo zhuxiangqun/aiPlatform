@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T19:12:46+08:00",
+  "reviewed_at": "2026-11-21T19:22:32+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "569b9c781ccb349d38d3f43ea1fca93eddfb9f136245a751d201fd0726fe8a25",
-  "head_sha": "3499af3e9e1cd9da2c6127365e5d1481a2c8d70c",
+  "diff_sha256": "099aa11e39b5b0db61ebc4b42265beb84749ce10fc6522156e26671a24545809",
+  "head_sha": "197c7f5344daa862b2b0a2d3600a12b07b818415",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 Wiki/KB hotpath audit on list envelopes + query_*_with_abstain; certified/n19_full stay false; other Agent/Workbench bypasses still open."
+  "note": "N19 bare sys_wiki_retrieve/sys_kb_retrieve list hotpath audit; upper envelope disables record_hotpath_audit; certified/n19_full stay false; other Agent/Workbench bypasses still open."
 }
