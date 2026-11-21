@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T17:45:00+08:00",
+  "reviewed_at": "2026-11-21T18:02:36+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "212fb70c06a2a8f728cde416360c187f939f1d3eaf642ba496aaeaae9feade59",
-  "head_sha": "6b641fc8b61c592b8e87acfa2a122762949a5ca0",
+  "diff_sha256": "2844b991be29bcdd7a319c5c5e14541740e047a8ca8c320d6c8c055a17f63539",
+  "head_sha": "249cfab7d4769063a1af6a2a21d72291b33d5d7e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N20 query_facts_gateway hotpath attach-only; unified path disables double attach; certified/n20_full stay false."
+  "note": "N20 MaterialsChat hotpath attach-only on rag/shortcut/cache_hit; certified/n20_full stay false; Wiki/KB full surface still open."
 }
