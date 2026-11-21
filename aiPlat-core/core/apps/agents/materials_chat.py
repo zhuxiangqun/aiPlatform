@@ -93,6 +93,19 @@ def _n21_enforce_rag_output(
             logging.getLogger(__name__).debug(
                 "N19 materials_chat hotpath audit skipped", exc_info=True
             )
+        try:
+            # 为什么：N20 — 直出挂约束观测信封；与 unified Gateway _finish 分立
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_materials_chat_constraint_hotpath,
+            )
+
+            out = maybe_attach_materials_chat_constraint_hotpath(
+                out, exit_kind="rag"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N20 materials_chat constraint hotpath skipped", exc_info=True
+            )
     return out
 
 
@@ -139,6 +152,19 @@ def _n21_enforce_shortcut_output(
             logging.getLogger(__name__).debug(
                 "N19 materials shortcut hotpath audit skipped", exc_info=True
             )
+        try:
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_materials_chat_constraint_hotpath,
+            )
+
+            out = maybe_attach_materials_chat_constraint_hotpath(
+                out, exit_kind="shortcut"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N20 materials shortcut constraint hotpath skipped",
+                exc_info=True,
+            )
     return out
 
 
@@ -184,6 +210,19 @@ def _n21_enforce_cache_hit_output(
         except Exception:
             logging.getLogger(__name__).debug(
                 "N19 materials cache_hit hotpath audit skipped", exc_info=True
+            )
+        try:
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_materials_chat_constraint_hotpath,
+            )
+
+            out = maybe_attach_materials_chat_constraint_hotpath(
+                out, exit_kind="cache_hit"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N20 materials cache_hit constraint hotpath skipped",
+                exc_info=True,
             )
     return out
 

@@ -3,8 +3,8 @@
 职责：
   - 按标准分层评估约束：L1 硬门 / L2 软约束 / L3 审计
   - 强制 ``L1 > L2 > L3``：高风险无 L1 拒绝；L2 不得单独作安全边界
-  - unified_query_gateway / put_fact / query_facts_gateway 热路径
-    best-effort 挂 ``n20_constraint``（可 env 关闭）
+  - unified_query_gateway / put_fact / query_facts_gateway / MaterialsChat
+    热路径 best-effort 挂 ``n20_constraint``（可 env 关闭）
   - 套件/门槛门：``certified`` / ``n20_full`` 恒 false
 
 非目标：
@@ -33,6 +33,7 @@ _SUITE_CASES = (
     "gateway_hotpath_entry",
     "put_fact_hotpath_entry",
     "query_facts_gateway_hotpath_entry",
+    "materials_chat_hotpath_entry",
 )
 
 _LAYERS = ("L1", "L2", "L3")
@@ -364,6 +365,68 @@ def maybe_attach_query_facts_gateway_constraint_hotpath(
         return resp
 
 
+def maybe_attach_materials_chat_constraint_hotpath(
+    output: Optional[Dict[str, Any]],
+    *,
+    exit_kind: str = "rag",
+    actor_permissions: Optional[Sequence[str]] = None,
+    risk_level: str = "medium",
+) -> Dict[str, Any]:
+    """MaterialsChat 直出旁路热路径 best-effort 挂 ``n20_constraint``。
+
+    Args:
+        output: N21 enforce 后的 Agent 输出。
+        exit_kind: ``rag`` / ``shortcut`` / ``cache_hit``。
+        actor_permissions: 调用方权限（缺省视为可读）。
+        risk_level: 风险等级。
+    """
+    out = dict(output) if isinstance(output, dict) else {}
+    if not hotpath_constraint_enabled():
+        return out
+    try:
+        perms = [str(p).strip() for p in (actor_permissions or []) if str(p).strip()]
+        if not perms:
+            perms = ["kb:read"]
+        kind = (exit_kind or "rag").strip() or "rag"
+        stack = evaluate_constraint_stack(
+            risk_level=risk_level or "medium",
+            required_permissions=["kb:read"],
+            actor_permissions=perms,
+            soft_constraints=[
+                {
+                    "id": "materials_prefer_citations",
+                    "message": "prefer citations on materials knowledge hits",
+                }
+            ],
+            require_audit=True,
+            l1_present=True,
+        )
+        # 为什么：直出已完成；信封仅观测，不改 N21 abstain/citations 或 gateway_f1
+        out["n20_constraint"] = {
+            "ok": stack.get("ok"),
+            "blocked": stack.get("blocked"),
+            "block_reason": stack.get("block_reason") or "",
+            "layers_fired": list(stack.get("layers_fired") or []),
+            "warnings": list(stack.get("warnings") or []),
+            "audit": stack.get("audit") or {},
+            "route": "materials_chat",
+            "op": "materials_chat",
+            "exit": kind,
+            "hotpath": True,
+            "enforced": False,
+            "certified": False,
+            "n20_full_conformance": False,
+        }
+        return out
+    except Exception as exc:
+        logger.warning(
+            "constraint_layers materials_chat hotpath failed: %s",
+            exc,
+            exc_info=True,
+        )
+        return out
+
+
 def evaluate_constraint_layers_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -399,9 +462,9 @@ def evaluate_constraint_layers_gate(
         "certified": False,
         "n20_full_conformance": False,
         "note": (
-            "Constraint layers + Gateway/put_fact/query_facts_gateway "
-            "hotpath deepen; not N20 certified / not full surface / "
-            "not Lv4 redesign"
+            "Constraint layers + Gateway/put_fact/query_facts_gateway/"
+            "MaterialsChat hotpath deepen; not N20 certified / not full "
+            "surface / not Lv4 redesign"
         ),
     }
 
@@ -551,6 +614,21 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         }
     )
 
+    from core.apps.agents import materials_chat as mc
+
+    mc_src = (
+        inspect.getsource(mc._n21_enforce_rag_output)
+        + inspect.getsource(mc._n21_enforce_shortcut_output)
+        + inspect.getsource(mc._n21_enforce_cache_hit_output)
+    )
+    cases.append(
+        {
+            "id": "materials_chat_hotpath_entry",
+            "ok": "maybe_attach_materials_chat_constraint_hotpath" in mc_src,
+            "detail": "",
+        }
+    )
+
     passed = sum(1 for c in cases if c.get("ok"))
     return {
         "ok": passed == len(_SUITE_CASES),
@@ -561,7 +639,7 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         "n20_full_conformance": False,
         "measured_at": time.time(),
         "note": (
-            "Constraint layers + Gateway/put_fact/query_facts_gateway "
-            "hotpath deepen; not full surface / not certified"
+            "Constraint layers + Gateway/put_fact/query_facts_gateway/"
+            "MaterialsChat hotpath deepen; not full surface / not certified"
         ),
     }

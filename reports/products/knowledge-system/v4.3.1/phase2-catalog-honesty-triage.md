@@ -34,7 +34,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 | N17 | 记录级语义运行时权威 deepen 已接线；非 RBAC 真源 / 非全量 cases | **并入既有刀**（deepen）+ **仍开放**（全量） | deepen 见 ADR N17 + `phase2-record-semantics-evidence.md`；全量仍开放 |
 | N18 | 部署侧 RBAC 真源 deepen 已接线；非召回全路径 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（全路径） | deepen 见 ADR N18 + `phase2-deployed-rbac-evidence.md`；全路径仍开放 |
 | N19 | Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat 热路径 deepen 已接线；非全部旁路强制 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（旁路全量） | deepen 见 ADR N19 + `phase2-fact-query-audit-evidence.md`；旁路全量仍开放 |
-| N20 | 知识面 L1>L2>L3 + Gateway/put_fact/query_facts_gateway 热路径信封 deepen 已接线；非全域强制 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（全域） | deepen 见 ADR N20 + `phase2-constraint-layers-evidence.md`；全域仍开放 |
+| N20 | 知识面 L1>L2>L3 + Gateway/put_fact/query_facts_gateway/MaterialsChat 热路径信封 deepen 已接线；非全域强制 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（全域） | deepen 见 ADR N20 + `phase2-constraint-layers-evidence.md`；全域仍开放 |
 | N21 | Fact/object_set + Wiki/KB + Materials RAG/trivial/cache_hit + GraphRAG + list n21_query 信封 deepen 已接线；非改写 list 主返回类型 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（主返回类型改写） | deepen 见 ADR N21 + `phase2-query-abstain-citations-evidence.md`；list 主类型仍开放 |
 | N14 生产对账 | Raw↔Fact↔Index 全链路 deepen 已接线；非生产切写认证 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（生产认证） | deepen 见 ADR N14 + `phase2-raw-fact-index-reconcile-evidence.md`；生产认证仍开放 |
 
