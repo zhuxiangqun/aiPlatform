@@ -16,7 +16,8 @@ pilot_domain: lock-service
 > materialize / 写总线列表见 Batch J13：`phase2-unified-audit-ui-materialize-evidence.md`。  
 > bus suite/gate 见 Batch J14：`phase2-unified-audit-ui-bus-gate-evidence.md`。  
 > 薄 append 见 Batch J15：`phase2-unified-audit-ui-append-evidence.md`。  
-> append refs/payload 见 Batch J16：`phase2-unified-audit-ui-append-payload-evidence.md`。
+> append refs/payload 见 Batch J16：`phase2-unified-audit-ui-append-payload-evidence.md`。  
+> 事件详情 / bus event_type 过滤见 Batch J17：`phase2-unified-audit-ui-event-detail-evidence.md`。
 
 ## 检查表
 

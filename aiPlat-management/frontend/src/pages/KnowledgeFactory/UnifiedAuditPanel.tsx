@@ -1,8 +1,9 @@
 /**
- * UnifiedAuditPanel — N24 Batch J4/J12–J16 统一审计管理端薄 UI。
+ * UnifiedAuditPanel — N24 Batch J4/J12–J17 统一审计管理端薄 UI。
  *
  * 经 FDE `/unified-audit*` → CoreFacade；J12 流过滤；J13 materialize；
- * J14 view/bus suite·gate；J15 薄 append；J16 payload/refs JSON；不宣称 certified。
+ * J14 view/bus suite·gate；J15 薄 append；J16 payload/refs；J17 事件详情 +
+ * bus event_type 过滤；不宣称 certified。
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
@@ -17,6 +18,8 @@ type UnifiedEvent = {
   occurred_at?: number | string;
   actor?: string;
   subject?: string;
+  refs?: Record<string, unknown>;
+  payload?: Record<string, unknown>;
 };
 
 function detailMessage(detail: unknown): string {
@@ -41,6 +44,25 @@ function parseOptionalJsonObject(raw: string, field: string): Record<string, unk
     throw new Error(`${field} 须为 JSON 对象`);
   }
   return parsed as Record<string, unknown>;
+}
+
+function formatOccurredAt(raw: number | string | undefined): string {
+  if (raw === undefined || raw === null || raw === '') return '—';
+  const n = typeof raw === 'number' ? raw : Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return String(raw);
+  try {
+    return new Date(n * (n > 1e12 ? 1 : 1000)).toISOString();
+  } catch {
+    return String(raw);
+  }
+}
+
+function prettyJson(value: unknown): string {
+  try {
+    return JSON.stringify(value ?? {}, null, 2);
+  } catch {
+    return String(value);
+  }
 }
 
 const STREAM_OPTIONS = [
@@ -73,10 +95,21 @@ const UnifiedAuditPanel: React.FC = () => {
   const [appendActor, setAppendActor] = useState('ui');
   const [appendRefsJson, setAppendRefsJson] = useState('{}');
   const [appendPayloadJson, setAppendPayloadJson] = useState('{}');
+  const [eventTypeFilter, setEventTypeFilter] = useState('');
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   const q = (extra: Record<string, string> = {}) => {
     const p = new URLSearchParams({ tenant_id: tenantId.trim(), ...extra });
     return p.toString();
+  };
+
+  const applyBusEvents = (list: UnifiedEvent[]) => {
+    setEvents(list);
+    setStreams(
+      Array.from(
+        new Set(list.map((e) => e.stream).filter((s): s is string => Boolean(s))),
+      ),
+    );
   };
 
   const reload = useCallback(async () => {
@@ -86,6 +119,7 @@ const UnifiedAuditPanel: React.FC = () => {
       if (viewMode === 'bus') {
         const extra: Record<string, string> = { limit: '80' };
         if (streamFilter !== 'all') extra.stream = streamFilter;
+        if (eventTypeFilter.trim()) extra.event_type = eventTypeFilter.trim();
         const r = await fetch(API(`/unified-audit/bus?${q(extra)}`));
         const body = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(detailMessage(body.detail));
@@ -93,16 +127,7 @@ const UnifiedAuditPanel: React.FC = () => {
           // 为什么：UI 侧诚实锁，与 suite/gate 一致
           toast?.error?.('写总线列表误标 certified — 违反诚实锁');
         }
-        setEvents(body.events || []);
-        setStreams(
-          Array.from(
-            new Set(
-              ((body.events || []) as UnifiedEvent[])
-                .map((e) => e.stream)
-                .filter((s): s is string => Boolean(s)),
-            ),
-          ),
-        );
+        applyBusEvents(body.events || []);
       } else {
         const extra: Record<string, string> = { limit: '80' };
         if (streamFilter !== 'all') extra.streams = streamFilter;
@@ -125,7 +150,7 @@ const UnifiedAuditPanel: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [tenantId, streamFilter, packageId, actionPrefix, viewMode]);
+  }, [tenantId, streamFilter, packageId, actionPrefix, viewMode, eventTypeFilter]);
 
   useEffect(() => {
     void reload();
@@ -208,20 +233,10 @@ const UnifiedAuditPanel: React.FC = () => {
       } else {
         const extra: Record<string, string> = { limit: '80' };
         if (streamFilter !== 'all') extra.stream = streamFilter;
+        if (eventTypeFilter.trim()) extra.event_type = eventTypeFilter.trim();
         const list = await fetch(API(`/unified-audit/bus?${q(extra)}`));
         const body = await list.json().catch(() => ({}));
-        if (list.ok) {
-          setEvents(body.events || []);
-          setStreams(
-            Array.from(
-              new Set(
-                ((body.events || []) as UnifiedEvent[])
-                  .map((e) => e.stream)
-                  .filter((s): s is string => Boolean(s)),
-              ),
-            ),
-          );
-        }
+        if (list.ok) applyBusEvents(body.events || []);
       }
     } catch (e: unknown) {
       toast?.error?.((e as Error)?.message || 'append 失败');
@@ -270,9 +285,9 @@ const UnifiedAuditPanel: React.FC = () => {
       <CardHeader className="flex flex-row items-center justify-between gap-2 py-3 px-4">
         <div className="flex items-center gap-2 text-sm text-gray-200">
           <ListTree className="h-4 w-4 text-sky-300/90" />
-          <span>Unified Audit（N24 J4/J12–J16）</span>
+          <span>Unified Audit（N24 J4/J12–J17）</span>
           <span className="text-[11px] text-gray-500 font-normal">
-            汇合 + materialize + append(+payload/refs) · 非 certified
+            汇合 + bus 详情/过滤 · 非 certified
           </span>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
@@ -303,7 +318,8 @@ const UnifiedAuditPanel: React.FC = () => {
       <CardContent className="space-y-4 px-4 pb-4">
         <p className="text-[11px] text-gray-500 leading-relaxed">
           汇合 Package / ActionExecution / revision_audit / action_store / fact_query_audit；
-          J13 materialize；J14 suite/gate；J15 薄 append；J16 可选 refs/payload JSON。不宣称 certified。
+          J13 materialize；J14 suite/gate；J15–J16 append；J17 事件详情展开 + bus
+          event_type 过滤。不宣称 certified。
         </p>
 
         <div className="flex gap-2 text-[11px]">
@@ -368,6 +384,17 @@ const UnifiedAuditPanel: React.FC = () => {
               placeholder="e.g. knowledge_revision:"
             />
           </label>
+          {viewMode === 'bus' && (
+            <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
+              event_type（写总线过滤，可选）
+              <input
+                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
+                value={eventTypeFilter}
+                onChange={(e) => setEventTypeFilter(e.target.value)}
+                placeholder="exact event_type"
+              />
+            </label>
+          )}
         </div>
 
         {gateNote && (
@@ -476,17 +503,46 @@ const UnifiedAuditPanel: React.FC = () => {
         {events.length === 0 ? (
           <div className="text-[11px] text-gray-500">暂无事件（检查 tenant / 过滤条件）</div>
         ) : (
-          <ul className="max-h-56 overflow-auto space-y-1.5 text-[11px] font-mono text-gray-400">
-            {events.map((ev, i) => (
-              <li
-                key={`${ev.stream || ''}-${ev.event_id || ''}-${i}`}
-                className="rounded border border-gray-800/80 bg-gray-950/40 px-2 py-1.5"
-              >
-                <span className="text-sky-300/90">[{ev.stream || '?'}]</span>{' '}
-                {ev.event_type || '?'} · {ev.subject || ev.event_id || '—'}
-                {ev.actor ? ` · ${ev.actor}` : ''}
-              </li>
-            ))}
+          <ul className="max-h-72 overflow-auto space-y-1.5 text-[11px] font-mono text-gray-400">
+            {events.map((ev, i) => {
+              const key = `${ev.stream || ''}-${ev.event_id || ''}-${i}`;
+              const open = expandedKey === key;
+              return (
+                <li
+                  key={key}
+                  className="rounded border border-gray-800/80 bg-gray-950/40 px-2 py-1.5"
+                >
+                  <button
+                    type="button"
+                    className="w-full text-left hover:text-gray-200"
+                    onClick={() => setExpandedKey(open ? null : key)}
+                  >
+                    <span className="text-sky-300/90">[{ev.stream || '?'}]</span>{' '}
+                    {ev.event_type || '?'} · {ev.subject || ev.event_id || '—'}
+                    {ev.actor ? ` · ${ev.actor}` : ''}
+                    <span className="text-gray-600"> · {open ? '收起' : '详情'}</span>
+                  </button>
+                  {open && (
+                    <div className="mt-2 space-y-1.5 border-t border-gray-800/80 pt-2 text-gray-500">
+                      <div>event_id: {ev.event_id || '—'}</div>
+                      <div>occurred_at: {formatOccurredAt(ev.occurred_at)}</div>
+                      <div>
+                        <div className="text-gray-600 mb-0.5">refs</div>
+                        <pre className="whitespace-pre-wrap break-all rounded bg-black/30 p-1.5 text-[10px] text-gray-400">
+                          {prettyJson(ev.refs)}
+                        </pre>
+                      </div>
+                      <div>
+                        <div className="text-gray-600 mb-0.5">payload</div>
+                        <pre className="whitespace-pre-wrap break-all rounded bg-black/30 p-1.5 text-[10px] text-gray-400">
+                          {prettyJson(ev.payload)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

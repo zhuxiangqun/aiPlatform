@@ -84,6 +84,7 @@ authority: supporting
 | [phase2-unified-audit-ui-bus-gate-evidence.md](./phase2-unified-audit-ui-bus-gate-evidence.md) | N24 J14：UI 按模式调用 view/bus suite·gate（非 certified） |
 | [phase2-unified-audit-ui-append-evidence.md](./phase2-unified-audit-ui-append-evidence.md) | N24 J15：UI 写总线薄 append（非 certified） |
 | [phase2-unified-audit-ui-append-payload-evidence.md](./phase2-unified-audit-ui-append-payload-evidence.md) | N24 J16：UI append 可选 refs/payload JSON（非 certified） |
+| [phase2-unified-audit-ui-event-detail-evidence.md](./phase2-unified-audit-ui-event-detail-evidence.md) | N24 J17：UI 事件详情展开 + bus event_type 过滤（非 certified） |
 | [phase2-unified-audit-bus-evidence.md](./phase2-unified-audit-bus-evidence.md) | Batch J5 N24 Unified Audit 写总线（非 ActionStore 合并/非 certified） |
 | [phase2-unified-audit-hotpath-evidence.md](./phase2-unified-audit-hotpath-evidence.md) | Batch J6 N24 Package/Action 热路径写总线（非 ActionStore 合并/非 certified） |
 | [phase2-unified-audit-action-store-evidence.md](./phase2-unified-audit-action-store-evidence.md) | Batch J7 N24 ActionStore.action_audit 汇入统一审计（非 certified） |

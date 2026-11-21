@@ -40,3 +40,5 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 - JSON schema 校验器 / 可视化编辑器 / 全量运维台
 - N24 / 附录 N 全量认证
+
+> 事件详情展开 / bus event_type 过滤见 Batch J17：`phase2-unified-audit-ui-event-detail-evidence.md`。
