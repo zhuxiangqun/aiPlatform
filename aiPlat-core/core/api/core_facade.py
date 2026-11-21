@@ -5336,6 +5336,150 @@ def publish_ontology_package(
     )
 
 
+def submit_object_type_draft(
+    *,
+    tenant_id: str,
+    object_type_id: str,
+    version: str,
+    definition: Dict[str, Any],
+    actor: str,
+    reason: str,
+) -> Dict[str, Any]:
+    """N02 deepen：提交 ObjectType 草稿（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 类型 id。
+        version: 版本。
+        definition: 类型定义。
+        actor: 提交人。
+        reason: 理由。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        submit_object_type_draft as _submit,
+    )
+
+    return _submit(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        version=version,
+        definition=definition,
+        actor=actor,
+        reason=reason,
+    )
+
+
+def transition_object_type(
+    *,
+    tenant_id: str,
+    object_type_id: str,
+    version: str,
+    to_status: str,
+    actor: str,
+    reason: str,
+    role: str = "",
+) -> Dict[str, Any]:
+    """N02 deepen：ObjectType 状态转换（publish 须角色门）。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 类型 id。
+        version: 版本。
+        to_status: 目标态。
+        actor: 操作人。
+        reason: 理由。
+        role: 上游角色。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        transition_object_type as _transition,
+    )
+
+    return _transition(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        version=version,
+        to_status=to_status,
+        actor=actor,
+        reason=reason,
+        role=role,
+    )
+
+
+def get_published_object_type(
+    *,
+    tenant_id: str,
+    object_type_id: str,
+    version: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """N02 deepen：读取已发布 ObjectType。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 类型 id。
+        version: 可选版本。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        get_published_object_type as _get,
+    )
+
+    return _get(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        version=version,
+    )
+
+
+def list_object_type_versions(
+    *,
+    tenant_id: str,
+    object_type_id: str = "",
+    status: str = "",
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    """N02 deepen：列出 ObjectType 版本行。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 可选类型过滤。
+        status: 可选状态过滤。
+        limit: 条数上限。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        list_object_type_versions as _list,
+    )
+
+    return _list(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        status=status,
+        limit=limit,
+    )
+
+
+def run_object_type_publish_suite() -> Dict[str, Any]:
+    """N02 deepen：ObjectType 人审发布套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        run_object_type_publish_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_object_type_publish_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N02 deepen：ObjectType 人审发布门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_object_type_publish_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        evaluate_object_type_publish_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def get_ontology_package(
     package_id: str,
     *,

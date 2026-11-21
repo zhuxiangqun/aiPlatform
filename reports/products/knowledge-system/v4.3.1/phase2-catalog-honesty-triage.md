@@ -26,7 +26,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 
 | ID | catalog note 摘要 | 判定 | 后续 |
 |----|-------------------|------|------|
-| N02 | 缺全量 ObjectType 人审发布流水线 | **仍开放** | 独立刀 `n02-a`；不并入 N24 Package 最小切片 |
+| N02 | ObjectType 人审发布 deepen 已接线；全量门户/种子替换仍缺 | **并入既有刀**（deepen）+ **仍开放**（全量门户） | deepen 见 ADR N02 + `phase2-object-type-publish-evidence.md`；全量门户仍开放 |
 | N05 | 非 Wiki 全量 / certified | **仍开放** | 独立刀 `n05-a`；不并入 N06 Gateway |
 | N10 | 非全知识域 gold 流水线 | **并入既有刀**（部分）+ **仍开放**（gold） | 校准门槛并入 ADR「N13/校准」；全域 gold 仍开放 → `n10-a` |
 | N15 | 标准包 schema 已发布 | **已过时**（无 deepen 债） | 保持 exists；无单独 deepen todo |

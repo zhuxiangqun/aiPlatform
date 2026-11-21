@@ -218,10 +218,22 @@ def publish_package(
         if not isinstance(d, dict) or not d.get("package") or not d.get("version"):
             return {"status": "invalid", "error": "dependency_incomplete"}
 
+    schema_list = list(schema or [])
+    # N02 deepen：可选强制 schema ObjectType 已人审发布（默认关）
+    try:
+        from core.harness.knowledge_pipeline.object_type_publish import (
+            ObjectTypePublishError,
+            assert_schema_object_types_published,
+        )
+
+        assert_schema_object_types_published(tenant_id=tid, schema=schema_list)
+    except ObjectTypePublishError as exc:
+        return {"status": "invalid", "error": str(exc)}
+
     payload: Dict[str, Any] = {
         "package_id": pid,
         "version": ver,
-        "schema": list(schema or []),
+        "schema": schema_list,
         "actions": list(actions or []),
         "functions": list(functions or []),
         "interfaces": list(interfaces or []),
