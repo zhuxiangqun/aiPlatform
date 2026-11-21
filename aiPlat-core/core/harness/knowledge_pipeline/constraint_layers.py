@@ -4,12 +4,13 @@
   - 按标准分层评估约束：L1 硬门 / L2 软约束 / L3 审计
   - 强制 ``L1 > L2 > L3``：高风险无 L1 拒绝；L2 不得单独作安全边界
   - unified_query_gateway / put_fact / query_facts_gateway / MaterialsChat /
-    GraphRAG / Wiki-KB 热路径 best-effort 挂 ``n20_constraint``（可 env 关闭）
+    GraphRAG / Wiki-KB / 裸 list syscall 热路径 best-effort 挂 ``n20_constraint``
+    （可 env 关闭；裸 list 仍为 list 主返回）
   - 套件/门槛门：``certified`` / ``n20_full`` 恒 false
 
 非目标：
   - 不重写 ActionRegistry / PolicyGate 全路径
-  - 不宣称知识面全域（裸 list retrieve 全入口等）已完整分层强制
+  - 不改写 ``sys_wiki_retrieve`` / ``sys_kb_retrieve`` list 主返回类型为 dict
   - 不并入 N08 Lv4 误报门
   - 不宣称 N20 certified
 """
@@ -36,6 +37,7 @@ _SUITE_CASES = (
     "materials_chat_hotpath_entry",
     "graphrag_hotpath_entry",
     "wiki_kb_hotpath_entry",
+    "bare_list_hotpath_entry",
 )
 
 _LAYERS = ("L1", "L2", "L3")
@@ -549,6 +551,78 @@ def maybe_attach_wiki_kb_constraint_hotpath(
         return out
 
 
+class ConstraintAwareHitList(list):
+    """保留 list 主返回类型，附带 ``n20_constraint`` 观测属性。"""
+
+    n20_constraint: Dict[str, Any]
+
+
+def maybe_stamp_bare_list_constraint_hotpath(
+    hits: Optional[Sequence[Any]],
+    *,
+    channel: str = "wiki",
+    actor_permissions: Optional[Sequence[str]] = None,
+    risk_level: str = "medium",
+) -> List[Any]:
+    """裸 ``sys_wiki_retrieve`` / ``sys_kb_retrieve`` list 热路径挂约束观测。
+
+    保持 list 主返回（``isinstance(..., list)`` 为真）；观测挂在
+    ``ConstraintAwareHitList.n20_constraint``，不改写为 dict 信封。
+
+    Args:
+        hits: 命中列表。
+        channel: ``wiki`` / ``kb``。
+        actor_permissions: 调用方权限（缺省视为可读）。
+        risk_level: 风险等级。
+    """
+    rows = list(hits or [])
+    if not hotpath_constraint_enabled():
+        return rows
+    try:
+        perms = [str(p).strip() for p in (actor_permissions or []) if str(p).strip()]
+        if not perms:
+            perms = ["kb:read"]
+        ch = (channel or "wiki").strip() or "wiki"
+        stack = evaluate_constraint_stack(
+            risk_level=risk_level or "medium",
+            required_permissions=["kb:read"],
+            actor_permissions=perms,
+            soft_constraints=[
+                {
+                    "id": "bare_list_prefer_citations",
+                    "message": "prefer citations on bare wiki/kb list hits",
+                }
+            ],
+            require_audit=True,
+            l1_present=True,
+        )
+        # 为什么：禁止把 list 改成 dict（N21 诚实锁）；用 list 子类挂观测属性
+        out = ConstraintAwareHitList(rows)
+        out.n20_constraint = {
+            "ok": stack.get("ok"),
+            "blocked": stack.get("blocked"),
+            "block_reason": stack.get("block_reason") or "",
+            "layers_fired": list(stack.get("layers_fired") or []),
+            "warnings": list(stack.get("warnings") or []),
+            "audit": stack.get("audit") or {},
+            "route": ch,
+            "op": "bare_list_retrieve",
+            "channel": ch,
+            "hotpath": True,
+            "enforced": False,
+            "certified": False,
+            "n20_full_conformance": False,
+        }
+        return out
+    except Exception as exc:
+        logger.warning(
+            "constraint_layers bare list hotpath failed: %s",
+            exc,
+            exc_info=True,
+        )
+        return rows
+
+
 def evaluate_constraint_layers_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -585,8 +659,8 @@ def evaluate_constraint_layers_gate(
         "n20_full_conformance": False,
         "note": (
             "Constraint layers + Gateway/put_fact/query_facts_gateway/"
-            "MaterialsChat/GraphRAG/Wiki-KB hotpath deepen; not N20 "
-            "certified / not full surface / not Lv4 redesign"
+            "MaterialsChat/GraphRAG/Wiki-KB/bare-list hotpath deepen; "
+            "not N20 certified / not list→dict rewrite / not Lv4 redesign"
         ),
     }
 
@@ -775,6 +849,30 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         }
     )
 
+    from core.harness.syscalls import retrieval as ret
+
+    bare_src = (
+        inspect.getsource(ret.sys_kb_retrieve)
+        + inspect.getsource(ret._sync_wiki_retrieve)
+    )
+    stamped = maybe_stamp_bare_list_constraint_hotpath(
+        [{"title": "t1", "text": "x"}], channel="wiki"
+    )
+    cases.append(
+        {
+            "id": "bare_list_hotpath_entry",
+            "ok": (
+                "maybe_stamp_bare_list_constraint_hotpath" in bare_src
+                and isinstance(stamped, list)
+                and isinstance(stamped, ConstraintAwareHitList)
+                and isinstance(getattr(stamped, "n20_constraint", None), dict)
+                and stamped.n20_constraint.get("op") == "bare_list_retrieve"
+                and stamped.n20_constraint.get("certified") is False
+            ),
+            "detail": "",
+        }
+    )
+
     passed = sum(1 for c in cases if c.get("ok"))
     return {
         "ok": passed == len(_SUITE_CASES),
@@ -786,7 +884,7 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         "measured_at": time.time(),
         "note": (
             "Constraint layers + Gateway/put_fact/query_facts_gateway/"
-            "MaterialsChat/GraphRAG/Wiki-KB hotpath deepen; not full "
-            "surface / not certified"
+            "MaterialsChat/GraphRAG/Wiki-KB/bare-list hotpath deepen; "
+            "not list→dict rewrite / not certified"
         ),
     }
