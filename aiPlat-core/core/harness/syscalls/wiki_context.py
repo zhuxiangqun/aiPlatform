@@ -18,7 +18,8 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
                      collection_ids: List[str] = None,
                      tenant_id: str = "",
                      actor_scopes: Optional[List[str]] = None,
-                     filter_by_markings: bool = False) -> Dict[str, Any]:
+                     filter_by_markings: bool = False,
+                     attach_n21_query: bool = True) -> Dict[str, Any]:
     u"""Return knowledge context for a question from the Wiki knowledge graph.
 
     Combines:
@@ -30,16 +31,19 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
         collection_ids: Wiki collections to search. Defaults to ["default"].
         actor_scopes: optional scopes for marking-aware filtering.
         filter_by_markings: if True, exclude entities the actor cannot access.
+        attach_n21_query: 为 True 时附加 ``n21_query`` 信封（不改 results list）。
 
     Returns:
       {results: [{title, text, score, tags, summary, source}],
        fts5_matches: [title],
-       related_pages: [{title, summary}]}
+       related_pages: [{title, summary}],
+       n21_query?: N21 查询形（可选）}
 
     边界:
       - 只读——不从 Wiki 页面读取中产生写操作
       - FTS5 和语义检索的分数不可直接比较
       - filter_by_markings=True 时结果可能少于 top_k
+      - 不改写 sys_wiki_retrieve list 主返回类型
     退路:
       - 需要全文 → 用 wiki_engine.read_page() 直接读取
       - 需要文档检索 → sys_kb_retrieve
@@ -169,11 +173,28 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
     if actor_scopes:
         results = _apply_field_level_security(results, actor_scopes, cids[0])
 
-    return {
+    out = {
         "results": results,
         "fts5_matches": fts5_matches,
         "related_pages": related_pages[:10],
     }
+    if attach_n21_query:
+        # 为什么：list 主结构保留；Q&A 消费方可读 n21_query 防假绿
+        try:
+            from core.harness.knowledge_pipeline.query_abstain_citations import (
+                attach_list_retrieve_n21_envelope,
+            )
+
+            out = attach_list_retrieve_n21_envelope(
+                out,
+                channel="wiki_context",
+                query=question or "",
+            )
+        except Exception as e:
+            logging.warning(
+                "sys_wiki_context n21_query attach failed: %s", e, exc_info=True
+            )
+    return out
 
 
 def _filter_by_markings(

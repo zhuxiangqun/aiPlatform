@@ -41,7 +41,7 @@ authority: supporting
 | [phase2-deployed-rbac-evidence.md](./phase2-deployed-rbac-evidence.md) | N18 deepen：部署侧 RBAC 真源（禁 reference_policy 权威；非全路径/非 certified） |
 | [phase2-fact-query-audit-evidence.md](./phase2-fact-query-audit-evidence.md) | N19 deepen：Fact/Query 统一审计快照（非热路径强制/非 certified） |
 | [phase2-constraint-layers-evidence.md](./phase2-constraint-layers-evidence.md) | N20 deepen：知识面 L1>L2>L3 约束栈（非全域强制/非 certified） |
-| [phase2-query-abstain-citations-evidence.md](./phase2-query-abstain-citations-evidence.md) | N21 deepen：abstain+citations + Wiki/KB + Materials RAG/trivial/cache_hit + GraphRAG（非 list API/非 certified） |
+| [phase2-query-abstain-citations-evidence.md](./phase2-query-abstain-citations-evidence.md) | N21 deepen：abstain+citations + Wiki/KB + Materials + GraphRAG + list n21_query（非改写 list 主类型/非 certified） |
 | [phase2-raw-fact-index-reconcile-evidence.md](./phase2-raw-fact-index-reconcile-evidence.md) | N14 deepen：Raw↔Fact↔Index 全链路对账（非生产切写认证/非 certified） |
 | [phase2-calibration-pipeline-evidence.md](./phase2-calibration-pipeline-evidence.md) | N13 deepen：Operational 校准流水线（查询路径封顶；非真实 ECE/非 certified） |
 | [phase2-ocs-enterprise-scan-evidence.md](./phase2-ocs-enterprise-scan-evidence.md) | N23 deepen：企业域 OCS 扫描（DomainRouter+词汇预注册；非全域完整/非 certified） |

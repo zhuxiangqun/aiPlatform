@@ -65,6 +65,15 @@ class GraphragBody(BaseModel):
     require_citations_on_hit: bool = True
 
 
+class ListShapeBody(BaseModel):
+    """Wiki/KB list 命中挂 n21_query。"""
+
+    hits: Any = Field(default_factory=list)
+    channel: str = "wiki"
+    query: str = ""
+    require_citations_on_hit: bool = True
+
+
 @router.post("/query-abstain-citations/validate")
 async def validate_query_abstain_citations_route(
     body: ValidateBody = Body(...),
@@ -223,6 +232,28 @@ async def attach_graphrag_n21_envelope_route(body: GraphragBody = Body(...)):
     try:
         return attach_graphrag_n21_envelope(
             result=body.result,
+            query=body.query,
+            require_citations_on_hit=body.require_citations_on_hit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/query-abstain-citations/list-shape")
+async def attach_list_retrieve_n21_envelope_route(
+    body: ListShapeBody = Body(...),
+):
+    """Wiki/KB list 命中挂 n21_query（不改 list 主结构）。
+
+    Args:
+        body: list 命中载荷。
+    """
+    from core.api.core_facade import attach_list_retrieve_n21_envelope
+
+    try:
+        return attach_list_retrieve_n21_envelope(
+            hits=body.hits,
+            channel=body.channel,
             query=body.query,
             require_citations_on_hit=body.require_citations_on_hit,
         )
