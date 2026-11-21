@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T21:56:42+08:00",
+  "reviewed_at": "2026-11-21T22:11:07+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "69319f4ea616b547049d94a858a5a3cd1026769d32af6cca80b002788ecfaaa2",
-  "head_sha": "8b292efc7e127832e423d0b55561b1a09e7d88ed",
+  "diff_sha256": "6b776ce0cddb6ec379f5407bca9cfcf939eeca1a297617568546fe4166c3b425",
+  "head_sha": "94b47f41793eb897fef08ceefa87c572d959a477",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 sys_ontology_context Fact/Query audit hotpath (channel=ontology_context) + pipeline tenant passthrough; certified/n19_full stay false; no N19 full cert claim."
+  "note": "N19 URN+HTTP audit only; empty tenant skip intentional; certified/n19_full always false; TripleStore tenant isolation residual. Local lock only."
 }
