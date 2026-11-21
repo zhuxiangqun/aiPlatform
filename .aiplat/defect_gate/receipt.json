@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T23:31:52+08:00",
+  "reviewed_at": "2026-11-21T23:46:31+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "9f6fc8e33b21b2925bbafd3fb2da8e3098dd4474c8dec808f3dc3af34df4d81f",
-  "head_sha": "8f979322f690f6832e11587f8e57ed21b0890fec",
+  "diff_sha256": "52954b80308f37608a3dc7cc08c2187028f0e81785fae1b080ba19b04f52c3fd",
+  "head_sha": "6da641f14e09be18a1ab537c1971704a7ce4f9d5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 wiki_engine.search_pages opt-in audit (default off); TripleStore tenant isolation still open; certified false. Local lock only."
+  "note": "TripleStore tenant filter on explicit tid; empty tid legacy full-scan intentional; platform ontology bypass not wired (documented). Not N09 certified."
 }
