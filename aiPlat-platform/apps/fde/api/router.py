@@ -59,6 +59,7 @@ from .knowledge_gold_eval_routes import router as _knowledge_gold_eval_router
 from .record_semantics_routes import router as _record_semantics_router
 from .deployed_rbac_routes import router as _deployed_rbac_router
 from .fact_query_audit_routes import router as _fact_query_audit_router
+from .constraint_layers_routes import router as _constraint_layers_router
 from .revision_restore_routes import router as _revision_restore_router
 from .unified_audit_routes import router as _unified_audit_router
 from .rapid_insight import router as _rapid_insight_router
@@ -116,6 +117,7 @@ router.include_router(_knowledge_gold_eval_router, prefix="/fde")
 router.include_router(_record_semantics_router, prefix="/fde")
 router.include_router(_deployed_rbac_router, prefix="/fde")
 router.include_router(_fact_query_audit_router, prefix="/fde")
+router.include_router(_constraint_layers_router, prefix="/fde")
 router.include_router(_revision_restore_router, prefix="/fde")
 router.include_router(_unified_audit_router, prefix="/fde")
 router.include_router(_rapid_insight_router, prefix="/fde")

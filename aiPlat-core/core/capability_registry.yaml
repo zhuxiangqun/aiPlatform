@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3115
+total_capabilities: 3122
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 646
+    caps_count: 653
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3758,6 +3758,34 @@ domains:
         module: aiPlat-platform/apps/fde/api/fact_query_audit_routes.py
         type: function
         signature: "POST /fde/fact-query-audit/snapshots via Facade"
+      - symbol: "classify_layer"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: classify L1/L2/L3 layer metadata"
+      - symbol: "evaluate_constraint_stack"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: evaluate L1>L2>L3 stack (certified=false)"
+      - symbol: "run_constraint_layers_suite"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: constraint layers suite (certified=false)"
+      - symbol: "evaluate_constraint_layers_gate"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: constraint layers gate (certified=false)"
+      - symbol: "ConstraintLayersError"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: class
+        signature: "N20: constraint layers contract error"
+      - symbol: "evaluate_knowledge_constraint_stack"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N20: Facade constraint stack (certified=false)"
+      - symbol: "evaluate_constraint_stack_route"
+        module: aiPlat-platform/apps/fde/api/constraint_layers_routes.py
+        type: function
+        signature: "POST /fde/constraint-layers/evaluate via Facade"
       - symbol: "project_facts_to_wiki"
         module: core/harness/knowledge_pipeline/wiki_rebuild.py
         type: function

@@ -1,0 +1,327 @@
+"""知识面 L1/L2/L3 约束分层（附录 N N20 deepen）。
+
+职责：
+  - 按标准分层评估约束：L1 硬门 / L2 软约束 / L3 审计
+  - 强制 ``L1 > L2 > L3``：高风险无 L1 拒绝；L2 不得单独作安全边界
+  - 套件/门槛门：``certified`` / ``n20_full`` 恒 false
+
+非目标：
+  - 不重写 ActionRegistry / PolicyGate 全路径
+  - 不宣称知识面全域已完整分层或 N20 certified
+  - 不并入 N08 Lv4 误报门
+"""
+from __future__ import annotations
+
+import logging
+import time
+from typing import Any, Dict, List, Optional, Sequence
+
+logger = logging.getLogger(__name__)
+
+_SUITE_CASES = (
+    "l1_blocks_missing_permission",
+    "l2_warn_not_block",
+    "l2_alone_high_risk_denied",
+    "l3_audit_required_flag",
+    "layer_order_l1_gt_l2_gt_l3",
+    "honesty_certified_false",
+)
+
+_LAYERS = ("L1", "L2", "L3")
+_HIGH_RISK = frozenset({"high", "critical"})
+
+
+class ConstraintLayersError(ValueError):
+    """约束分层契约错误。"""
+
+
+def classify_layer(layer: str) -> Dict[str, Any]:
+    """校验并返回层元数据。
+
+    Args:
+        layer: ``L1`` / ``L2`` / ``L3``。
+    """
+    ly = (layer or "").strip().upper()
+    if ly not in _LAYERS:
+        raise ConstraintLayersError("layer_must_be_L1_L2_L3")
+    meta = {
+        "L1": {
+            "name": "hard_gate",
+            "role": "block_illegal",
+            "security_boundary": True,
+        },
+        "L2": {
+            "name": "soft_constraint",
+            "role": "reduce_error",
+            "security_boundary": False,
+        },
+        "L3": {
+            "name": "audit",
+            "role": "accountability",
+            "security_boundary": False,
+        },
+    }[ly]
+    return {"ok": True, "layer": ly, **meta, "certified": False}
+
+
+def evaluate_constraint_stack(
+    *,
+    risk_level: str = "medium",
+    required_permissions: Optional[Sequence[str]] = None,
+    actor_permissions: Optional[Sequence[str]] = None,
+    soft_constraints: Optional[Sequence[Dict[str, Any]]] = None,
+    require_audit: bool = True,
+    l1_present: Optional = True,
+) -> Dict[str, Any]:
+    """评估知识面约束栈（L1→L2→L3）。
+
+    Args:
+        risk_level: 风险等级（low/medium/high/critical）。
+        required_permissions: L1 所需权限。
+        actor_permissions: 调用方已有权限。
+        soft_constraints: L2 软约束列表 ``[{id, message}]``。
+        require_audit: 是否要求 L3 审计标记。
+        l1_present: 是否声明存在 L1 门（高风险必须 True）。
+    """
+    risk = (risk_level or "medium").strip().lower() or "medium"
+    req = [str(p).strip() for p in (required_permissions or []) if str(p).strip()]
+    have = {str(p).strip() for p in (actor_permissions or []) if str(p).strip()}
+    soft = list(soft_constraints or [])
+    layers_fired: List[str] = []
+    warnings: List[str] = []
+    blocked = False
+    block_reason = ""
+
+    # 为什么：白皮书 L1>L2>L3 — 高风险无 L1 不得进入生产
+    if risk in _HIGH_RISK and not l1_present:
+        blocked = True
+        block_reason = "high_risk_requires_l1"
+        layers_fired.append("L1")
+    elif risk in _HIGH_RISK and not req and l1_present:
+        # L1 声明存在但无 required_permissions → 仍视为缺硬门
+        blocked = True
+        block_reason = "high_risk_l1_empty_permissions"
+        layers_fired.append("L1")
+    else:
+        # L1 权限硬门
+        if req:
+            layers_fired.append("L1")
+            missing = [p for p in req if p not in have and "*" not in have]
+            if missing:
+                blocked = True
+                block_reason = f"l1_policy_denied:{','.join(missing)}"
+
+    # L2 软约束：仅警告，不得单独作安全边界
+    if soft and not blocked:
+        layers_fired.append("L2")
+        for sc in soft:
+            if isinstance(sc, dict):
+                warnings.append(str(sc.get("message") or sc.get("id") or "soft"))
+            else:
+                warnings.append(str(sc))
+    elif soft and blocked:
+        # 仍记录 L2 曾评估（可观测）但不改裁决
+        layers_fired.append("L2")
+        for sc in soft:
+            if isinstance(sc, dict):
+                warnings.append(str(sc.get("message") or sc.get("id") or "soft"))
+
+    # 为什么：L2 不得单独作为高风险安全边界
+    if (
+        risk in _HIGH_RISK
+        and soft
+        and not req
+        and not l1_present
+        and block_reason == "high_risk_requires_l1"
+    ):
+        # already blocked
+        pass
+
+    # L3 审计标记（不替代 L1）
+    audit = {
+        "required": bool(require_audit),
+        "recorded": False if blocked else bool(require_audit),
+        "layer": "L3",
+    }
+    if require_audit:
+        layers_fired.append("L3")
+
+    # 去重保序
+    seen = set()
+    ordered = []
+    for ly in layers_fired:
+        if ly not in seen:
+            seen.add(ly)
+            ordered.append(ly)
+
+    # 为什么：classify_layer 须有生产调用者（method_verify）；栈评估时物化层元数据
+    layer_meta = {ly: classify_layer(ly) for ly in _LAYERS}
+
+    return {
+        "ok": not blocked,
+        "blocked": blocked,
+        "block_reason": block_reason,
+        "risk_level": risk,
+        "layers_fired": ordered,
+        "warnings": warnings,
+        "audit": audit,
+        "layer_meta": layer_meta,
+        "l1_security_boundary": bool(
+            (layer_meta.get("L1") or {}).get("security_boundary")
+        ),
+        "l2_security_boundary": bool(
+            (layer_meta.get("L2") or {}).get("security_boundary")
+        ),
+        "certified": False,
+        "n20_full_conformance": False,
+        "note": "Constraint stack deepen; not full knowledge-surface / not certified",
+    }
+
+
+def evaluate_constraint_layers_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N20 deepen 门槛门（certified / n20_full 恒 false）。
+
+    Args:
+        suite: ``run_constraint_layers_suite`` 回执。
+    """
+    s = suite or {}
+    issues: List[str] = []
+    # 为什么：禁止套件自签 certified（分层 deepen ≠ N20 全量认证）
+    if s.get("certified") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("n20_full_conformance") is True:
+        issues.append("honesty_n20_full_flag_forbidden")
+    cases = s.get("cases") or []
+    if cases:
+        failed = [c for c in cases if isinstance(c, dict) and not c.get("ok")]
+        if failed:
+            issues.append(f"suite_cases_failed:{len(failed)}")
+        ids = {str(c.get("id") or "") for c in cases if isinstance(c, dict)}
+        missing = [x for x in _SUITE_CASES if x not in ids]
+        if missing:
+            issues.append(f"suite_cases_missing:{','.join(missing)}")
+    elif not s.get("ok"):
+        issues.append("suite_not_ok")
+    return {
+        "ok": not issues and bool(s.get("ok", True)),
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n20_full_conformance": False,
+        "note": "Constraint layers deepen; not N20 certified / not Lv4 redesign",
+    }
+
+
+def run_constraint_layers_suite() -> Dict[str, Any]:
+    """N20 deepen：L1/L2/L3 分层套件（certified 恒 false）。"""
+    cases: List[Dict[str, Any]] = []
+
+    denied = evaluate_constraint_stack(
+        risk_level="medium",
+        required_permissions=["kb:write"],
+        actor_permissions=["kb:read"],
+        soft_constraints=[{"id": "hint", "message": "prefer draft"}],
+        require_audit=True,
+    )
+    cases.append(
+        {
+            "id": "l1_blocks_missing_permission",
+            "ok": denied.get("blocked") is True
+            and "l1_policy_denied" in str(denied.get("block_reason") or ""),
+            "detail": denied.get("block_reason") or "",
+        }
+    )
+
+    soft_ok = evaluate_constraint_stack(
+        risk_level="low",
+        required_permissions=[],
+        actor_permissions=[],
+        soft_constraints=[{"id": "style", "message": "prefer citations"}],
+        require_audit=True,
+        l1_present=True,
+    )
+    cases.append(
+        {
+            "id": "l2_warn_not_block",
+            "ok": soft_ok.get("blocked") is False
+            and soft_ok.get("ok") is True
+            and len(soft_ok.get("warnings") or []) >= 1
+            and soft_ok.get("l2_security_boundary") is False,
+            "detail": "",
+        }
+    )
+
+    alone = evaluate_constraint_stack(
+        risk_level="high",
+        required_permissions=[],
+        actor_permissions=[],
+        soft_constraints=[{"id": "prompt", "message": "be careful"}],
+        require_audit=True,
+        l1_present=False,
+    )
+    cases.append(
+        {
+            "id": "l2_alone_high_risk_denied",
+            "ok": alone.get("blocked") is True
+            and alone.get("block_reason") == "high_risk_requires_l1",
+            "detail": "",
+        }
+    )
+
+    aud = evaluate_constraint_stack(
+        risk_level="medium",
+        required_permissions=["kb:read"],
+        actor_permissions=["kb:read"],
+        require_audit=True,
+    )
+    cases.append(
+        {
+            "id": "l3_audit_required_flag",
+            "ok": aud.get("audit", {}).get("required") is True
+            and aud.get("audit", {}).get("recorded") is True
+            and "L3" in (aud.get("layers_fired") or []),
+            "detail": "",
+        }
+    )
+
+    # 层序：L1 先于 L2 先于 L3
+    order = evaluate_constraint_stack(
+        risk_level="medium",
+        required_permissions=["kb:write"],
+        actor_permissions=["kb:write"],
+        soft_constraints=[{"id": "x", "message": "y"}],
+        require_audit=True,
+    )
+    fired = order.get("layers_fired") or []
+    cases.append(
+        {
+            "id": "layer_order_l1_gt_l2_gt_l3",
+            "ok": fired == ["L1", "L2", "L3"],
+            "detail": str(fired),
+        }
+    )
+
+    cases.append(
+        {
+            "id": "honesty_certified_false",
+            "ok": order.get("certified") is False
+            and order.get("n20_full_conformance") is False,
+            "detail": "",
+        }
+    )
+
+    passed = sum(1 for c in cases if c.get("ok"))
+    return {
+        "ok": passed == len(_SUITE_CASES),
+        "passed": passed,
+        "total": len(_SUITE_CASES),
+        "cases": cases,
+        "certified": False,
+        "n20_full_conformance": False,
+        "measured_at": time.time(),
+        "note": "Constraint layers deepen; not full surface / not certified",
+    }
