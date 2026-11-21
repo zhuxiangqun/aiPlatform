@@ -1,8 +1,9 @@
-"""Ontology Completeness Score (OCS) — v4.3.1 §13.4 + ONTOLOGY_COMPLETENESS.md
+"""Ontology Completeness Score (OCS) — v4.3.1 §13.4 / N23 + ONTOLOGY_COMPLETENESS.md
 
 加权 0–100；默认门槛 80（域 YAML `ocs_threshold` 可更严）。
 C5 按声明类的实例/边覆盖计分，禁止用节点数/页面数档位替代。
-非目标：不替代准确率/忠实度/权限/Action 审计；不宣称 N24 全量符合。
+N23 deepen：``run_ocs_enterprise_scan_suite`` 经 DomainRouter 扫域 + 词汇预注册探针。
+非目标：不替代准确率/忠实度/权限/Action 审计；不宣称企业全域完整 / N23 certified。
 """
 from __future__ import annotations
 from core.harness.knowledge.domain_router import DomainRouter
@@ -406,3 +407,166 @@ def compute_all_ocs(
 
     ids = domain_ids or list_domain_files(str(_home()))
     return [compute_domain_ocs(d, tenant_id=tenant_id) for d in ids]
+
+
+_N23_ENTERPRISE_SCAN_CASES = (
+    "domains_from_router",
+    "vocab_prereg_required",
+    "threshold_floor_80",
+    "honesty_certified_false",
+)
+
+
+def run_ocs_enterprise_scan_suite(
+    *,
+    domain_ids: Optional[List[str]] = None,
+    tenant_id: str = "",
+    credit_test_evidence: bool = False,
+) -> Dict[str, Any]:
+    """N23 deepen：企业域 OCS 扫描（DomainRouter + 词汇预注册 + 门槛地板）。
+
+    Args:
+        domain_ids: 可选域列表；默认 ``DomainRouter.list_domains()``。
+        tenant_id: 租户；空则 DomainRouter 默认租户。
+        credit_test_evidence: 是否给 C6 测试加分（默认否）。
+
+    Returns:
+        套件汇总；``certified`` / ``n23_full_conformance`` / ``enterprise_complete`` 恒 false。
+    """
+    router = DomainRouter()
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    ids = list(domain_ids) if domain_ids is not None else list(router.list_domains())
+    cases: List[Dict[str, Any]] = []
+
+    router_ok = domain_ids is not None or len(ids) >= 1
+    cases.append(
+        {
+            "id": "domains_from_router",
+            "ok": router_ok,
+            "detail": "" if router_ok else "no_domains_discovered",
+            "domain_count": len(ids),
+        }
+    )
+
+    # 词汇预注册：可解析本体且至少 1 个 class（空壳域不计完整）
+    vocab_ok = True
+    vocab_detail = ""
+    scored: List[Dict[str, Any]] = []
+    for did in ids:
+        report = compute_domain_ocs(
+            did, credit_test_evidence=credit_test_evidence, tenant_id=tid
+        )
+        scored.append(report)
+        if report.get("error"):
+            continue
+        if int(report.get("classes") or 0) < 1:
+            vocab_ok = False
+            vocab_detail = f"empty_vocab:{did}"
+            break
+    if not ids:
+        vocab_ok = False
+        vocab_detail = "no_domains"
+    cases.append(
+        {
+            "id": "vocab_prereg_required",
+            "ok": vocab_ok,
+            "detail": vocab_detail,
+        }
+    )
+
+    thr_ok = True
+    thr_detail = ""
+    for report in scored:
+        if report.get("error"):
+            continue
+        thr = float(report.get("threshold") or 0.0)
+        if thr < DEFAULT_OCS_THRESHOLD:
+            thr_ok = False
+            thr_detail = f"threshold_below_floor:{report.get('domain_id')}"
+            break
+    cases.append(
+        {
+            "id": "threshold_floor_80",
+            "ok": thr_ok,
+            "detail": thr_detail,
+        }
+    )
+
+    honesty = {
+        "suite": "ocs_enterprise_scan",
+        "ok": True,
+        "certified": False,
+        "n23_full_conformance": False,
+        "enterprise_complete": False,
+    }
+    gate = evaluate_ocs_enterprise_scan_gate(honesty)
+    forged = dict(honesty)
+    forged["enterprise_complete"] = True
+    forged_gate = evaluate_ocs_enterprise_scan_gate(forged)
+    honesty_ok = gate.get("ok") is True and forged_gate.get("ok") is False
+    cases.append(
+        {
+            "id": "honesty_certified_false",
+            "ok": honesty_ok,
+            "detail": "" if honesty_ok else "honesty_gate_failed",
+        }
+    )
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N23_ENTERPRISE_SCAN_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "ocs_enterprise_scan",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "domains": ids,
+        "reports": scored,
+        "certified": False,
+        "n23_full_conformance": False,
+        "enterprise_complete": False,
+        "note": (
+            "DomainRouter enterprise OCS scan + vocab prereg + threshold floor; "
+            "not enterprise-wide complete / not N23 certified"
+        ),
+    }
+
+
+def evaluate_ocs_enterprise_scan_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N23 企业 OCS 扫描门槛门；certified / enterprise_complete 恒 false。
+
+    Args:
+        suite: ``run_ocs_enterprise_scan_suite`` 回执。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if (
+        s.get("certified") is True
+        or s.get("n23_full_conformance") is True
+        or s.get("enterprise_complete") is True
+    ):
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "ocs_enterprise_scan",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n23_full_conformance": False,
+        "enterprise_complete": False,
+        "note": "Enterprise OCS scan deepen; not N23 certified",
+    }
