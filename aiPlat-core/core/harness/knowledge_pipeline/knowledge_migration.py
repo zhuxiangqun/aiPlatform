@@ -996,8 +996,9 @@ def run_migration_cutover_auth_suite(
     prev_token = os.environ.get("AIPLAT_KNOWLEDGE_CUTOVER_TOKEN")
     os.environ["AIPLAT_KNOWLEDGE_CUTOVER_TOKEN"] = "n11-test-token"
     try:
+        # 为什么：套件域用合成 id，禁止 harness 硬编码业务域 lock-service（§80/§98）
         job = start_migration_job(
-            tenant_id="n11-t", domain="lock-service", db_path=path
+            tenant_id="n11-t", domain="n11-mig-domain", db_path=path
         )
         jid = job["job_id"]
         dual_write_record(
