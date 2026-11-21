@@ -132,6 +132,7 @@ async def test_transition_requires_actor_reason_and_audit(
         reason="approve publish",
         db_path=sm_db,
         source_policy_db_path=sp_db,
+        role="reviewer",
     )
     assert published["fact"]["review_status"] == "published"
 

@@ -41,6 +41,7 @@ authority: supporting
 | [phase2-conformance-pack-evidence.md](./phase2-conformance-pack-evidence.md) | W10 Conformance / 认证证据包（N24 目录 + §9.4 槽位；非 24/24 认证） |
 | [phase2-implementer-semantics-evidence.md](./phase2-implementer-semantics-evidence.md) | W10 N18 实现方语义测试（5 探针 + 门槛门；非全量认证） |
 | [phase2-source-policy-evidence.md](./phase2-source-policy-evidence.md) | W3 N04 Source Policy / Conflict（策略登记 + 冲突不自动选边 + 人审；非全写入强制） |
+| [phase2-reviewer-rbac-evidence.md](./phase2-reviewer-rbac-evidence.md) | N04/N12 deepen：publish reviewer 角色门（配置驱动；非部署 RBAC/非 certified） |
 | [phase2-fact-state-evidence.md](./phase2-fact-state-evidence.md) | W3 N12 Fact 状态机（review/lifecycle/claim + 审计；非裸 put_fact 唯一强制） |
 | [phase2-claim-evidence-evidence.md](./phase2-claim-evidence-evidence.md) | Batch F2 N03 Claim 证据硬门+冲突记录（门槛门；非全量认证） |
 | [phase2-claim-status-write-evidence.md](./phase2-claim-status-write-evidence.md) | N03 deepen：Claim 状态写路径（transition→put_claim；非全量/非 certified） |

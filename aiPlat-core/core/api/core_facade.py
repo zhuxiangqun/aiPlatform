@@ -5873,10 +5873,11 @@ async def put_fact_with_source_policy(
     db_path: Optional[str] = None,
     actor: str = "",
     reason: str = "",
+    role: str = "",
     ledger: Any = None,
     **kwargs: Any,
 ) -> Dict[str, Any]:
-    """W3 N04：经来源策略/冲突门写入 Fact；published 须 actor/reason。
+    """W3 N04：经来源策略/冲突门写入 Fact；published 须 actor/reason/role。
 
     Args:
         tenant_id / collection_id / subject / predicate / object: Fact 键值。
@@ -5887,6 +5888,7 @@ async def put_fact_with_source_policy(
         confidence: 置信度。
         db_path: 策略库路径。
         actor / reason: published 时必填。
+        role: 调用方角色（N04/N12；published 时校验）。
         ledger: 可选 FactLedger。
         **kwargs: 透传 put_fact。
     """
@@ -5914,6 +5916,7 @@ async def put_fact_with_source_policy(
         db_path=db_path,
         actor=actor,
         reason=reason,
+        role=role,
         **kwargs,
     )
 
@@ -5994,8 +5997,9 @@ async def transition_fact_review(
     db_path: Optional[str] = None,
     source_policy_db_path: Optional[str] = None,
     ledger: Any = None,
+    role: str = "",
 ) -> Dict[str, Any]:
-    """W3 N12：Fact 审核态转换。
+    """W3 N12 / N04：Fact 审核态转换（publish 须配置角色）。
 
     Args:
         fact_id: Fact ID。
@@ -6006,6 +6010,7 @@ async def transition_fact_review(
         db_path: 审计库。
         source_policy_db_path: 来源策略库。
         ledger: 可选 FactLedger。
+        role: 调用方角色（上游注入；publish 时校验）。
     """
     from core.harness.knowledge_pipeline.fact_state_machine import (
         transition_fact_review as _tr,
@@ -6025,7 +6030,41 @@ async def transition_fact_review(
         reason=reason,
         db_path=db_path,
         source_policy_db_path=source_policy_db_path,
+        role=role,
     )
+
+
+async def run_reviewer_rbac_suite(
+    *,
+    tenant_id: str = "n04-reviewer-rbac-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N04/N12 deepen：reviewer 角色门套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        run_reviewer_rbac_suite as _run,
+    )
+
+    return await _run(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_reviewer_rbac_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N04/N12 deepen：reviewer 角色门门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_reviewer_rbac_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        evaluate_reviewer_rbac_gate as _gate,
+    )
+
+    return _gate(suite)
 
 
 async def transition_fact_lifecycle(

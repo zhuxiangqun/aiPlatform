@@ -1,14 +1,15 @@
-"""Fact/Claim 状态机最小切片（附录 N12 / N03 / 白皮书 §7.5）。
+"""Fact/Claim 状态机最小切片（附录 N12 / N03 / N04 / 白皮书 §7.5）。
 
 职责：
   - 审核态 ``review_status`` 与生命周期 ``status`` 分机、合法边校验
   - 转换必须带 actor/time/reason，并落审计 + 抬升 revision
   - Claim ``status`` 写路径（``transition_claim_status`` → ``put_claim``）
+  - N04/N12 deepen：配置驱动 reviewer 角色门（publish transition）
   - 门槛门；``certified`` 恒 false
 
 非目标：
-  - 不做 reviewer RBAC 角色源替换
-  - 不宣称 N03/N12 全量 / 附录 N 认证
+  - 不替换部署侧完整 RBAC/ACL 真源（见 N18）
+  - 不宣称 N03/N04/N12 全量 / 附录 N 认证
   - transition 写回 ``put_fact`` / ``put_claim(..., enforce_write_gates=False)``（边已在外层校验）
 """
 from __future__ import annotations
@@ -19,9 +20,13 @@ import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
+
+# 为什么：角色名来自配置/调用方，禁止 if actor_id == 业务名
+_DEFAULT_REVIEWER_ROLES: Tuple[str, ...] = ("reviewer", "knowledge_admin")
+_REVIEWER_PUBLISH_ACTION = "fact_review_publish"
 
 # 与 schemas/validate_semantics_v4.3.1.py TRANSITIONS 对齐
 FACT_REVIEW_TRANSITIONS: Dict[str, Set[str]] = {
@@ -50,6 +55,46 @@ MACHINES = {
     "fact_lifecycle": FACT_LIFECYCLE_TRANSITIONS,
     "claim_status": CLAIM_STATUS_TRANSITIONS,
 }
+
+
+def reviewer_rbac_enabled() -> bool:
+    """是否启用 Fact 审核角色门（默认开；``0/false/off`` 关闭）。"""
+    raw = (os.environ.get("AIPLAT_FACT_REVIEWER_RBAC") or "1").strip().lower()
+    return raw not in ("0", "false", "off", "no")
+
+
+def allowed_reviewer_roles() -> Tuple[str, ...]:
+    """返回允许执行审核发布的角色（``AIPLAT_FACT_REVIEWER_ROLES`` 逗号分隔）。
+
+    Returns:
+        角色元组；缺省 ``reviewer,knowledge_admin``。
+    """
+    raw = (os.environ.get("AIPLAT_FACT_REVIEWER_ROLES") or "").strip()
+    if not raw:
+        return _DEFAULT_REVIEWER_ROLES
+    roles = tuple(x.strip() for x in raw.split(",") if x.strip())
+    return roles or _DEFAULT_REVIEWER_ROLES
+
+
+def assert_reviewer_role(*, role: str, action: str = _REVIEWER_PUBLISH_ACTION) -> None:
+    """校验调用方角色是否允许执行审核动作。
+
+    Args:
+        role: 调用方角色（由上游注入；非从 actor 名推断）。
+        action: 动作名（默认 fact_review_publish）。
+
+    Raises:
+        FactStateMachineError: 角色不在允许列表。
+    """
+    if not reviewer_rbac_enabled():
+        return
+    r = (role or "").strip()
+    allowed = allowed_reviewer_roles()
+    if r not in allowed:
+        raise FactStateMachineError(
+            f"reviewer rbac denied: role={role!r} action={action!r}; "
+            f"allowed={list(allowed)}"
+        )
 
 
 class FactStateMachineError(ValueError):
@@ -284,8 +329,9 @@ async def transition_fact_review(
     reason: str,
     db_path: Optional[str] = None,
     source_policy_db_path: Optional[str] = None,
+    role: str = "",
 ) -> Dict[str, Any]:
-    """审核态转换（须 actor/reason；published 须 evidence + active）。
+    """审核态转换（须 actor/reason；published 须 evidence + active + 角色门）。
 
     Args:
         ledger: FactLedger。
@@ -296,6 +342,7 @@ async def transition_fact_review(
         reason: 理由。
         db_path: 审计库路径。
         source_policy_db_path: 来源策略/冲突库路径。
+        role: 调用方角色（N04/N12 deepen；publish 时校验）。
 
     Returns:
         更新后的 Fact + transition 审计。
@@ -313,6 +360,8 @@ async def transition_fact_review(
             raise FactStateMachineError(
                 "published review requires lifecycle status=active"
             )
+        # N04/N12 deepen：publish 须配置角色（上游注入 role，不从 actor 猜）
+        assert_reviewer_role(role=role, action=_REVIEWER_PUBLISH_ACTION)
         # N04：未裁决冲突 / 未登记策略不得经 transition 发布
         from core.harness.knowledge_pipeline.source_policy import (
             SourcePolicyError,
@@ -805,6 +854,278 @@ def evaluate_claim_status_write_gate(
         "certified": False,
         "n03_full_conformance": False,
         "note": "Claim status write deepen; not N03 certified",
+    }
+
+
+_N04_REVIEWER_RBAC_CASES = (
+    "publisher_role_allowed",
+    "wrong_role_denied",
+    "empty_role_denied",
+    "honesty_certified_false",
+)
+
+
+async def run_reviewer_rbac_suite(
+    *,
+    ledger: Any = None,
+    tenant_id: str = "n04-reviewer-rbac-tenant",
+    domain_id: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N04/N12 deepen：publish 角色门套件（配置角色；非部署 RBAC 真源）。
+
+    Args:
+        ledger: 可选 FactLedger。
+        tenant_id: 租户。
+        domain_id: 可选域。
+        db_path: 可选审计/策略库根。
+
+    Returns:
+        套件汇总；``certified`` / ``n04_full_conformance`` / ``n12_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    from core.harness.knowledge_pipeline.fact_ledger import FactLedger
+    from core.harness.knowledge_pipeline.source_policy import register_source_policy
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n04-reviewer-rbac-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+        audit_db = str(root / "fact_state.sqlite3")
+        sp_db = str(root / "source_policy.sqlite3")
+    else:
+        lg = ledger
+        await lg.initialize()
+        root = Path(tempfile.mkdtemp(prefix="n04-rbac-aux-"))
+        audit_db = db_path or str(root / "fact_state.sqlite3")
+        sp_db = str(root / "source_policy.sqlite3")
+
+    cases: List[Dict[str, Any]] = []
+    prev_rbac = os.environ.get("AIPLAT_FACT_REVIEWER_RBAC")
+    prev_roles = os.environ.get("AIPLAT_FACT_REVIEWER_ROLES")
+    try:
+        os.environ["AIPLAT_FACT_REVIEWER_RBAC"] = "1"
+        os.environ["AIPLAT_FACT_REVIEWER_ROLES"] = "reviewer,knowledge_admin"
+        register_source_policy(
+            tenant_id=tenant_id,
+            policy_id="n04_rbac_policy",
+            authority="primary",
+            freshness={"valid_days": 30},
+            scope=["n04"],
+            license="internal",
+            trust="high",
+            conflict_rule="prefer_newer_primary_then_human_review",
+            db_path=sp_db,
+        )
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n04-rbac",
+            kind="file",
+            uri="file://n04/rbac.txt",
+            content=b"n04-rbac",
+            connector="n04",
+            domain_id=domain_id,
+        )
+        evidence = [
+            {
+                "source_id": src["source_id"],
+                "locator": "1",
+                "quote": "ok",
+                "fetched_at": src["fetched_at"],
+            }
+        ]
+
+        async def _seed_reviewed() -> str:
+            fact = await lg.put_fact(
+                tenant_id=tenant_id,
+                collection_id="n04-rbac",
+                subject="Probe:n04",
+                predicate="note",
+                object="ok",
+                evidence=evidence,
+                source_policy="n04_rbac_policy",
+                extractor_version="n04",
+                review_status="draft",
+                confidence=0.9,
+                status="active",
+                domain_id=domain_id,
+                source_policy_db_path=sp_db,
+            )
+            mid = await transition_fact_review(
+                lg,
+                fact_id=fact["fact_id"],
+                tenant_id=tenant_id,
+                to_status="reviewed",
+                actor="actor-1",
+                reason="looks good",
+                db_path=audit_db,
+                source_policy_db_path=sp_db,
+                role="reviewer",
+            )
+            return mid["fact"]["fact_id"]
+
+        fid = await _seed_reviewed()
+        ok_pub = await transition_fact_review(
+            lg,
+            fact_id=fid,
+            tenant_id=tenant_id,
+            to_status="published",
+            actor="actor-1",
+            reason="approve",
+            db_path=audit_db,
+            source_policy_db_path=sp_db,
+            role="reviewer",
+        )
+        allow_ok = ok_pub["fact"].get("review_status") == "published"
+        cases.append(
+            {
+                "id": "publisher_role_allowed",
+                "ok": allow_ok,
+                "detail": "" if allow_ok else "publish_with_role_failed",
+            }
+        )
+
+        fid2 = await _seed_reviewed()
+        wrong_ok = False
+        try:
+            await transition_fact_review(
+                lg,
+                fact_id=fid2,
+                tenant_id=tenant_id,
+                to_status="published",
+                actor="actor-1",
+                reason="approve",
+                db_path=audit_db,
+                source_policy_db_path=sp_db,
+                role="viewer",
+            )
+        except FactStateMachineError as exc:
+            wrong_ok = "reviewer rbac denied" in str(exc)
+        cases.append(
+            {
+                "id": "wrong_role_denied",
+                "ok": wrong_ok,
+                "detail": "" if wrong_ok else "wrong_role_accepted",
+            }
+        )
+
+        fid3 = await _seed_reviewed()
+        empty_ok = False
+        try:
+            await transition_fact_review(
+                lg,
+                fact_id=fid3,
+                tenant_id=tenant_id,
+                to_status="published",
+                actor="actor-1",
+                reason="approve",
+                db_path=audit_db,
+                source_policy_db_path=sp_db,
+                role="",
+            )
+        except FactStateMachineError as exc:
+            empty_ok = "reviewer rbac denied" in str(exc)
+        cases.append(
+            {
+                "id": "empty_role_denied",
+                "ok": empty_ok,
+                "detail": "" if empty_ok else "empty_role_accepted",
+            }
+        )
+
+        honesty = {
+            "suite": "reviewer_rbac",
+            "ok": True,
+            "certified": False,
+            "n04_full_conformance": False,
+            "n12_full_conformance": False,
+        }
+        gate = evaluate_reviewer_rbac_gate(honesty)
+        forged = dict(honesty)
+        forged["n04_full_conformance"] = True
+        forged_gate = evaluate_reviewer_rbac_gate(forged)
+        honesty_ok = gate.get("ok") is True and forged_gate.get("ok") is False
+        cases.append(
+            {
+                "id": "honesty_certified_false",
+                "ok": honesty_ok,
+                "detail": "" if honesty_ok else "honesty_gate_failed",
+            }
+        )
+    finally:
+        if prev_rbac is None:
+            os.environ.pop("AIPLAT_FACT_REVIEWER_RBAC", None)
+        else:
+            os.environ["AIPLAT_FACT_REVIEWER_RBAC"] = prev_rbac
+        if prev_roles is None:
+            os.environ.pop("AIPLAT_FACT_REVIEWER_ROLES", None)
+        else:
+            os.environ["AIPLAT_FACT_REVIEWER_ROLES"] = prev_roles
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N04_REVIEWER_RBAC_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "reviewer_rbac",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n04_full_conformance": False,
+        "n12_full_conformance": False,
+        "note": (
+            "Config-driven reviewer role gate on publish; "
+            "not deploy RBAC source / not N04/N12 certified"
+        ),
+    }
+
+
+def evaluate_reviewer_rbac_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N04/N12 reviewer 角色门门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_reviewer_rbac_suite`` 回执。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if (
+        s.get("certified") is True
+        or s.get("n04_full_conformance") is True
+        or s.get("n12_full_conformance") is True
+    ):
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "reviewer_rbac",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n04_full_conformance": False,
+        "n12_full_conformance": False,
+        "note": "Reviewer role gate deepen; not N04/N12 certified",
     }
 
 

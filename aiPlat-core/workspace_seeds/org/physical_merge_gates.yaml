@@ -121,6 +121,11 @@ exemptions:
     reason: "N23 enterprise OCS scan suite/gate+evidence+CAPS/registry is one deepen deliverable"
     expires: "2026-11-28"
     gates: ["inflation"]
+  - id: "ex-2026-11-21-ks-v431-n04n12-reviewer-rbac"
+    owner: "platform-oncall"
+    reason: "N04/N12 reviewer RBAC suite/gate+HTTP role+CAPS/registry is one deepen deliverable"
+    expires: "2026-11-28"
+    gates: ["inflation"]
 # Cleared 2026-11-21: ex-2026-11-13-skill-compat-phase-a expired 2026-11-20; retire unreviewed debt.
 # Cleared 2026-11-12: batch04/batch05 fact-audit exemptions retired after merge.
 # Cleared 2026-11-12: ex-2026-11-12-f821-baseline consumed after baseline merged.

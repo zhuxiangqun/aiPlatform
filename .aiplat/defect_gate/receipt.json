@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T09:42:00+08:00",
+  "reviewed_at": "2026-11-21T09:53:15+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "f25188f3b4cc36db9ea1bc5b8247197cc450718ac6cea8706c6a7e6f6f799e41",
-  "head_sha": "3ccbcdeaeb7670c83b0d994fcbe534eef777317b",
+  "diff_sha256": "762d649c1178fa21ae5e15497838f8f9eb196dcad5945c31a5ba8435f32a0909",
+  "head_sha": "3db3829f40a74858eb506171fce3ef9d7213cc92",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. N23 enterprise OCS scan: DomainRouter+vocab+threshold floor; enterprise_complete/N23 certified out of scope."
+  "note": "N04/N12 reviewer role gate deepen; production publish wrappers pass role; certified=false honesty lock; residual: deploy RBAC source (N18) and certified still open."
 }
