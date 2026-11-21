@@ -16,8 +16,9 @@ authority: supporting
 |------|------|
 | [phase0-standard-pack-baseline.md](./phase0-standard-pack-baseline.md) | 标准 schema/语义校验结果（原始 `*.log` 被 `.gitignore`，以本摘要为准） |
 | [phase0-asset-inventory.md](./phase0-asset-inventory.md) | 资产 / owner 盘点 |
-| [phase0-conformance-gap-n24.md](./phase0-conformance-gap-n24.md) | 附录 N 24 项差距表（2026-11-16 刷新；SSOT 见 catalog） |
+| [phase0-conformance-gap-n24.md](./phase0-conformance-gap-n24.md) | 附录 N 24 项差距表（2026-11-19 刷新；SSOT 见 catalog） |
 | [n24-conformance-catalog.yaml](./n24-conformance-catalog.yaml) | 附录 N 机器可读目录（证据包 SSOT） |
+| [phase2-catalog-honesty-triage.md](./phase2-catalog-honesty-triage.md) | catalog exists 诚实锁盘点（仍开放/已过时/并入既有刀；非 certified） |
 | [phase0-pilot-lock-service.md](./phase0-pilot-lock-service.md) | 试点域边界与 G0 |
 | [phase1-g1-evidence.md](./phase1-g1-evidence.md) | Phase 1 G1（Fact Ledger） |
 | [phase2-g2-evidence.md](./phase2-g2-evidence.md) | Phase 2 G2（L1 硬门 + Fact→Graph 可重建） |
@@ -37,7 +38,7 @@ authority: supporting
 | [phase2-ocs-enterprise-scan-evidence.md](./phase2-ocs-enterprise-scan-evidence.md) | N23 deepen：企业域 OCS 扫描（DomainRouter+词汇预注册；非全域完整/非 certified） |
 | [phase2-confidence-calibration-evidence.md](./phase2-confidence-calibration-evidence.md) | W10 Confidence Calibration（附录 O 门槛 + 失败降级 medium） |
 | [phase2-ocs-evidence.md](./phase2-ocs-evidence.md) | W10 OCS Completeness（§13.4 覆盖计分 + 门槛门；禁节点数档位） |
-| [phase2-knowledge-migration-evidence.md](./phase2-knowledge-migration-evidence.md) | W10 Knowledge Migration（双写/对账/回滚演练；切写未授权） |
+| [phase2-knowledge-migration-evidence.md](./phase2-knowledge-migration-evidence.md) | W10 Knowledge Migration（双写/对账/回滚演练；切写见 cutover-auth） |
 | [phase2-conformance-pack-evidence.md](./phase2-conformance-pack-evidence.md) | W10 Conformance / 认证证据包（N24 目录 + §9.4 槽位；非 24/24 认证） |
 | [phase2-implementer-semantics-evidence.md](./phase2-implementer-semantics-evidence.md) | W10 N18 实现方语义测试（5 探针 + 门槛门；非全量认证） |
 | [phase2-source-policy-evidence.md](./phase2-source-policy-evidence.md) | W3 N04 Source Policy / Conflict（策略登记 + 冲突不自动选边 + 人审；非全写入强制） |
