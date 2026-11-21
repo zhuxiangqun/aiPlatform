@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T20:09:09+08:00",
+  "reviewed_at": "2026-11-21T20:32:55+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "5822416b52c5be85370e8cdc957cf252afd9bb5ca8fd55bdcb7d2e82bab616eb",
-  "head_sha": "71e9c7f7e164f7e0d941d988e418a30a00dd04f1",
+  "diff_sha256": "23ca1ab3fb420a9c43dc21dd40adbc1946f15523b5b9c2f598def15091ac7d62",
+  "head_sha": "f059c346aad69aceb228415edde910a83033cbf1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 sys_knowledge_retrieve hotpath (conversations/builder/skills); HyDE disables for CRAG; nested wiki/kb bare list off; certified/n19_full stay false; residual non-unified Agent forms still open."
+  "note": "N24 J10 Fact/Query audit stream fan-in to unified view + materialize; certified/n24_full stay false; no N24 full cert claim."
 }

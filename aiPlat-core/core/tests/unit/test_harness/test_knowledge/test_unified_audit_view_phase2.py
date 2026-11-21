@@ -1,5 +1,7 @@
-"""J3：N24 Package+Action+revision_audit 只读统一视图（certified 恒 false；非全量总线）。"""
+"""J3/J10：N24 Package+Action+revision+FactQuery 只读统一视图（certified 恒 false）。"""
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -102,16 +104,33 @@ async def _seed(ledger: FactLedger, pkg_db: str, act_db: str, tenant: str = "t1"
 async def test_three_streams_present(harness):
     ledger, pkg_db, act_db, store_db, bus_db = harness
     await _seed(ledger, pkg_db, act_db)
+    from core.harness.knowledge_pipeline.fact_query_audit import record_audit_snapshot
+
+    fqa_db = str(Path(pkg_db).parent / "fqa.sqlite3")
+    record_audit_snapshot(
+        tenant_id="t1",
+        kind="query",
+        subject_ref="ua-fqa",
+        after_snapshot={"abstained": True, "citations": []},
+        runtime_authority="query_gateway",
+        db_path=fqa_db,
+    )
     view = await list_unified_audit_events(
         tenant_id="t1",
         package_db_path=pkg_db,
         action_execution_db_path=act_db,
         action_store_db_path=store_db,
         bus_db_path=bus_db,
+        fact_query_audit_db_path=fqa_db,
         fact_ledger=ledger,
     )
     tags = {e["stream"] for e in view["events"]}
-    assert tags >= {"package", "action_execution", "revision_audit"}
+    assert tags >= {
+        "package",
+        "action_execution",
+        "revision_audit",
+        "fact_query_audit",
+    }
     assert view["certified"] is False
     assert view["n24_full_conformance"] is False
 

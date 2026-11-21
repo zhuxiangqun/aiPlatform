@@ -265,13 +265,14 @@ async def materialize_unified_audit_from_view(
     action_execution_db_path: Optional[str] = None,
     action_store_db_path: Optional[str] = None,
     bus_db_path: Optional[str] = None,
+    fact_query_audit_db_path: Optional[str] = None,
     fact_ledger: Any = None,
 ) -> Dict[str, Any]:
     """将只读源流水合写入总线（certified 恒 false）。
 
     Args:
         tenant_id: 租户。
-        streams: 源流水线；默认含 package/action/revision/action_store（不含 bus）。
+        streams: 源流水线；默认含 package/action/revision/action_store/fact_query_audit（不含 bus）。
         package_id: Package 可选过滤。
         action_id_prefix: Action 可选前缀。
         entity_type: revision 可选实体类型。
@@ -282,6 +283,7 @@ async def materialize_unified_audit_from_view(
         action_execution_db_path: ActionExecution DB。
         action_store_db_path: ActionStore DB。
         bus_db_path: 总线 DB。
+        fact_query_audit_db_path: N19 Fact/Query 审计 DB。
         fact_ledger: 可选 FactLedger。
 
     Returns:
@@ -299,6 +301,7 @@ async def materialize_unified_audit_from_view(
             "action_execution",
             "revision_audit",
             "action_store",
+            "fact_query_audit",
         ]
     src_streams = [s for s in src_streams if s != "bus"]
     if not src_streams:
@@ -316,6 +319,7 @@ async def materialize_unified_audit_from_view(
         package_db_path=package_db_path,
         action_execution_db_path=action_execution_db_path,
         action_store_db_path=action_store_db_path,
+        fact_query_audit_db_path=fact_query_audit_db_path,
         fact_ledger=fact_ledger,
     )
     written = 0
@@ -381,7 +385,9 @@ async def run_unified_audit_bus_suite(
         bus_db = str(root / "unified_audit_bus.sqlite3")
         pkg_db = str(root / "ontology_package.sqlite3")
         act_db = str(root / "action_execution.sqlite3")
+        fqa_db = str(root / "fact_query_audit.sqlite3")
         os.environ["AIPLAT_UNIFIED_AUDIT_BUS_DB"] = bus_db
+        os.environ["AIPLAT_FACT_QUERY_AUDIT_DB"] = fqa_db
         lg = FactLedger(
             db_path=str(root / "fact_ledger.sqlite3"),
             raw_dir=root / "raw",
@@ -559,12 +565,28 @@ async def run_unified_audit_bus_suite(
             }
         )
 
+        from core.harness.knowledge_pipeline.fact_query_audit import (
+            record_audit_snapshot,
+        )
+
+        # 为什么：J10 — materialize 须能吞入 N19 Fact/Query 快照流
+        record_audit_snapshot(
+            tenant_id=tenant_id,
+            kind="query",
+            subject_ref="n24-uab-fqa",
+            after_snapshot={"abstained": True, "citations": []},
+            runtime_authority="query_gateway",
+            meta={"hotpath": True, "op": "suite"},
+            db_path=fqa_db,
+        )
+
         mat = await materialize_unified_audit_from_view(
             tenant_id=tenant_id,
             package_db_path=pkg_db,
             action_execution_db_path=act_db,
             action_store_db_path=store_db,
             bus_db_path=bus_db,
+            fact_query_audit_db_path=fqa_db,
             fact_ledger=lg,
             limit=200,
         )
@@ -579,6 +601,7 @@ async def run_unified_audit_bus_suite(
             and "action_execution" in tags
             and "revision_audit" in tags
             and "action_store" in tags
+            and "fact_query_audit" in tags
         )
         cases.append(
             {
@@ -601,6 +624,7 @@ async def run_unified_audit_bus_suite(
         )
     finally:
         os.environ.pop("AIPLAT_UNIFIED_AUDIT_BUS_DB", None)
+        os.environ.pop("AIPLAT_FACT_QUERY_AUDIT_DB", None)
         tmp.cleanup()
 
     passed = sum(1 for c in cases if c.get("ok") is True)
@@ -617,7 +641,10 @@ async def run_unified_audit_bus_suite(
         "cases": cases,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "append-only bus + Package/Action/revision/ActionStore hot-path; not N24 certified",
+        "note": (
+            "append-only bus + Package/Action/revision/ActionStore/"
+            "FactQuery hot-path; not N24 certified"
+        ),
     }
 
 
