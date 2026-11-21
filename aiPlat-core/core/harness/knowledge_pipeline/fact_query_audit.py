@@ -8,7 +8,7 @@
     / KB Q&A（``sys_crag_retrieve`` / ``kb_qa_retrieve`` / RAG Agent）
     / 统一 ``sys_knowledge_retrieve``（会话/Builder/技能）
     / Agent ``sys_wiki_context``（信封失败兜底）
-    / Wiki ``wiki_structured_query_api``
+    / Wiki ``wiki_structured_query_api`` / ``wiki_search_pages_api``
     / Agent ``sys_ontology_context``（域版）
     / URN ``syscalls/ontology.py`` + HTTP ``ontology_routes`` 热路径
     best-effort 落快照（可 env 关闭）
@@ -55,6 +55,7 @@ _SUITE_CASES = (
     "wiki_structured_hotpath_entry",
     "ontology_context_hotpath_entry",
     "ontology_urn_hotpath_entry",
+    "wiki_pages_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -919,7 +920,7 @@ def evaluate_fact_query_audit_gate(
         "note": (
             "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
             "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
-            "knowledge_retrieve/wiki_context/wiki_structured/"
+            "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
             "ontology_context/ontology_urn hotpath; not N19 certified / not all bypass paths"
         ),
     }
@@ -1225,6 +1226,18 @@ def run_fact_query_audit_suite(
             }
         )
 
+        wp_src = inspect.getsource(facade.wiki_search_pages_api)
+        cases.append(
+            {
+                "id": "wiki_pages_hotpath_entry",
+                "ok": (
+                    "maybe_record_wiki_kb_hotpath" in wp_src
+                    and "wiki_pages" in wp_src
+                ),
+                "detail": "",
+            }
+        )
+
         passed = sum(1 for c in cases if c.get("ok"))
         return {
             "ok": passed == len(_SUITE_CASES),
@@ -1237,7 +1250,7 @@ def run_fact_query_audit_suite(
             "note": (
                 "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
                 "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
-                "knowledge_retrieve/wiki_context/wiki_structured/"
+                "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
                 "ontology_context/ontology_urn hotpath; not all bypass paths / not certified"
             ),
         }

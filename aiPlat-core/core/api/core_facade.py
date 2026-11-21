@@ -2178,8 +2178,15 @@ def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str 
                          limit=limit, collection_id=collection_id)
 
 
-def wiki_search_pages_api(query: str = "", *, tags: List[str] = None, category: str = "",
-                          limit: int = 20, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
+def wiki_search_pages_api(
+    query: str = "",
+    *,
+    tags: List[str] = None,
+    category: str = "",
+    limit: int = 20,
+    collection_id: str = DomainRouter.default_collection(),
+    tenant_id: str = "",
+) -> Dict[str, Any]:
     """Wiki search with ontology.api.v0 envelope (A1 contract).
 
     Args:
@@ -2188,19 +2195,45 @@ def wiki_search_pages_api(query: str = "", *, tags: List[str] = None, category: 
         category: category 参数。
         limit: 返回条数上限。
         collection_id: collection 标识。
+        tenant_id: 非空时落 N19 Query 审计快照。
     """
+    import logging
+
     from core.harness.knowledge.ontology_api import attach_ontology_api, from_wiki_pages
 
     pages = wiki_search_pages(
         query, tags=tags, category=category, limit=limit, collection_id=collection_id
     ) or []
     out: Dict[str, Any] = {"items": pages, "total": len(pages)}
-    return dict(
+    out = dict(
         attach_ontology_api(
             out,
             from_wiki_pages(pages, query=query, collection_id=collection_id),
         )
     )
+    # 为什么：Wiki pages 搜索是 Facade/HTTP 旁路，须 best-effort 落 N19；空租户跳过
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_wiki_kb_hotpath,
+            )
+
+            out = maybe_record_wiki_kb_hotpath(
+                tenant_id=tid,
+                response=out if isinstance(out, dict) else {"result": out},
+                channel="wiki_pages",
+                query=query or "",
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 wiki_pages hotpath audit skipped", exc_info=True
+            )
+    if isinstance(out, dict):
+        # 为什么：禁止 Wiki pages 查询自签 certified
+        out["certified"] = False
+        out["n19_full_conformance"] = False
+    return out
 
 
 def get_graph_health(domain: str = "") -> Dict[str, Any]:

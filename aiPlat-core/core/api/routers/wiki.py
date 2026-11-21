@@ -151,6 +151,7 @@ async def list_pages(
     limit: int = 100,
     offset: int = 0,
     collection: str = DomainRouter.default_collection(),
+    tenant_id: str = "",
 ):
     """列出 pages。
 
@@ -162,27 +163,75 @@ async def list_pages(
         limit: 返回条数上限。
         offset: 分页偏移。
         collection: collection 参数。
+        tenant_id: 可选租户（N19 审计快照；有 query/tag 时走 Facade）。
     """
-    from core.api.core_facade import attach_ontology_api, ontology_api_from_wiki_pages
-    from core.harness.knowledge.wiki_engine import search_pages, list_all_pages
+    import logging
+
+    from core.api.core_facade import (
+        attach_ontology_api,
+        ontology_api_from_wiki_pages,
+        wiki_search_pages_api,
+    )
+    from core.harness.knowledge.wiki_engine import list_all_pages
+
+    tid = (tenant_id or "").strip()
     if query or tag:
         tags = [tag] if tag else None
-        pages = search_pages(query=query, tags=tags, category=category, limit=limit, collection_id=collection)
+        # 为什么：有检索语义时收敛到 Facade，避免 HTTP 直连 search_pages 漏 N19
+        out = wiki_search_pages_api(
+            query,
+            tags=tags,
+            category=category,
+            limit=limit,
+            collection_id=collection,
+            tenant_id=tid,
+        )
+        pages = list(out.get("items") or []) if isinstance(out, dict) else []
     else:
         pages = list_all_pages(collection_id=collection)
         if category:
             pages = [p for p in pages if p["category"] == category]
         pages = pages[offset:offset + limit]
-    # Filter by source_articles prefix
-    if source:
-        pages = [p for p in pages if any(
-            s.startswith(source + ":") for s in (p.get("source_articles") or [])
-        )]
-    out = {"items": pages, "total": len(pages)}
-    return attach_ontology_api(
-        out,
-        ontology_api_from_wiki_pages(pages or [], query=query, collection_id=collection),
-    )
+        out = {"items": pages, "total": len(pages)}
+        out = attach_ontology_api(
+            out,
+            ontology_api_from_wiki_pages(pages or [], query=query, collection_id=collection),
+        )
+        if tid:
+            try:
+                from core.harness.knowledge_pipeline.fact_query_audit import (
+                    maybe_record_wiki_kb_hotpath,
+                )
+
+                out = maybe_record_wiki_kb_hotpath(
+                    tenant_id=tid,
+                    response=out if isinstance(out, dict) else {"result": out},
+                    channel="wiki_pages",
+                    query="",
+                )
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "N19 wiki_pages list hotpath audit skipped", exc_info=True
+                )
+        if isinstance(out, dict):
+            # 为什么：禁止 Wiki pages 列表路径自签 certified
+            out["certified"] = False
+            out["n19_full_conformance"] = False
+
+    # Filter by source_articles prefix（查询路径与列表路径共用）
+    if source and isinstance(out, dict):
+        pages = [
+            p
+            for p in (out.get("items") or [])
+            if isinstance(p, dict)
+            and any(
+                str(s).startswith(source + ":")
+                for s in (p.get("source_articles") or [])
+            )
+        ]
+        out["items"] = pages
+        out["total"] = len(pages)
+    return out
 
 
 @router.get("/pages/{title}", response_model=Dict[str, Any])
