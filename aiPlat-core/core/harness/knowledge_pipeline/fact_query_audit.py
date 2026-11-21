@@ -4,7 +4,8 @@
   - 统一 Fact 变更与 Query 响应的审计快照 schema（同库同表）
   - 标记 ``runtime_authority`` 与 ActionExecution 快照字段对齐（before/after）
   - put_fact / unified_query_gateway / query_facts_gateway / query_facts list
-    / MaterialsChat 直出 / GraphRAG 热路径 best-effort 落快照（可 env 关闭）
+    / MaterialsChat 直出 / GraphRAG / Wiki-KB 热路径 best-effort 落快照
+    （可 env 关闭）
   - 套件/门槛门：``certified`` / ``n19_full`` 恒 false
 
 非目标：
@@ -40,6 +41,7 @@ _SUITE_CASES = (
     "query_facts_list_hotpath_entry",
     "materials_chat_hotpath_entry",
     "graphrag_hotpath_entry",
+    "wiki_kb_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -518,6 +520,65 @@ def maybe_record_graphrag_hotpath(
     return out
 
 
+def maybe_record_wiki_kb_hotpath(
+    *,
+    tenant_id: str,
+    response: Dict[str, Any],
+    channel: str = "wiki",
+    query: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Wiki/KB 查询形与 list 信封热路径落 Query 快照；原样返回 response。
+
+    Args:
+        tenant_id: 租户（空则跳过）。
+        response: N21 enforce / list 信封后的回执。
+        channel: ``wiki`` / ``kb`` / ``wiki_context``。
+        query: 可选原始问题摘要。
+        db_path: 可选库路径。
+    """
+    out = response if isinstance(response, dict) else {}
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return out
+    ch = (channel or "wiki").strip() or "wiki"
+    n21 = out.get("n21_query") if isinstance(out.get("n21_query"), dict) else {}
+    citations = list(
+        out.get("citations") or n21.get("citations") or []
+    )[:20]
+    maybe_record_hotpath_audit(
+        tenant_id=tid,
+        kind="query",
+        subject_ref=f"wk:{ch}:{uuid.uuid4().hex[:12]}",
+        before_snapshot={
+            "query": (query or "")[:500],
+            "route": ch,
+            "channel": ch,
+        },
+        after_snapshot={
+            "abstained": bool(
+                out.get("abstained")
+                if "abstained" in out
+                else n21.get("abstained")
+            ),
+            "citations": citations,
+            "route_reason": ch,
+            "answer": str(out.get("answer") or n21.get("answer") or "")[:500],
+            "n21_list_enforced": bool(out.get("n21_list_enforced")),
+            "n21_enforced": bool(out.get("n21_enforced") or n21),
+        },
+        runtime_authority="wiki_kb",
+        meta={
+            "hotpath": True,
+            "op": "wiki_kb",
+            "route": ch,
+            "channel": ch,
+        },
+        db_path=db_path,
+    )
+    return out
+
+
 def list_audit_snapshots(
     *,
     tenant_id: str,
@@ -610,7 +671,7 @@ def evaluate_fact_query_audit_gate(
         "n19_full_conformance": False,
         "note": (
             "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
-            "MaterialsChat/GraphRAG hotpath; not N19 certified / "
+            "MaterialsChat/GraphRAG/Wiki-KB hotpath; not N19 certified / "
             "not all bypass paths"
         ),
     }
@@ -809,6 +870,19 @@ def run_fact_query_audit_suite(
             }
         )
 
+        wk_src = (
+            inspect.getsource(qac.attach_list_retrieve_n21_envelope)
+            + inspect.getsource(qac.query_wiki_with_abstain)
+            + inspect.getsource(qac.query_kb_with_abstain)
+        )
+        cases.append(
+            {
+                "id": "wiki_kb_hotpath_entry",
+                "ok": "maybe_record_wiki_kb_hotpath" in wk_src,
+                "detail": "",
+            }
+        )
+
         passed = sum(1 for c in cases if c.get("ok"))
         return {
             "ok": passed == len(_SUITE_CASES),
@@ -820,8 +894,8 @@ def run_fact_query_audit_suite(
             "n19_full_conformance": False,
             "note": (
                 "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
-                "MaterialsChat/GraphRAG hotpath; not all bypass paths / "
-                "not certified"
+                "MaterialsChat/GraphRAG/Wiki-KB hotpath; not all bypass "
+                "paths / not certified"
             ),
         }
     finally:

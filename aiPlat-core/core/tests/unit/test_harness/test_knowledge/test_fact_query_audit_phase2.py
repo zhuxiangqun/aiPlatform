@@ -20,6 +20,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "query_facts_list_hotpath_entry" in ids
     assert "materials_chat_hotpath_entry" in ids
     assert "graphrag_hotpath_entry" in ids
+    assert "wiki_kb_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -131,6 +132,40 @@ def test_graphrag_hotpath_writes(tmp_path, monkeypatch):
     )
     assert skipped.get("mode") == "vector_only"
     assert fqa.list_audit_snapshots(tenant_id="t-gr", db_path=db)["count"] == 1
+
+
+def test_wiki_kb_hotpath_writes(tmp_path, monkeypatch):
+    """Wiki/KB 旁路热路径落 Query 快照；空 tenant 跳过。"""
+    db = str(tmp_path / "fqa-wk.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+    out = fqa.maybe_record_wiki_kb_hotpath(
+        tenant_id="t-wk",
+        response={
+            "answer": "w",
+            "citations": [{"source_id": "w1"}],
+            "abstained": False,
+            "n21_query": {"abstained": False, "citations": [{"source_id": "w1"}]},
+        },
+        channel="wiki",
+        query="wiki?",
+        db_path=db,
+    )
+    assert out.get("answer") == "w"
+    listed = fqa.list_audit_snapshots(tenant_id="t-wk", db_path=db)
+    assert listed["count"] == 1
+    item = listed["items"][0]
+    assert item["runtime_authority"] == "wiki_kb"
+    assert (item.get("meta") or {}).get("channel") == "wiki"
+
+    skipped = fqa.maybe_record_wiki_kb_hotpath(
+        tenant_id="",
+        response={"answer": "x", "abstained": True},
+        channel="kb",
+        db_path=db,
+    )
+    assert skipped.get("answer") == "x"
+    assert fqa.list_audit_snapshots(tenant_id="t-wk", db_path=db)["count"] == 1
 
 
 def test_fact_requires_after_snapshot(tmp_path):

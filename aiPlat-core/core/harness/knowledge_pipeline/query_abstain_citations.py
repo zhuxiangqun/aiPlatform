@@ -180,6 +180,7 @@ def attach_list_retrieve_n21_envelope(
     channel: str,
     query: str = "",
     require_citations_on_hit: bool = True,
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """给 Wiki/KB list 命中附加 ``n21_query`` 信封（不改 list 主结构）。
 
@@ -188,6 +189,7 @@ def attach_list_retrieve_n21_envelope(
         channel: ``wiki`` / ``kb`` / ``wiki_context``。
         query: 原始查询。
         require_citations_on_hit: 无引用则 abstain。
+        tenant_id: 非空时落 N19 Query 审计快照。
     """
     if isinstance(hits, dict):
         out = dict(hits)
@@ -219,6 +221,24 @@ def attach_list_retrieve_n21_envelope(
         logger.warning(
             "N20 wiki_kb list constraint hotpath skipped", exc_info=True
         )
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            # 为什么：N19 — list 信封旁路落 Query 快照；空 tenant 跳过
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_wiki_kb_hotpath,
+            )
+
+            out = maybe_record_wiki_kb_hotpath(
+                tenant_id=tid,
+                response=out,
+                channel=channel,
+                query=query or "",
+            )
+        except Exception:
+            logger.warning(
+                "N19 wiki_kb list hotpath audit skipped", exc_info=True
+            )
     return out
 
 
@@ -271,6 +291,23 @@ def query_wiki_with_abstain(
         logger.warning(
             "N20 wiki query constraint hotpath skipped", exc_info=True
         )
+    if (tenant_id or "").strip():
+        try:
+            # 为什么：N19 — Wiki 查询形旁路落快照；与 Gateway 分立
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_wiki_kb_hotpath,
+            )
+
+            out = maybe_record_wiki_kb_hotpath(
+                tenant_id=tenant_id,
+                response=out,
+                channel="wiki",
+                query=q,
+            )
+        except Exception:
+            logger.warning(
+                "N19 wiki query hotpath audit skipped", exc_info=True
+            )
     return out
 
 
@@ -329,6 +366,23 @@ def query_kb_with_abstain(
         logger.warning(
             "N20 kb query constraint hotpath skipped", exc_info=True
         )
+    if tid:
+        try:
+            # 为什么：N19 — KB 查询形旁路落快照；与 Gateway 分立
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_wiki_kb_hotpath,
+            )
+
+            out = maybe_record_wiki_kb_hotpath(
+                tenant_id=tid,
+                response=out,
+                channel="kb",
+                query=q,
+            )
+        except Exception:
+            logger.warning(
+                "N19 kb query hotpath audit skipped", exc_info=True
+            )
     return out
 
 
