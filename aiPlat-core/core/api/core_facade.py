@@ -18613,6 +18613,61 @@ def evaluate_query_abstain_citations_gate(suite: Optional[dict] = None) -> dict:
 
     return _gate(suite)
 
+
+async def reconcile_raw_fact_index_chain(
+    *,
+    tenant_id: str,
+    domain_id: Optional[str] = None,
+    collection_id: Optional[str] = None,
+    index_fact_ids: Optional[List[str]] = None,
+    extra_raw_ids: Optional[List[str]] = None,
+    limit: int = 500,
+) -> dict:
+    """CoreFacade：Raw↔Fact↔Index 对账（N14；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        collection_id: 可选集合。
+        index_fact_ids: Index 层 fact_id。
+        extra_raw_ids: 额外 Raw source_id。
+        limit: 扫描上限。
+    """
+    from core.harness.knowledge_pipeline.raw_fact_index_reconcile import (
+        reconcile_raw_fact_index,
+    )
+
+    return await reconcile_raw_fact_index(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        collection_id=collection_id,
+        index_fact_ids=index_fact_ids,
+        extra_raw_ids=extra_raw_ids,
+        limit=limit,
+    )
+
+
+async def run_raw_fact_index_reconcile_suite() -> dict:
+    """CoreFacade：N14 Raw↔Fact↔Index 对账套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.raw_fact_index_reconcile import (
+        run_raw_fact_index_reconcile_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_raw_fact_index_reconcile_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N14 Raw↔Fact↔Index 对账门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_raw_fact_index_reconcile_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.raw_fact_index_reconcile import (
+        evaluate_raw_fact_index_reconcile_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
