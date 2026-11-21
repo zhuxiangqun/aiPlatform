@@ -18614,6 +18614,89 @@ def evaluate_query_abstain_citations_gate(suite: Optional[dict] = None) -> dict:
     return _gate(suite)
 
 
+def pack_retrieve_hits_as_query_response(
+    hits: Optional[List[Dict[str, Any]]] = None,
+    *,
+    channel: str = "retrieve",
+    query: str = "",
+) -> dict:
+    """CoreFacade：Wiki/KB 命中打包为查询形响应（N21；certified 恒 false）。
+
+    Args:
+        hits: 命中列表。
+        channel: ``wiki`` / ``kb``。
+        query: 原始查询。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        pack_retrieve_hits_as_query_response as _pack,
+    )
+
+    return _pack(hits, channel=channel, query=query)
+
+
+def query_wiki_with_abstain(
+    query: str,
+    *,
+    tenant_id: str = "",
+    collection_ids: Optional[List[str]] = None,
+    top_k: int = 8,
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：Wiki 查询形 + abstain 强制（N21；certified 恒 false）。
+
+    Args:
+        query: 查询。
+        tenant_id: 租户。
+        collection_ids: Wiki collections。
+        top_k: 召回上限。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        query_wiki_with_abstain as _q,
+    )
+
+    return _q(
+        query,
+        tenant_id=tenant_id,
+        collection_ids=collection_ids,
+        top_k=top_k,
+        require_citations_on_hit=require_citations_on_hit,
+    )
+
+
+def query_kb_with_abstain(
+    query: str,
+    *,
+    tenant_id: str = "",
+    doc_ids: Optional[List[str]] = None,
+    collection_id: str = "",
+    top_k: int = 8,
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：KB 查询形 + abstain 强制（N21；certified 恒 false）。
+
+    Args:
+        query: 查询。
+        tenant_id: 租户。
+        doc_ids: 可选文档过滤。
+        collection_id: collection。
+        top_k: 召回上限。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        query_kb_with_abstain as _q,
+    )
+
+    return _q(
+        query,
+        tenant_id=tenant_id,
+        doc_ids=doc_ids,
+        collection_id=collection_id,
+        top_k=top_k,
+        require_citations_on_hit=require_citations_on_hit,
+    )
+
+
 async def reconcile_raw_fact_index_chain(
     *,
     tenant_id: str,

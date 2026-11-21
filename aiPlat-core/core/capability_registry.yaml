@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3144
+total_capabilities: 3149
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 675
+    caps_count: 680
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3818,6 +3818,26 @@ domains:
         module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
         type: function
         signature: "POST /fde/query-abstain-citations/validate via Facade"
+      - symbol: "pack_retrieve_hits_as_query_response"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: pack Wiki/KB hits as query response (certified=false)"
+      - symbol: "query_wiki_with_abstain"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: Wiki query entry + abstain enforce (certified=false)"
+      - symbol: "query_kb_with_abstain"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: KB query entry + abstain enforce (certified=false)"
+      - symbol: "query_wiki_with_abstain_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/wiki via Facade"
+      - symbol: "query_kb_with_abstain_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/kb via Facade"
       - symbol: "reconcile_raw_fact_index"
         module: core/harness/knowledge_pipeline/raw_fact_index_reconcile.py
         type: function

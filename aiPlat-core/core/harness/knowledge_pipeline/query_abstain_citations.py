@@ -2,11 +2,12 @@
 
 职责：
   - 统一校验/归一化查询响应：abstain 无 citations/answer；有命中须 citations（可选强制）
-  - 覆盖 Fact Gateway + unified object_set 路径探针
+  - 覆盖 Fact Gateway + unified object_set + Wiki/KB 查询形入口
   - 套件/门槛门：``certified`` / ``n21_full`` 恒 false
 
 非目标：
-  - 不强制 Wiki/KB/GraphRAG 全入口热路径改写
+  - 不改写 ``sys_wiki_retrieve`` / ``sys_kb_retrieve`` list API 返回形
+  - 不强制 GraphRAG / MaterialsChat 全入口热路径
   - 不并入 N13 校准封顶宣称
   - 不宣称 N21 certified
 """
@@ -26,6 +27,8 @@ _SUITE_CASES = (
     "hit_requires_citations",
     "fact_gateway_path",
     "object_set_path",
+    "wiki_path",
+    "kb_path",
     "honesty_certified_false",
 )
 
@@ -103,6 +106,147 @@ def enforce_abstain_citations(
     return out
 
 
+def pack_retrieve_hits_as_query_response(
+    hits: Optional[List[Dict[str, Any]]],
+    *,
+    channel: str,
+    query: str = "",
+) -> Dict[str, Any]:
+    """将 Wiki/KB list 命中打包为查询形响应（供 abstain 门消费）。
+
+    Args:
+        hits: ``sys_wiki_retrieve`` / ``sys_kb_retrieve`` 风格命中列表。
+        channel: ``wiki`` / ``kb``（写入 route_reason）。
+        query: 原始查询（用于拼接短 answer）。
+    """
+    ch = (channel or "").strip().lower() or "retrieve"
+    items = [h for h in (hits or []) if isinstance(h, dict)]
+    citations: List[Dict[str, str]] = []
+    for h in items:
+        sid = str(
+            h.get("source")
+            or h.get("title")
+            or h.get("doc_id")
+            or h.get("page_id")
+            or h.get("element_id")
+            or ""
+        ).strip()
+        if not sid:
+            # 为什么：无 source 标识的命中不可引用 → 跳过，避免假绿 citations
+            continue
+        citations.append(
+            {
+                "source_id": sid,
+                "locator": str(h.get("title") or h.get("element_id") or ""),
+                "quote": str(h.get("text") or h.get("summary") or "")[:200],
+            }
+        )
+    abstained = not citations
+    answer = ""
+    if not abstained:
+        parts = [
+            str(h.get("text") or h.get("summary") or h.get("title") or "").strip()[:120]
+            for h in items[:3]
+        ]
+        answer = " | ".join(p for p in parts if p) or (query or "").strip()
+    return {
+        "answer": "" if abstained else answer,
+        "citations": citations,
+        "abstained": abstained,
+        "channel": ch,
+        "route_reason": f"n21:{ch}",
+        "hits_count": len(items),
+        "certified": False,
+        "n21_full_conformance": False,
+    }
+
+
+def query_wiki_with_abstain(
+    query: str,
+    *,
+    tenant_id: str = "",
+    collection_ids: Optional[List[str]] = None,
+    top_k: int = 8,
+    require_citations_on_hit: bool = True,
+) -> Dict[str, Any]:
+    """Wiki 查询形入口：retrieve → pack → enforce（N21；certified 恒 false）。
+
+    Args:
+        query: 查询。
+        tenant_id: 租户。
+        collection_ids: Wiki collection 列表。
+        top_k: 召回上限。
+        require_citations_on_hit: 无引用则降级 abstain。
+    """
+    from core.harness.syscalls.retrieval import sys_wiki_retrieve
+
+    q = (query or "").strip()
+    hits: List[Dict[str, Any]] = []
+    if q:
+        try:
+            raw = sys_wiki_retrieve(
+                q,
+                collection_ids=collection_ids or ["default"],
+                tenant_id=tenant_id or "",
+                top_k=int(top_k),
+            )
+            hits = raw if isinstance(raw, list) else []
+        except Exception as exc:
+            # 为什么：检索失败不得假绿命中 → 空 hits → abstain
+            logger.warning("query_wiki_with_abstain retrieve failed: %s", exc, exc_info=True)
+            hits = []
+    packed = pack_retrieve_hits_as_query_response(hits, channel="wiki", query=q)
+    return enforce_abstain_citations(
+        packed, require_citations_on_hit=require_citations_on_hit
+    )
+
+
+def query_kb_with_abstain(
+    query: str,
+    *,
+    tenant_id: str = "",
+    doc_ids: Optional[List[str]] = None,
+    collection_id: str = "",
+    top_k: int = 8,
+    require_citations_on_hit: bool = True,
+) -> Dict[str, Any]:
+    """KB 查询形入口：retrieve → pack → enforce（N21；certified 恒 false）。
+
+    Args:
+        query: 查询。
+        tenant_id: 租户。
+        doc_ids: 可选文档 id 过滤。
+        collection_id: collection。
+        top_k: 召回上限。
+        require_citations_on_hit: 无引用则降级 abstain。
+    """
+    from core.harness.knowledge.domain_router import DomainRouter
+    from core.harness.syscalls.retrieval import sys_kb_retrieve
+
+    q = (query or "").strip()
+    tid = (tenant_id or "").strip() or DomainRouter.default_tenant()
+    cid = (collection_id or "").strip() or DomainRouter.default_collection()
+    hits: List[Dict[str, Any]] = []
+    if q:
+        try:
+            raw = sys_kb_retrieve(
+                q,
+                list(doc_ids or []),
+                tenant_id=tid,
+                collection_id=cid,
+                top_k=int(top_k),
+            )
+            hits = raw if isinstance(raw, list) else []
+        except Exception as exc:
+            # 为什么：检索失败不得假绿命中 → 空 hits → abstain
+            logger.warning("query_kb_with_abstain retrieve failed: %s", exc, exc_info=True)
+            hits = []
+    packed = pack_retrieve_hits_as_query_response(hits, channel="kb", query=q)
+    return enforce_abstain_citations(
+        packed, require_citations_on_hit=require_citations_on_hit
+    )
+
+
 def evaluate_query_abstain_citations_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -118,6 +262,9 @@ def evaluate_query_abstain_citations_gate(
         issues.append("honesty_certified_flag_forbidden")
     if s.get("n21_full_conformance") is True:
         issues.append("honesty_n21_full_flag_forbidden")
+    # 为什么：本 deepen 须声明 Wiki/KB 查询形已接线，防旧套件冒充
+    if s.get("wiki_kb_query_entry") is not True:
+        issues.append("wiki_kb_query_entry_required")
     cases = s.get("cases") or []
     if cases:
         failed = [c for c in cases if isinstance(c, dict) and not c.get("ok")]
@@ -137,7 +284,11 @@ def evaluate_query_abstain_citations_gate(
         "issues": issues,
         "certified": False,
         "n21_full_conformance": False,
-        "note": "Abstain+citations deepen; not Wiki/KB full / not N21 certified",
+        "wiki_kb_query_entry": True,
+        "note": (
+            "Abstain+citations + Wiki/KB query entry; "
+            "not GraphRAG/MaterialsChat full / not N21 certified"
+        ),
     }
 
 
@@ -268,11 +419,68 @@ async def run_query_abstain_citations_suite(
             }
         )
 
+        # Wiki 查询形：有 source 命中保留；无标识命中 → abstain
+        wiki_hit = pack_retrieve_hits_as_query_response(
+            [{"title": "N21Page", "text": "wiki hit", "source": "wiki:N21Page", "score": 0.9}],
+            channel="wiki",
+            query="wiki hit",
+        )
+        wiki_ok = enforce_abstain_citations(wiki_hit)
+        wiki_empty = query_wiki_with_abstain(
+            "n21-wiki-no-such-page-xyz",
+            tenant_id=tenant_id,
+            collection_ids=["default"],
+            top_k=3,
+        )
+        wiki_v = validate_abstain_citations(wiki_ok)
+        cases.append(
+            {
+                "id": "wiki_path",
+                "ok": (
+                    wiki_v.get("ok") is True
+                    and wiki_ok.get("abstained") is False
+                    and bool(wiki_ok.get("citations"))
+                    and wiki_empty.get("abstained") is True
+                    and wiki_empty.get("n21_enforced") is True
+                ),
+                "detail": ",".join(wiki_v.get("errors") or []),
+            }
+        )
+
+        # KB 查询形：无 source 假命中必须降级 abstain；空检索 abstain
+        kb_fake = enforce_abstain_citations(
+            pack_retrieve_hits_as_query_response(
+                [{"text": "orphan chunk", "score": 0.5}],
+                channel="kb",
+                query="orphan",
+            )
+        )
+        kb_live = query_kb_with_abstain(
+            "n21-kb-no-such-doc-xyz",
+            tenant_id=tenant_id,
+            top_k=3,
+        )
+        kb_v = validate_abstain_citations(kb_fake)
+        cases.append(
+            {
+                "id": "kb_path",
+                "ok": (
+                    kb_v.get("ok") is True
+                    and kb_fake.get("abstained") is True
+                    and kb_live.get("abstained") is True
+                    and kb_live.get("channel") == "kb"
+                ),
+                "detail": ",".join(kb_v.get("errors") or []),
+            }
+        )
+
         cases.append(
             {
                 "id": "honesty_certified_false",
                 "ok": fact_norm.get("certified") is False
-                and uq_norm.get("n21_full_conformance") is False,
+                and uq_norm.get("n21_full_conformance") is False
+                and wiki_ok.get("n21_full_conformance") is False
+                and kb_live.get("certified") is False,
                 "detail": "",
             }
         )
@@ -285,8 +493,12 @@ async def run_query_abstain_citations_suite(
             "cases": cases,
             "certified": False,
             "n21_full_conformance": False,
+            "wiki_kb_query_entry": True,
             "measured_at": time.time(),
-            "note": "Abstain+citations deepen; not Wiki/KB full / not certified",
+            "note": (
+                "Abstain+citations + Wiki/KB query entry; "
+                "not GraphRAG/MaterialsChat full / not certified"
+            ),
         }
     finally:
         tmp.cleanup()
