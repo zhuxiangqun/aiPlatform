@@ -340,7 +340,18 @@ def sys_kb_retrieve(
 
 
 
-    return results
+    # 为什么：N20 — 裸 list 主返回保持 list；观测挂 list.n20_constraint
+    try:
+        from core.harness.knowledge_pipeline.constraint_layers import (
+            maybe_stamp_bare_list_constraint_hotpath,
+        )
+
+        return maybe_stamp_bare_list_constraint_hotpath(results, channel="kb")
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "N20 bare kb list constraint hotpath skipped", exc_info=True
+        )
+        return results
 
 
 
@@ -989,7 +1000,7 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
 
 
 
-    return [
+    hits = [
 
         {
 
@@ -1010,6 +1021,18 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
         for r in results
 
     ]
+    # 为什么：N20 — 裸 wiki list 主返回保持 list；观测挂 list.n20_constraint
+    try:
+        from core.harness.knowledge_pipeline.constraint_layers import (
+            maybe_stamp_bare_list_constraint_hotpath,
+        )
+
+        return maybe_stamp_bare_list_constraint_hotpath(hits, channel="wiki")
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "N20 bare wiki list constraint hotpath skipped", exc_info=True
+        )
+        return hits
 
 
 
