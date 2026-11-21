@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3050
+total_capabilities: 3054
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 584
+    caps_count: 588
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3690,6 +3690,22 @@ domains:
         module: core/harness/knowledge_pipeline/object_set.py
         type: function
         signature: "Read-only ObjectSet; tenant_id + kb:read L1; optional ABox role ACL"
+      - symbol: "match_filter_expr"
+        type: "function"
+        signature: "N07/N22: nested ObjectSet filter match"
+        module: "core/harness/knowledge_pipeline/object_set.py"
+      - symbol: "run_object_set_filter_suite"
+        type: "function"
+        signature: "N07/N22: nested filter suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_set.py"
+      - symbol: "evaluate_object_set_filter_gate"
+        type: "function"
+        signature: "N07/N22: nested filter gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_set.py"
+      - symbol: "ObjectSetFilterError"
+        type: "class"
+        signature: "N07/N22: invalid nested filter"
+        module: "core/harness/knowledge_pipeline/object_set.py"
       - symbol: "query_object_set"
         module: core/api/core_facade.py
         type: function

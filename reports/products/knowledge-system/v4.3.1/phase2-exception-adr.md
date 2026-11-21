@@ -25,7 +25,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 | N13/校准 | ECE/`high_precision` 门槛 + 查询路径封顶（fact gateway）；Core 不以校准为阻塞；未达标诚实封顶 medium；非真实 ECE 训练 / 非 certified | 至 N13 全量/准确率宣称 | 附录 O + `phase2-calibration-pipeline-evidence.md` |
 | N23/OCS | DomainRouter 企业域扫描 + 词汇预注册 + 门槛地板；属 Operational；非企业全域完整 / 非 certified | 至 N23 全量/签字 | §13.4 + `phase2-ocs-enterprise-scan-evidence.md` |
 | N04/N12 | 写入硬门+transition + 配置驱动 reviewer 角色门（publish）；非部署 RBAC 真源 / 非 certified | 至 N04/N12 全量/签字 | source_policy + `phase2-reviewer-rbac-evidence.md` |
-| N07/N22 | ObjectSet + link.traverse ACL；非 Wiki/KB 全入口 | 开放 | ABox ACL 切片 |
+| N07/N22 | ObjectSet + link.traverse ACL + 嵌套 filter（$and/$or/$not + 字段算子）；非 Wiki/KB 全入口 / 非任意角色×动作轴 / 非 certified | 至 N07/N22 全量/签字 | ABox ACL + `phase2-objectset-filter-evidence.md` |
 | N11/N14 | 本地双写对账；切写未授权 | 开放 | migration 演练 |
 | N24 | Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填；非 certified | 至 N24 全量加深 | 见 revision 系列 + `phase2-unified-audit-action-store-tenant-backfill-evidence.md` |
 | SLO | 目标已登记；遥测已接线；生产达标未宣称 | 开放 | 本 ADR + `phase2-slo-target-evidence.md` + `phase2-slo-telemetry-wiring-evidence.md` |
