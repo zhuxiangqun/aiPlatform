@@ -189,6 +189,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
                 out,
                 channel="wiki_context",
                 query=question or "",
+                tenant_id=tenant_id or "",
             )
         except Exception as e:
             logging.warning(

@@ -18854,6 +18854,7 @@ def attach_list_retrieve_n21_envelope(
     channel: str,
     query: str = "",
     require_citations_on_hit: bool = True,
+    tenant_id: str = "",
 ) -> dict:
     """CoreFacade：Wiki/KB list 命中挂 n21_query（N21；不改 list 主结构）。
 
@@ -18862,6 +18863,7 @@ def attach_list_retrieve_n21_envelope(
         channel: wiki / kb / wiki_context。
         query: 原始查询。
         require_citations_on_hit: 无引用则 abstain。
+        tenant_id: 非空时透传 N19 Wiki/KB 热路径审计。
     """
     from core.harness.knowledge_pipeline.query_abstain_citations import (
         attach_list_retrieve_n21_envelope as _a,
@@ -18872,6 +18874,7 @@ def attach_list_retrieve_n21_envelope(
         channel=channel,
         query=query,
         require_citations_on_hit=require_citations_on_hit,
+        tenant_id=tenant_id,
     )
 
 
