@@ -4,7 +4,7 @@ volume_id: security-governance
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-20T23:41:33Z"
+generated_at: "2026-11-21T01:16:14Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-20T23:41:33Z` |
+| 生成时间 (UTC) | `2026-11-21T01:16:14Z` |
 | CAPABILITIES sha256 | `b2f3385e3088…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
