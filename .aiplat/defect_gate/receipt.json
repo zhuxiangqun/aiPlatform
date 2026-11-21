@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T18:47:49+08:00",
+  "reviewed_at": "2026-11-21T19:00:44+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "3d19f4bfcefa770198331dfa3a140b4430f900d1b4834a044fc81ccfe46c9a27",
-  "head_sha": "40fa2da3d9f32dfb97c76edc1ffe4c0b0c05036a",
+  "diff_sha256": "38a0e869a9fd9c70765d459fde4a26ef9dffac08868a06f752893fab664a60bd",
+  "head_sha": "47bc3271838592ea72311184648044107bf3c2c3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N20 query_facts list stamp via ConstraintAwareHitList; gateway disables stamp; list main return unchanged; certified/n20_full stay false."
+  "note": "N19 GraphRAG hotpath audit best-effort via attach_graphrag_n21_envelope; certified/n19_full stay false; other Agent/Workbench bypasses still open."
 }
