@@ -27,6 +27,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "wiki_context_hotpath_entry" in ids
     assert "wiki_structured_hotpath_entry" in ids
     assert "ontology_context_hotpath_entry" in ids
+    assert "ontology_urn_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -409,3 +410,74 @@ def test_ontology_context_hotpath(tmp_path, monkeypatch):
 
     sys_ontology_context("q?", tenant_id="", include_gaps=False)
     assert fqa.list_audit_snapshots(tenant_id="t-oc", db_path=db)["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_ontology_urn_hotpath(tmp_path, monkeypatch):
+    """URN sys_ontology_context：有 tenant 时落 N19；空 tenant 跳过。"""
+    db = str(tmp_path / "fqa-urn.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+
+    class _Store:
+        def get_downstream(self, urn, depth):
+            return [{"s": urn, "p": "uses", "o": "x"}]
+
+        def get_upstream(self, urn, depth):
+            return []
+
+    monkeypatch.setattr(
+        "core.harness.ontology_engine.triple_store.get_triple_store",
+        lambda: _Store(),
+    )
+
+    from core.harness.syscalls.ontology import sys_ontology_context
+
+    out = await sys_ontology_context(
+        "urn:aiplat:agent:demo", depth=1, tenant_id="t-urn"
+    )
+    assert out.get("certified") is False
+    assert out.get("n19_full_conformance") is False
+    listed = fqa.list_audit_snapshots(tenant_id="t-urn", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "ontology_urn"
+
+    await sys_ontology_context("urn:aiplat:agent:demo", tenant_id="")
+    assert fqa.list_audit_snapshots(tenant_id="t-urn", db_path=db)["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_ontology_urn_http_hotpath(tmp_path, monkeypatch):
+    """HTTP ontology_query / impact：有 tenant 落盘；certified 恒 false。"""
+    db = str(tmp_path / "fqa-urn-http.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+
+    class _Store:
+        def get_downstream(self, urn, depth):
+            return [{"s": urn, "p": "uses", "o": "y"}]
+
+        def get_upstream(self, urn, depth):
+            return [{"s": "z", "p": "calls", "o": urn}]
+
+    monkeypatch.setattr(
+        "core.api.routers.ontology_routes.get_triple_store",
+        lambda: _Store(),
+    )
+
+    from core.api.routers.ontology_routes import ontology_query, ontology_impact
+
+    q = await ontology_query(
+        {"urn": "urn:aiplat:skill:demo", "tenant_id": "t-http", "depth": 1}
+    )
+    assert q.get("certified") is False
+    listed = fqa.list_audit_snapshots(tenant_id="t-http", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "ontology_urn_http"
+
+    await ontology_impact("skill:demo", depth=1, tenant_id="t-http")
+    assert fqa.list_audit_snapshots(tenant_id="t-http", db_path=db)["count"] == 2
+
+    skip = await ontology_query({"urn": "urn:aiplat:skill:demo", "tenant_id": ""})
+    assert skip.get("certified") is False
+    assert fqa.list_audit_snapshots(tenant_id="t-http", db_path=db)["count"] == 2

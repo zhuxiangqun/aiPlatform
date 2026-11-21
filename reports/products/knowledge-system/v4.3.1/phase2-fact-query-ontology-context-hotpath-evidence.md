@@ -40,5 +40,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做
 
-- URN 版 `syscalls/ontology.py:sys_ontology_context` 审计
 - 全部旁路 / N19 certified
+
+> URN 版 syscall + HTTP 加深见 `phase2-fact-query-ontology-urn-hotpath-evidence.md`。
