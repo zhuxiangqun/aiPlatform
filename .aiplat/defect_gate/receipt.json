@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T23:24:18+08:00",
+  "reviewed_at": "2026-11-21T23:31:52+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "19599649ba9c969b5f8d9a2d3a8b7e7dd3e4a993109bbed405c47ddf3d2ca463",
-  "head_sha": "26ffbe16b8986e733e8bf0e228b0df2e0aa34685",
+  "diff_sha256": "9f6fc8e33b21b2925bbafd3fb2da8e3098dd4474c8dec808f3dc3af34df4d81f",
+  "head_sha": "8f979322f690f6832e11587f8e57ed21b0890fec",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 FDE clarify tenant passthrough; DomainRouter shadow fixed; wiki_engine.search_pages residual still open; certified false. Local lock only."
+  "note": "N19 wiki_engine.search_pages opt-in audit (default off); TripleStore tenant isolation still open; certified false. Local lock only."
 }
