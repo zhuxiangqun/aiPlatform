@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T23:46:31+08:00",
+  "reviewed_at": "2026-11-22T06:21:02+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "52954b80308f37608a3dc7cc08c2187028f0e81785fae1b080ba19b04f52c3fd",
-  "head_sha": "6da641f14e09be18a1ab537c1971704a7ce4f9d5",
+  "diff_sha256": "d248d8166c8fe859a85fc291b39f740d13896b771b7285be59f43fd33c935534",
+  "head_sha": "7c26e0d6b89369a483b311338bc7af0e2592bede",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "TripleStore tenant filter on explicit tid; empty tid legacy full-scan intentional; platform ontology bypass not wired (documented). Not N09 certified."
+  "note": "Land tip CI unblock: kb_retrieve same-line tenant_id (§65), Lv4 gate tests v2, DomainRouter.default_collection, FactQuery audit DB isolation. Residual: tip→main still needs CI green + non-author Approve; N09 not certified; platform TripleStore bypass open."
 }
