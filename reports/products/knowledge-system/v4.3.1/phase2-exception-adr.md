@@ -12,7 +12,8 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 
 > 实施权威：附录 N 认证证据包 `certification_slots.exception_adr` 最小填空。  
 > **集中登记当前例外**；**非**全量 ADR 体系；试点 Core（朱鸿林）+ Extended（朱莹）+ Operational（朱莹）+ 全量（朱向群，conditional）已批准；SLO 目标已登记且遥测已接线（非生产达标）。  
-> 2026-11-19：Core 12 / Extended 6 / Operational 6 均按附录 N.2–N.4 标为等级 scoped `exists`；N09 **探针集冻结**；深度缺口记为后续加深，不阻塞已开徽章。
+> 2026-11-19：Core 12 / Extended 6 / Operational 6 均按附录 N.2–N.4 标为等级 scoped `exists`；N09 **探针集冻结**；深度缺口记为后续加深，不阻塞已开徽章。  
+> 2026-11-21：非本表 catalog note 盘点见 `phase2-catalog-honesty-triage.md`（不关闭本表例外）。
 
 ## 例外清单（范围 / 期限 / 补偿）
 
@@ -31,7 +32,8 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 | N24 | Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填；非 certified | 至 N24 全量加深 | 见 revision 系列 + `phase2-unified-audit-action-store-tenant-backfill-evidence.md` |
 | SLO | 目标已登记；遥测已接线；生产达标未宣称 | 开放 | 本 ADR + `phase2-slo-target-evidence.md` + `phase2-slo-telemetry-wiring-evidence.md` |
 
-权威条目 note 以 [`n24-conformance-catalog.yaml`](./n24-conformance-catalog.yaml) 为准；本表为人读汇总。
+权威条目 note 以 [`n24-conformance-catalog.yaml`](./n24-conformance-catalog.yaml) 为准；本表为人读汇总。  
+未进本表、但仍有 catalog note 深度缺口的 exists 项，见 [`phase2-catalog-honesty-triage.md`](./phase2-catalog-honesty-triage.md)（仍开放 / 已过时 / 并入既有刀）。
 
 ## 检查表
 
