@@ -2,7 +2,9 @@
 
 职责：登记迁移作业；双写 source+target；按 key/hash 对账并可修复；
 记录读指针与回滚演练。source 在切写前始终权威。
-非目标：不做真实生产回填；不自动切写；不宣称 N24 / OCS 全量符合。
+N11/N14 deepen：显式切写授权（token+actor+reason+对账干净）；
+``process_cutover_authorized`` / 生产 certified 恒 false。
+非目标：不做真实生产回填；不自动切写；不宣称 N11/N14/N24 certified。
 """
 from __future__ import annotations
 
@@ -177,10 +179,23 @@ def _job_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
         "cutover_authorized": bool(row["cutover_authorized"]),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
-        # 诚实锁：本切片永不宣称生产切写已授权
+        # 诚实锁：作业级授权 ≠ 生产切写认证
         "process_cutover_authorized": False,
+        "production_cutover_certified": False,
         "accuracy_claim": False,
     }
+
+
+def _cutover_token_ok(token: str) -> bool:
+    """校验切写 token（``AIPLAT_KNOWLEDGE_CUTOVER_TOKEN``；未配置则拒绝）。
+
+    Args:
+        token: 调用方提供的 token。
+    """
+    expected = (os.environ.get("AIPLAT_KNOWLEDGE_CUTOVER_TOKEN") or "").strip()
+    if not expected:
+        return False
+    return (token or "").strip() == expected
 
 
 def start_migration_job(
@@ -778,4 +793,344 @@ def list_migration_events(
             }
             for r in rows
         ],
+    }
+
+
+def authorize_migration_cutover(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    token: str,
+    require_reconcile_ok: bool = True,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N11/N14 deepen：作业级切写授权（token+actor+reason；非生产认证）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 授权人。
+        reason: 授权理由。
+        token: 须匹配 ``AIPLAT_KNOWLEDGE_CUTOVER_TOKEN``。
+        require_reconcile_ok: 授权前强制对账通过。
+        db_path: 可选库路径。
+    """
+    tid = (tenant_id or "").strip()
+    jid = (job_id or "").strip()
+    act = (actor or "").strip()
+    why = (reason or "").strip()
+    if not tid or not jid:
+        return {"status": "invalid", "error": "job_and_tenant_required"}
+    if not act or not why:
+        return {"status": "invalid", "error": "actor_and_reason_required"}
+    if not _cutover_token_ok(token):
+        return {
+            "status": "denied",
+            "error": "cutover_token_invalid_or_unset",
+            "process_cutover_authorized": False,
+            "production_cutover_certified": False,
+        }
+
+    with _connect(db_path) as conn:
+        job = _job_row(conn, jid, tid)
+        if not job:
+            return {"status": "not_found", "error": "job_not_found"}
+
+    if require_reconcile_ok:
+        recon = reconcile_migration(
+            jid, tenant_id=tid, repair=False, db_path=db_path
+        )
+        if not recon.get("ok"):
+            return {
+                "status": "blocked",
+                "error": "reconcile_not_ok",
+                "reconcile": recon,
+                "process_cutover_authorized": False,
+                "production_cutover_certified": False,
+            }
+
+    now = time.time()
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE migration_jobs SET cutover_authorized=1, updated_at=? "
+            "WHERE job_id=? AND tenant_id=?",
+            (now, jid, tid),
+        )
+        _append_event(
+            conn,
+            job_id=jid,
+            tenant_id=tid,
+            event_type="cutover_authorized",
+            detail={"actor": act, "reason": why},
+        )
+        conn.commit()
+        row = _job_row(conn, jid, tid)
+    assert row is not None
+    out = {"status": "ok", **_job_to_dict(row)}
+    out["authorized_by"] = act
+    return out
+
+
+def revoke_migration_cutover(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str = "revoke",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """撤销作业级切写授权。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 操作人。
+        reason: 理由。
+        db_path: 可选库路径。
+    """
+    tid = (tenant_id or "").strip()
+    jid = (job_id or "").strip()
+    act = (actor or "").strip()
+    if not tid or not jid or not act:
+        return {"status": "invalid", "error": "job_tenant_actor_required"}
+    with _connect(db_path) as conn:
+        job = _job_row(conn, jid, tid)
+        if not job:
+            return {"status": "not_found", "error": "job_not_found"}
+        now = time.time()
+        conn.execute(
+            "UPDATE migration_jobs SET cutover_authorized=0, phase=?, updated_at=? "
+            "WHERE job_id=? AND tenant_id=?",
+            ("dual_write", now, jid, tid),
+        )
+        _append_event(
+            conn,
+            job_id=jid,
+            tenant_id=tid,
+            event_type="cutover_revoked",
+            detail={"actor": act, "reason": reason or "revoke"},
+        )
+        conn.commit()
+        row = _job_row(conn, jid, tid)
+    assert row is not None
+    return {"status": "ok", **_job_to_dict(row)}
+
+
+def request_write_cutover(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """请求切写阶段（须已作业级授权；仍非生产认证）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 操作人。
+        reason: 理由。
+        db_path: 可选库路径。
+    """
+    tid = (tenant_id or "").strip()
+    jid = (job_id or "").strip()
+    act = (actor or "").strip()
+    why = (reason or "").strip()
+    if not tid or not jid or not act or not why:
+        return {"status": "invalid", "error": "job_tenant_actor_reason_required"}
+    with _connect(db_path) as conn:
+        job = _job_row(conn, jid, tid)
+        if not job:
+            return {"status": "not_found", "error": "job_not_found"}
+        if not bool(job["cutover_authorized"]):
+            return {
+                "status": "denied",
+                "error": "cutover_not_authorized",
+                "process_cutover_authorized": False,
+                "production_cutover_certified": False,
+            }
+        now = time.time()
+        conn.execute(
+            "UPDATE migration_jobs SET phase=?, updated_at=? WHERE job_id=? AND tenant_id=?",
+            ("cutover", now, jid, tid),
+        )
+        _append_event(
+            conn,
+            job_id=jid,
+            tenant_id=tid,
+            event_type="write_cutover_requested",
+            detail={"actor": act, "reason": why, "environment": "local"},
+        )
+        conn.commit()
+        row = _job_row(conn, jid, tid)
+    assert row is not None
+    return {
+        "status": "ok",
+        **_job_to_dict(row),
+        "environment": "local",
+        "note": "job-level cutover only; not production certified",
+    }
+
+
+def run_migration_cutover_auth_suite(
+    *,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N11/N14 deepen：切写授权套件（certified 恒 false）。
+
+    Args:
+        db_path: 可选临时库。
+    """
+    import tempfile
+
+    checks: Dict[str, bool] = {}
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    path = db_path
+    if not path:
+        tmp = tempfile.TemporaryDirectory(prefix="n11-cutover-")
+        path = str(Path(tmp.name) / "mig.db")
+
+    prev_token = os.environ.get("AIPLAT_KNOWLEDGE_CUTOVER_TOKEN")
+    os.environ["AIPLAT_KNOWLEDGE_CUTOVER_TOKEN"] = "n11-test-token"
+    try:
+        job = start_migration_job(
+            tenant_id="n11-t", domain="lock-service", db_path=path
+        )
+        jid = job["job_id"]
+        dual_write_record(
+            jid,
+            tenant_id="n11-t",
+            record_key="k1",
+            payload={"v": 1},
+            db_path=path,
+        )
+
+        # 1) 无 token / 错 token 拒绝
+        bad = authorize_migration_cutover(
+            jid,
+            tenant_id="n11-t",
+            actor="ops",
+            reason="pilot",
+            token="wrong",
+            db_path=path,
+        )
+        checks["bad_token_denied"] = bad.get("status") == "denied"
+
+        # 2) 未授权切写拒绝
+        denied = request_write_cutover(
+            jid,
+            tenant_id="n11-t",
+            actor="ops",
+            reason="go",
+            db_path=path,
+        )
+        checks["unauthorized_cutover_denied"] = denied.get("status") == "denied"
+
+        # 3) 正确 token + 对账 → 授权
+        ok_auth = authorize_migration_cutover(
+            jid,
+            tenant_id="n11-t",
+            actor="ops",
+            reason="pilot-lab",
+            token="n11-test-token",
+            db_path=path,
+        )
+        checks["authorize_ok"] = (
+            ok_auth.get("status") == "ok" and ok_auth.get("cutover_authorized") is True
+        )
+
+        # 4) 授权后可请求切写阶段
+        cut = request_write_cutover(
+            jid,
+            tenant_id="n11-t",
+            actor="ops",
+            reason="lab-cutover",
+            db_path=path,
+        )
+        checks["cutover_phase_ok"] = (
+            cut.get("status") == "ok" and cut.get("phase") == "cutover"
+        )
+
+        # 5) 诚实锁：生产认证仍 false
+        checks["honesty_process_false"] = cut.get("process_cutover_authorized") is False
+        checks["honesty_prod_certified_false"] = (
+            cut.get("production_cutover_certified") is False
+        )
+
+        # 6) 撤销
+        rev = revoke_migration_cutover(
+            jid, tenant_id="n11-t", actor="ops", reason="done", db_path=path
+        )
+        checks["revoke_ok"] = (
+            rev.get("status") == "ok" and rev.get("cutover_authorized") is False
+        )
+
+        checks["honesty_certified_false"] = True
+    finally:
+        if prev_token is None:
+            os.environ.pop("AIPLAT_KNOWLEDGE_CUTOVER_TOKEN", None)
+        else:
+            os.environ["AIPLAT_KNOWLEDGE_CUTOVER_TOKEN"] = prev_token
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for v in checks.values() if v)
+    return {
+        "ok": passed == len(checks),
+        "passed": passed,
+        "total": len(checks),
+        "checks": checks,
+        "certified": False,
+        "n11_full_conformance": False,
+        "n14_full_conformance": False,
+        "production_cutover_certified": False,
+        "note": (
+            "Migration cutover auth deepen; job-level token only; "
+            "not production certified / not N11/N14 full"
+        ),
+    }
+
+
+def evaluate_migration_cutover_auth_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N11/N14 切写授权门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_migration_cutover_auth_suite`` 回执。
+    """
+    s = suite if isinstance(suite, dict) else run_migration_cutover_auth_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    if s.get("certified") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("n11_full_conformance") is True:
+        issues.append("honesty_n11_full_forbidden")
+    if s.get("n14_full_conformance") is True:
+        issues.append("honesty_n14_full_forbidden")
+    if s.get("production_cutover_certified") is True:
+        issues.append("honesty_production_cutover_forbidden")
+    required = (
+        "bad_token_denied",
+        "unauthorized_cutover_denied",
+        "authorize_ok",
+        "cutover_phase_ok",
+        "honesty_process_false",
+        "honesty_prod_certified_false",
+        "revoke_ok",
+        "honesty_certified_false",
+    )
+    checks = s.get("checks") if isinstance(s.get("checks"), dict) else {}
+    for k in required:
+        if not checks.get(k):
+            issues.append(f"missing_or_failed:{k}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "note": "Migration cutover auth deepen; not N11/N14 certified",
     }

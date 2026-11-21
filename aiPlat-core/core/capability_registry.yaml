@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3058
+total_capabilities: 3063
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 592
+    caps_count: 597
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3938,6 +3938,26 @@ domains:
         module: core/harness/knowledge_pipeline/knowledge_migration.py
         type: function
         signature: "W10: start knowledge migration job (dual-write window)"
+      - symbol: "authorize_migration_cutover"
+        type: "function"
+        signature: "N11/N14: job-level cutover authorize (token)"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "request_write_cutover"
+        type: "function"
+        signature: "N11/N14: request cutover phase if authorized"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "revoke_migration_cutover"
+        type: "function"
+        signature: "N11/N14: revoke job-level cutover auth"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "run_migration_cutover_auth_suite"
+        type: "function"
+        signature: "N11/N14: cutover auth suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "evaluate_migration_cutover_auth_gate"
+        type: "function"
+        signature: "N11/N14: cutover auth gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
       - symbol: "get_migration_job"
         module: core/harness/knowledge_pipeline/knowledge_migration.py
         type: function

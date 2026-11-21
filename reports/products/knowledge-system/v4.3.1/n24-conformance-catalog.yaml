@@ -203,6 +203,7 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/knowledge_migration.py
+      - reports/products/knowledge-system/v4.3.1/phase2-migration-cutover-auth-evidence.md
     note: "Operational-scoped exists (附录 N.4); 双写/对账/回滚演练最小切片；切写未授权"
   - id: N12
     level: core
@@ -233,7 +234,8 @@ items:
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
-    note: "Operational-scoped exists (附录 N.4); 迁移 job 本地 store 对账；非生产 Raw↔Fact↔Index 全链路"
+      - reports/products/knowledge-system/v4.3.1/phase2-migration-cutover-auth-evidence.md
+    note: "Operational-scoped exists (附录 N.4); 迁移 job 本地 store 对账 + 作业级切写授权；非生产切写认证/非 Raw↔Fact↔Index 全链路"
   - id: N15
     level: core
     title: JSON Schema 与附录一致
