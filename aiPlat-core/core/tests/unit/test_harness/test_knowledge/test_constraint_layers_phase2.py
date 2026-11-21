@@ -20,6 +20,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "graphrag_hotpath_entry" in ids
     assert "wiki_kb_hotpath_entry" in ids
     assert "bare_list_hotpath_entry" in ids
+    assert "query_facts_list_constraint_hotpath_entry" in ids
 
     gate = cl.evaluate_constraint_layers_gate(suite)
     assert gate["ok"] is True
