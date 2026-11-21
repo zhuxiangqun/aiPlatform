@@ -30,6 +30,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "ontology_urn_hotpath_entry" in ids
     assert "wiki_pages_hotpath_entry" in ids
     assert "graph_neighbors_hotpath_entry" in ids
+    assert "graph_query_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -544,3 +545,42 @@ async def test_graph_neighbors_hotpath(tmp_path, monkeypatch):
 
     await sys_graph_neighbors("e1", tenant_id="")
     assert fqa.list_audit_snapshots(tenant_id="t-gn", db_path=db)["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_graph_query_hotpath(tmp_path, monkeypatch):
+    """sys_graph_query：显式 tenant 落 N19；空 tenant 跳过；stats 契约。"""
+    db = str(tmp_path / "fqa-gq.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+
+    class _Graph:
+        def stats(self):
+            return {"domain_id": "d", "node_count": 3, "edge_count": 2, "avg_degree": 0.7}
+
+        def get_entity_classes(self):
+            return ["A", "B"]
+
+    monkeypatch.setattr(
+        "core.harness.ontology_engine.graph_index.GraphIndex.load",
+        lambda *_a, **_k: _Graph(),
+    )
+
+    from core.harness.syscalls.graph import sys_graph_query
+
+    out = await sys_graph_query("", operation="stats", tenant_id="t-gq")
+    assert out.get("success") is True
+    assert out.get("data", {}).get("nodes") == 3
+    assert out.get("certified") is False
+    assert out.get("n19_full_conformance") is False
+    listed = fqa.list_audit_snapshots(tenant_id="t-gq", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "graph_query"
+
+    classes = await sys_graph_query("", operation="classes", tenant_id="t-gq")
+    assert classes.get("success") is True
+    assert "A" in (classes.get("data") or {}).get("classes", [])
+    assert fqa.list_audit_snapshots(tenant_id="t-gq", db_path=db)["count"] == 2
+
+    await sys_graph_query("", operation="stats", tenant_id="")
+    assert fqa.list_audit_snapshots(tenant_id="t-gq", db_path=db)["count"] == 2

@@ -40,5 +40,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做
 
-- `sys_graph_query` 实现（`__init__` 导出但模块未定义）
 - 全部旁路 / N19 certified

@@ -958,11 +958,23 @@ class MaterialsChatAgent(BaseAgent):
             graph_context = ""
             try:
                 from core.harness.syscalls.graph import sys_graph_query
-                gq = await sys_graph_query("", operation="stats", domain_id=domain_id)
+                # 为什么：透传 tenant，激活 N19 graph_query 审计（空则跳过）
+                _gq_tid = str(tenant_id or "")
+                gq = await sys_graph_query(
+                    "",
+                    operation="stats",
+                    domain_id=domain_id,
+                    tenant_id=_gq_tid,
+                )
                 if gq.get("success") and gq.get("data", {}).get("nodes", 0) > 0:
                     graph_context = f"\n[知识图谱摘要] {gq['result']}\n"
                     # Also get top classes
-                    gq2 = await sys_graph_query("", operation="classes", domain_id=domain_id)
+                    gq2 = await sys_graph_query(
+                        "",
+                        operation="classes",
+                        domain_id=domain_id,
+                        tenant_id=_gq_tid,
+                    )
                     if gq2.get("success"):
                         graph_context += f"{gq2['result']}\n"
             except Exception:
