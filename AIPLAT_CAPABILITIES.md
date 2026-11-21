@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3941
+total_capabilities: 3942
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1308,6 +1308,7 @@ scan_hash: 8f9548ec24f4
 | **Claim 证据硬门+冲突+状态写（v4.3.1 N03 F2+write）** | `put_claim` / `record_claim_conflict` / `transition_claim_status`→`put_claim` / suite/gate + Facade 同名 + `POST …/claims/{id}/status-transition` | ✅ | published 无证据拒；同键冲突；状态写路径（合法边+审计+持久化）；certified 恒 false。证据 `phase2-claim-status-write-evidence.md`。**未宣称** 全量 Claim 生命周期产品 / N03 certified。生成物适用：已接线（经 Facade/HTTP） | 本批 |
 | **Fact→Graph 投影 + Action L1（v4.3.1 Phase 2 G2）** | `fact_projector.py` + `action_registry` Step 3.25 + `POST …/extractions/facts/rebuild` | ✅ | `project_facts_to_graph`（`exact_replay_from_facts`）；`required_permissions` 缺省 → `policy_denied`；试点合同 `lock_service_accept_order.yaml`。证据 `phase2-g2-evidence.md`。**未宣称** Wiki 只读/ObjectSet/N24 | 已合入 |
 | **重建条件三分类（v4.3.1 N05 partial）** | `classify_rebuild` / `validate_rebuild_receipt` + Facade `validate_fact_rebuild_receipt` | ✅ | `rebuild_mode∈{exact,semantic,non}` + `rebuild_reason`；禁不可重建标 exact；certified 恒 false。证据 `phase2-rebuild-taxonomy-evidence.md`。**未宣称** Wiki 全量/N05 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Wiki 有条件重建（v4.3.1 N05 deepen）** | `wiki_rebuild.py` + Facade `fact_ledger_project_to_wiki` + FDE `/wiki-rebuild*` | ✅ | Fact→Wiki 派生页；复用三分类；non 不写；suite/gate certified 恒 false。证据 `phase2-wiki-rebuild-evidence.md`。**未宣称** wiki_engine/FTS 全量 / N05 certified。生成物适用：已接线 | 本批 |
 | **抽取 confirm→ActionRegistry（G2 收口）** | `platform_action:knowledge:confirm_extraction` + `CoreFacade.run_confirm_extraction` + `POST …/extractions/{id}/confirm` | ✅ | confirm 经 L1（`kb:write`/`admin`/`*`）；HTTP scopes→permissions；证据 `phase2-g2-evidence.md`。**未宣称** ObjectSet/N24 | 已合入 |
 | **Wiki 读模型硬门（v4.3.1 试点）** | `harness/knowledge/wiki_read_model.py` + `POST/DELETE /wiki/pages` | ✅ | `AIPLAT_WIKI_READ_MODEL_COLLECTIONS` 配置名单内人工写 → 403 `wiki_is_read_model`（默认空=不拦）；`AIPLAT_WIKI_ALLOW_MANUAL_WRITE` 破窗记 WARNING；编译器 `write_page` 不经门。证据 `phase2-wiki-readonly-evidence.md`。**未宣称** N5 全量/全局禁写/ObjectSet | 本批 |
 | **FunctionContract（v4.3.1 W5 最小切片）** | `harness/infrastructure/function_contract.py` + `function_registry.py` + `builtin_functions.py` + `POST …/fde/functions/{id}/invoke` | ✅ | 附录 C.3 合同；`side_effects=true`→`side_effects_forbidden`；`required_permissions` L1（对齐 Action）；YAML seed `workspace_seeds/functions` + `AIPLAT_HOME/functions`；CoreFacade `invoke_function`。证据 `phase2-function-contract-evidence.md`。**未宣称** ObjectSet/Interface/副作用分级/N24 | 本批 |
@@ -1445,6 +1446,13 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| assert_schema_object_types_published | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| list_object_type_versions | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| assert_object_type_publish_role | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_wiki_rebuild_gate | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| run_wiki_rebuild_suite | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| list_wiki_rebuild_pages | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| project_facts_to_wiki | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_object_type_publish_gate | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
 | run_object_type_publish_suite | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
 | get_published_object_type | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
@@ -4842,7 +4850,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 766 | 1 | 767 |
+| Harness 执行引擎 | 767 | 1 | 768 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 680 | 9 | 689 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4887,7 +4895,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3930** | **11** | **3941** |
+| **总计** | **3931** | **11** | **3942** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
