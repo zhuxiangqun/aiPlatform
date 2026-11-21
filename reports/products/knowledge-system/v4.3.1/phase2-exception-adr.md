@@ -37,7 +37,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 | N07/N22 | ObjectSet + link.traverse ACL + 嵌套 filter + 配置驱动角色×动作轴；非 Wiki/KB 全入口 / 非部署 RBAC 真源 / 非 certified | 至 N07/N22 全量/签字 | ABox ACL + `phase2-objectset-filter-evidence.md` + `phase2-role-action-matrix-evidence.md` |
 | N08 | Registry Policy/Approval/Audit + kill switch；require_approval 强制入队；Lv4 误报门 v2（禁 0 样本假绿 + rollback）；非全量 Action Lv4 / 非 certified | 至 N08 全量/签字 | ActionRegistry + `phase2-action-policy-audit-evidence.md` + `phase2-lv4-false-positive-gate-evidence.md` |
 | N11/N14 | 本地双写对账 + 作业级切写授权（token）+ Raw↔Fact↔Index 全链路 deepen；非生产切写认证 / 非 certified | 至 N11/N14 全量/签字 | migration + cutover-auth + `phase2-raw-fact-index-reconcile-evidence.md` |
-| N24 | Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填 + Fact/Query 源流 fan-in + 总线热路径 + UI 流过滤 + UI materialize + UI bus suite/gate + UI 薄 append；非 certified | 至 N24 全量加深 | 见 revision 系列 + `phase2-unified-audit-ui-append-evidence.md` |
+| N24 | Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填 + Fact/Query 源流 fan-in + 总线热路径 + UI 流过滤 + UI materialize + UI bus suite/gate + UI 薄 append + UI append refs/payload；非 certified | 至 N24 全量加深 | 见 revision 系列 + `phase2-unified-audit-ui-append-payload-evidence.md` |
 | SLO | 目标已登记；遥测已接线；生产达标未宣称 | 开放 | 本 ADR + `phase2-slo-target-evidence.md` + `phase2-slo-telemetry-wiring-evidence.md` |
 
 权威条目 note 以 [`n24-conformance-catalog.yaml`](./n24-conformance-catalog.yaml) 为准；本表为人读汇总。  

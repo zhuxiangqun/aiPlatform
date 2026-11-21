@@ -1,8 +1,8 @@
 /**
- * UnifiedAuditPanel — N24 Batch J4/J12–J15 统一审计管理端薄 UI。
+ * UnifiedAuditPanel — N24 Batch J4/J12–J16 统一审计管理端薄 UI。
  *
  * 经 FDE `/unified-audit*` → CoreFacade；J12 流过滤；J13 materialize；
- * J14 view/bus suite·gate；J15 薄 append；不宣称 certified。
+ * J14 view/bus suite·gate；J15 薄 append；J16 payload/refs JSON；不宣称 certified。
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
@@ -25,6 +25,22 @@ function detailMessage(detail: unknown): string {
     return String((detail as { reason?: unknown }).reason || JSON.stringify(detail));
   }
   return detail ? JSON.stringify(detail) : '请求失败';
+}
+
+/** 解析可选 JSON 对象文本；空串视为 {}。 */
+function parseOptionalJsonObject(raw: string, field: string): Record<string, unknown> {
+  const text = raw.trim();
+  if (!text) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error(`${field} 不是合法 JSON`);
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${field} 须为 JSON 对象`);
+  }
+  return parsed as Record<string, unknown>;
 }
 
 const STREAM_OPTIONS = [
@@ -55,6 +71,8 @@ const UnifiedAuditPanel: React.FC = () => {
   const [appendEventType, setAppendEventType] = useState('manual_note');
   const [appendSubject, setAppendSubject] = useState('');
   const [appendActor, setAppendActor] = useState('ui');
+  const [appendRefsJson, setAppendRefsJson] = useState('{}');
+  const [appendPayloadJson, setAppendPayloadJson] = useState('{}');
 
   const q = (extra: Record<string, string> = {}) => {
     const p = new URLSearchParams({ tenant_id: tenantId.trim(), ...extra });
@@ -159,6 +177,8 @@ const UnifiedAuditPanel: React.FC = () => {
     }
     setLoading(true);
     try {
+      const refs = parseOptionalJsonObject(appendRefsJson, 'refs');
+      const payload = parseOptionalJsonObject(appendPayloadJson, 'payload');
       const r = await fetch(API('/unified-audit/append'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -170,6 +190,8 @@ const UnifiedAuditPanel: React.FC = () => {
           occurred_at: Date.now() / 1000,
           actor: appendActor.trim(),
           subject: appendSubject.trim(),
+          refs,
+          payload,
         }),
       });
       const res = await r.json().catch(() => ({}));
@@ -248,9 +270,9 @@ const UnifiedAuditPanel: React.FC = () => {
       <CardHeader className="flex flex-row items-center justify-between gap-2 py-3 px-4">
         <div className="flex items-center gap-2 text-sm text-gray-200">
           <ListTree className="h-4 w-4 text-sky-300/90" />
-          <span>Unified Audit（N24 J4/J12–J15）</span>
+          <span>Unified Audit（N24 J4/J12–J16）</span>
           <span className="text-[11px] text-gray-500 font-normal">
-            汇合 + materialize + append · 非 certified
+            汇合 + materialize + append(+payload/refs) · 非 certified
           </span>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
@@ -281,7 +303,7 @@ const UnifiedAuditPanel: React.FC = () => {
       <CardContent className="space-y-4 px-4 pb-4">
         <p className="text-[11px] text-gray-500 leading-relaxed">
           汇合 Package / ActionExecution / revision_audit / action_store / fact_query_audit；
-          J13 materialize；J14 suite/gate；J15 薄 append（幂等 event_id）。不宣称 certified。
+          J13 materialize；J14 suite/gate；J15 薄 append；J16 可选 refs/payload JSON。不宣称 certified。
         </p>
 
         <div className="flex gap-2 text-[11px]">
@@ -366,7 +388,7 @@ const UnifiedAuditPanel: React.FC = () => {
 
         {viewMode === 'bus' && (
           <div className="rounded border border-gray-800/80 bg-gray-950/30 p-3 space-y-2">
-            <div className="text-[11px] text-gray-400">薄 append（写总线 · 幂等）</div>
+            <div className="text-[11px] text-gray-400">薄 append（写总线 · 幂等 · 可选 refs/payload）</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <label className="text-[11px] text-gray-400 space-y-1">
                 event_id
@@ -413,6 +435,24 @@ const UnifiedAuditPanel: React.FC = () => {
                   className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
                   value={appendActor}
                   onChange={(e) => setAppendActor(e.target.value)}
+                />
+              </label>
+              <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
+                refs（JSON 对象，可选）
+                <textarea
+                  className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono min-h-[56px]"
+                  value={appendRefsJson}
+                  onChange={(e) => setAppendRefsJson(e.target.value)}
+                  spellCheck={false}
+                />
+              </label>
+              <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
+                payload（JSON 对象，可选）
+                <textarea
+                  className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono min-h-[56px]"
+                  value={appendPayloadJson}
+                  onChange={(e) => setAppendPayloadJson(e.target.value)}
+                  spellCheck={false}
                 />
               </label>
             </div>
