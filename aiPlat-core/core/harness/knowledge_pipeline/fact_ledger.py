@@ -1078,6 +1078,23 @@ class FactLedger:
                 ),
             )
             await db.commit()
+        # 为什么：N19 — put_fact 热路径 best-effort 落统一审计快照（失败不阻断写入）
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_put_fact_hotpath,
+            )
+
+            maybe_record_put_fact_hotpath(
+                tenant_id=tenant_id,
+                before=existing,
+                after=record,
+            )
+        except Exception:
+            logger.warning(
+                "fact_query_audit put_fact hotpath failed for %s",
+                fid,
+                exc_info=True,
+            )
         return record
 
     async def _enforce_put_fact_write_gates(
@@ -3763,6 +3780,27 @@ async def unified_query_gateway(
     if not tid:
         raise FactLedgerError("tenant_id required")
 
+    def _finish(resp: Dict[str, Any]) -> Dict[str, Any]:
+        # 为什么：N19 — Gateway 热路径 best-effort 落 Query 快照（失败不改 F.1）
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_query_gateway_hotpath,
+            )
+
+            return maybe_record_query_gateway_hotpath(
+                tenant_id=tid,
+                route=r,
+                query=query or "",
+                response=resp,
+            )
+        except Exception:
+            logger.warning(
+                "fact_query_audit query_gateway hotpath failed route=%s",
+                r,
+                exc_info=True,
+            )
+            return resp
+
     if r == "fact":
         lg = ledger or get_fact_ledger()
         await lg.initialize()
@@ -3782,7 +3820,7 @@ async def unified_query_gateway(
         resp["route_reason"] = f"unified:fact:{resp.get('route_reason') or 'fact_ledger'}"
         gate = validate_gateway_response(resp)
         resp["gateway_contract_ok"] = gate["ok"]
-        return resp
+        return _finish(resp)
 
     if r == "wiki":
         from core.harness.knowledge_pipeline.query_abstain_citations import (
@@ -3796,7 +3834,7 @@ async def unified_query_gateway(
             collection_ids=cids,
             top_k=int(top_k),
         )
-        return _n21_to_f1_envelope(tenant_id=tid, route="wiki", n21=n21)
+        return _finish(_n21_to_f1_envelope(tenant_id=tid, route="wiki", n21=n21))
 
     if r == "index":
         # 为什么：Index 路由映射 KB 查询形
@@ -3810,20 +3848,22 @@ async def unified_query_gateway(
             collection_id=(collection_id or "").strip(),
             top_k=int(top_k),
         )
-        return _n21_to_f1_envelope(tenant_id=tid, route="index", n21=n21)
+        return _finish(_n21_to_f1_envelope(tenant_id=tid, route="index", n21=n21))
 
     if r == "materials_chat":
         # 为什么：MaterialsChat 经 N21 RAG enforce → F.1；无输出则 abstain（非跑全 Agent）
-        return materials_chat_to_f1_envelope(
-            tenant_id=tid,
-            output=materials_output
-            if isinstance(materials_output, dict)
-            else {
-                "answer": "",
-                "citations": [],
-                "strategy": "direct_retrieve",
-                "query": query or "",
-            },
+        return _finish(
+            materials_chat_to_f1_envelope(
+                tenant_id=tid,
+                output=materials_output
+                if isinstance(materials_output, dict)
+                else {
+                    "answer": "",
+                    "citations": [],
+                    "strategy": "direct_retrieve",
+                    "query": query or "",
+                },
+            )
         )
 
     # object_set → F.1 信封（无命中则 abstain）
@@ -3850,10 +3890,12 @@ async def unified_query_gateway(
     )
     objects = list(out.get("objects") or out.get("items") or [])
     if out.get("status") in ("policy_denied", "not_found") or not objects:
-        return _empty_f1_envelope(
-            tenant_id=tid,
-            route_reason="unified:object_set:abstain",
-            abstained=True,
+        return _finish(
+            _empty_f1_envelope(
+                tenant_id=tid,
+                route_reason="unified:object_set:abstain",
+                abstained=True,
+            )
         )
     citations = [
         {
@@ -3870,13 +3912,15 @@ async def unified_query_gateway(
         or first.get("object_id")
         or "object_set_hit"
     )
-    return _empty_f1_envelope(
-        tenant_id=tid,
-        route_reason="unified:object_set:hit",
-        abstained=False,
-        answer=answer,
-        citations=citations,
-        confidence="medium",
+    return _finish(
+        _empty_f1_envelope(
+            tenant_id=tid,
+            route_reason="unified:object_set:hit",
+            abstained=False,
+            answer=answer,
+            citations=citations,
+            confidence="medium",
+        )
     )
 
 
