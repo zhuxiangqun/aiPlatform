@@ -41,5 +41,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 ## 明确未做
 
 - 全部内部 `search_pages` 调用点强制 `record_hotpath_audit=True`
-- TripleStore 按 tenant 隔离
 - 全部旁路 / N19 certified
+- （TripleStore 隔离见 `phase2-cross-tenant-triplestore-evidence.md`）

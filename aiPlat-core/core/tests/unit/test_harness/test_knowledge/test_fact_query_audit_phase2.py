@@ -426,10 +426,10 @@ async def test_ontology_urn_hotpath(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
 
     class _Store:
-        def get_downstream(self, urn, depth):
+        def get_downstream(self, urn, depth, *, tenant_id=""):
             return [{"s": urn, "p": "uses", "o": "x"}]
 
-        def get_upstream(self, urn, depth):
+        def get_upstream(self, urn, depth, *, tenant_id=""):
             return []
 
     monkeypatch.setattr(
@@ -460,10 +460,10 @@ async def test_ontology_urn_http_hotpath(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
 
     class _Store:
-        def get_downstream(self, urn, depth):
+        def get_downstream(self, urn, depth, *, tenant_id=""):
             return [{"s": urn, "p": "uses", "o": "y"}]
 
-        def get_upstream(self, urn, depth):
+        def get_upstream(self, urn, depth, *, tenant_id=""):
             return [{"s": "z", "p": "calls", "o": urn}]
 
     monkeypatch.setattr(

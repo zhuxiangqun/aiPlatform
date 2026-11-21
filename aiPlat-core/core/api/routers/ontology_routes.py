@@ -6,6 +6,7 @@
   - GET  /stats — 三元组统计
 
 N19：可选 tenant_id 时 best-effort 落 Fact/Query 审计（certified 恒 false）。
+SECURITY V2：显式 tenant_id 时 TripleStore 读路径按租户+共享过滤。
 """
 
 from __future__ import annotations
@@ -78,11 +79,13 @@ async def ontology_query(body: dict = Body(...)) -> Dict[str, Any]:
     store = get_triple_store()
     depth = min(body.get("depth", 3), MAX_DEPTH)
     direction = body.get("direction", "downstream")
+    tid = str(body.get("tenant_id") or "").strip()
 
+    # 为什么：HTTP 显式 tenant 须过滤，禁止跨租户图泄漏
     if direction == "upstream":
-        results = store.get_upstream(urn, depth)
+        results = store.get_upstream(urn, depth, tenant_id=tid)
     else:
-        results = store.get_downstream(urn, depth)
+        results = store.get_downstream(urn, depth, tenant_id=tid)
 
     return _n19_audit(
         {
@@ -91,8 +94,9 @@ async def ontology_query(body: dict = Body(...)) -> Dict[str, Any]:
             "depth": depth,
             "count": len(results),
             "results": results,
+            "tenant_scoped": bool(tid),
         },
-        tenant_id=str(body.get("tenant_id") or ""),
+        tenant_id=tid,
         channel="ontology_urn_http",
         query=urn,
     )
@@ -109,12 +113,13 @@ async def ontology_impact(
     Args:
         path_urn: path_urn 参数。
         depth: depth 参数。
-        tenant_id: 可选租户（N19 审计）。
+        tenant_id: 可选租户（N19 审计 + TripleStore 过滤）。
     """
     urn = f"urn:aiplat:{path_urn}"
     store = get_triple_store()
-    downstream = store.get_downstream(urn, depth)
-    upstream = store.get_upstream(urn, depth)
+    tid = (tenant_id or "").strip()
+    downstream = store.get_downstream(urn, depth, tenant_id=tid)
+    upstream = store.get_upstream(urn, depth, tenant_id=tid)
     return _n19_audit(
         {
             "urn": urn,
@@ -123,14 +128,19 @@ async def ontology_impact(
             "upstream_count": len(upstream),
             "downstream": downstream,
             "upstream": upstream,
+            "tenant_scoped": bool(tid),
         },
-        tenant_id=tenant_id or "",
+        tenant_id=tid,
         channel="ontology_urn_http",
         query=urn,
     )
 
 
 @router.get("/stats")
-async def ontology_stats() -> Dict[str, Any]:
-    """TripleStore 统计 — 三元组总数 + 按谓词分布。"""
-    return get_triple_store().stats()
+async def ontology_stats(tenant_id: str = Query("")) -> Dict[str, Any]:
+    """TripleStore 统计 — 三元组总数 + 按谓词分布。
+
+    Args:
+        tenant_id: 非空时按租户+共享过滤。
+    """
+    return get_triple_store().stats(tenant_id=(tenant_id or "").strip())

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4068
+total_capabilities: 4069
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1300,6 +1300,7 @@ scan_hash: 8f9548ec24f4
 | **跨租户 builder module_id 默认（v4.3.1 N09 K68）** | builder L2–L5 / project_service / schema_migration → `default_module_id()` | ✅ | 证据 `phase2-cross-tenant-builder-module-defaults-evidence.md`。**未宣称** N09 certified；misc label 见 K69。生成物适用：已接线（builder module SSOT） | 本批 |
 | **跨租户杂项 label 默认（v4.3.1 N09 K69）** | gateway channel / agent_type / benchmark / output_style → `default_label()` | ✅ | 证据 `phase2-cross-tenant-misc-label-defaults-evidence.md`。**未宣称** N09 certified；漏网清扫见 K70；`purpose="default"`（选模）刻意保留。生成物适用：已接线（misc label SSOT） | 本批 |
 | **跨租户运行时 default 漏网清扫（v4.3.1 N09 K70）** | wiki_* collection / builder module_id / gateway channel / tenant·domain 回退 → 既有 `default_*()` | ✅ | 证据 `phase2-cross-tenant-runtime-default-mop-evidence.md`。**未宣称** N09 certified；`purpose="default"` 刻意保留。生成物适用：已接线（runtime default mop SSOT） | 本批 |
+| **跨租户 TripleStore 读路径（v4.3.1 N09 SECURITY V2）** | `triple_store.tenant_id` 列 + `get_downstream/upstream/stats(..., tenant_id=)` + URN syscall/HTTP 透传 | ✅ | 显式 tenant 只见本租户+共享 `''`；空 tenant 兼容全量。证据 `phase2-cross-tenant-triplestore-evidence.md`。**未宣称** 空 tenant 强制拒绝 / platform 旁路强制 / N09 certified。生成物适用：已接线（ontology syscall/HTTP） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
 | **Core 可认证路径（v4.3.1 Phase S/C/H）** | `evaluate_core_ready_gate` / `evaluate_pilot_core_certification` + Facade + FDE `/conformance-pack/core-ready` `/pilot-core-cert` | ✅ | 附录 N Core 12 项 + `core_ready`；非作者批准（朱鸿林）→ `pilot_certified`；N09 探针冻结。证据 `phase2-core-cert-path-evidence.md` + `pilot-core-approval-record.approved.json`。**未宣称** 24/24。生成物适用：已接线（HTTP） | 本批 |
 | **Extended 可认证路径（v4.3.1 Phase E）** | `evaluate_extended_ready_gate` / `evaluate_pilot_extended_certification` + Facade + FDE `/extended-ready` `/pilot-extended-cert` | ✅ | 附录 N.3 六项 + `extended_ready`；非作者批准（朱莹）→ `pilot_extended_certified`。证据 `phase2-extended-cert-path-evidence.md` + `pilot-extended-approval-record.approved.json`。**未宣称** 全量 certified。生成物适用：已接线（HTTP） | 本批 |
@@ -4969,7 +4970,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 777 | 1 | 778 |
+| Harness 执行引擎 | 778 | 1 | 779 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 796 | 9 | 805 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5014,7 +5015,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4057** | **11** | **4068** |
+| **总计** | **4058** | **11** | **4069** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -4,7 +4,7 @@
 "这个实体与系统中其他部分的关系"。
 
 N19：可选 tenant_id 时 best-effort 落 Fact/Query 审计快照（certified 恒 false）。
-# SECURITY: V2 需要增加 tenant/scope 隔离（本刀仅审计，非隔离）
+SECURITY V2：显式 tenant_id 时 TripleStore 读路径按租户+共享过滤。
 """
 
 from __future__ import annotations
@@ -24,15 +24,17 @@ async def sys_ontology_context(
     Args:
         urn: 实体 URN。
         depth: BFS 深度（硬上限 5）。
-        tenant_id: 非空时落 N19 Query 审计快照。
+        tenant_id: 非空时：TripleStore 租户过滤 + N19 审计快照。
     """
     from core.harness.ontology_engine.triple_store import get_triple_store
 
     store = get_triple_store()
     max_depth = min(depth, 5)
+    tid = (tenant_id or "").strip()
 
-    downstream = store.get_downstream(urn, max_depth)
-    upstream = store.get_upstream(urn, max_depth)
+    # 为什么：显式 tenant 必须过滤，禁止跨租户 URN 图泄漏
+    downstream = store.get_downstream(urn, max_depth, tenant_id=tid)
+    upstream = store.get_upstream(urn, max_depth, tenant_id=tid)
 
     result: Dict[str, Any] = {
         "entity": urn,
@@ -45,7 +47,6 @@ async def sys_ontology_context(
         "n19_full_conformance": False,
     }
 
-    tid = (tenant_id or "").strip()
     if tid:
         # 为什么：syscall 包导出的是 URN 版，须与 ontology_context 域版一并落盘
         try:

@@ -10,7 +10,8 @@ pilot_domain: lock-service
 # Phase 2 / N19 ontology URN 审计热路径证据
 
 > 实施权威：附录 N N19 partial 加深（syscall 包导出的 URN 版 `sys_ontology_context` + HTTP `ontology_routes` 落 Query 快照）。  
-> **未宣称** N19 certified / 全部旁路强制 / tenant 隔离。
+> **未宣称** N19 certified / 全部旁路强制。  
+> TripleStore tenant 过滤见 `phase2-cross-tenant-triplestore-evidence.md`（N09 SECURITY V2）。
 
 ## 检查表
 
@@ -40,5 +41,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做
 
-- TripleStore 按 tenant 隔离（SECURITY V2）
 - 全部旁路 / N19 certified
+- （TripleStore 隔离已迁出 → `phase2-cross-tenant-triplestore-evidence.md`）
