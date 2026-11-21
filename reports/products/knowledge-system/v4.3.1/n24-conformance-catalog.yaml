@@ -382,6 +382,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-fact-query-stream-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-streams-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-materialize-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-bus-gate-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-fact-query-bus-hotpath-evidence.md
       - docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
@@ -405,7 +406,7 @@ items:
       - aiPlat-platform/apps/fde/api/unified_audit_routes.py
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/RevisionRestorePanel.tsx
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/UnifiedAuditPanel.tsx
-    note: "Operational-scoped exists (附录 N.4); Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填 + Fact/Query 源流 fan-in + 总线热路径 + UI 流过滤 + UI materialize；非 N24 certified"
+    note: "Operational-scoped exists (附录 N.4); Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填 + Fact/Query 源流 fan-in + 总线热路径 + UI 流过滤 + UI materialize + UI bus suite/gate；非 N24 certified"
 
 # §9.4 认证证据包槽位（路径或 explicit missing）
 certification_slots:

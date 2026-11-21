@@ -40,3 +40,5 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 - 任意 append 表单 / 全量运维台
 - N24 / 附录 N 全量认证
+
+> bus suite/gate 见 Batch J14：`phase2-unified-audit-ui-bus-gate-evidence.md`。

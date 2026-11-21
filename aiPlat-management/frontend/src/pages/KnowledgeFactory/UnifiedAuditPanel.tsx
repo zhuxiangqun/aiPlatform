@@ -1,8 +1,8 @@
 /**
- * UnifiedAuditPanel — N24 Batch J4/J12/J13 统一审计管理端薄 UI。
+ * UnifiedAuditPanel — N24 Batch J4/J12/J13/J14 统一审计管理端薄 UI。
  *
- * 经 FDE `/unified-audit*`（J3）→ CoreFacade；J12 流过滤；J13 materialize 进写总线；
- * 不宣称 certified。
+ * 经 FDE `/unified-audit*` → CoreFacade；J12 流过滤；J13 materialize；
+ * J14 按模式调用 view/bus suite·gate；不宣称 certified。
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
@@ -108,13 +108,19 @@ const UnifiedAuditPanel: React.FC = () => {
   const runGate = async () => {
     setLoading(true);
     try {
+      const bus = viewMode === 'bus';
+      const suitePath = bus ? '/unified-audit/bus/suite' : '/unified-audit/suite';
+      const gatePath = bus ? '/unified-audit/bus/gate' : '/unified-audit/gate';
+      const defaultTenant = bus
+        ? 'n24-unified-audit-bus-tenant'
+        : 'n24-unified-audit-tenant';
       const suiteRes = await fetch(
-        API(`/unified-audit/suite?${q({ tenant_id: tenantId.trim() || 'n24-unified-audit-tenant' })}`),
+        API(`${suitePath}?${q({ tenant_id: tenantId.trim() || defaultTenant })}`),
         { method: 'POST' },
       );
       const suite = await suiteRes.json().catch(() => ({}));
       if (!suiteRes.ok) throw new Error(detailMessage(suite.detail));
-      const gateRes = await fetch(API('/unified-audit/gate'), {
+      const gateRes = await fetch(API(gatePath), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ suite }),
@@ -122,11 +128,14 @@ const UnifiedAuditPanel: React.FC = () => {
       const gate = await gateRes.json().catch(() => ({}));
       if (!gateRes.ok) throw new Error(detailMessage(gate.detail));
       const certified = Boolean(gate.certified);
-      setGateNote(`suite ok · gate certified=${certified}（J4/J13 诚实锁：须为 false）`);
+      const mode = bus ? 'bus' : 'view';
+      setGateNote(
+        `${mode} suite ok · gate certified=${certified}（J4/J14 诚实锁：须为 false）`,
+      );
       if (certified) {
         toast?.error?.('gate.certified 为 true — 违反诚实锁');
       } else {
-        toast?.success?.('门槛门诚实：certified=false');
+        toast?.success?.(`${mode} 门槛门诚实：certified=false`);
       }
     } catch (e: unknown) {
       toast?.error?.((e as Error)?.message || 'suite/gate 失败');
@@ -175,9 +184,9 @@ const UnifiedAuditPanel: React.FC = () => {
       <CardHeader className="flex flex-row items-center justify-between gap-2 py-3 px-4">
         <div className="flex items-center gap-2 text-sm text-gray-200">
           <ListTree className="h-4 w-4 text-sky-300/90" />
-          <span>Unified Audit（N24 J4/J12/J13）</span>
+          <span>Unified Audit（N24 J4/J12–J14）</span>
           <span className="text-[11px] text-gray-500 font-normal">
-            汇合 + materialize · 非 certified
+            汇合 + materialize + bus gate · 非 certified
           </span>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
@@ -192,7 +201,7 @@ const UnifiedAuditPanel: React.FC = () => {
             刷新
           </Button>
           <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={() => void runGate()}>
-            suite/gate
+            {viewMode === 'bus' ? 'bus suite/gate' : 'suite/gate'}
           </Button>
           <Button
             type="button"
@@ -208,7 +217,7 @@ const UnifiedAuditPanel: React.FC = () => {
       <CardContent className="space-y-4 px-4 pb-4">
         <p className="text-[11px] text-gray-500 leading-relaxed">
           汇合 Package / ActionExecution / revision_audit / action_store / fact_query_audit；
-          J13 可 materialize 进写总线（经已有 HTTP）。不宣称 certified。
+          J13 materialize；J14 按「汇合/写总线」模式调用对应 suite/gate。不宣称 certified。
         </p>
 
         <div className="flex gap-2 text-[11px]">
