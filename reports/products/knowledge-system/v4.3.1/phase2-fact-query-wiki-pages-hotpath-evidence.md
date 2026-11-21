@@ -41,5 +41,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做
 
-- 裸 `wiki_search_pages` list 返回强制落盘
 - 全部旁路 / N19 certified

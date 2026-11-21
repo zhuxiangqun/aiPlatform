@@ -31,6 +31,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "wiki_pages_hotpath_entry" in ids
     assert "graph_neighbors_hotpath_entry" in ids
     assert "graph_query_hotpath_entry" in ids
+    assert "wiki_search_pages_bare_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -584,3 +585,32 @@ async def test_graph_query_hotpath(tmp_path, monkeypatch):
 
     await sys_graph_query("", operation="stats", tenant_id="")
     assert fqa.list_audit_snapshots(tenant_id="t-gq", db_path=db)["count"] == 2
+
+
+def test_wiki_search_pages_bare_hotpath(tmp_path, monkeypatch):
+    """裸 wiki_search_pages：有 tenant 落盘；信封路径关下层防双写。"""
+    db = str(tmp_path / "fqa-wsp.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+    monkeypatch.setattr(
+        "core.harness.knowledge.wiki_engine.search_pages",
+        lambda *_a, **_k: [{"title": "p1", "summary": "s"}],
+    )
+
+    from core.api.core_facade import wiki_search_pages, wiki_search_pages_api
+
+    hits = wiki_search_pages("RAG", tenant_id="t-wsp")
+    assert isinstance(hits, list)
+    listed = fqa.list_audit_snapshots(tenant_id="t-wsp", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "wiki_search_pages"
+
+    wiki_search_pages("RAG", tenant_id="")
+    assert fqa.list_audit_snapshots(tenant_id="t-wsp", db_path=db)["count"] == 1
+
+    # 信封路径只写 wiki_pages，不双写 bare
+    out = wiki_search_pages_api("RAG", tenant_id="t-wsp-api")
+    assert out.get("certified") is False
+    api_listed = fqa.list_audit_snapshots(tenant_id="t-wsp-api", db_path=db)
+    assert api_listed["count"] == 1
+    assert (api_listed["items"][0].get("meta") or {}).get("channel") == "wiki_pages"

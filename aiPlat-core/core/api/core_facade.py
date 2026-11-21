@@ -2162,8 +2162,16 @@ def wiki_pages_by_source(source_key: str) -> List[Dict[str, Any]]:
     return pages_by_source(source_key)
 
 
-def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
-                       limit: int = 20, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
+def wiki_search_pages(
+    query: str = "",
+    *,
+    tags: List[str] = None,
+    category: str = "",
+    limit: int = 20,
+    collection_id: str = DomainRouter.default_collection(),
+    tenant_id: str = "",
+    record_hotpath_audit: bool = True,
+) -> List[Dict[str, Any]]:
     """Search wiki pages — Phase 45: CoreFacade wrapper for platform layer.
 
     Args:
@@ -2172,10 +2180,39 @@ def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str 
         category: category 参数。
         limit: 返回条数上限。
         collection_id: collection 标识。
+        tenant_id: 非空且 ``record_hotpath_audit`` 时落 N19 裸 list 审计。
+        record_hotpath_audit: 上层信封（如 ``wiki_search_pages_api``）应关防双写。
     """
+    import logging
+
     from core.harness.knowledge.wiki_engine import search_pages
-    return search_pages(query=query, tags=tags, category=category,
-                         limit=limit, collection_id=collection_id)
+
+    pages = search_pages(
+        query=query,
+        tags=tags,
+        category=category,
+        limit=limit,
+        collection_id=collection_id,
+    ) or []
+    tid = (tenant_id or "").strip()
+    if tid and record_hotpath_audit:
+        # 为什么：平台/FDE 直调 list 旁路须可审计；不改 list 主返回类型
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_bare_list_hotpath,
+            )
+
+            maybe_record_bare_list_hotpath(
+                tenant_id=tid,
+                hits=pages if isinstance(pages, list) else [],
+                channel="wiki_search_pages",
+                query=query or "",
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 wiki_search_pages bare audit skipped", exc_info=True
+            )
+    return pages
 
 
 def wiki_search_pages_api(
@@ -2201,8 +2238,15 @@ def wiki_search_pages_api(
 
     from core.harness.knowledge.ontology_api import attach_ontology_api, from_wiki_pages
 
+    # 为什么：信封路径关下层裸 list 审计，防与 wiki_pages 双写
     pages = wiki_search_pages(
-        query, tags=tags, category=category, limit=limit, collection_id=collection_id
+        query,
+        tags=tags,
+        category=category,
+        limit=limit,
+        collection_id=collection_id,
+        tenant_id=tenant_id or "",
+        record_hotpath_audit=False,
     ) or []
     out: Dict[str, Any] = {"items": pages, "total": len(pages)}
     out = dict(

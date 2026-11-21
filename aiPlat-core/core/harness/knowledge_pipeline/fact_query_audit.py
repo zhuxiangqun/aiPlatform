@@ -9,6 +9,7 @@
     / 统一 ``sys_knowledge_retrieve``（会话/Builder/技能）
     / Agent ``sys_wiki_context``（信封失败兜底）
     / Wiki ``wiki_structured_query_api`` / ``wiki_search_pages_api``
+    / 裸 ``wiki_search_pages`` list（上层关下层防双写）
     / Agent ``sys_ontology_context``（域版）
     / URN ``syscalls/ontology.py`` + HTTP ``ontology_routes``
     / ``sys_graph_neighbors`` / ``sys_graph_query`` 热路径
@@ -59,6 +60,7 @@ _SUITE_CASES = (
     "wiki_pages_hotpath_entry",
     "graph_neighbors_hotpath_entry",
     "graph_query_hotpath_entry",
+    "wiki_search_pages_bare_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -924,7 +926,8 @@ def evaluate_fact_query_audit_gate(
             "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
             "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
             "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
-            "ontology_context/ontology_urn/graph_neighbors/graph_query hotpath; "
+            "ontology_context/ontology_urn/graph_neighbors/graph_query/"
+            "wiki_search_pages_bare hotpath; "
             "not N19 certified / not all bypass paths"
         ),
     }
@@ -1268,6 +1271,20 @@ def run_fact_query_audit_suite(
             }
         )
 
+        wsp_src = inspect.getsource(facade.wiki_search_pages)
+        wsp_api_src = inspect.getsource(facade.wiki_search_pages_api)
+        cases.append(
+            {
+                "id": "wiki_search_pages_bare_hotpath_entry",
+                "ok": (
+                    "maybe_record_bare_list_hotpath" in wsp_src
+                    and "wiki_search_pages" in wsp_src
+                    and "record_hotpath_audit=False" in wsp_api_src
+                ),
+                "detail": "",
+            }
+        )
+
         passed = sum(1 for c in cases if c.get("ok"))
         return {
             "ok": passed == len(_SUITE_CASES),
@@ -1281,7 +1298,8 @@ def run_fact_query_audit_suite(
                 "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
                 "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
                 "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
-                "ontology_context/ontology_urn/graph_neighbors/graph_query hotpath; "
+                "ontology_context/ontology_urn/graph_neighbors/graph_query/"
+                "wiki_search_pages_bare hotpath; "
                 "not all bypass paths / not certified"
             ),
         }
