@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T10:10:01+08:00",
+  "reviewed_at": "2026-11-21T10:15:44+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "35d28d833360cd78ee5d3cda707f2e8db8bf9405758a9cd43c7f1c2965ff10c0",
-  "head_sha": "39adada56284f56d0363acd6c63f115fa3c1d455",
+  "diff_sha256": "a63b8051413c61d8d0846b416ac32f7aba54043f6648f8cdad09fcceba61f82a",
+  "head_sha": "62b1483b3feff7856b966ddee23d04c097ff318d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N11/N14 cutover auth: token gate; unauthorized denied; production_cutover_certified honesty lock."
+  "note": "N08: kill switch; require_approval no-threshold enqueue; policy deny audited; certified honesty."
 }
