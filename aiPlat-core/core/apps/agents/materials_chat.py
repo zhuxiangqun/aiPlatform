@@ -80,6 +80,19 @@ def _n21_enforce_rag_output(
             logging.getLogger(__name__).debug(
                 "N06 materials_chat F.1 attach skipped", exc_info=True
             )
+        try:
+            # 为什么：直出旁路须落 N19 Query 快照；与 Gateway 热路径分立，不经 ug 防双写
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_materials_chat_hotpath,
+            )
+
+            out = maybe_record_materials_chat_hotpath(
+                tenant_id=tid, output=out, exit_kind="rag"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 materials_chat hotpath audit skipped", exc_info=True
+            )
     return out
 
 
@@ -114,6 +127,18 @@ def _n21_enforce_shortcut_output(
             logging.getLogger(__name__).debug(
                 "N06 materials shortcut F.1 attach skipped", exc_info=True
             )
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_materials_chat_hotpath,
+            )
+
+            out = maybe_record_materials_chat_hotpath(
+                tenant_id=tid, output=out, exit_kind="shortcut"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 materials shortcut hotpath audit skipped", exc_info=True
+            )
     return out
 
 
@@ -147,6 +172,18 @@ def _n21_enforce_cache_hit_output(
         except Exception:
             logging.getLogger(__name__).debug(
                 "N06 materials cache_hit F.1 attach skipped", exc_info=True
+            )
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_materials_chat_hotpath,
+            )
+
+            out = maybe_record_materials_chat_hotpath(
+                tenant_id=tid, output=out, exit_kind="cache_hit"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 materials cache_hit hotpath audit skipped", exc_info=True
             )
     return out
 

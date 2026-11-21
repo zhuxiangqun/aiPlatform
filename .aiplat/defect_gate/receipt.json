@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T17:10:00+08:00",
+  "reviewed_at": "2026-11-21T17:19:07+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "32b822835456d96c23be15d68776108af47b93ec3a2a7220aae582cd6f6bc38a",
-  "head_sha": "8f746c86562f097803ad25dce747c335053b198a",
+  "diff_sha256": "d9d070a0caa8039405ed38c93ed0d25f8c56a949f3df1dad7f1e30b3419715d5",
+  "head_sha": "bbfdd46a8978234335e41a08c64019037b15820e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N20 put_fact n20_constraint: attach-only after write; never rolls back; env-off skips; Wiki/KB full surface still open; certified false. Local lock only."
+  "note": "N19 MaterialsChat hotpath additive; certified/n19_full stay false; best-effort skip does not self-certify."
 }
