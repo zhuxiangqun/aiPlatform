@@ -18416,6 +18416,84 @@ def evaluate_deployed_rbac_gate(suite: Optional[dict] = None) -> dict:
 
     return _gate(suite)
 
+
+def record_fact_query_audit_snapshot(
+    *,
+    tenant_id: str,
+    kind: str,
+    subject_ref: str,
+    before_snapshot: Optional[Dict[str, Any]] = None,
+    after_snapshot: Optional[Dict[str, Any]] = None,
+    runtime_authority: str = "fact_ledger",
+    meta: Optional[Dict[str, Any]] = None,
+) -> dict:
+    """CoreFacade：写入 Fact/Query 统一审计快照（N19；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        kind: fact/query。
+        subject_ref: 主体引用。
+        before_snapshot: 前快照。
+        after_snapshot: 后快照。
+        runtime_authority: 运行时权威。
+        meta: 可选元数据。
+    """
+    from core.harness.knowledge_pipeline.fact_query_audit import (
+        record_audit_snapshot,
+    )
+
+    return record_audit_snapshot(
+        tenant_id=tenant_id,
+        kind=kind,
+        subject_ref=subject_ref,
+        before_snapshot=before_snapshot,
+        after_snapshot=after_snapshot,
+        runtime_authority=runtime_authority,
+        meta=meta,
+    )
+
+
+def list_fact_query_audit_snapshots(
+    *,
+    tenant_id: str,
+    kind: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """CoreFacade：列出 Fact/Query 统一审计快照（N19；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        kind: 可选 fact/query。
+        limit: 上限。
+    """
+    from core.harness.knowledge_pipeline.fact_query_audit import (
+        list_audit_snapshots,
+    )
+
+    return list_audit_snapshots(tenant_id=tenant_id, kind=kind, limit=limit)
+
+
+def run_fact_query_audit_suite() -> dict:
+    """CoreFacade：N19 Fact/Query 统一审计套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.fact_query_audit import (
+        run_fact_query_audit_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_fact_query_audit_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N19 Fact/Query 统一审计门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_fact_query_audit_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.fact_query_audit import (
+        evaluate_fact_query_audit_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
