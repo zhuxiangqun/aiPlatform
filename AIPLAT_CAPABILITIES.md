@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4007
+total_capabilities: 4022
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1224,7 +1224,8 @@ scan_hash: 8f9548ec24f4
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户隔离加深（v4.3.1 N09 partial+unified）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | 15 探针含统一 Gateway fact/object_set；门槛门 certified 恒 false。证据 `phase2-cross-tenant-unified-gateway-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户 ObjectSet/UnifiedAudit（v4.3.1 N09 K1）** | 同上套件增 `object_set_no_leak` / `unified_audit_no_leak` | ✅ | 临时 ObjectType + ActionStore→统一审计视图；六探针；certified 恒 false。证据 `phase2-cross-tenant-objectset-audit-evidence.md`。**未宣称** Wiki/KB 全入口 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
-| **Action Policy/Approval/Audit（v4.3.1 N08 deepen）** | `action_kill_switch_active` + require_approval 无 threshold 强制入队 + suite/gate + Facade | ✅ | kill switch；Policy 拒审计；审批入队；certified 恒 false。证据 `phase2-action-policy-audit-evidence.md`。**未宣称** Lv4 全量重设计 / N08 certified。生成物适用：已接线 | 本批 |
+| **Action Policy/Approval/Audit（v4.3.1 N08 deepen）** | `action_kill_switch_active` + require_approval 无 threshold 强制入队 + suite/gate + Facade | ✅ | kill switch；Policy 拒审计；审批入队；certified 恒 false。证据 `phase2-action-policy-audit-evidence.md`。**未宣称** 全量 Action Lv4 / N08 certified。生成物适用：已接线 | 本批 |
+| **Lv4 误报门 v2（v4.3.1 N08 deepen）** | `lv4_false_positive_gate.py` + Registry 委托 + Facade + FDE `/lv4-false-positive*` | ✅ | 禁 0 样本假绿；要求 rollback；suite/gate certified 恒 false；`lv4_gate_redesigned=true`。证据 `phase2-lv4-false-positive-gate-evidence.md`。**未宣称** 全量 Action Lv4 / N08 certified。生成物适用：已接线 | 本批 |
 | **迁移切写授权（v4.3.1 N11/N14 deepen）** | `authorize_migration_cutover` / `request_write_cutover` / suite/gate + Facade | ✅ | token+actor+reason+对账；作业级授权≠生产认证；certified 恒 false。证据 `phase2-migration-cutover-auth-evidence.md`。**未宣称** 生产切写 / N11/N14 certified。生成物适用：已接线 | 本批 |
 | **ABox 角色×动作轴（v4.3.1 N07/N22 deepen）** | `load_role_action_matrix` / `role_action_allowed` / suite/gate + Facade；`check_entity_acl` 接线 | ✅ | 配置驱动任意角色×动作；未知角色拒绝；certified 恒 false。证据 `phase2-role-action-matrix-evidence.md`。**未宣称** 部署 RBAC 真源 / Wiki·KB 全入口 / N07/N22 certified。生成物适用：已接线 | 本批 |
 | **ObjectSet 嵌套 filter（v4.3.1 N07/N22 deepen）** | `match_filter_expr` / `run_object_set_filter_suite` / `evaluate_object_set_filter_gate` + Facade | ✅ | `$and`/`$or`/`$not` + `$eq`/`$ne`/`$in`/`$exists`；深度上限 4；certified 恒 false。证据 `phase2-objectset-filter-evidence.md`。**未宣称** Wiki/KB 全入口 ACL / N07/N22 certified。生成物适用：已接线 | 本批 |
@@ -1453,6 +1454,13 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_lv4_fp_gate_route | `aiPlat-platform/apps/fde/api/lv4_false_positive_routes.py` | ✅ | 自动同步 | 已合入 |
+| lv4_min_samples | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_lv4_false_positive | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| Lv4FalsePositiveGateError | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_lv4_false_positive_gate | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
+| run_lv4_false_positive_gate_suite | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_lv4_fp_gate | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
 | run_raw_fact_index_reconcile_suite_route | `aiPlat-platform/apps/fde/api/raw_fact_index_reconcile_routes.py` | ✅ | 自动同步 | 已合入 |
 | reconcile_raw_fact_index_route | `aiPlat-platform/apps/fde/api/raw_fact_index_reconcile_routes.py` | ✅ | 自动同步 | 已合入 |
 | reconcile_raw_fact_index_chain | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4915,9 +4923,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 774 | 1 | 775 |
+| Harness 执行引擎 | 775 | 1 | 776 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 738 | 9 | 747 |
+| 知识引擎（本体） | 752 | 9 | 761 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4960,7 +4968,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3996** | **11** | **4007** |
+| **总计** | **4011** | **11** | **4022** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

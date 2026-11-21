@@ -62,6 +62,7 @@ from .fact_query_audit_routes import router as _fact_query_audit_router
 from .constraint_layers_routes import router as _constraint_layers_router
 from .query_abstain_citations_routes import router as _query_abstain_citations_router
 from .raw_fact_index_reconcile_routes import router as _raw_fact_index_reconcile_router
+from .lv4_false_positive_routes import router as _lv4_false_positive_router
 from .revision_restore_routes import router as _revision_restore_router
 from .unified_audit_routes import router as _unified_audit_router
 from .rapid_insight import router as _rapid_insight_router
@@ -122,6 +123,7 @@ router.include_router(_fact_query_audit_router, prefix="/fde")
 router.include_router(_constraint_layers_router, prefix="/fde")
 router.include_router(_query_abstain_citations_router, prefix="/fde")
 router.include_router(_raw_fact_index_reconcile_router, prefix="/fde")
+router.include_router(_lv4_false_positive_router, prefix="/fde")
 router.include_router(_revision_restore_router, prefix="/fde")
 router.include_router(_unified_audit_router, prefix="/fde")
 router.include_router(_rapid_insight_router, prefix="/fde")

@@ -18668,6 +18668,61 @@ def evaluate_raw_fact_index_reconcile_gate(suite: Optional[dict] = None) -> dict
 
     return _gate(suite)
 
+
+def evaluate_lv4_false_positive(
+    *,
+    action_id: str,
+    total: int,
+    false_positives: int,
+    rollback_action_id: Optional[str] = None,
+    fp_rate_max: float = 0.005,
+    min_samples: Optional[int] = None,
+) -> dict:
+    """CoreFacade：Lv4 误报门评估（N08；certified 恒 false）。
+
+    Args:
+        action_id: 动作 id。
+        total: 历史执行条数。
+        false_positives: 误报条数。
+        rollback_action_id: 回滚动作。
+        fp_rate_max: 误报率上限。
+        min_samples: 最小样本。
+    """
+    from core.harness.knowledge_pipeline.lv4_false_positive_gate import (
+        evaluate_lv4_fp_gate,
+    )
+
+    return evaluate_lv4_fp_gate(
+        action_id=action_id,
+        total=total,
+        false_positives=false_positives,
+        rollback_action_id=rollback_action_id,
+        fp_rate_max=fp_rate_max,
+        min_samples=min_samples,
+    )
+
+
+def run_lv4_false_positive_gate_suite() -> dict:
+    """CoreFacade：N08 Lv4 误报门套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.lv4_false_positive_gate import (
+        run_lv4_false_positive_gate_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_lv4_false_positive_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N08 Lv4 误报门门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_lv4_false_positive_gate_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.lv4_false_positive_gate import (
+        evaluate_lv4_false_positive_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
