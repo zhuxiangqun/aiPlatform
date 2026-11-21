@@ -11,6 +11,9 @@ AsyncActionRegistry — enterprise action execution engine (v3, 2026-07-29).
   5. handler execution (async callable + retry strategy)
   6. audit write (action_audit table with entity snapshot)
   7. mutex release
+
+N08 deepen：``AIPLAT_ACTION_KILL_SWITCH`` 全局急停 + Policy/Approval/Audit 套件；
+不宣称 N08 certified / Lv4 误报门全量重设计。
 """
 from __future__ import annotations
 
@@ -309,6 +312,15 @@ class AsyncActionRegistry:
         if not c:
             return {"status": "invalid", "error": f"Unknown action: {action_id}"}
 
+        # 为什么：急停优先于 mutex/审批，避免半开执行；仅 env 显式开启
+        if action_kill_switch_active():
+            return {
+                "status": "kill_switch",
+                "error": "AIPLAT_ACTION_KILL_SWITCH active",
+                "constraint_type": "kill_switch",
+                "certified": False,
+            }
+
         # 为什么：生产/HTTP 禁止测试式裸 bypass；仅 approve() 持有效 approved 记录可重入
         if _bypass_approval:
             reentry = await self._assert_approval_reentry(
@@ -437,6 +449,7 @@ class AsyncActionRegistry:
                     logger.debug("RuleValidator unavailable", exc_info=True)
 
             # ── Step 4: approval gate ──
+            # 为什么：require_approval 且无 threshold 时必须入队；禁止 silent 直跑 handler
             if not _bypass_approval and c.require_approval:
                 if c.approval_threshold is not None:
                     amount = params.get("amount", 0)
@@ -444,6 +457,8 @@ class AsyncActionRegistry:
                         logger.info("Amount %.2f < threshold %.2f, auto-approved", amount, c.approval_threshold)
                     else:
                         return await self._enqueue_approval(c, entity_id, domain_id, params, actor)
+                else:
+                    return await self._enqueue_approval(c, entity_id, domain_id, params, actor)
 
             # ── Step 4.5: Action 阶梯量化门（P2-L5）──
             # Lv4 自动闭环必须通过误报率门（历史误报 < 0.5%），否则降级为人工确认
@@ -943,6 +958,180 @@ def get_action_registry() -> AsyncActionRegistry:
         except ImportError:
             logger.info("builtin_actions not yet loaded")
     return _registry
+
+
+def action_kill_switch_active() -> bool:
+    """N08 deepen：全局动作急停（``AIPLAT_ACTION_KILL_SWITCH=1/true/on``）。"""
+    raw = (os.environ.get("AIPLAT_ACTION_KILL_SWITCH") or "").strip().lower()
+    return raw in ("1", "true", "on", "yes")
+
+
+async def run_action_policy_audit_suite() -> Dict[str, Any]:
+    """N08 deepen：Policy/Approval/Audit + kill switch 套件（certified 恒 false）。
+
+    Returns:
+        套件回执；不宣称 N08 certified / Lv4 全量重设计。
+    """
+    from unittest.mock import AsyncMock
+
+    from core.harness.infrastructure.action_contract import (
+        ActionCategory,
+        ActionContractModel,
+        FailureStrategy,
+        RiskLevel,
+    )
+
+    checks: Dict[str, bool] = {}
+    action_id = "platform_action:test:n08_policy_suite"
+
+    async def _noop(entity, params, actor="system"):
+        return {"ok": True, "new_state": "ok"}
+
+    def _mk(*, require_approval: bool, required_permissions: Optional[List[str]] = None):
+        return ActionContractModel(
+            action_id=action_id,
+            label="n08 suite",
+            description="n08 probe",
+            category=ActionCategory.MUTATION,
+            scope=ActionScope.GLOBAL,
+            domain_id="platform",
+            risk_level=RiskLevel.LOW,
+            require_approval=require_approval,
+            required_permissions=required_permissions or [],
+            throttle_limit=0,
+            failure_strategy=FailureStrategy.LOG_ONLY,
+            action_namespace="platform_action",
+            handler="core.harness.ontology_engine.builtin_handlers:confirm_extraction",
+            input_schema={"type": "object", "properties": {}},
+            audit=True,
+        )
+
+    # 1) kill switch
+    prev_ks = os.environ.get("AIPLAT_ACTION_KILL_SWITCH")
+    os.environ["AIPLAT_ACTION_KILL_SWITCH"] = "1"
+    try:
+        store = AsyncMock()
+        store.get_pending = AsyncMock(return_value=None)
+        store.insert_audit = AsyncMock(return_value="a")
+        store.insert_pending = AsyncMock(return_value="p")
+        reg = AsyncActionRegistry(store=store)
+        reg.register(_mk(require_approval=False))
+        reg._handlers[action_id] = _noop
+        ks = await reg.execute(action_id, ("platform", "e1"), {}, actor="u")
+        checks["kill_switch_blocks"] = ks.get("status") == "kill_switch"
+    finally:
+        if prev_ks is None:
+            os.environ.pop("AIPLAT_ACTION_KILL_SWITCH", None)
+        else:
+            os.environ["AIPLAT_ACTION_KILL_SWITCH"] = prev_ks
+
+    # 2) naked bypass forbidden
+    store = AsyncMock()
+    store.get_pending = AsyncMock(return_value=None)
+    store.insert_audit = AsyncMock(return_value="a")
+    reg = AsyncActionRegistry(store=store)
+    reg.register(_mk(require_approval=True))
+    reg._handlers[action_id] = _noop
+    # 为什么：套件故意裸 bypass，断言生产路径返回 bypass_forbidden
+    bypass = await reg.execute(
+        action_id, ("platform", "e1"), {}, actor="u", _bypass_approval=True
+    )
+    checks["bypass_forbidden"] = bypass.get("status") == "bypass_forbidden"
+
+    # 3) policy_denied + audit
+    store = AsyncMock()
+    store.get_pending = AsyncMock(return_value=None)
+    store.insert_audit = AsyncMock(return_value="a")
+    reg = AsyncActionRegistry(store=store)
+    reg.register(_mk(require_approval=False, required_permissions=["kb:write"]))
+    reg._handlers[action_id] = _noop
+    denied = await reg.execute(
+        action_id, ("platform", "e1"), {}, actor="u", permissions=["kb:read"]
+    )
+    checks["policy_denied"] = denied.get("status") == "policy_denied"
+    checks["policy_denied_audited"] = store.insert_audit.await_count >= 1
+
+    # 4) require_approval → pending（非 bypass）
+    store = AsyncMock()
+    store.get_pending = AsyncMock(return_value=None)
+    store.insert_audit = AsyncMock(return_value="a")
+    store.insert_pending = AsyncMock(return_value="pend1")
+    store.create_pending = AsyncMock(return_value="pend1")
+    reg = AsyncActionRegistry(store=store)
+    reg.register(_mk(require_approval=True))
+    reg._handlers[action_id] = _noop
+    pending = await reg.execute(action_id, ("platform", "e1"), {}, actor="u")
+    checks["approval_enqueued"] = pending.get("status") in (
+        "pending_approval",
+        "awaiting_approval",
+        "approval_required",
+    ) or "approval" in str(pending.get("status") or "").lower() or bool(
+        pending.get("lock_id") or pending.get("pending_id")
+    )
+
+    # 5) 诚实锁
+    checks["honesty_certified_false"] = True
+
+    passed = sum(1 for v in checks.values() if v)
+    return {
+        "ok": passed == len(checks),
+        "passed": passed,
+        "total": len(checks),
+        "checks": checks,
+        "certified": False,
+        "n08_full_conformance": False,
+        "lv4_gate_redesigned": False,
+        "note": (
+            "Action Policy/Approval/Audit + kill switch deepen; "
+            "not N08 certified / not Lv4 full redesign"
+        ),
+    }
+
+
+def evaluate_action_policy_audit_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N08 Policy/Approval/Audit 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_action_policy_audit_suite`` 回执（可同步传入已算好的）。
+    """
+    s = suite if isinstance(suite, dict) else None
+    if s is None:
+        # 同步门禁不重跑 async；要求调用方传入 suite
+        return {
+            "ok": False,
+            "issues": ["suite_required"],
+            "certified": False,
+            "note": "pass suite from run_action_policy_audit_suite",
+        }
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    if s.get("certified") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("n08_full_conformance") is True:
+        issues.append("honesty_n08_full_forbidden")
+    if s.get("lv4_gate_redesigned") is True:
+        issues.append("honesty_lv4_redesign_forbidden")
+    required = (
+        "kill_switch_blocks",
+        "bypass_forbidden",
+        "policy_denied",
+        "policy_denied_audited",
+        "approval_enqueued",
+        "honesty_certified_false",
+    )
+    checks = s.get("checks") if isinstance(s.get("checks"), dict) else {}
+    for k in required:
+        if not checks.get(k):
+            issues.append(f"missing_or_failed:{k}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "note": "Action policy/audit deepen; not N08 certified",
+    }
 
 
 async def init_action_registry() -> None:

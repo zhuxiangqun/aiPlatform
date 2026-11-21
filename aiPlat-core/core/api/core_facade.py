@@ -6844,6 +6844,30 @@ async def execute_action(
     return out
 
 
+async def run_action_policy_audit_suite() -> Dict[str, Any]:
+    """N08 deepen：Policy/Approval/Audit + kill switch 套件（certified 恒 false）。"""
+    from core.harness.ontology_engine.action_registry import (
+        run_action_policy_audit_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_action_policy_audit_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N08 deepen：Policy/Approval/Audit 门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_action_policy_audit_suite`` 回执。
+    """
+    from core.harness.ontology_engine.action_registry import (
+        evaluate_action_policy_audit_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def lookup_action_execution(
     tenant_id: str,
     idempotency_key: str,

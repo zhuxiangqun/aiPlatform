@@ -41,6 +41,7 @@ authority: supporting
 | [phase2-conformance-pack-evidence.md](./phase2-conformance-pack-evidence.md) | W10 Conformance / 认证证据包（N24 目录 + §9.4 槽位；非 24/24 认证） |
 | [phase2-implementer-semantics-evidence.md](./phase2-implementer-semantics-evidence.md) | W10 N18 实现方语义测试（5 探针 + 门槛门；非全量认证） |
 | [phase2-source-policy-evidence.md](./phase2-source-policy-evidence.md) | W3 N04 Source Policy / Conflict（策略登记 + 冲突不自动选边 + 人审；非全写入强制） |
+| [phase2-action-policy-audit-evidence.md](./phase2-action-policy-audit-evidence.md) | N08 deepen：Policy/Approval/Audit + kill switch（非 certified） |
 | [phase2-migration-cutover-auth-evidence.md](./phase2-migration-cutover-auth-evidence.md) | N11/N14 deepen：作业级切写授权（token；非生产认证/非 certified） |
 | [phase2-role-action-matrix-evidence.md](./phase2-role-action-matrix-evidence.md) | N07/N22 deepen：角色×动作轴（配置驱动；非部署 RBAC/非 certified） |
 | [phase2-objectset-filter-evidence.md](./phase2-objectset-filter-evidence.md) | N07/N22 deepen：ObjectSet 嵌套 filter（非 Wiki/KB 全入口/非 certified） |

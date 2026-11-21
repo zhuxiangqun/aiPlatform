@@ -145,7 +145,8 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-action-execute-tool-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
-    note: "Extended-scoped exists (附录 N.3); Registry 裸 bypass 拒绝；仅 approve 重入；非全量认证"
+      - reports/products/knowledge-system/v4.3.1/phase2-action-policy-audit-evidence.md
+    note: "Extended-scoped exists (附录 N.3); Registry 裸 bypass 拒绝；require_approval 强制入队；kill switch；非 Lv4 全量/非 certified"
   - id: N09
     level: core
     title: 跨租户 0 泄漏
