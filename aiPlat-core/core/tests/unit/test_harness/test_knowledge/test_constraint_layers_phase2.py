@@ -5,17 +5,42 @@ from core.harness.knowledge_pipeline import constraint_layers as cl
 
 
 def test_suite_passes_and_gate_never_certifies():
-    """套件全绿且 certified / n20_full 恒 false。"""
+    """套件全绿且 certified / n20_full 恒 false；含 Gateway 热路径门。"""
     suite = cl.run_constraint_layers_suite()
     assert suite["ok"] is True
     assert suite["passed"] == suite["total"]
     assert suite["certified"] is False
     assert suite["n20_full_conformance"] is False
+    ids = {c["id"] for c in suite["cases"]}
+    assert "hotpath_helper_attaches" in ids
+    assert "gateway_hotpath_entry" in ids
 
     gate = cl.evaluate_constraint_layers_gate(suite)
     assert gate["ok"] is True
     assert gate["certified"] is False
     assert gate["issues"] == []
+
+
+def test_hotpath_attach_and_env_off(monkeypatch):
+    """热路径挂 n20_constraint；env=0 时跳过。"""
+    monkeypatch.setenv("AIPLAT_CONSTRAINT_LAYERS_HOTPATH", "1")
+    hit = cl.maybe_attach_constraint_stack_hotpath(
+        {"answer": "a", "abstained": False},
+        route="wiki",
+        actor_permissions=["kb:read"],
+    )
+    assert isinstance(hit.get("n20_constraint"), dict)
+    assert hit["n20_constraint"]["hotpath"] is True
+    assert hit["n20_constraint"]["certified"] is False
+
+    monkeypatch.setenv("AIPLAT_CONSTRAINT_LAYERS_HOTPATH", "0")
+    assert cl.hotpath_constraint_enabled() is False
+    skip = cl.maybe_attach_constraint_stack_hotpath(
+        {"answer": "b"},
+        route="wiki",
+        actor_permissions=["kb:read"],
+    )
+    assert "n20_constraint" not in skip
 
 
 def test_high_risk_without_l1_blocked():

@@ -3836,16 +3836,17 @@ async def unified_query_gateway(
 
     def _finish(resp: Dict[str, Any]) -> Dict[str, Any]:
         # 为什么：N19 — Gateway 热路径 best-effort 落 Query 快照（失败不改 F.1）
+        out = resp
         try:
             from core.harness.knowledge_pipeline.fact_query_audit import (
                 maybe_record_query_gateway_hotpath,
             )
 
-            return maybe_record_query_gateway_hotpath(
+            out = maybe_record_query_gateway_hotpath(
                 tenant_id=tid,
                 route=r,
                 query=query or "",
-                response=resp,
+                response=out,
             )
         except Exception:
             logger.warning(
@@ -3853,7 +3854,24 @@ async def unified_query_gateway(
                 r,
                 exc_info=True,
             )
-            return resp
+        # 为什么：N20 — Gateway 热路径挂约束栈观测信封（不阻断 F.1）
+        try:
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_constraint_stack_hotpath,
+            )
+
+            out = maybe_attach_constraint_stack_hotpath(
+                out,
+                route=r,
+                actor_permissions=permissions,
+            )
+        except Exception:
+            logger.warning(
+                "constraint_layers gateway hotpath failed route=%s",
+                r,
+                exc_info=True,
+            )
+        return out
 
     if r == "fact":
         lg = ledger or get_fact_ledger()
