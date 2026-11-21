@@ -54,12 +54,26 @@ def _n21_enforce_rag_output(output: Dict[str, Any]) -> Dict[str, Any]:
     Args:
         output: Agent 输出 dict。
     """
-    # 为什么：RAG 假命中不得带空 citations 绿通；time/math 捷径不走此门
+    # 为什么：RAG 假命中不得带空 citations 绿通
     from core.harness.knowledge_pipeline.query_abstain_citations import (
         enforce_materials_chat_output,
     )
 
     return enforce_materials_chat_output(output)
+
+
+def _n21_enforce_shortcut_output(output: Dict[str, Any]) -> Dict[str, Any]:
+    """N21：MaterialsChat time/math/greeting 捷径出口强制。
+
+    Args:
+        output: trivial_bypass 输出 dict。
+    """
+    # 为什么：捷径允许无 citations，但须走门禁打标，防假 trivial 绿通
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_shortcut_output,
+    )
+
+    return enforce_materials_chat_shortcut_output(output)
 
 
 def _is_delivery_mode(vars0: Dict[str, Any]) -> bool:
@@ -433,51 +447,61 @@ class MaterialsChatAgent(BaseAgent):
                 time_result = handle_time_query(question)
                 if time_result:
                     return AgentResult(success=True,
-                        output={"answer": time_result, "citations": [], "items": [], "scope_applied": scope,
-                                "strategy": "trivial_bypass", "skills_used": [],
-                                "turn_summary": "time query", "intent": "trivial",
-                                "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                                "quality": "trivial"},
+                        output=_n21_enforce_shortcut_output(
+                            {"answer": time_result, "citations": [], "items": [], "scope_applied": scope,
+                             "strategy": "trivial_bypass", "skills_used": [],
+                             "turn_summary": "time query", "intent": "trivial",
+                             "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                             "quality": "trivial"}
+                        ),
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
                 math_result = handle_math_expression(question)
                 if math_result:
                     return AgentResult(success=True,
-                        output={"answer": math_result, "citations": [], "items": [], "scope_applied": scope,
-                                "strategy": "trivial_bypass", "skills_used": [],
-                                "turn_summary": "math query", "intent": "trivial",
-                                "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                                "quality": "trivial"},
+                        output=_n21_enforce_shortcut_output(
+                            {"answer": math_result, "citations": [], "items": [], "scope_applied": scope,
+                             "strategy": "trivial_bypass", "skills_used": [],
+                             "turn_summary": "math query", "intent": "trivial",
+                             "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                             "quality": "trivial"}
+                        ),
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
             except ImportError:
                 pass  # noqa: optional-dependency
             if _t_check in ("你好", "hello", "hi", "hey", "在吗", "在不在"):
                 return AgentResult(success=True,
-                    output={"answer": "你好！我是知识库助手，有什么可以帮助你的？",
-                            "citations": [], "items": [], "scope_applied": scope,
-                            "strategy": "trivial_bypass", "skills_used": [],
-                            "turn_summary": "greeting", "intent": "trivial",
-                            "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                            "quality": "trivial"},
+                    output=_n21_enforce_shortcut_output(
+                        {"answer": "你好！我是知识库助手，有什么可以帮助你的？",
+                         "citations": [], "items": [], "scope_applied": scope,
+                         "strategy": "trivial_bypass", "skills_used": [],
+                         "turn_summary": "greeting", "intent": "trivial",
+                         "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                         "quality": "trivial"}
+                    ),
                     metadata={"intent": "trivial", "strategy": "trivial_bypass"})
             if _t_check in ("谢谢", "多谢", "thank", "thanks", "thank you"):
                 return AgentResult(success=True,
-                    output={"answer": "不客气！如果还有其他问题，随时可以问我。",
-                            "citations": [], "items": [], "scope_applied": scope,
-                            "strategy": "trivial_bypass", "skills_used": [],
-                            "turn_summary": "thanks", "intent": "trivial",
-                            "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                            "quality": "trivial"},
+                    output=_n21_enforce_shortcut_output(
+                        {"answer": "不客气！如果还有其他问题，随时可以问我。",
+                         "citations": [], "items": [], "scope_applied": scope,
+                         "strategy": "trivial_bypass", "skills_used": [],
+                         "turn_summary": "thanks", "intent": "trivial",
+                         "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                         "quality": "trivial"}
+                    ),
                     metadata={"intent": "trivial", "strategy": "trivial_bypass"})
             if _t_re.match(r'^[+\-]?\d+(\.\d+)?\s*[\+\-\*\/\^]\s*[+\-]?\d+(\.\d+)?$', question.strip()):
                 try:
                     _result = eval(question.strip().replace("^", "**"))
                     return AgentResult(success=True,
-                        output={"answer": f"{question.strip()} = {_result}",
-                                "citations": [], "items": [], "scope_applied": scope,
-                                "strategy": "trivial_bypass", "skills_used": [],
-                                "turn_summary": "math", "intent": "trivial",
-                                "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                                "quality": "trivial"},
+                        output=_n21_enforce_shortcut_output(
+                            {"answer": f"{question.strip()} = {_result}",
+                             "citations": [], "items": [], "scope_applied": scope,
+                             "strategy": "trivial_bypass", "skills_used": [],
+                             "turn_summary": "math", "intent": "trivial",
+                             "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                             "quality": "trivial"}
+                        ),
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)

@@ -2,12 +2,13 @@
 
 职责：
   - 统一校验/归一化查询响应：abstain 无 citations/answer；有命中须 citations（可选强制）
-  - 覆盖 Fact Gateway + object_set + Wiki/KB 查询形 + MaterialsChat RAG 出口 + GraphRAG 信封
+  - 覆盖 Fact Gateway + object_set + Wiki/KB 查询形 + MaterialsChat RAG 出口
+    + 非 RAG 捷径（time/math/greeting）+ GraphRAG 信封
   - 套件/门槛门：``certified`` / ``n21_full`` 恒 false
 
 非目标：
   - 不改写 ``sys_wiki_retrieve`` / ``sys_kb_retrieve`` list API 返回形
-  - 不强制 MaterialsChat 非 RAG 捷径（time/math 等）
+  - 不强制 cache_hit / 其它非 trivial 捷径全量
   - 不并入 N13 校准封顶宣称
   - 不宣称 N21 certified
 """
@@ -30,9 +31,14 @@ _SUITE_CASES = (
     "wiki_path",
     "kb_path",
     "materials_path",
+    "materials_shortcut_path",
     "graphrag_path",
     "honesty_certified_false",
 )
+
+_TRIVIAL_STRATEGIES = frozenset({"trivial_bypass"})
+_TRIVIAL_INTENTS = frozenset({"trivial"})
+_TRIVIAL_QUALITIES = frozenset({"trivial"})
 
 
 class QueryAbstainCitationsError(ValueError):
@@ -281,6 +287,24 @@ def normalize_materials_citations(citations: Any) -> List[Dict[str, str]]:
     return out
 
 
+def is_materials_trivial_bypass(output: Optional[Dict[str, Any]]) -> bool:
+    """判定 MaterialsChat 输出是否为 time/math/greeting 等 trivial 捷径。
+
+    Args:
+        output: Agent 输出 dict。
+    """
+    if not isinstance(output, dict):
+        return False
+    strategy = str(output.get("strategy") or "").strip().lower()
+    intent = str(output.get("intent") or "").strip().lower()
+    quality = str(output.get("quality") or "").strip().lower()
+    return (
+        strategy in _TRIVIAL_STRATEGIES
+        or intent in _TRIVIAL_INTENTS
+        or quality in _TRIVIAL_QUALITIES
+    )
+
+
 def enforce_materials_chat_output(
     output: Optional[Dict[str, Any]],
     *,
@@ -308,6 +332,44 @@ def enforce_materials_chat_output(
     out["abstained"] = enforced.get("abstained") is True
     out["n21_enforced"] = True
     out["n21_channel"] = "materials_chat"
+    out["certified"] = False
+    out["n21_full_conformance"] = False
+    if enforced.get("route_reason"):
+        out["route_reason"] = str(out.get("route_reason") or "") + str(
+            enforced.get("route_reason") or ""
+        )
+    return out
+
+
+def enforce_materials_chat_shortcut_output(
+    output: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """MaterialsChat 非 RAG 捷径出口：允许无 citations 的 trivial 答案。
+
+    未标记 trivial 的输出回退到 RAG enforce（无引用 → abstain），防假捷径绿通。
+
+    Args:
+        output: Agent 捷径输出 dict（strategy/intent/quality=trivial）。
+    """
+    if not isinstance(output, dict):
+        raise QueryAbstainCitationsError("materials_shortcut_output_must_be_dict")
+    if not is_materials_trivial_bypass(output):
+        # 为什么：未声明 trivial 却走捷径门 → 按 RAG 门处理，防空引用假绿
+        return enforce_materials_chat_output(output, require_citations_on_hit=True)
+    out = dict(output)
+    # 为什么：捷径允许无 citations 的确定性答案；仍禁自签 certified
+    probe = {
+        "answer": str(out.get("answer") or ""),
+        "citations": normalize_materials_citations(out.get("citations")),
+        "abstained": out.get("abstained") is True,
+    }
+    enforced = enforce_abstain_citations(probe, require_citations_on_hit=False)
+    out["answer"] = enforced.get("answer") or ""
+    out["citations"] = enforced.get("citations") or []
+    out["abstained"] = enforced.get("abstained") is True
+    out["n21_enforced"] = True
+    out["n21_channel"] = "materials_chat_shortcut"
+    out["n21_shortcut"] = True
     out["certified"] = False
     out["n21_full_conformance"] = False
     if enforced.get("route_reason"):
@@ -393,11 +455,13 @@ def evaluate_query_abstain_citations_gate(
         issues.append("honesty_certified_flag_forbidden")
     if s.get("n21_full_conformance") is True:
         issues.append("honesty_n21_full_flag_forbidden")
-    # 为什么：本 deepen 须声明 Wiki/KB + Materials/GraphRAG 已接线，防旧套件冒充
+    # 为什么：本 deepen 须声明 Wiki/KB + Materials/GraphRAG + 捷径已接线，防旧套件冒充
     if s.get("wiki_kb_query_entry") is not True:
         issues.append("wiki_kb_query_entry_required")
     if s.get("materials_graphrag_entry") is not True:
         issues.append("materials_graphrag_entry_required")
+    if s.get("materials_shortcut_entry") is not True:
+        issues.append("materials_shortcut_entry_required")
     cases = s.get("cases") or []
     if cases:
         failed = [c for c in cases if isinstance(c, dict) and not c.get("ok")]
@@ -419,9 +483,10 @@ def evaluate_query_abstain_citations_gate(
         "n21_full_conformance": False,
         "wiki_kb_query_entry": True,
         "materials_graphrag_entry": True,
+        "materials_shortcut_entry": True,
         "note": (
-            "Abstain+citations + Wiki/KB + MaterialsChat RAG + GraphRAG envelope; "
-            "not N21 certified / not non-RAG shortcuts"
+            "Abstain+citations + Wiki/KB + MaterialsChat RAG/shortcut + GraphRAG; "
+            "not N21 certified / not cache_hit full / not list API rewrite"
         ),
     }
 
@@ -641,6 +706,49 @@ async def run_query_abstain_citations_suite(
             }
         )
 
+        # MaterialsChat 非 RAG 捷径：trivial 可无 citations；假捷径回退 RAG abstain
+        sc_ok = enforce_materials_chat_shortcut_output(
+            {
+                "answer": "14:30",
+                "citations": [],
+                "strategy": "trivial_bypass",
+                "intent": "trivial",
+                "quality": "trivial",
+                "turn_summary": "time query",
+            }
+        )
+        sc_fake = enforce_materials_chat_shortcut_output(
+            {
+                "answer": "pretend shortcut",
+                "citations": [],
+                "strategy": "direct_retrieve",
+            }
+        )
+        sc_v = validate_abstain_citations(
+            {
+                "answer": sc_ok.get("answer") or "",
+                "citations": sc_ok.get("citations") or [],
+                "abstained": sc_ok.get("abstained") is True,
+            },
+            require_citations_on_hit=False,
+        )
+        cases.append(
+            {
+                "id": "materials_shortcut_path",
+                "ok": (
+                    sc_ok.get("abstained") is False
+                    and sc_ok.get("answer") == "14:30"
+                    and sc_ok.get("citations") == []
+                    and sc_ok.get("n21_channel") == "materials_chat_shortcut"
+                    and sc_ok.get("n21_shortcut") is True
+                    and sc_fake.get("abstained") is True
+                    and sc_fake.get("n21_channel") == "materials_chat"
+                    and sc_v.get("ok") is True
+                ),
+                "detail": ",".join(sc_v.get("errors") or []),
+            }
+        )
+
         # GraphRAG 信封：无 chunk → abstain；有 source chunk 保留
         gr_empty = attach_graphrag_n21_envelope(
             {"mode": "vector_only", "chunks": []}, query="none"
@@ -677,6 +785,7 @@ async def run_query_abstain_citations_suite(
                 and wiki_ok.get("n21_full_conformance") is False
                 and kb_live.get("certified") is False
                 and mat_ok.get("n21_full_conformance") is False
+                and sc_ok.get("n21_full_conformance") is False
                 and gr_ok.get("n21_full_conformance") is False,
                 "detail": "",
             }
@@ -692,10 +801,11 @@ async def run_query_abstain_citations_suite(
             "n21_full_conformance": False,
             "wiki_kb_query_entry": True,
             "materials_graphrag_entry": True,
+            "materials_shortcut_entry": True,
             "measured_at": time.time(),
             "note": (
-                "Abstain+citations + Wiki/KB + MaterialsChat RAG + GraphRAG envelope; "
-                "not N21 certified / not non-RAG shortcuts"
+                "Abstain+citations + Wiki/KB + MaterialsChat RAG/shortcut + GraphRAG; "
+                "not N21 certified / not cache_hit full / not list API rewrite"
             ),
         }
     finally:

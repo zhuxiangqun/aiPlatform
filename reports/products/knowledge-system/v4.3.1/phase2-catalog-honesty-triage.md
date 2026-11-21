@@ -35,7 +35,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 | N18 | 部署侧 RBAC 真源 deepen 已接线；非召回全路径 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（全路径） | deepen 见 ADR N18 + `phase2-deployed-rbac-evidence.md`；全路径仍开放 |
 | N19 | Fact/Query 统一审计快照 deepen 已接线；非热路径强制 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（热路径） | deepen 见 ADR N19 + `phase2-fact-query-audit-evidence.md`；热路径仍开放 |
 | N20 | 知识面 L1>L2>L3 栈 deepen 已接线；非全域强制 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（全域） | deepen 见 ADR N20 + `phase2-constraint-layers-evidence.md`；全域仍开放 |
-| N21 | Fact/object_set + Wiki/KB + Materials RAG + GraphRAG 信封 abstain deepen 已接线；非非RAG捷径 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（非RAG捷径） | deepen 见 ADR N21 + `phase2-query-abstain-citations-evidence.md`；time/math 等捷径仍开放 |
+| N21 | Fact/object_set + Wiki/KB + Materials RAG/trivial 捷径 + GraphRAG 信封 abstain deepen 已接线；非 cache_hit 全量 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（cache_hit 等） | deepen 见 ADR N21 + `phase2-query-abstain-citations-evidence.md`；cache_hit 等仍开放 |
 | N14 生产对账 | Raw↔Fact↔Index 全链路 deepen 已接线；非生产切写认证 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（生产认证） | deepen 见 ADR N14 + `phase2-raw-fact-index-reconcile-evidence.md`；生产认证仍开放 |
 
 ## 已在 ADR 例外表（本盘点不重复开刀）
@@ -61,4 +61,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -c \
 ## 明确未做
 
 - 关闭任何 ADR 例外 / 置 `certified=true`
-- 全量 ObjectType 人审、Wiki 全量、gold 准确率宣称、N17 semantic_cases 全量对 Fact Store、N18 召回/聚合/导出全路径、N19 热路径强制落快照、N20 全域强制分层、N21 MaterialsChat 非RAG捷径 abstain、N14 生产切写认证/自动修复写回
+- 全量 ObjectType 人审、Wiki 全量、gold 准确率宣称、N17 semantic_cases 全量对 Fact Store、N18 召回/聚合/导出全路径、N19 热路径强制落快照、N20 全域强制分层、N21 MaterialsChat cache_hit 捷径 abstain、N14 生产切写认证/自动修复写回
