@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3931
+total_capabilities: 3935
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1224,6 +1224,7 @@ scan_hash: 8f9548ec24f4
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户隔离加深（v4.3.1 N09 partial+unified）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | 15 探针含统一 Gateway fact/object_set；门槛门 certified 恒 false。证据 `phase2-cross-tenant-unified-gateway-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户 ObjectSet/UnifiedAudit（v4.3.1 N09 K1）** | 同上套件增 `object_set_no_leak` / `unified_audit_no_leak` | ✅ | 临时 ObjectType + ActionStore→统一审计视图；六探针；certified 恒 false。证据 `phase2-cross-tenant-objectset-audit-evidence.md`。**未宣称** Wiki/KB 全入口 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Action Policy/Approval/Audit（v4.3.1 N08 deepen）** | `action_kill_switch_active` + require_approval 无 threshold 强制入队 + suite/gate + Facade | ✅ | kill switch；Policy 拒审计；审批入队；certified 恒 false。证据 `phase2-action-policy-audit-evidence.md`。**未宣称** Lv4 全量重设计 / N08 certified。生成物适用：已接线 | 本批 |
 | **迁移切写授权（v4.3.1 N11/N14 deepen）** | `authorize_migration_cutover` / `request_write_cutover` / suite/gate + Facade | ✅ | token+actor+reason+对账；作业级授权≠生产认证；certified 恒 false。证据 `phase2-migration-cutover-auth-evidence.md`。**未宣称** 生产切写 / N11/N14 certified。生成物适用：已接线 | 本批 |
 | **ABox 角色×动作轴（v4.3.1 N07/N22 deepen）** | `load_role_action_matrix` / `role_action_allowed` / suite/gate + Facade；`check_entity_acl` 接线 | ✅ | 配置驱动任意角色×动作；未知角色拒绝；certified 恒 false。证据 `phase2-role-action-matrix-evidence.md`。**未宣称** 部署 RBAC 真源 / Wiki·KB 全入口 / N07/N22 certified。生成物适用：已接线 | 本批 |
 | **ObjectSet 嵌套 filter（v4.3.1 N07/N22 deepen）** | `match_filter_expr` / `run_object_set_filter_suite` / `evaluate_object_set_filter_gate` + Facade | ✅ | `$and`/`$or`/`$not` + `$eq`/`$ne`/`$in`/`$exists`；深度上限 4；certified 恒 false。证据 `phase2-objectset-filter-evidence.md`。**未宣称** Wiki/KB 全入口 ACL / N07/N22 certified。生成物适用：已接线 | 本批 |
@@ -1455,6 +1456,9 @@ scan_hash: 8f9548ec24f4
 | unified_query_gateway | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 fact/object_set→F.1 | 本批 |
 | evaluate_claim_status_write_gate | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写门槛门；certified 恒 false | 本批 |
 | run_claim_status_write_suite | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写套件；certified 恒 false | 本批 |
+| evaluate_action_policy_audit_gate | `core/harness/ontology_engine/action_registry.py` | ✅ | N08 Policy/Audit 门槛门；certified 恒 false | 本批 |
+| run_action_policy_audit_suite | `core/harness/ontology_engine/action_registry.py` | ✅ | N08 Policy/Approval/Audit 套件；certified 恒 false | 本批 |
+| action_kill_switch_active | `core/harness/ontology_engine/action_registry.py` | ✅ | N08 全局动作急停 | 本批 |
 | evaluate_migration_cutover_auth_gate | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 切写授权门槛门；certified 恒 false | 本批 |
 | run_migration_cutover_auth_suite | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 切写授权套件；certified 恒 false | 本批 |
 | authorize_migration_cutover | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 作业级切写授权 | 本批 |
@@ -4832,9 +4836,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 764 | 1 | 765 |
+| Harness 执行引擎 | 765 | 1 | 766 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 672 | 9 | 681 |
+| 知识引擎（本体） | 675 | 9 | 684 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4877,7 +4881,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3920** | **11** | **3931** |
+| **总计** | **3924** | **11** | **3935** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

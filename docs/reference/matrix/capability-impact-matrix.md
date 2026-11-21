@@ -8,7 +8,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3063 capabilities (caps_count) | 3063 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3066 capabilities (caps_count) | 3066 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -195,7 +195,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| tool-ecosystem | §十六 工具生态 | 73 | MCPToolAdapter → BaseTool |
+| tool-ecosystem | §十六 工具生态 | 76 | MCPToolAdapter → BaseTool |
 
 ### core/apps/mcp/server.py
 
@@ -393,7 +393,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 |--------|---------|:---:|--------|
 | observability | §八 可观测性 | 23 | 工具调用审计 |
 | skill-system | §六 Skill 系统 | 213 | sys_tool_call → PolicyGate.check_tool |
-| tool-ecosystem | §十六 工具生态 | 73 | sys_tool_call → ToolRegistry |
+| tool-ecosystem | §十六 工具生态 | 76 | sys_tool_call → ToolRegistry |
 
 ### core/harness/utils/model_injection.py
 
@@ -640,7 +640,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/harness/execution/pipeline_engine.py** — HITL → PolicyGate + ApprovalGate
 - **core/harness/syscalls/llm.py** — _guard_messages → PII masking
 
-### §十六 工具生态 (73 caps)
+### §十六 工具生态 (76 caps)
 
 - **core/harness/syscalls/tool.py** — sys_tool_call → ToolRegistry
 - **core/apps/mcp/adapter.py** — MCPToolAdapter → BaseTool

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3063
+total_capabilities: 3066
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -11277,7 +11277,7 @@ domains:
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 73
+    caps_count: 76
     provides:
       - symbol: "finalize_tool_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -11357,6 +11357,18 @@ domains:
         type: doc
         signature: "AsyncActionRegistry.resolve_action_id(legacy_or_canonical) → canonical action_id"
         notes: "conceptual or non-export; retained for domain map"
+      - symbol: "action_kill_switch_active"
+        type: "function"
+        signature: "N08: global action kill switch"
+        module: "core/harness/ontology_engine/action_registry.py"
+      - symbol: "run_action_policy_audit_suite"
+        type: "function"
+        signature: "N08: policy/approval/audit suite (certified=false)"
+        module: "core/harness/ontology_engine/action_registry.py"
+      - symbol: "evaluate_action_policy_audit_gate"
+        type: "function"
+        signature: "N08: policy/audit gate (certified=false)"
+        module: "core/harness/ontology_engine/action_registry.py"
       - symbol: "update_entity_property"
         module: aiPlat-core/core/harness/ontology_engine/graph_index.py
         type: doc
