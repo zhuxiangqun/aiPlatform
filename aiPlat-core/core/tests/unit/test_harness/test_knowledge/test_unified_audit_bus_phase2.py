@@ -179,6 +179,42 @@ async def test_action_store_hotpath_to_bus(harness, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_fact_query_hotpath_to_bus(harness, tmp_path, monkeypatch):
+    """J11：Fact/Query record_audit_snapshot 热路径直接入 bus。"""
+    _ledger, _pkg, _act, bus_db = harness
+    from core.harness.knowledge_pipeline.fact_query_audit import record_audit_snapshot
+
+    fqa_db = str(tmp_path / "fqa.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_BUS_HOTPATH", "1")
+    row = record_audit_snapshot(
+        tenant_id="t1",
+        kind="query",
+        subject_ref="fqa-hot",
+        after_snapshot={"abstained": True, "citations": []},
+        runtime_authority="query_gateway",
+        db_path=fqa_db,
+    )
+    rows = list_unified_audit_bus_events(
+        tenant_id="t1", stream="fact_query_audit", db_path=bus_db
+    )
+    assert any(e.get("event_id") == f"fqa:{row['snapshot_id']}" for e in rows)
+
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_BUS_HOTPATH", "0")
+    row2 = record_audit_snapshot(
+        tenant_id="t1",
+        kind="query",
+        subject_ref="fqa-off",
+        after_snapshot={"abstained": True, "citations": []},
+        runtime_authority="query_gateway",
+        db_path=fqa_db,
+    )
+    rows2 = list_unified_audit_bus_events(
+        tenant_id="t1", stream="fact_query_audit", db_path=bus_db
+    )
+    assert not any(e.get("event_id") == f"fqa:{row2['snapshot_id']}" for e in rows2)
+
+
+@pytest.mark.asyncio
 async def test_action_store_physical_tenant_column(tmp_path):
     """J8：物理 tenant_id 列写入 + list_audit 召回前过滤；跨租户空。"""
     from core.harness.infrastructure.action_store import ActionStore
