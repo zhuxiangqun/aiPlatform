@@ -6350,6 +6350,39 @@ def resolve_confidence_ceiling(
     )
 
 
+async def run_calibration_pipeline_suite(
+    *,
+    tenant_id: str = "n13-cal-pipeline-tenant",
+    domain_id: str = "n13-cal-probe",
+) -> Dict[str, Any]:
+    """N13 deepen：Operational 校准流水线套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 探针域（调用方传入）。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        run_calibration_pipeline_suite as _run,
+    )
+
+    return await _run(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_calibration_pipeline_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N13 deepen：校准流水线门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_calibration_pipeline_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        evaluate_calibration_pipeline_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def start_knowledge_migration(
     *,
     tenant_id: str,

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3041
+total_capabilities: 3044
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 575
+    caps_count: 578
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3886,6 +3886,18 @@ domains:
         module: core/harness/knowledge_pipeline/confidence_calibration.py
         type: function
         signature: "W10: cap confidence to medium when calibration fails"
+      - symbol: "apply_calibration_ceiling"
+        type: "function"
+        signature: "N13: apply confidence ceiling on query path (certified=false)"
+        module: "core/harness/knowledge_pipeline/confidence_calibration.py"
+      - symbol: "run_calibration_pipeline_suite"
+        type: "function"
+        signature: "N13: operational calibration pipeline suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/confidence_calibration.py"
+      - symbol: "evaluate_calibration_pipeline_gate"
+        type: "function"
+        signature: "N13: calibration pipeline gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/confidence_calibration.py"
       - symbol: "publish_confidence_calibration"
         module: core/api/core_facade.py
         type: function

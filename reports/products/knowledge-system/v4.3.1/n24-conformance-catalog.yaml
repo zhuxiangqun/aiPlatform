@@ -188,6 +188,7 @@ items:
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-calibration-pipeline-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/confidence_calibration.py
     note: "Operational-scoped exists (附录 N.4); 附录 O 校准报告门槛已接线；非全知识域 gold 流水线"
   - id: N11
@@ -218,6 +219,7 @@ items:
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-calibration-pipeline-evidence.md
     note: "Operational-scoped exists (附录 N.4); 失败/缺失/过期 → 最高 medium；未宣称准确率"
   - id: N14
     level: operational

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T09:16:00+08:00",
+  "reviewed_at": "2026-11-21T09:37:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "71ee8c3aa90f7c687d54a0c6f53e5b94660fb2a6e7515be792e142c8a79b24e0",
-  "head_sha": "ce639f845cd57fadb756fcc7b89ac4b1b9cdefe7",
+  "diff_sha256": "c0f4575cf1f28fda18405ba8cbe01ab73ac0cb1b32f1002a3f3dba93a6127546",
+  "head_sha": "0f43e575551da2e2becf5ba8c6272b18054397cd",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. N09: isolation suite +2 unified Gateway probes (15 total); global zero-leak / N09 certified out of scope."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. N13: fact gateway applies calibration ceiling when domain_id set; failed/missing cal caps high→medium; real ECE training / N13 certified out of scope."
 }
