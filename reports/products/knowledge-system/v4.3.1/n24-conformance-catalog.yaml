@@ -199,8 +199,11 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-calibration-pipeline-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-knowledge-gold-eval-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/confidence_calibration.py
-    note: "Operational-scoped exists (附录 N.4); 附录 O 校准报告门槛已接线；全知识域 gold 流水线仍开放（见 catalog-honesty-triage）"
+      - aiPlat-core/core/harness/knowledge_pipeline/knowledge_gold_eval.py
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_knowledge_gold_eval_phase2.py
+    note: "Operational-scoped exists (附录 N.4); 附录 O 校准门槛 + 域级 Exact-match gold 流水线；非 LLM judge/非准确率宣称/非 N10 certified"
   - id: N11
     level: operational
     title: 迁移/回滚方案
