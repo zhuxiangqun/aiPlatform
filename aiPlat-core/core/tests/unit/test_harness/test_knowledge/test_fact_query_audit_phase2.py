@@ -23,6 +23,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "wiki_kb_hotpath_entry" in ids
     assert "bare_list_hotpath_entry" in ids
     assert "kb_qa_hotpath_entry" in ids
+    assert "knowledge_retrieve_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -225,6 +226,33 @@ def test_kb_qa_hotpath_writes(tmp_path, monkeypatch):
         db_path=db,
     )
     assert fqa.list_audit_snapshots(tenant_id="t-kq", db_path=db)["count"] == 1
+
+
+def test_knowledge_retrieve_hotpath_writes(tmp_path, monkeypatch):
+    """统一 knowledge_retrieve 热路径落 Query 快照；空 tenant 跳过。"""
+    db = str(tmp_path / "fqa-kr.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+    fqa.maybe_record_knowledge_retrieve_hotpath(
+        tenant_id="t-kr",
+        hits=[{"title": "p1", "source": "wiki", "source_type": "wiki"}],
+        query="kr?",
+        route="rrf",
+        db_path=db,
+    )
+    listed = fqa.list_audit_snapshots(tenant_id="t-kr", db_path=db)
+    assert listed["count"] == 1
+    item = listed["items"][0]
+    assert item["runtime_authority"] == "knowledge_retrieve"
+    assert (item.get("meta") or {}).get("op") == "knowledge_retrieve"
+    assert (item.get("meta") or {}).get("route") == "rrf"
+
+    fqa.maybe_record_knowledge_retrieve_hotpath(
+        tenant_id="",
+        hits=[{"title": "x"}],
+        db_path=db,
+    )
+    assert fqa.list_audit_snapshots(tenant_id="t-kr", db_path=db)["count"] == 1
 
 
 def test_fact_requires_after_snapshot(tmp_path):

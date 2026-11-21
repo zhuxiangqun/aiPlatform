@@ -9,7 +9,7 @@ pilot_domain: lock-service
 
 # Phase 2 / N19 Fact/Query 统一审计证据
 
-> 实施权威：附录 N N19 deepen（运行时权威与审计快照统一 + put_fact/Gateway/query_facts/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG 热路径）。  
+> 实施权威：附录 N N19 deepen（运行时权威与审计快照统一 + put_fact/Gateway/query_facts/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve 热路径）。  
 > **未宣称** N19 certified / 全部旁路入口强制落盘 / N24 全量总线合并。
 
 ## 检查表
@@ -31,6 +31,7 @@ pilot_domain: lock-service
 | Wiki/KB 旁路 | pass | suite `wiki_kb_hotpath_entry` |
 | 裸 list syscall 旁路 | pass | suite `bare_list_hotpath_entry` |
 | KB Q&A / CRAG 旁路 | pass | suite `kb_qa_hotpath_entry` |
+| 统一 knowledge_retrieve 旁路 | pass | suite `knowledge_retrieve_hotpath_entry` |
 | certified 恒 false | pass | suite / gate honesty |
 
 ## 命令
@@ -38,7 +39,7 @@ pilot_domain: lock-service
 ```bash
 PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
   aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_fact_query_audit_phase2.py -v
-# 预期：10 passed
+# 预期：11 passed
 ```
 
 ## 接线
@@ -46,13 +47,13 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 | 入口 | 路径 |
 |------|------|
 | 核心 | `record_audit_snapshot` / `maybe_record_*_hotpath` / suite/gate |
-| 热路径 | `put_fact` + `unified_query_gateway` + `query_facts_gateway` + `query_facts` list + MaterialsChat `_n21_enforce_*` + GraphRAG `attach_graphrag_n21_envelope` + Wiki/KB `attach_list_retrieve_n21_envelope` / `query_*_with_abstain` + 裸 `sys_wiki_retrieve`/`sys_kb_retrieve` + `sys_crag_retrieve`/`kb_qa_retrieve`（RAG Agent / kb_planner 经此；MaterialsChat 关 CRAG 层 `record_hotpath_audit`；CRAG→`kb_retrieve` 关裸 list）→ best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`） |
+| 热路径 | `put_fact` + `unified_query_gateway` + `query_facts_gateway` + `query_facts` list + MaterialsChat `_n21_enforce_*` + GraphRAG `attach_graphrag_n21_envelope` + Wiki/KB `attach_list_retrieve_n21_envelope` / `query_*_with_abstain` + 裸 `sys_wiki_retrieve`/`sys_kb_retrieve` + `sys_crag_retrieve`/`kb_qa_retrieve` + `sys_knowledge_retrieve`（会话/Builder/技能；HyDE/CRAG 关 knowledge_retrieve；MaterialsChat 关 CRAG；CRAG/knowledge_retrieve 关裸 list）→ best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`） |
 | Facade / HTTP | 同名 + `/fde/fact-query-audit*` |
 | 配置 | `AIPLAT_FACT_QUERY_AUDIT_DB` / `AIPLAT_FACT_QUERY_AUDIT_HOTPATH` |
 
 ## 明确未做
 
-- 全部旁路入口强制落盘（其它 Workbench / 非 CRAG Agent 查询形等）
+- 全部旁路入口强制落盘（残余非统一检索 Agent 形等）
 - 热路径失败阻断主写入/查询（刻意 best-effort）
 - Package+Action 统一审计总线全量合并（N24）
 - N19 certified / 关闭 ADR 例外冒充签字

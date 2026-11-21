@@ -81,6 +81,8 @@ async def hyde_retrieve(
             wiki_first=True,
             wiki_collection_ids=wiki_collection_ids or [],
             top_k=top_k,
+            # 为什么：CRAG/HyDE 上层已落 kb_qa 审计；关 knowledge_retrieve 防双写
+            record_hotpath_audit=False,
         )
         if not results:
             return "", []
