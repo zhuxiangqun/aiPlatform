@@ -8,7 +8,8 @@
     / KB Q&A（``sys_crag_retrieve`` / ``kb_qa_retrieve`` / RAG Agent）
     / 统一 ``sys_knowledge_retrieve``（会话/Builder/技能）
     / Agent ``sys_wiki_context``（信封失败兜底）
-    / Wiki ``wiki_structured_query_api`` 热路径
+    / Wiki ``wiki_structured_query_api``
+    / Agent ``sys_ontology_context`` 热路径
     best-effort 落快照（可 env 关闭）
   - 快照写入后 best-effort 追加统一审计总线（N24 J11；可 env 关）
   - 套件/门槛门：``certified`` / ``n19_full`` 恒 false
@@ -51,6 +52,7 @@ _SUITE_CASES = (
     "knowledge_retrieve_hotpath_entry",
     "wiki_context_hotpath_entry",
     "wiki_structured_hotpath_entry",
+    "ontology_context_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -915,8 +917,8 @@ def evaluate_fact_query_audit_gate(
         "note": (
             "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
             "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
-            "knowledge_retrieve/wiki_context/wiki_structured hotpath; not "
-            "N19 certified / not all bypass paths"
+            "knowledge_retrieve/wiki_context/wiki_structured/"
+            "ontology_context hotpath; not N19 certified / not all bypass paths"
         ),
     }
 
@@ -1187,6 +1189,20 @@ def run_fact_query_audit_suite(
             }
         )
 
+        from core.harness.syscalls import ontology_context as oc
+
+        oc_src = inspect.getsource(oc.sys_ontology_context)
+        cases.append(
+            {
+                "id": "ontology_context_hotpath_entry",
+                "ok": (
+                    "maybe_record_wiki_kb_hotpath" in oc_src
+                    and "ontology_context" in oc_src
+                ),
+                "detail": "",
+            }
+        )
+
         passed = sum(1 for c in cases if c.get("ok"))
         return {
             "ok": passed == len(_SUITE_CASES),
@@ -1199,8 +1215,8 @@ def run_fact_query_audit_suite(
             "note": (
                 "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
                 "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
-                "knowledge_retrieve/wiki_context/wiki_structured hotpath; "
-                "not all bypass paths / not certified"
+                "knowledge_retrieve/wiki_context/wiki_structured/"
+                "ontology_context hotpath; not all bypass paths / not certified"
             ),
         }
     finally:

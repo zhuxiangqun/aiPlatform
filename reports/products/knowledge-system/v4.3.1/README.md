@@ -42,6 +42,7 @@ authority: supporting
 | [phase2-fact-query-audit-evidence.md](./phase2-fact-query-audit-evidence.md) | N19 deepen：Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve/wiki_context 热路径（非全部旁路/非 certified） |
 | [phase2-fact-query-wiki-context-hotpath-evidence.md](./phase2-fact-query-wiki-context-hotpath-evidence.md) | N19 deepen：Agent `sys_wiki_context` 信封失败兜底审计（非 certified） |
 | [phase2-fact-query-wiki-structured-hotpath-evidence.md](./phase2-fact-query-wiki-structured-hotpath-evidence.md) | N19 deepen：Wiki 结构化查询 Facade/HTTP 热路径审计（非 certified） |
+| [phase2-fact-query-ontology-context-hotpath-evidence.md](./phase2-fact-query-ontology-context-hotpath-evidence.md) | N19 deepen：Agent `sys_ontology_context` 热路径审计（非 certified） |
 | [phase2-constraint-layers-evidence.md](./phase2-constraint-layers-evidence.md) | N20 deepen：L1>L2>L3 + Gateway/put_fact/query_facts_gateway/MaterialsChat/GraphRAG/Wiki-KB/裸 list/query_facts list 热路径 n20_constraint（非 list→dict/非 certified） |
 | [phase2-query-abstain-citations-evidence.md](./phase2-query-abstain-citations-evidence.md) | N21 deepen：abstain+citations + Wiki/KB + Materials + GraphRAG + list n21_query（非改写 list 主类型/非 certified） |
 | [phase2-raw-fact-index-reconcile-evidence.md](./phase2-raw-fact-index-reconcile-evidence.md) | N14 deepen：Raw↔Fact↔Index 全链路对账（非生产切写认证/非 certified） |

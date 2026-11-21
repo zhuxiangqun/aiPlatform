@@ -3,10 +3,13 @@ sys_ontology_context — ontology knowledge context for Agents.
 
 Phase D: knowledge_gaps tells the Agent "here's what we need to find out"
 rather than just "here's what we know".
+
+N19：可选 tenant_id 时 best-effort 落 Fact/Query 审计快照（certified 恒 false）。
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List
 from core.harness.knowledge.domain_router import DomainRouter
 
@@ -19,6 +22,7 @@ def sys_ontology_context(
     include_contradictions: bool = True,
     include_state_summary: bool = True,
     include_gaps: bool = True,
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """Query ontology state for Agent context injection.
 
@@ -29,6 +33,7 @@ def sys_ontology_context(
         include_contradictions: include_contradictions 参数。
         include_state_summary: include_state_summary 参数。
         include_gaps: include_gaps 参数。
+        tenant_id: 非空时落 N19 Query 审计快照。
     """
     from core.harness.knowledge.knowledge_ontology import get_ontology
 
@@ -67,6 +72,29 @@ def sys_ontology_context(
 
     if include_gaps:
         result["knowledge_gaps"] = _get_knowledge_gaps(onto)
+
+    # 为什么：禁止本体上下文自签 certified；N19 deepen ≠ 全量认证
+    result["certified"] = False
+    result["n19_full_conformance"] = False
+
+    tid = (tenant_id or "").strip()
+    if tid:
+        # 为什么：Agent 本体上下文含 search_pages 旁路，须 best-effort 落 Query 快照
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_wiki_kb_hotpath,
+            )
+
+            result = maybe_record_wiki_kb_hotpath(
+                tenant_id=tid,
+                response=result,
+                channel="ontology_context",
+                query=question or "",
+            )
+        except Exception as e:
+            logging.warning(
+                "sys_ontology_context N19 audit skipped: %s", e, exc_info=True
+            )
 
     return result
 

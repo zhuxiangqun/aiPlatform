@@ -42,3 +42,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 - 无 tenant 的内部 golden 回归调用强制落盘
 - 全部旁路 / N19 certified
+
+> Agent ontology_context 见 `phase2-fact-query-ontology-context-hotpath-evidence.md`。

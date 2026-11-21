@@ -26,6 +26,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "knowledge_retrieve_hotpath_entry" in ids
     assert "wiki_context_hotpath_entry" in ids
     assert "wiki_structured_hotpath_entry" in ids
+    assert "ontology_context_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -371,3 +372,40 @@ def test_wiki_structured_query_api_hotpath(tmp_path, monkeypatch):
     skip = wiki_structured_query_api("什么是RAG", tenant_id="")
     assert skip.get("certified") is False
     assert fqa.list_audit_snapshots(tenant_id="t-ws", db_path=db)["count"] == 1
+
+
+def test_ontology_context_hotpath(tmp_path, monkeypatch):
+    """sys_ontology_context：有 tenant 时落 N19；空 tenant 跳过。"""
+    db = str(tmp_path / "fqa-oc.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+
+    class _Onto:
+        triples = []
+
+    monkeypatch.setattr(
+        "core.harness.knowledge.knowledge_ontology.get_ontology",
+        lambda: _Onto(),
+    )
+    monkeypatch.setattr(
+        "core.harness.knowledge.wiki_engine.search_pages",
+        lambda *_a, **_k: [{"title": "p1", "summary": "s"}],
+    )
+
+    from core.harness.syscalls.ontology_context import sys_ontology_context
+
+    out = sys_ontology_context(
+        "q?",
+        tenant_id="t-oc",
+        include_contradictions=False,
+        include_gaps=False,
+        include_state_summary=False,
+    )
+    assert out.get("certified") is False
+    assert out.get("n19_full_conformance") is False
+    listed = fqa.list_audit_snapshots(tenant_id="t-oc", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "ontology_context"
+
+    sys_ontology_context("q?", tenant_id="", include_gaps=False)
+    assert fqa.list_audit_snapshots(tenant_id="t-oc", db_path=db)["count"] == 1

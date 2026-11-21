@@ -232,7 +232,12 @@ class PipelinePromptMixin:
 
             from core.harness.syscalls.ontology_context import sys_ontology_context
 
-            onto_ctx = sys_ontology_context(question=state.get("description", ""), include_gaps=True)
+            # 为什么：透传 tenant 以便 N19 本体上下文热路径落审计；空则跳过
+            onto_ctx = sys_ontology_context(
+                question=state.get("description", ""),
+                include_gaps=True,
+                tenant_id=str(state.get("tenant_id") or ""),
+            )
 
             gaps = onto_ctx.get("knowledge_gaps", {})
 
