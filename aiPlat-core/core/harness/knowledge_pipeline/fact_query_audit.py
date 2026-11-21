@@ -4,7 +4,8 @@
   - 统一 Fact 变更与 Query 响应的审计快照 schema（同库同表）
   - 标记 ``runtime_authority`` 与 ActionExecution 快照字段对齐（before/after）
   - put_fact / unified_query_gateway / query_facts_gateway / query_facts list
-    / MaterialsChat 直出 / GraphRAG / Wiki-KB / 裸 list syscall 热路径
+    / MaterialsChat 直出 / GraphRAG / Wiki-KB / 裸 list syscall
+    / KB Q&A（``sys_crag_retrieve`` / ``kb_qa_retrieve`` / RAG Agent）热路径
     best-effort 落快照（可 env 关闭）
   - 套件/门槛门：``certified`` / ``n19_full`` 恒 false
 
@@ -43,6 +44,7 @@ _SUITE_CASES = (
     "graphrag_hotpath_entry",
     "wiki_kb_hotpath_entry",
     "bare_list_hotpath_entry",
+    "kb_qa_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -638,6 +640,71 @@ def maybe_record_bare_list_hotpath(
     )
 
 
+def maybe_record_kb_qa_hotpath(
+    *,
+    tenant_id: str,
+    retrieved_text: str = "",
+    citations: Optional[List[Any]] = None,
+    query: str = "",
+    route: str = "crag",
+    db_path: Optional[str] = None,
+) -> None:
+    """KB Q&A（``sys_crag_retrieve`` / ``kb_qa_retrieve``）热路径落 Query 快照。
+
+    不改 ``(text, citations)`` 主返回；MaterialsChat 等上层应关
+    ``record_hotpath_audit`` 防双写。
+
+    Args:
+        tenant_id: 租户（空则跳过）。
+        retrieved_text: 召回正文。
+        citations: 引用列表。
+        query: 可选原始问题摘要。
+        route: 路由标签（如 ``crag`` / ``cache`` / ``graphrag``）。
+        db_path: 可选库路径。
+    """
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return
+    cites_raw = [c for c in (citations or []) if isinstance(c, dict)]
+    text = retrieved_text or ""
+    rt = (route or "crag").strip() or "crag"
+    maybe_record_hotpath_audit(
+        tenant_id=tid,
+        kind="query",
+        subject_ref=f"kq:{uuid.uuid4().hex[:12]}",
+        before_snapshot={
+            "query": (query or "")[:500],
+            "route": f"kb_qa_{rt}",
+        },
+        after_snapshot={
+            "abstained": not bool(str(text).strip()) and len(cites_raw) == 0,
+            "citations": [
+                {
+                    "source_id": str(
+                        c.get("source")
+                        or c.get("source_id")
+                        or c.get("doc_id")
+                        or ""
+                    ),
+                    "title": str(c.get("title") or "")[:120],
+                }
+                for c in cites_raw[:20]
+            ],
+            "results": len(cites_raw),
+            "text_len": len(text),
+            "route_reason": f"kb_qa_{rt}",
+            "answer": str(text)[:500],
+        },
+        runtime_authority="kb_qa_retrieve",
+        meta={
+            "hotpath": True,
+            "op": "kb_qa_retrieve",
+            "route": rt,
+        },
+        db_path=db_path,
+    )
+
+
 def list_audit_snapshots(
     *,
     tenant_id: str,
@@ -730,8 +797,8 @@ def evaluate_fact_query_audit_gate(
         "n19_full_conformance": False,
         "note": (
             "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
-            "MaterialsChat/GraphRAG/Wiki-KB/bare list hotpath; not N19 "
-            "certified / not all bypass paths"
+            "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A hotpath; not "
+            "N19 certified / not all bypass paths"
         ),
     }
 
@@ -956,6 +1023,17 @@ def run_fact_query_audit_suite(
             }
         )
 
+        from core.harness.syscalls import retrieval_crag as crag
+
+        crag_src = inspect.getsource(crag.sys_crag_retrieve)
+        cases.append(
+            {
+                "id": "kb_qa_hotpath_entry",
+                "ok": "maybe_record_kb_qa_hotpath" in crag_src,
+                "detail": "",
+            }
+        )
+
         passed = sum(1 for c in cases if c.get("ok"))
         return {
             "ok": passed == len(_SUITE_CASES),
@@ -967,8 +1045,8 @@ def run_fact_query_audit_suite(
             "n19_full_conformance": False,
             "note": (
                 "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
-                "MaterialsChat/GraphRAG/Wiki-KB/bare list hotpath; not all "
-                "bypass paths / not certified"
+                "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A hotpath; "
+                "not all bypass paths / not certified"
             ),
         }
     finally:
