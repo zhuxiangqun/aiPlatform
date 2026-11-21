@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T21:03:31+08:00",
+  "reviewed_at": "2026-11-21T21:18:17+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "56eb4d93bcd3f78a40a5cf44fb758342f8676a4fcbeb840e82e8924052490582",
-  "head_sha": "a4eacd0f2cdc20bf0353ad7a4ca1362f59d96158",
+  "diff_sha256": "b57a4d1d3d425e5c5b7b90ccf3216a92711851183b430d286b639bd7963fc47b",
+  "head_sha": "f622795f3da1001ca97b74b366823a9d2a87ae99",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N24 J13 UnifiedAuditPanel materialize + bus list via existing HTTP; certified/n24_full stay false; no N24 full cert claim."
+  "note": "N24 J14 UnifiedAuditPanel suite/gate routes by viewMode to view or bus endpoints; certified/n24_full stay false; no N24 full cert claim."
 }
