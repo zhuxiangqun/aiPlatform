@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T21:46:50+08:00",
+  "reviewed_at": "2026-11-21T21:56:42+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "79467ae271f67330dc431166cf618fa9f46e662c2ce6e370fdd16614ec26d0b6",
-  "head_sha": "7f47496f1a4687dc6f0364df573bc3a34e3332ce",
+  "diff_sha256": "69319f4ea616b547049d94a858a5a3cd1026769d32af6cca80b002788ecfaaa2",
+  "head_sha": "8b292efc7e127832e423d0b55561b1a09e7d88ed",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 wiki_structured_query_api Fact/Query audit hotpath (channel=wiki_structured); certified/n19_full stay false; no N19 full cert claim."
+  "note": "N19 sys_ontology_context Fact/Query audit hotpath (channel=ontology_context) + pipeline tenant passthrough; certified/n19_full stay false; no N19 full cert claim."
 }
