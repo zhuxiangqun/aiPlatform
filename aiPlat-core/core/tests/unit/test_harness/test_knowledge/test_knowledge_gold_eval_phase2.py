@@ -43,16 +43,18 @@ async def test_facade_suite():
     gate = evaluate_knowledge_gold_eval_gate(suite)
     assert gate["ok"] is True
     assert gate["certified"] is False
+    assert gate["accuracy_claim"] is False
 
 
 def test_register_requires_cases(tmp_path):
+    db = str(tmp_path / "gold.sqlite3")
     with pytest.raises(KnowledgeGoldEvalError, match="cases_required"):
         register_gold_dataset(
-            tenant_id="t",
-            domain_id="d",
+            tenant_id="t1",
+            domain_id="suite-domain",
             version="v1",
             cases=[],
-            db_path=str(tmp_path / "g.sqlite3"),
+            db_path=db,
         )
 
 
@@ -67,7 +69,7 @@ def test_docs_and_wiring_state():
     )
     text = mod.read_text(encoding="utf-8")
     assert "run_knowledge_gold_eval_pipeline" in text
-    assert "DomainRouter" in text
+    assert "accuracy_claim" in text
     facade = ROOT / "aiPlat-core" / "core" / "api" / "core_facade.py"
     assert "run_knowledge_gold_eval_suite" in facade.read_text(encoding="utf-8")
     route = (

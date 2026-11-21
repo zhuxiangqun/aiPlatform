@@ -1447,6 +1447,8 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_domain_gold | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
+| get_gold_dataset | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
 | KnowledgeGoldEvalError | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_knowledge_gold_eval_gate | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
 | run_knowledge_gold_eval_suite | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |

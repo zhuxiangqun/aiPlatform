@@ -1,4 +1,4 @@
-"""FDE N10 知识域 gold 评测 — 薄路由，经 CoreFacade。"""
+"""FDE N10 知识域 Gold 评测 — 薄路由，经 CoreFacade。"""
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -14,7 +14,7 @@ class GoldDatasetBody(BaseModel):
 
     domain_id: str = Field(..., min_length=1)
     version: str = Field(..., min_length=1)
-    cases: List[Dict[str, Any]] = Field(default_factory=list)
+    cases: List[Dict[str, Any]] = Field(..., min_length=1)
     threshold: float = Field(0.8, ge=0.0, le=1.0)
 
 
@@ -60,7 +60,7 @@ async def run_knowledge_gold_eval_pipeline_route(
     body: GoldPipelineBody = Body(default_factory=GoldPipelineBody),
     tenant_id: str = Query(..., description="tenant id (required)"),
 ):
-    """跨域 gold 评测流水线。
+    """跑跨域 gold 评测流水线。
 
     Args:
         body: 可选域列表。
