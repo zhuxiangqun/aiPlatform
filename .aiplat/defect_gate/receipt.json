@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T22:11:07+08:00",
+  "reviewed_at": "2026-11-21T22:35:32+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "6b776ce0cddb6ec379f5407bca9cfcf939eeca1a297617568546fe4166c3b425",
-  "head_sha": "94b47f41793eb897fef08ceefa87c572d959a477",
+  "diff_sha256": "ca030f222c2824a80532f51fc06283362490abde7d4c05cee3f2bef91ec27785",
+  "head_sha": "99d40da744298c0c7049d23a4c8a59f14971a024",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 URN+HTTP audit only; empty tenant skip intentional; certified/n19_full always false; TripleStore tenant isolation residual. Local lock only."
+  "note": "N19 wiki_pages deepen: Facade+HTTP tenant audit; bare wiki_search_pages residual documented; certified false. Local lock only."
 }
