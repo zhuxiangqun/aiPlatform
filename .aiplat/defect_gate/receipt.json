@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T12:30:00+08:00",
+  "reviewed_at": "2026-11-21T12:35:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "28efeed5c9663acc1c6f8c9c275b4f1bd0a74003213834169b3748be3ec08131",
-  "head_sha": "f4d2ee4c3ef08e47b6c3ce25ef263dc232b8e853",
+  "diff_sha256": "9cfe82f6e570125b3e86dd3d0de13f5186a188277a76fe9007aba359a1b7e6cf",
+  "head_sha": "588b4324c073b6e94dc1e34799733fab9b95a63e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N18 deployed RBAC authority (env/AIPLAT_HOME); reference_policy forbidden as source; certified/n18_full false; recall-path coverage still open."
+  "note": "N19 Fact/Query unified audit snapshots (before/after+runtime_authority); certified/n19_full false; hot-path force still open."
 }
