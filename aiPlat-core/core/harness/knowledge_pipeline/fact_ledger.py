@@ -3530,8 +3530,13 @@ def evaluate_gateway_contract_gate(
     }
 
 
-# 为什么：N06 统一入口按 Core 路由轴加深；Wiki/Index 全量统一仍未做
-UNIFIED_QUERY_GATEWAY_ROUTES: Tuple[str, ...] = ("fact", "object_set")
+# 为什么：N06 统一入口加深含 wiki/index 查询形；MaterialsChat 全入口收敛仍未做
+UNIFIED_QUERY_GATEWAY_ROUTES: Tuple[str, ...] = (
+    "fact",
+    "object_set",
+    "wiki",
+    "index",
+)
 
 
 def unified_query_gateway_routes() -> Dict[str, Any]:
@@ -3544,9 +3549,10 @@ def unified_query_gateway_routes() -> Dict[str, Any]:
         "routes": list(UNIFIED_QUERY_GATEWAY_ROUTES),
         "certified": False,
         "n06_full_conformance": False,
+        "wiki_index_routes": True,
         "note": (
-            "Core unified entry for fact+object_set F.1 envelopes; "
-            "not Wiki/Index full Gateway / not N06 certified"
+            "Core unified entry for fact+object_set+wiki+index F.1 envelopes; "
+            "not MaterialsChat full Gateway / not N06 certified"
         ),
     }
 
@@ -3555,7 +3561,7 @@ def require_unified_query_route(route: str) -> str:
     """校验统一 Gateway 路由名。
 
     Args:
-        route: ``fact`` / ``object_set``。
+        route: ``fact`` / ``object_set`` / ``wiki`` / ``index``。
 
     Returns:
         规范化小写路由名。
@@ -3570,6 +3576,60 @@ def require_unified_query_route(route: str) -> str:
             f"routes={list(UNIFIED_QUERY_GATEWAY_ROUTES)}"
         )
     return r
+
+
+def _n21_to_f1_envelope(
+    *,
+    tenant_id: str,
+    route: str,
+    n21: Dict[str, Any],
+) -> Dict[str, Any]:
+    """将 N21 查询形响应映射为附录 F.1 信封。
+
+    Args:
+        tenant_id: 租户。
+        route: ``wiki`` / ``index``。
+        n21: ``query_wiki/kb_with_abstain`` 回执。
+    """
+    abstained = n21.get("abstained") is True
+    cites_raw = n21.get("citations") or []
+    citations: List[Dict[str, str]] = []
+    if isinstance(cites_raw, list) and not abstained:
+        for c in cites_raw:
+            if not isinstance(c, dict):
+                continue
+            sid = str(c.get("source_id") or c.get("source") or "").strip()
+            if not sid:
+                continue
+            citations.append(
+                {
+                    "fact_id": "",
+                    "source_id": sid,
+                    "locator": str(c.get("locator") or ""),
+                }
+            )
+    if abstained or not citations:
+        return _empty_f1_envelope(
+            tenant_id=tenant_id,
+            route_reason=f"unified:{route}:abstain",
+            abstained=True,
+        )
+    answer = str(n21.get("answer") or "").strip() or f"{route}_hit"
+    env = _empty_f1_envelope(
+        tenant_id=tenant_id,
+        route_reason=f"unified:{route}:hit",
+        abstained=False,
+        answer=answer,
+        citations=citations,
+        confidence="medium",
+    )
+    plan = list(env.get("route_plan") or [])
+    if "unified" not in plan:
+        env["route_plan"] = ["unified", *plan]
+    env["n21_enforced"] = n21.get("n21_enforced") is True
+    env["certified"] = False
+    env["n06_full_conformance"] = False
+    return env
 
 
 def _empty_f1_envelope(
@@ -3626,13 +3686,13 @@ async def unified_query_gateway(
     calibration_db_path: Optional[str] = None,
     calibration_query_type: str = "fact_gateway",
 ) -> Dict[str, Any]:
-    """N06 deepen：统一 Query Gateway 入口（fact / object_set → F.1）。
+    """N06 deepen：统一 Query Gateway 入口（fact / object_set / wiki / index → F.1）。
 
     Args:
         tenant_id: 租户。
-        query: 查询串（fact 路由使用）。
-        route: ``fact`` 或 ``object_set``。
-        collection_id / domain_id / top_k: fact 路由参数。
+        query: 查询串（fact/wiki/index 路由使用）。
+        route: ``fact`` / ``object_set`` / ``wiki`` / ``index``。
+        collection_id / domain_id / top_k: fact/wiki/index 路由参数。
         object_set_request: object_set 路由请求 dict。
         permissions / role: object_set L1/ACL。
         ledger: 可选 FactLedger。
@@ -3670,6 +3730,34 @@ async def unified_query_gateway(
         gate = validate_gateway_response(resp)
         resp["gateway_contract_ok"] = gate["ok"]
         return resp
+
+    if r == "wiki":
+        from core.harness.knowledge_pipeline.query_abstain_citations import (
+            query_wiki_with_abstain,
+        )
+
+        cids = [collection_id] if (collection_id or "").strip() else ["default"]
+        n21 = query_wiki_with_abstain(
+            query or "",
+            tenant_id=tid,
+            collection_ids=cids,
+            top_k=int(top_k),
+        )
+        return _n21_to_f1_envelope(tenant_id=tid, route="wiki", n21=n21)
+
+    if r == "index":
+        # 为什么：Index 路由映射 KB 查询形（非 MaterialsChat 全入口）
+        from core.harness.knowledge_pipeline.query_abstain_citations import (
+            query_kb_with_abstain,
+        )
+
+        n21 = query_kb_with_abstain(
+            query or "",
+            tenant_id=tid,
+            collection_id=(collection_id or "").strip(),
+            top_k=int(top_k),
+        )
+        return _n21_to_f1_envelope(tenant_id=tid, route="index", n21=n21)
 
     # object_set → F.1 信封（无命中则 abstain）
     from core.harness.knowledge_pipeline.object_set import (
@@ -3726,10 +3814,11 @@ async def unified_query_gateway(
 
 
 _N06_UNIFIED_GATEWAY_CASES = (
-    "routes_declare_fact_object_set",
+    "routes_declare_fact_object_set_wiki_index",
     "fact_route_f1_ok",
     "object_set_route_f1_ok",
-    "wiki_route_rejected",
+    "wiki_route_f1_ok",
+    "index_route_f1_ok",
     "honesty_certified_false",
 )
 
@@ -3740,7 +3829,7 @@ async def run_unified_query_gateway_suite(
     tenant_id: str = "n06-unified-gw-tenant",
     domain_id: str = "",
 ) -> Dict[str, Any]:
-    """N06 统一 Gateway 加深套件（fact+object_set；非 Wiki/非 certified）。
+    """N06 统一 Gateway 加深套件（fact+object_set+wiki+index；非 MaterialsChat/非 certified）。
 
     Args:
         ledger: 可选账本。
@@ -3771,11 +3860,12 @@ async def run_unified_query_gateway_suite(
         meta = unified_query_gateway_routes()
         routes_ok = (
             list(meta.get("routes") or []) == list(UNIFIED_QUERY_GATEWAY_ROUTES)
+            and meta.get("wiki_index_routes") is True
             and meta.get("certified") is False
         )
         cases.append(
             {
-                "id": "routes_declare_fact_object_set",
+                "id": "routes_declare_fact_object_set_wiki_index",
                 "ok": routes_ok,
                 "detail": "" if routes_ok else "routes_mismatch",
             }
@@ -3849,16 +3939,44 @@ async def run_unified_query_gateway_suite(
             }
         )
 
-        wiki_ok = False
-        try:
-            require_unified_query_route("wiki")
-        except FactLedgerError:
-            wiki_ok = True
+        wiki_resp = await unified_query_gateway(
+            tenant_id=tenant_id,
+            query="n06-wiki-no-such-page-xyz",
+            route="wiki",
+            collection_id="default",
+            ledger=lg,
+        )
+        wiki_ok = (
+            validate_gateway_response(wiki_resp).get("ok") is True
+            and require_unified_query_route("wiki") == "wiki"
+            and wiki_resp.get("abstained") is True
+            and str(wiki_resp.get("route_reason") or "").startswith("unified:wiki:")
+        )
         cases.append(
             {
-                "id": "wiki_route_rejected",
+                "id": "wiki_route_f1_ok",
                 "ok": wiki_ok,
-                "detail": "" if wiki_ok else "wiki_accepted",
+                "detail": "" if wiki_ok else "wiki_route_failed",
+            }
+        )
+
+        index_resp = await unified_query_gateway(
+            tenant_id=tenant_id,
+            query="n06-index-no-such-doc-xyz",
+            route="index",
+            ledger=lg,
+        )
+        index_ok = (
+            validate_gateway_response(index_resp).get("ok") is True
+            and require_unified_query_route("index") == "index"
+            and index_resp.get("abstained") is True
+            and str(index_resp.get("route_reason") or "").startswith("unified:index:")
+        )
+        cases.append(
+            {
+                "id": "index_route_f1_ok",
+                "ok": index_ok,
+                "detail": "" if index_ok else "index_route_failed",
             }
         )
 
@@ -3866,6 +3984,7 @@ async def run_unified_query_gateway_suite(
             meta.get("certified") is False
             and meta.get("n06_full_conformance") is False
             and fact_resp.get("certified") is not True
+            and wiki_resp.get("n06_full_conformance") is not True
         )
         cases.append(
             {
@@ -3893,9 +4012,10 @@ async def run_unified_query_gateway_suite(
         "routes": unified_query_gateway_routes(),
         "certified": False,
         "n06_full_conformance": False,
+        "wiki_index_routes": True,
         "note": (
-            "Unified fact+object_set F.1 entry; "
-            "not Wiki/Index full Gateway / not N06 certified"
+            "Unified fact+object_set+wiki+index F.1 entry; "
+            "not MaterialsChat full Gateway / not N06 certified"
         ),
     }
 
@@ -3918,6 +4038,9 @@ def evaluate_unified_query_gateway_gate(
         issues.append("missing_required_cases")
     if s.get("certified") is True or s.get("n06_full_conformance") is True:
         issues.append("honesty_certified_flag_forbidden")
+    # 为什么：本 deepen 须声明 wiki/index 已接线，防旧套件冒充
+    if s.get("wiki_index_routes") is not True:
+        issues.append("wiki_index_routes_required")
     return {
         "gate": "unified_query_gateway",
         "ok": not issues,
@@ -3927,7 +4050,8 @@ def evaluate_unified_query_gateway_gate(
         "issues": issues,
         "certified": False,
         "n06_full_conformance": False,
-        "note": "fact+object_set unify; not Wiki / N06 certified",
+        "wiki_index_routes": True,
+        "note": "fact+object_set+wiki+index unify; not MaterialsChat / N06 certified",
     }
 
 
