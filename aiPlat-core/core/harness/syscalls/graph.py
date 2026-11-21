@@ -3,11 +3,13 @@ Graph neighbor lookup syscall — thin wrapper over GraphIndex (v3.1).
 
 Prevents agents from directly importing GraphIndex by providing
 a shared syscall for entity neighbor traversal and recommendations.
+
+N19：显式 ``tenant_id`` 非空时 best-effort 落 Fact/Query 审计快照（certified 恒 false）。
 """
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from ._trace import trace_syscall_entry
 
@@ -30,46 +32,70 @@ async def sys_graph_neighbors(
         domain_id: domain 标识。
         max_hops: max_hops 参数。
         include_edges: include_edges 参数。
-        tenant_id: 租户；空则解析 ActiveRequestContext（N09 K24）。
+        tenant_id: 显式租户；非空落 N19；空则仅解析 ActiveRequestContext 加载图（不审计）。
     """
     trace_syscall_entry("sys_graph_neighbors")
-    result: Dict[str, Any] = {"entity": entity_name, "neighbors": [], "edges": []}
+    result: Dict[str, Any] = {
+        "entity": entity_name,
+        "neighbors": [],
+        "edges": [],
+        # 为什么：禁止图邻居查询自签 certified；N19 deepen ≠ 全量认证
+        "certified": False,
+        "n19_full_conformance": False,
+    }
+    audit_tid = (tenant_id or "").strip()
 
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
         from core.harness.knowledge.context_bus import _resolve_graph_tenant
-        tid = (tenant_id or "").strip() or _resolve_graph_tenant()
+        tid = audit_tid or _resolve_graph_tenant()
         # 为什么：N09 K24 — 邻居查询须按租户图
         graph = GraphIndex.load(domain_id, tenant_id=tid)
         node = graph.get_node(entity_name) or graph.find_by_name(entity_name)
-        if not node:
-            return result
+        if node:
+            neighbors: set = set()
+            for edge in (node.out_edges or []):
+                n = graph.get_node(edge.target_id)
+                if n:
+                    neighbors.add(n.entity_name)
+                if include_edges:
+                    result["edges"].append({
+                        "source": entity_name,
+                        "target": n.entity_name if n else edge.target_id,
+                        "relation": getattr(edge, "relation_label", "related_to"),
+                    })
 
-        neighbors: set = set()
-        for edge in (node.out_edges or []):
-            n = graph.get_node(edge.target_id)
-            if n:
-                neighbors.add(n.entity_name)
-            if include_edges:
-                result["edges"].append({
-                    "source": entity_name,
-                    "target": n.entity_name if n else edge.target_id,
-                    "relation": getattr(edge, "relation_label", "related_to"),
-                })
+            for edge in (node.in_edges or []):
+                n = graph.get_node(edge.source_id)
+                if n:
+                    neighbors.add(n.entity_name)
+                if include_edges:
+                    result["edges"].append({
+                        "source": n.entity_name if n else edge.source_id,
+                        "target": entity_name,
+                        "relation": getattr(edge, "relation_label", "related_to"),
+                    })
 
-        for edge in (node.in_edges or []):
-            n = graph.get_node(edge.source_id)
-            if n:
-                neighbors.add(n.entity_name)
-            if include_edges:
-                result["edges"].append({
-                    "source": n.entity_name if n else edge.source_id,
-                    "target": entity_name,
-                    "relation": getattr(edge, "relation_label", "related_to"),
-                })
-
-        result["neighbors"] = list(neighbors)[:max_hops * 10]
+            result["neighbors"] = list(neighbors)[:max_hops * 10]
     except Exception:
         _log.debug("sys_graph_neighbors failed for %s in %s", entity_name, domain_id, exc_info=True)
+
+    if audit_tid:
+        # 为什么：MaterialsChat / Agent 图邻居旁路须 best-effort 落 Query 快照
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_wiki_kb_hotpath,
+            )
+
+            result = maybe_record_wiki_kb_hotpath(
+                tenant_id=audit_tid,
+                response=result,
+                channel="graph_neighbors",
+                query=entity_name or "",
+            )
+        except Exception as e:
+            _log.warning(
+                "sys_graph_neighbors N19 audit skipped: %s", e, exc_info=True
+            )
 
     return result

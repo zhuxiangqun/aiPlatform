@@ -10,7 +10,8 @@
     / Agent ``sys_wiki_context``（信封失败兜底）
     / Wiki ``wiki_structured_query_api`` / ``wiki_search_pages_api``
     / Agent ``sys_ontology_context``（域版）
-    / URN ``syscalls/ontology.py`` + HTTP ``ontology_routes`` 热路径
+    / URN ``syscalls/ontology.py`` + HTTP ``ontology_routes``
+    / ``sys_graph_neighbors`` 热路径
     best-effort 落快照（可 env 关闭）
   - 快照写入后 best-effort 追加统一审计总线（N24 J11；可 env 关）
   - 套件/门槛门：``certified`` / ``n19_full`` 恒 false
@@ -56,6 +57,7 @@ _SUITE_CASES = (
     "ontology_context_hotpath_entry",
     "ontology_urn_hotpath_entry",
     "wiki_pages_hotpath_entry",
+    "graph_neighbors_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -921,7 +923,8 @@ def evaluate_fact_query_audit_gate(
             "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
             "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
             "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
-            "ontology_context/ontology_urn hotpath; not N19 certified / not all bypass paths"
+            "ontology_context/ontology_urn/graph_neighbors hotpath; "
+            "not N19 certified / not all bypass paths"
         ),
     }
 
@@ -1238,6 +1241,20 @@ def run_fact_query_audit_suite(
             }
         )
 
+        from core.harness.syscalls import graph as graph_sc
+
+        gn_src = inspect.getsource(graph_sc.sys_graph_neighbors)
+        cases.append(
+            {
+                "id": "graph_neighbors_hotpath_entry",
+                "ok": (
+                    "maybe_record_wiki_kb_hotpath" in gn_src
+                    and "graph_neighbors" in gn_src
+                ),
+                "detail": "",
+            }
+        )
+
         passed = sum(1 for c in cases if c.get("ok"))
         return {
             "ok": passed == len(_SUITE_CASES),
@@ -1251,7 +1268,8 @@ def run_fact_query_audit_suite(
                 "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
                 "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
                 "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
-                "ontology_context/ontology_urn hotpath; not all bypass paths / not certified"
+                "ontology_context/ontology_urn/graph_neighbors hotpath; "
+                "not all bypass paths / not certified"
             ),
         }
     finally:

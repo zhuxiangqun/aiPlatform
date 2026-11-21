@@ -400,14 +400,30 @@ def _parse_time_to_filters(time_range: str) -> dict:
     return {}
 
 
-async def _get_related_recommendations(domain_id: str, entity_name: str,
-                                   max_items: int = 3) -> List[str]:
-    """Proactive recommendations based on GraphIndex neighbors."""
+async def _get_related_recommendations(
+    domain_id: str,
+    entity_name: str,
+    max_items: int = 3,
+    *,
+    tenant_id: str = "",
+) -> List[str]:
+    """Proactive recommendations based on GraphIndex neighbors.
+
+    Args:
+        domain_id: 域标识。
+        entity_name: 实体名。
+        max_items: 返回邻居上限。
+        tenant_id: 非空时透传 N19 图邻居审计。
+    """
     if not domain_id or not entity_name:
         return []
     try:
         from core.harness.syscalls.graph import sys_graph_neighbors
-        result = await sys_graph_neighbors(entity_name, domain_id=domain_id)
+        result = await sys_graph_neighbors(
+            entity_name,
+            domain_id=domain_id,
+            tenant_id=tenant_id or "",
+        )
         return result.get("neighbors", [])[:max_items]
     except Exception:
         return []
@@ -1015,7 +1031,8 @@ class MaterialsChatAgent(BaseAgent):
                                 # PR: Proactive recommendations from GraphIndex neighbors
                                 related = await _get_related_recommendations(
                                     domain_id or "",
-                                    run_context.get("entity", "") if run_context else ""
+                                    run_context.get("entity", "") if run_context else "",
+                                    tenant_id=str(tenant_id or ""),
                                 )
                                 _out = _n21_enforce_rag_output(
                                     {

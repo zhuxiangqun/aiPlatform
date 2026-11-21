@@ -29,6 +29,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "ontology_context_hotpath_entry" in ids
     assert "ontology_urn_hotpath_entry" in ids
     assert "wiki_pages_hotpath_entry" in ids
+    assert "graph_neighbors_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -506,3 +507,40 @@ def test_wiki_search_pages_api_hotpath(tmp_path, monkeypatch):
     skip = wiki_search_pages_api("RAG", tenant_id="")
     assert skip.get("certified") is False
     assert fqa.list_audit_snapshots(tenant_id="t-wp", db_path=db)["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_graph_neighbors_hotpath(tmp_path, monkeypatch):
+    """sys_graph_neighbors：显式 tenant 落 N19；空 tenant 跳过。"""
+    db = str(tmp_path / "fqa-gn.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+
+    class _Node:
+        entity_name = "e1"
+        out_edges = []
+        in_edges = []
+
+    class _Graph:
+        def get_node(self, _n):
+            return _Node()
+
+        def find_by_name(self, _n):
+            return None
+
+    monkeypatch.setattr(
+        "core.harness.ontology_engine.graph_index.GraphIndex.load",
+        lambda *_a, **_k: _Graph(),
+    )
+
+    from core.harness.syscalls.graph import sys_graph_neighbors
+
+    out = await sys_graph_neighbors("e1", tenant_id="t-gn")
+    assert out.get("certified") is False
+    assert out.get("n19_full_conformance") is False
+    listed = fqa.list_audit_snapshots(tenant_id="t-gn", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "graph_neighbors"
+
+    await sys_graph_neighbors("e1", tenant_id="")
+    assert fqa.list_audit_snapshots(tenant_id="t-gn", db_path=db)["count"] == 1
