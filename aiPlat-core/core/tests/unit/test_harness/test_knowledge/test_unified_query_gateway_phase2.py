@@ -1,4 +1,4 @@
-"""N06 deepen：统一 Query Gateway（fact+object_set+wiki+index → F.1）；certified 恒 false。"""
+"""N06 deepen：统一 Query Gateway（含 materials_chat → F.1）；certified 恒 false。"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,6 +10,7 @@ from core.api.core_facade import (
     evaluate_fact_unified_query_gateway_gate,
     fact_ledger_run_unified_query_gateway_suite,
     get_unified_query_gateway_routes,
+    materials_chat_to_f1_envelope,
 )
 from core.harness.knowledge_pipeline.fact_ledger import (
     FactLedgerError,
@@ -23,58 +24,82 @@ from core.harness.knowledge_pipeline.fact_ledger import (
 ROOT = Path(__file__).resolve().parents[6]
 
 
-def test_routes_declare_fact_object_set_wiki_index():
+def test_routes_declare_fact_object_set_wiki_index_materials():
+    """路由轴含 fact/object_set/wiki/index/materials_chat。"""
     meta = unified_query_gateway_routes()
     assert list(meta["routes"]) == list(UNIFIED_QUERY_GATEWAY_ROUTES)
-    assert meta["routes"] == ["fact", "object_set", "wiki", "index"]
+    assert meta["routes"] == [
+        "fact",
+        "object_set",
+        "wiki",
+        "index",
+        "materials_chat",
+    ]
     assert meta["wiki_index_routes"] is True
+    assert meta["materials_chat_route"] is True
     assert meta["certified"] is False
     assert require_unified_query_route("FACT") == "fact"
     assert require_unified_query_route("wiki") == "wiki"
     assert require_unified_query_route("INDEX") == "index"
+    assert require_unified_query_route("materials_chat") == "materials_chat"
     with pytest.raises(FactLedgerError, match="unsupported route"):
-        require_unified_query_route("materials_chat")
+        require_unified_query_route("foobar_route")
 
 
 @pytest.mark.asyncio
 async def test_suite_and_gate_honesty():
+    """套件全绿且 certified / n06_full 恒 false；materials_chat_route 必填。"""
     suite = await run_unified_query_gateway_suite()
     assert suite["ok"] is True
-    assert suite["passed"] == 6
+    assert suite["passed"] == 7
     assert suite["wiki_index_routes"] is True
+    assert suite["materials_chat_route"] is True
     assert suite["certified"] is False
     assert suite["n06_full_conformance"] is False
     gate = evaluate_unified_query_gateway_gate(suite)
     assert gate["ok"] is True
     assert gate["certified"] is False
     assert gate["wiki_index_routes"] is True
+    assert gate["materials_chat_route"] is True
     bad = dict(suite)
     bad["n06_full_conformance"] = True
     honesty = evaluate_unified_query_gateway_gate(bad)
     assert honesty["ok"] is False
     assert "honesty_certified_flag_forbidden" in honesty["issues"]
     missing_flag = dict(suite)
-    missing_flag.pop("wiki_index_routes", None)
+    missing_flag.pop("materials_chat_route", None)
     flag_gate = evaluate_unified_query_gateway_gate(missing_flag)
     assert flag_gate["ok"] is False
-    assert "wiki_index_routes_required" in flag_gate["issues"]
+    assert "materials_chat_route_required" in flag_gate["issues"]
 
 
 @pytest.mark.asyncio
 async def test_facade_unified_gateway():
+    """Facade 路由轴与套件/门槛门。"""
     meta = get_unified_query_gateway_routes()
-    assert meta["routes"] == ["fact", "object_set", "wiki", "index"]
-    assert meta["wiki_index_routes"] is True
+    assert "materials_chat" in meta["routes"]
+    assert meta["materials_chat_route"] is True
     assert ensure_unified_query_route("object_set") == "object_set"
-    assert ensure_unified_query_route("wiki") == "wiki"
+    assert ensure_unified_query_route("materials_chat") == "materials_chat"
     suite = await fact_ledger_run_unified_query_gateway_suite()
     assert suite["ok"] is True
     gate = evaluate_fact_unified_query_gateway_gate(suite)
     assert gate["ok"] is True
     assert gate["certified"] is False
+    f1 = materials_chat_to_f1_envelope(
+        tenant_id="n06-facade",
+        output={
+            "answer": "x",
+            "citations": [{"source": "wiki:X", "text": "x"}],
+            "strategy": "direct_retrieve",
+        },
+    )
+    assert f1.get("abstained") is False
+    assert str(f1.get("route_reason") or "").startswith("unified:materials_chat:")
 
 
 def test_docs_and_wiring_state():
+    """核心与 Facade 符号接线。"""
     fl = (
         ROOT
         / "aiPlat-core"
@@ -87,10 +112,20 @@ def test_docs_and_wiring_state():
     assert "UNIFIED_QUERY_GATEWAY_ROUTES" in text
     assert "async def unified_query_gateway(" in text
     assert "run_unified_query_gateway_suite" in text
-    assert "query_wiki_with_abstain" in text
-    assert "query_kb_with_abstain" in text
-    assert "wiki_index_routes" in text
+    assert "materials_chat_to_f1_envelope" in text
+    assert "materials_chat_route" in text
     facade = ROOT / "aiPlat-core" / "core" / "api" / "core_facade.py"
     fct = facade.read_text(encoding="utf-8")
     assert "fact_ledger_unified_query_gateway" in fct
-    assert "fact_ledger_run_unified_query_gateway_suite" in fct
+    assert "materials_chat_to_f1_envelope" in fct
+    mc = (
+        ROOT
+        / "aiPlat-core"
+        / "core"
+        / "apps"
+        / "agents"
+        / "materials_chat.py"
+    )
+    mct = mc.read_text(encoding="utf-8")
+    assert "materials_chat_to_f1_envelope" in mct
+    assert "gateway_f1" in mct

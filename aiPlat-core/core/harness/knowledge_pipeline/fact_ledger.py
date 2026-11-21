@@ -3530,12 +3530,13 @@ def evaluate_gateway_contract_gate(
     }
 
 
-# 为什么：N06 统一入口加深含 wiki/index 查询形；MaterialsChat 全入口收敛仍未做
+# 为什么：N06 统一入口含 wiki/index/materials_chat；Agent 非 RAG 全出口仍可并行
 UNIFIED_QUERY_GATEWAY_ROUTES: Tuple[str, ...] = (
     "fact",
     "object_set",
     "wiki",
     "index",
+    "materials_chat",
 )
 
 
@@ -3550,9 +3551,10 @@ def unified_query_gateway_routes() -> Dict[str, Any]:
         "certified": False,
         "n06_full_conformance": False,
         "wiki_index_routes": True,
+        "materials_chat_route": True,
         "note": (
-            "Core unified entry for fact+object_set+wiki+index F.1 envelopes; "
-            "not MaterialsChat full Gateway / not N06 certified"
+            "Core unified entry for fact+object_set+wiki+index+materials_chat F.1; "
+            "not all Agent exits / not N06 certified"
         ),
     }
 
@@ -3561,7 +3563,7 @@ def require_unified_query_route(route: str) -> str:
     """校验统一 Gateway 路由名。
 
     Args:
-        route: ``fact`` / ``object_set`` / ``wiki`` / ``index``。
+        route: ``fact`` / ``object_set`` / ``wiki`` / ``index`` / ``materials_chat``。
 
     Returns:
         规范化小写路由名。
@@ -3578,6 +3580,25 @@ def require_unified_query_route(route: str) -> str:
     return r
 
 
+def materials_chat_to_f1_envelope(
+    *,
+    tenant_id: str,
+    output: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """MaterialsChat 输出经 N21 enforce 后映射为附录 F.1 信封。
+
+    Args:
+        tenant_id: 租户。
+        output: MaterialsChat Agent 输出 dict。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_output,
+    )
+
+    n21 = enforce_materials_chat_output(output if isinstance(output, dict) else {})
+    return _n21_to_f1_envelope(tenant_id=tenant_id, route="materials_chat", n21=n21)
+
+
 def _n21_to_f1_envelope(
     *,
     tenant_id: str,
@@ -3588,8 +3609,8 @@ def _n21_to_f1_envelope(
 
     Args:
         tenant_id: 租户。
-        route: ``wiki`` / ``index``。
-        n21: ``query_wiki/kb_with_abstain`` 回执。
+        route: ``wiki`` / ``index`` / ``materials_chat``。
+        n21: N21 查询形 / MaterialsChat enforce 回执。
     """
     abstained = n21.get("abstained") is True
     cites_raw = n21.get("citations") or []
@@ -3685,19 +3706,21 @@ async def unified_query_gateway(
     bindings_path: Optional[Any] = None,
     calibration_db_path: Optional[str] = None,
     calibration_query_type: str = "fact_gateway",
+    materials_output: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """N06 deepen：统一 Query Gateway 入口（fact / object_set / wiki / index → F.1）。
+    """N06 deepen：统一 Query Gateway（fact/object_set/wiki/index/materials_chat → F.1）。
 
     Args:
         tenant_id: 租户。
         query: 查询串（fact/wiki/index 路由使用）。
-        route: ``fact`` / ``object_set`` / ``wiki`` / ``index``。
+        route: ``fact`` / ``object_set`` / ``wiki`` / ``index`` / ``materials_chat``。
         collection_id / domain_id / top_k: fact/wiki/index 路由参数。
         object_set_request: object_set 路由请求 dict。
         permissions / role: object_set L1/ACL。
         ledger: 可选 FactLedger。
         bindings_path: 可选 ObjectType 绑定路径（object_set 探针/测试）。
         calibration_db_path / calibration_query_type: N13 校准封顶透传。
+        materials_output: materials_chat 路由的 Agent 输出（缺省则 abstain）。
 
     Returns:
         附录 F.1 信封；``certified`` 不在此回执宣称。
@@ -3746,7 +3769,7 @@ async def unified_query_gateway(
         return _n21_to_f1_envelope(tenant_id=tid, route="wiki", n21=n21)
 
     if r == "index":
-        # 为什么：Index 路由映射 KB 查询形（非 MaterialsChat 全入口）
+        # 为什么：Index 路由映射 KB 查询形
         from core.harness.knowledge_pipeline.query_abstain_citations import (
             query_kb_with_abstain,
         )
@@ -3758,6 +3781,20 @@ async def unified_query_gateway(
             top_k=int(top_k),
         )
         return _n21_to_f1_envelope(tenant_id=tid, route="index", n21=n21)
+
+    if r == "materials_chat":
+        # 为什么：MaterialsChat 经 N21 RAG enforce → F.1；无输出则 abstain（非跑全 Agent）
+        return materials_chat_to_f1_envelope(
+            tenant_id=tid,
+            output=materials_output
+            if isinstance(materials_output, dict)
+            else {
+                "answer": "",
+                "citations": [],
+                "strategy": "direct_retrieve",
+                "query": query or "",
+            },
+        )
 
     # object_set → F.1 信封（无命中则 abstain）
     from core.harness.knowledge_pipeline.object_set import (
@@ -3819,6 +3856,7 @@ _N06_UNIFIED_GATEWAY_CASES = (
     "object_set_route_f1_ok",
     "wiki_route_f1_ok",
     "index_route_f1_ok",
+    "materials_chat_route_f1_ok",
     "honesty_certified_false",
 )
 
@@ -3829,7 +3867,7 @@ async def run_unified_query_gateway_suite(
     tenant_id: str = "n06-unified-gw-tenant",
     domain_id: str = "",
 ) -> Dict[str, Any]:
-    """N06 统一 Gateway 加深套件（fact+object_set+wiki+index；非 MaterialsChat/非 certified）。
+    """N06 统一 Gateway 加深套件（含 materials_chat；非全 Agent 出口/非 certified）。
 
     Args:
         ledger: 可选账本。
@@ -3861,6 +3899,7 @@ async def run_unified_query_gateway_suite(
         routes_ok = (
             list(meta.get("routes") or []) == list(UNIFIED_QUERY_GATEWAY_ROUTES)
             and meta.get("wiki_index_routes") is True
+            and meta.get("materials_chat_route") is True
             and meta.get("certified") is False
         )
         cases.append(
@@ -3980,11 +4019,50 @@ async def run_unified_query_gateway_suite(
             }
         )
 
+        mat_hit = await unified_query_gateway(
+            tenant_id=tenant_id,
+            route="materials_chat",
+            materials_output={
+                "answer": "grounded materials",
+                "citations": [{"source": "wiki:M", "text": "grounded"}],
+                "strategy": "direct_retrieve",
+            },
+            ledger=lg,
+        )
+        mat_empty = await unified_query_gateway(
+            tenant_id=tenant_id,
+            route="materials_chat",
+            materials_output={
+                "answer": "fake materials",
+                "citations": [],
+                "strategy": "direct_retrieve",
+            },
+            ledger=lg,
+        )
+        mat_ok = (
+            validate_gateway_response(mat_hit).get("ok") is True
+            and mat_hit.get("abstained") is False
+            and bool(mat_hit.get("citations"))
+            and str(mat_hit.get("route_reason") or "").startswith(
+                "unified:materials_chat:"
+            )
+            and mat_empty.get("abstained") is True
+            and require_unified_query_route("materials_chat") == "materials_chat"
+        )
+        cases.append(
+            {
+                "id": "materials_chat_route_f1_ok",
+                "ok": mat_ok,
+                "detail": "" if mat_ok else "materials_chat_route_failed",
+            }
+        )
+
         honesty_ok = (
             meta.get("certified") is False
             and meta.get("n06_full_conformance") is False
             and fact_resp.get("certified") is not True
             and wiki_resp.get("n06_full_conformance") is not True
+            and mat_hit.get("n06_full_conformance") is not True
         )
         cases.append(
             {
@@ -4013,9 +4091,10 @@ async def run_unified_query_gateway_suite(
         "certified": False,
         "n06_full_conformance": False,
         "wiki_index_routes": True,
+        "materials_chat_route": True,
         "note": (
-            "Unified fact+object_set+wiki+index F.1 entry; "
-            "not MaterialsChat full Gateway / not N06 certified"
+            "Unified fact+object_set+wiki+index+materials_chat F.1 entry; "
+            "not all Agent exits / not N06 certified"
         ),
     }
 
@@ -4038,9 +4117,11 @@ def evaluate_unified_query_gateway_gate(
         issues.append("missing_required_cases")
     if s.get("certified") is True or s.get("n06_full_conformance") is True:
         issues.append("honesty_certified_flag_forbidden")
-    # 为什么：本 deepen 须声明 wiki/index 已接线，防旧套件冒充
+    # 为什么：本 deepen 须声明 wiki/index + materials_chat 已接线，防旧套件冒充
     if s.get("wiki_index_routes") is not True:
         issues.append("wiki_index_routes_required")
+    if s.get("materials_chat_route") is not True:
+        issues.append("materials_chat_route_required")
     return {
         "gate": "unified_query_gateway",
         "ok": not issues,
@@ -4051,7 +4132,11 @@ def evaluate_unified_query_gateway_gate(
         "certified": False,
         "n06_full_conformance": False,
         "wiki_index_routes": True,
-        "note": "fact+object_set+wiki+index unify; not MaterialsChat / N06 certified",
+        "materials_chat_route": True,
+        "note": (
+            "fact+object_set+wiki+index+materials_chat unify; "
+            "not all Agent exits / N06 certified"
+        ),
     }
 
 
