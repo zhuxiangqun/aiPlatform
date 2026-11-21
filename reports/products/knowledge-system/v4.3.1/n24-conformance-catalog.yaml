@@ -285,7 +285,9 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-implementer-semantics-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/implementer_semantics.py
-    note: "Core-scoped exists (附录 N.2); 最小 5 探针（Raw/evidence/citation/跨租户/customer_action）；非生产 RBAC 源替换；非 N18 全量认证"
+      - reports/products/knowledge-system/v4.3.1/phase2-deployed-rbac-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/deployed_rbac_policy.py
+    note: "Core-scoped exists (附录 N.2); 最小 5 探针 + 部署侧 RBAC 真源 deepen（禁 reference_policy 作权威）；非召回/聚合/导出/缓存全路径 / 非 certified"
   - id: N19
     level: extended
     title: 运行时权威与审计快照

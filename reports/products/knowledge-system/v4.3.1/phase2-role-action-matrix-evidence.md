@@ -43,6 +43,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做
 
-- 替换 `reference_policy.json` / 部署 RBAC 真源（N18）
+- 部署侧 RBAC 真源 deepen 见 `phase2-deployed-rbac-evidence.md`（本矩阵≠N18 全路径）
 - Wiki / KB / GraphRAG 全入口 ACL
 - N07/N22 certified / 关闭 ADR 例外
