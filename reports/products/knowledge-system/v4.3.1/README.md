@@ -40,7 +40,7 @@ authority: supporting
 | [phase2-record-semantics-evidence.md](./phase2-record-semantics-evidence.md) | N17 deepen：记录级语义运行时权威（非 RBAC 真源/非 certified） |
 | [phase2-deployed-rbac-evidence.md](./phase2-deployed-rbac-evidence.md) | N18 deepen：部署侧 RBAC 真源（禁 reference_policy 权威；非全路径/非 certified） |
 | [phase2-fact-query-audit-evidence.md](./phase2-fact-query-audit-evidence.md) | N19 deepen：Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat 热路径（非全部旁路/非 certified） |
-| [phase2-constraint-layers-evidence.md](./phase2-constraint-layers-evidence.md) | N20 deepen：L1>L2>L3 + Gateway/put_fact/query_facts_gateway/MaterialsChat 热路径 n20_constraint（非全域强制/非 certified） |
+| [phase2-constraint-layers-evidence.md](./phase2-constraint-layers-evidence.md) | N20 deepen：L1>L2>L3 + Gateway/put_fact/query_facts_gateway/MaterialsChat/GraphRAG 热路径 n20_constraint（非全域强制/非 certified） |
 | [phase2-query-abstain-citations-evidence.md](./phase2-query-abstain-citations-evidence.md) | N21 deepen：abstain+citations + Wiki/KB + Materials + GraphRAG + list n21_query（非改写 list 主类型/非 certified） |
 | [phase2-raw-fact-index-reconcile-evidence.md](./phase2-raw-fact-index-reconcile-evidence.md) | N14 deepen：Raw↔Fact↔Index 全链路对账（非生产切写认证/非 certified） |
 | [phase2-calibration-pipeline-evidence.md](./phase2-calibration-pipeline-evidence.md) | N13 deepen：Operational 校准流水线（查询路径封顶；非真实 ECE/非 certified） |

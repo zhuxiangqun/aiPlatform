@@ -559,6 +559,17 @@ def attach_graphrag_n21_envelope(
             logger.warning(
                 "N06 graphrag F.1 attach skipped", exc_info=True
             )
+    try:
+        # 为什么：N20 — GraphRAG 出口挂约束观测信封；不改 n21/gateway_f1
+        from core.harness.knowledge_pipeline.constraint_layers import (
+            maybe_attach_graphrag_constraint_hotpath,
+        )
+
+        out = maybe_attach_graphrag_constraint_hotpath(out)
+    except Exception:
+        logger.warning(
+            "N20 graphrag constraint hotpath skipped", exc_info=True
+        )
     return out
 
 
