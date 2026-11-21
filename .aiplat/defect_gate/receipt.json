@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T15:55:00+08:00",
+  "reviewed_at": "2026-11-21T16:25:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "467de6242e1cbce2246d6adba467b5e4ae3548798f2e9cc4d78e6c57c2f7cc00",
-  "head_sha": "b33e230671647f6c7e121ee929f6c05fbb7d57a0",
+  "diff_sha256": "5f85e19e1868d182c4e578378f361c4c5722b2dfd42a0f3a08dc5565d246e56d",
+  "head_sha": "1922617d8334a030546a4832ef4c0617fc057cec",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 hotpath: best-effort put_fact/Gateway; env-off skips; audit fail keeps primary; bypass paths still open; certified/n19_full false. Local lock only."
+  "note": "N06 GraphRAG F.1: route+attach gateway_f1 when tenant set; other apps still open; certified/n06_full false. Local lock only."
 }
