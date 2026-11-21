@@ -61,6 +61,7 @@ _SUITE_CASES = (
     "graph_neighbors_hotpath_entry",
     "graph_query_hotpath_entry",
     "wiki_search_pages_bare_hotpath_entry",
+    "fde_clarify_tenant_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -927,7 +928,7 @@ def evaluate_fact_query_audit_gate(
             "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
             "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
             "ontology_context/ontology_urn/graph_neighbors/graph_query/"
-            "wiki_search_pages_bare hotpath; "
+            "wiki_search_pages_bare/fde_clarify_tenant hotpath; "
             "not N19 certified / not all bypass paths"
         ),
     }
@@ -1285,6 +1286,44 @@ def run_fact_query_audit_suite(
             }
         )
 
+        # 为什么：platform FDE 澄清路径不在 core import 图；读源码门防回归漏透传
+        try:
+            from pathlib import Path as _Path
+
+            _fde = (
+                _Path(__file__).resolve().parents[4]
+                / "aiPlat-platform"
+                / "apps"
+                / "fde"
+                / "api"
+                / "fde.py"
+            )
+            # parents: fact_query_audit→knowledge_pipeline→harness→core→aiPlat-core→repo
+            if not _fde.is_file():
+                _fde = (
+                    _Path(__file__).resolve().parents[5]
+                    / "aiPlat-platform"
+                    / "apps"
+                    / "fde"
+                    / "api"
+                    / "fde.py"
+                )
+            fde_src = _fde.read_text(encoding="utf-8") if _fde.is_file() else ""
+        except Exception:
+            fde_src = ""
+        cases.append(
+            {
+                "id": "fde_clarify_tenant_hotpath_entry",
+                "ok": (
+                    "tenant_id=tenant_id" in fde_src
+                    and "_get_knowledge_context" in fde_src
+                    and "fde_graph_tenant" in fde_src
+                    and "wiki_search_pages" in fde_src
+                ),
+                "detail": "",
+            }
+        )
+
         passed = sum(1 for c in cases if c.get("ok"))
         return {
             "ok": passed == len(_SUITE_CASES),
@@ -1299,7 +1338,7 @@ def run_fact_query_audit_suite(
                 "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
                 "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
                 "ontology_context/ontology_urn/graph_neighbors/graph_query/"
-                "wiki_search_pages_bare hotpath; "
+                "wiki_search_pages_bare/fde_clarify_tenant hotpath; "
                 "not all bypass paths / not certified"
             ),
         }

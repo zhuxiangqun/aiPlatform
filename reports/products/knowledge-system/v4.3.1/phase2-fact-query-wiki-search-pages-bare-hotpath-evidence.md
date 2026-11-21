@@ -42,5 +42,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 ## 明确未做
 
 - 引擎层 `wiki_engine.search_pages` 全调用点强制落盘
-- FDE 澄清路径自动注入 tenant（仍可选显式）
 - 全部旁路 / N19 certified

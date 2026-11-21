@@ -310,8 +310,9 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-fact-query-graph-neighbors-hotpath-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-fact-query-graph-query-hotpath-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-fact-query-wiki-search-pages-bare-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-fde-clarify-tenant-hotpath-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_query_audit.py
-    note: "Extended-scoped exists (附录 N.3); customer_action before/after + Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve/sys_wiki_context/wiki_structured/wiki_search_pages_api/sys_ontology_context(域)/URN syscall+HTTP/sys_graph_neighbors/sys_graph_query/裸 wiki_search_pages 热路径 best-effort deepen；非全部旁路强制 / 非 N24 总线全量 / 非 certified"
+    note: "Extended-scoped exists (附录 N.3); customer_action before/after + Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve/sys_wiki_context/wiki_structured/wiki_search_pages_api/sys_ontology_context(域)/URN syscall+HTTP/sys_graph_neighbors/sys_graph_query/裸 wiki_search_pages/FDE clarify tenant 热路径 best-effort deepen；非全部旁路强制 / 非 N24 总线全量 / 非 certified"
   - id: N20
     level: extended
     title: L1/L2/L3 约束分层

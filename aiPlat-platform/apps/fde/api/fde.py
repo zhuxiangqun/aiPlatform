@@ -938,15 +938,26 @@ def _build_from_workflow(workflow_stages: list, current_agent_id: str,
 
     return "\n".join(parts)
 
-def _get_knowledge_context(text: str) -> str:
-    """Retrieve relevant domain knowledge to help clarify (Wiki + Graph + Domain)."""
+def _get_knowledge_context(text: str, *, tenant_id: str = "") -> str:
+    """Retrieve relevant domain knowledge to help clarify (Wiki + Graph + Domain).
+
+    Args:
+        text: 澄清输入文本。
+        tenant_id: 非空时透传 ``wiki_search_pages`` 激活 N19 裸 list 审计。
+    """
     if not text or len(text) < 5:
         return ""
     parts = []
     try:
         # Tier 1: Wiki FTS5 search
         from core.api.core_facade import wiki_search_pages
-        pages = wiki_search_pages(text, limit=3, collection_id=DomainRouter.default_collection())
+        # 为什么：澄清路径曾漏 tenant，导致已接 N19 入口永不落盘
+        pages = wiki_search_pages(
+            text,
+            limit=3,
+            collection_id=DomainRouter.default_collection(),
+            tenant_id=tenant_id or "",
+        )
         if pages:
             parts.append("\n".join(
                 f"- {p.get('title','')}: {p.get('body','')[:300]}"
@@ -957,7 +968,7 @@ def _get_knowledge_context(text: str) -> str:
     
     try:
         # Tier 2: Domain classification for context
-        from core.api.core_facade import DomainRouter
+        # 为什么：禁止再 from-import DomainRouter，否则遮蔽模块级导入 → Tier1 UnboundLocalError
         router = DomainRouter()
         domain_id = router.classify(text)
         if domain_id and isinstance(domain_id, str):
@@ -973,7 +984,14 @@ def _get_knowledge_context(text: str) -> str:
 async def _clarify(context: str, text: str, history: list,
                     extra: dict = None) -> dict:
     """## platform:allowed
-    Generic multi-turn clarification engine. Used by all contexts."""
+    Generic multi-turn clarification engine. Used by all contexts.
+
+    Args:
+        context: 澄清上下文键。
+        text: 用户输入。
+        history: 多轮历史。
+        extra: 附加字段；可含 ``tenant_id`` 供 N19 审计透传。
+    """
     import json as _json, re as _re
 
     cfg = _CLARIFY_CONTEXTS.get(context, _DEFAULT_CLARIFY)
@@ -992,13 +1010,16 @@ async def _clarify(context: str, text: str, history: list,
     else:
         collected_vs_expected = _build_collected_vs_expected(step, pipeline_state)
 
+    # 为什么：优先 body/extra 显式 tenant，否则 FDE 图租户解析（含请求身份/上下文）
+    clarify_tid = str((extra or {}).get("tenant_id") or "").strip() or fde_graph_tenant()
+
     collected = _json.dumps({k: v for k, v in (extra or {}).items() if not k.startswith("_")},
                            ensure_ascii=False) if extra else "无"
     system_msg = (
         f"你是{cfg['role']}。{cfg['guidance']}\n"
         f"已收集的信息：{collected}\n"
         + (f"{collected_vs_expected}\n" if collected_vs_expected else "")
-        + f"{_get_knowledge_context(text)}\n"
+        + f"{_get_knowledge_context(text, tenant_id=clarify_tid)}\n"
         + "通过1-3轮追问帮助FDE澄清问题根因。追问时引用FDE已提供的信息，不要凭空猜测。\n"
         "每轮最多问2个具体问题。当问题已经足够清楚时输出最终摘要。\n"
         "用中文。\n\n"
@@ -1071,13 +1092,18 @@ async def clarify(body: Dict[str, Any]):
     """Generic multi-turn clarification. context=feedback|diagnosis|poc.
 
     Args:
-        body: 请求体。
+        body: 请求体；可选 ``tenant_id``（亦可读 ``extra.tenant_id``）供 N19。
     """
+    extra = dict(body.get("extra", {}) or {})
+    # 为什么：顶层 tenant_id 注入 extra，统一走 _clarify 解析链
+    body_tid = str(body.get("tenant_id") or "").strip()
+    if body_tid and not str(extra.get("tenant_id") or "").strip():
+        extra["tenant_id"] = body_tid
     result = await _clarify(
         context=str(body.get("context", "")),
         text=str(body.get("text", "")),
         history=list(body.get("history", [])),
-        extra=body.get("extra", {}) or {},
+        extra=extra,
     )
     # FdeStatusResponse only keeps status/message/data — payload must live in data
     return {"status": "ok", "message": "", "data": result}

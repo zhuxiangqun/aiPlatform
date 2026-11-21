@@ -32,6 +32,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "graph_neighbors_hotpath_entry" in ids
     assert "graph_query_hotpath_entry" in ids
     assert "wiki_search_pages_bare_hotpath_entry" in ids
+    assert "fde_clarify_tenant_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -614,3 +615,51 @@ def test_wiki_search_pages_bare_hotpath(tmp_path, monkeypatch):
     api_listed = fqa.list_audit_snapshots(tenant_id="t-wsp-api", db_path=db)
     assert api_listed["count"] == 1
     assert (api_listed["items"][0].get("meta") or {}).get("channel") == "wiki_pages"
+
+
+def test_fde_clarify_knowledge_context_passes_tenant(tmp_path, monkeypatch):
+    """FDE ``_get_knowledge_context`` 透传 tenant → 裸 wiki_search_pages 落 N19。"""
+    db = str(tmp_path / "fqa-fde.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+    monkeypatch.setattr(
+        "core.harness.knowledge.wiki_engine.search_pages",
+        lambda *_a, **_k: [{"title": "p1", "body": "hello world body"}],
+    )
+
+    import apps.fde.api.fde as fde_mod
+
+    seen = {}
+
+    def _capturing_wiki_search_pages(query="", **kwargs):
+        seen["tenant_id"] = kwargs.get("tenant_id", "")
+        hits = [{"title": "p1", "body": "hello world body"}]
+        tid = (kwargs.get("tenant_id") or "").strip()
+        if tid:
+            fqa.maybe_record_bare_list_hotpath(
+                tenant_id=tid,
+                hits=hits,
+                channel="wiki_search_pages",
+                query=query or "",
+            )
+        return hits
+
+    # 函数内 from-import：须 patch 源模块符号
+    monkeypatch.setattr(
+        "core.api.core_facade.wiki_search_pages",
+        _capturing_wiki_search_pages,
+    )
+
+    ctx = fde_mod._get_knowledge_context(
+        "需要澄清的业务问题文本足够长", tenant_id="t-fde"
+    )
+    assert seen.get("tenant_id") == "t-fde"
+    assert "p1" in ctx or "参考知识" in ctx
+    listed = fqa.list_audit_snapshots(tenant_id="t-fde", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "wiki_search_pages"
+
+    seen.clear()
+    fde_mod._get_knowledge_context("需要澄清的业务问题文本足够长", tenant_id="")
+    assert seen.get("tenant_id") == ""
+    assert fqa.list_audit_snapshots(tenant_id="t-fde", db_path=db)["count"] == 1
