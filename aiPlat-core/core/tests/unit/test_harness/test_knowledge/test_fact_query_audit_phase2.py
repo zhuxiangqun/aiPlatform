@@ -16,6 +16,7 @@ def test_suite_passes_and_gate_never_certifies():
     ids = {c["id"] for c in suite["cases"]}
     assert "put_fact_hotpath_entry" in ids
     assert "query_gateway_hotpath_entry" in ids
+    assert "query_facts_gateway_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T16:25:00+08:00",
+  "reviewed_at": "2026-11-21T16:40:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "5f85e19e1868d182c4e578378f361c4c5722b2dfd42a0f3a08dc5565d246e56d",
-  "head_sha": "1922617d8334a030546a4832ef4c0617fc057cec",
+  "diff_sha256": "041dc22d6afa4ae528c9ebeb34de3dec210d54f2701ff11a8c0900f863311ae4",
+  "head_sha": "1836f569ef533b0e63f1cfd321cd2527acaf62db",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N06 GraphRAG F.1: route+attach gateway_f1 when tenant set; other apps still open; certified/n06_full false. Local lock only."
+  "note": "N19 query_facts_gateway hotpath: bypass audit on; unified sets record_hotpath_audit=False; query_facts list still open; certified false. Local lock only."
 }
