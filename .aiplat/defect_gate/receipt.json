@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T14:30:00+08:00",
+  "reviewed_at": "2026-11-21T14:40:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "dd5d223ad7701bc4d80a37077c161d2829948b060a3bfdca81b61c476baa7e65",
-  "head_sha": "5a262e3c67f3c3ccd69f9cfe0242484d8d33e3ed",
+  "diff_sha256": "48d47661129cd5cdb6620bfbd722963336e8e9913efa2c6e5daff4324d445740",
+  "head_sha": "d03a6ea43b7b67e8e01a805d040af8cfc1d6fcbd",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N21 MaterialsChat RAG + GraphRAG envelope; certified/n21_full false; materials_graphrag_entry required; not non-RAG shortcuts."
+  "note": "N06 wiki+index unified Gateway; wiki_index_routes required; certified/n06_full false; not MaterialsChat full."
 }
