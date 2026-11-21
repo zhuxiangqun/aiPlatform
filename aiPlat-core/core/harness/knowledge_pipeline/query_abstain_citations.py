@@ -270,6 +270,8 @@ def query_wiki_with_abstain(
                 collection_ids=collection_ids or ["default"],
                 tenant_id=tenant_id or "",
                 top_k=int(top_k),
+                # 为什么：本入口已 maybe_record_wiki_kb_hotpath，关裸 list 防双写
+                record_hotpath_audit=False,
             )
             hits = raw if isinstance(raw, list) else []
         except Exception as exc:
@@ -345,6 +347,8 @@ def query_kb_with_abstain(
                 tenant_id=tid,
                 collection_id=cid,
                 top_k=int(top_k),
+                # 为什么：本入口已 maybe_record_wiki_kb_hotpath，关裸 list 防双写
+                record_hotpath_audit=False,
             )
             hits = raw if isinstance(raw, list) else []
         except Exception as exc:

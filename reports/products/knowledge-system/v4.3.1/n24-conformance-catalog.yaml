@@ -303,7 +303,7 @@ items:
       - aiPlat-core/core/harness/infrastructure/action_execution.py
       - reports/products/knowledge-system/v4.3.1/phase2-fact-query-audit-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_query_audit.py
-    note: "Extended-scoped exists (附录 N.3); customer_action before/after + Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB 热路径 best-effort deepen；非全部旁路强制 / 非 N24 总线全量 / 非 certified"
+    note: "Extended-scoped exists (附录 N.3); customer_action before/after + Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list syscall 热路径 best-effort deepen；非全部旁路强制 / 非 N24 总线全量 / 非 certified"
   - id: N20
     level: extended
     title: L1/L2/L3 约束分层
