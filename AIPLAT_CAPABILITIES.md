@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3909
+total_capabilities: 3910
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1321,6 +1321,7 @@ scan_hash: 8f9548ec24f4
 | **Ontology Package（v4.3.1 W9 最小切片）** | `harness/knowledge_pipeline/ontology_package.py` + CoreFacade publish/validate/compat/deps/rollback + FDE `/ontology-packages/*` | ✅ | 附录 H.3；semver 发布；content_hash 可验证；依赖锁定；兼容矩阵；发布/回滚。证据 `phase2-ontology-package-evidence.md`。**未宣称** PKI 签名密钥管理 / 自动执行 migrations / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **Confidence Calibration（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/confidence_calibration.py` + CoreFacade publish/validate/resolve + FDE `/confidence-calibrations*` | ✅ | 附录 O / §9.6.7；dataset/version/门槛；ECE≤0.05、high≥0.90；失败/缺失/过期 → 最高 medium。证据 `phase2-confidence-calibration-evidence.md`。**未宣称** 准确率 / OCS 全量 / 迁移双写 / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **OCS Completeness（v4.3.1 W10 最小切片）** | `harness/knowledge/ontology_completeness.py` + `evaluate_ocs_gate` + FDE `/ocs/{domain}` `/gate` | ✅ | §13.4 六维权重；C5=logic 类实例/边覆盖（禁节点数档位）；域 `ocs_threshold`（默认≥80）；诚实锁非准确率/忠实度/审计。证据 `phase2-ocs-evidence.md`。**未宣称** 全域完整 / N24 / 迁移切写。生成物适用：已接线（经 Facade） | 本批 |
+| **企业域 OCS 扫描（v4.3.1 N23 deepen）** | `run_ocs_enterprise_scan_suite` / `evaluate_ocs_enterprise_scan_gate` + Facade | ✅ | DomainRouter 扫域 + 词汇预注册 + 门槛地板；certified/enterprise_complete 恒 false。证据 `phase2-ocs-enterprise-scan-evidence.md`。**未宣称** 企业全域完整 / N23 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Knowledge Migration（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/knowledge_migration.py` + CoreFacade start/dual-write/reconcile/read-pointer/rollback-drill + FDE `/knowledge-migrations*` | ✅ | §15 / 计划 §8；双写 source 权威；missing/stale/orphan 对账+修复；影子读需对账干净；回滚演练回 source；`process_cutover_authorized=false`。证据 `phase2-knowledge-migration-evidence.md`。**未宣称** 生产回填/切写 / OCS / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **Conformance Pack（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/conformance_pack.py` + CoreFacade build/gate + FDE `/conformance-pack*` | ✅ | 附录 N 机读目录 `n24-conformance-catalog.yaml`；§9.4 认证槽位；证据路径校验；结构门槛门；`certified`/`n24_full_conformance` 恒 false。证据 `phase2-conformance-pack-evidence.md`。**未宣称** 24/24 / Core / SLO。生成物适用：已接线（经 Facade） | 本批 |
 | **Implementer Semantics（v4.3.1 W10 / N18 最小切片）** | `harness/knowledge_pipeline/implementer_semantics.py` + CoreFacade run/gate + FDE `/implementer-semantics*` | ✅ | conformance README 真实实现探针：Raw 不可变 / published 拒空 evidence / citation 解析 / 跨租户隔离 / customer_action 审计+幂等；门槛门；`certified` 恒 false。证据 `phase2-implementer-semantics-evidence.md`。**未宣称** 生产 RBAC 源替换 / N18 全量 / 24/24。生成物适用：已接线（经 Facade） | 本批 |
@@ -4810,7 +4811,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 759 | 1 | 760 |
+| Harness 执行引擎 | 760 | 1 | 761 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 655 | 9 | 664 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4855,7 +4856,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3898** | **11** | **3909** |
+| **总计** | **3899** | **11** | **3910** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

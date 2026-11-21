@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T09:37:00+08:00",
+  "reviewed_at": "2026-11-21T09:42:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "c0f4575cf1f28fda18405ba8cbe01ab73ac0cb1b32f1002a3f3dba93a6127546",
-  "head_sha": "0f43e575551da2e2becf5ba8c6272b18054397cd",
+  "diff_sha256": "f25188f3b4cc36db9ea1bc5b8247197cc450718ac6cea8706c6a7e6f6f799e41",
+  "head_sha": "3ccbcdeaeb7670c83b0d994fcbe534eef777317b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. N13: fact gateway applies calibration ceiling when domain_id set; failed/missing cal caps high→medium; real ECE training / N13 certified out of scope."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. N23 enterprise OCS scan: DomainRouter+vocab+threshold floor; enterprise_complete/N23 certified out of scope."
 }

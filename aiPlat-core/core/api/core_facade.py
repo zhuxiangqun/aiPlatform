@@ -16368,7 +16368,9 @@ from core.harness.knowledge.domain_maturity import compare_domains, compute_doma
 from core.harness.knowledge.ontology_completeness import (  # noqa: boundary
     compute_all_ocs,
     compute_domain_ocs,
+    evaluate_ocs_enterprise_scan_gate,
     evaluate_ocs_gate,
+    run_ocs_enterprise_scan_suite,
 )
 from core.harness.evaluation.evidence_diff import compute_evidence_diff  # noqa: boundary
 from core.harness.utils.model_injection import create_selected_adapter  # noqa: boundary

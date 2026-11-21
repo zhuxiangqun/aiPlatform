@@ -34,6 +34,7 @@ authority: supporting
 | [phase2-scenario-evidence.md](./phase2-scenario-evidence.md) | Phase 2 W9 Knowledge Scenario（模拟不写主事实 + 合并人审） |
 | [phase2-ontology-package-evidence.md](./phase2-ontology-package-evidence.md) | Phase 2 W9 Ontology Package（版本/哈希校验 + 兼容 + 依赖锁定 + 回滚） |
 | [phase2-calibration-pipeline-evidence.md](./phase2-calibration-pipeline-evidence.md) | N13 deepen：Operational 校准流水线（查询路径封顶；非真实 ECE/非 certified） |
+| [phase2-ocs-enterprise-scan-evidence.md](./phase2-ocs-enterprise-scan-evidence.md) | N23 deepen：企业域 OCS 扫描（DomainRouter+词汇预注册；非全域完整/非 certified） |
 | [phase2-confidence-calibration-evidence.md](./phase2-confidence-calibration-evidence.md) | W10 Confidence Calibration（附录 O 门槛 + 失败降级 medium） |
 | [phase2-ocs-evidence.md](./phase2-ocs-evidence.md) | W10 OCS Completeness（§13.4 覆盖计分 + 门槛门；禁节点数档位） |
 | [phase2-knowledge-migration-evidence.md](./phase2-knowledge-migration-evidence.md) | W10 Knowledge Migration（双写/对账/回滚演练；切写未授权） |

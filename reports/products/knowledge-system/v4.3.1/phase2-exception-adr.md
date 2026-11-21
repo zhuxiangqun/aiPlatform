@@ -23,7 +23,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 | N06 | FactLedger F.1 契约 + 统一入口（fact/object_set → F.1）；非 Wiki/Index 全量 Gateway / 非 certified | 至 N06 全量/试点签字 | 见 gateway-contract + `phase2-unified-query-gateway-evidence.md` |
 | N09 | Core 探针集已冻结（`n09_core_probe_freeze`）；跨租户套件含统一 Gateway fact/object_set 探针；K1–K70 加深证据保留；**停止**无等级 default mop 作为 Core 条件；未宣称全域 0 泄漏 / N09 certified | Core 足够；全域深度开放 | 跨租户套件门槛门 + `phase2-cross-tenant-unified-gateway-evidence.md` |
 | N13/校准 | ECE/`high_precision` 门槛 + 查询路径封顶（fact gateway）；Core 不以校准为阻塞；未达标诚实封顶 medium；非真实 ECE 训练 / 非 certified | 至 N13 全量/准确率宣称 | 附录 O + `phase2-calibration-pipeline-evidence.md` |
-| N23/OCS | 阈值须预注册；属 Operational，非 Core 阻塞 | 开放 | 白皮书 §13.4 |
+| N23/OCS | DomainRouter 企业域扫描 + 词汇预注册 + 门槛地板；属 Operational；非企业全域完整 / 非 certified | 至 N23 全量/签字 | §13.4 + `phase2-ocs-enterprise-scan-evidence.md` |
 | N04/N12 | 写入硬门+transition；非 reviewer RBAC | 开放 | source_policy + fact_state_machine |
 | N07/N22 | ObjectSet + link.traverse ACL；非 Wiki/KB 全入口 | 开放 | ABox ACL 切片 |
 | N11/N14 | 本地双写对账；切写未授权 | 开放 | migration 演练 |

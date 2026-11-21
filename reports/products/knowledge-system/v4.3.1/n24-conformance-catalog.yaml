@@ -320,6 +320,8 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-ocs-evidence.md
       - aiPlat-core/core/harness/knowledge/ontology_completeness.py
+      - reports/products/knowledge-system/v4.3.1/phase2-ocs-enterprise-scan-evidence.md
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ocs_enterprise_scan_phase2.py
     note: "Operational-scoped exists (附录 N.4); §13.4 覆盖计分 + 门槛门；未宣称企业全域完整"
   - id: N24
     level: operational

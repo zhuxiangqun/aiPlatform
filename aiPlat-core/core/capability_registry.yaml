@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3044
+total_capabilities: 3046
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 578
+    caps_count: 580
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4844,6 +4844,14 @@ domains:
         module: aiPlat-core/core/harness/knowledge/ontology_completeness.py
         type: function
         signature: "compute_all_ocs()"
+      - symbol: "run_ocs_enterprise_scan_suite"
+        type: "function"
+        signature: "N23: enterprise OCS scan suite (certified=false)"
+        module: "core/harness/knowledge/ontology_completeness.py"
+      - symbol: "evaluate_ocs_enterprise_scan_gate"
+        type: "function"
+        signature: "N23: enterprise OCS scan gate (certified=false)"
+        module: "core/harness/knowledge/ontology_completeness.py"
       - symbol: "OntologyCase"
         module: aiPlat-core/core/harness/knowledge/ontology_case_learning.py
         type: dataclass
