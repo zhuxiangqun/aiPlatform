@@ -66,6 +66,7 @@ authority: supporting
 | [phase2-unified-audit-action-store-evidence.md](./phase2-unified-audit-action-store-evidence.md) | Batch J7 N24 ActionStore.action_audit 汇入统一审计（非 certified） |
 | [phase2-unified-audit-action-store-tenant-evidence.md](./phase2-unified-audit-action-store-tenant-evidence.md) | Batch J8 N24 ActionStore 物理 tenant_id（非 certified） |
 | [phase2-unified-audit-action-store-tenant-backfill-evidence.md](./phase2-unified-audit-action-store-tenant-backfill-evidence.md) | Batch J9 N24 ActionStore tenant_id 存量回填（非 certified） |
+| [phase2-cross-tenant-unified-gateway-evidence.md](./phase2-cross-tenant-unified-gateway-evidence.md) | N09 deepen：统一 Gateway fact/object_set 跨租户探针（非全域认证） |
 | [phase2-cross-tenant-objectset-audit-evidence.md](./phase2-cross-tenant-objectset-audit-evidence.md) | Batch K1 N09 ObjectSet+UnifiedAudit 跨租户探针（非 Wiki/KB 全入口/非 certified） |
 | [phase2-cross-tenant-wiki-kb-evidence.md](./phase2-cross-tenant-wiki-kb-evidence.md) | Batch K2 N09 Wiki/KB 跨租户探针（非 GraphRAG/非 certified） |
 | [phase2-cross-tenant-graphrag-evidence.md](./phase2-cross-tenant-graphrag-evidence.md) | Batch K3 N09 GraphRAG 向量层跨租户（非图节点 ACL/非 certified） |

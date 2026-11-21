@@ -3601,6 +3601,7 @@ async def unified_query_gateway(
     permissions: Optional[List[str]] = None,
     role: str = "",
     ledger: Optional["FactLedger"] = None,
+    bindings_path: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """N06 deepen：统一 Query Gateway 入口（fact / object_set → F.1）。
 
@@ -3612,6 +3613,7 @@ async def unified_query_gateway(
         object_set_request: object_set 路由请求 dict。
         permissions / role: object_set L1/ACL。
         ledger: 可选 FactLedger。
+        bindings_path: 可选 ObjectType 绑定路径（object_set 探针/测试）。
 
     Returns:
         附录 F.1 信封；``certified`` 不在此回执宣称。
@@ -3653,11 +3655,17 @@ async def unified_query_gateway(
         req.setdefault("object_type", (query or "").strip())
     if "limit" not in req:
         req["limit"] = int(top_k)
+    os_kwargs: Dict[str, Any] = {}
+    if ledger is not None:
+        os_kwargs["ledger"] = ledger
+    if bindings_path is not None:
+        os_kwargs["bindings_path"] = bindings_path
     out = await _query_os(
         req,
         tenant_id=tid,
         permissions=permissions,
         role=role or "",
+        **os_kwargs,
     )
     objects = list(out.get("objects") or out.get("items") or [])
     if out.get("status") in ("policy_denied", "not_found") or not objects:
@@ -4467,6 +4475,8 @@ _N09_CASES = (
     "query_facts_no_leak",
     "get_source_no_leak",
     "gateway_no_leak",
+    "unified_gateway_fact_no_leak",
+    "unified_gateway_object_set_no_leak",
     "verify_raw_no_leak",
     "object_set_no_leak",
     "unified_audit_no_leak",
@@ -4615,6 +4625,62 @@ async def run_cross_tenant_isolation_suite(
                 "id": "gateway_no_leak",
                 "ok": g_ok,
                 "detail": "" if g_ok else "gateway_leak",
+            }
+        )
+
+        # N09 deepen：统一 Gateway fact/object_set 路由同样不得跨租户泄漏
+        ug_fact_b = await unified_query_gateway(
+            tenant_id=tenant_b,
+            query="secret",
+            route="fact",
+            ledger=lg,
+        )
+        ug_fact_ok = (
+            ug_fact_b.get("abstained") is True
+            and not ug_fact_b.get("citations")
+            and not ug_fact_b.get("facts")
+        )
+        cases.append(
+            {
+                "id": "unified_gateway_fact_no_leak",
+                "ok": ug_fact_ok,
+                "detail": "" if ug_fact_ok else "unified_gateway_fact_leak",
+            }
+        )
+
+        ug_os_a = await unified_query_gateway(
+            tenant_id=tenant_a,
+            route="object_set",
+            object_set_request={
+                "object_type": probe_type,
+                "domain_id": probe_domain,
+            },
+            permissions=["kb:read"],
+            ledger=lg,
+            bindings_path=bindings_path,
+        )
+        ug_os_b = await unified_query_gateway(
+            tenant_id=tenant_b,
+            route="object_set",
+            object_set_request={
+                "object_type": probe_type,
+                "domain_id": probe_domain,
+            },
+            permissions=["kb:read"],
+            ledger=lg,
+            bindings_path=bindings_path,
+        )
+        ug_os_ok = (
+            ug_os_a.get("abstained") is False
+            and bool(ug_os_a.get("citations"))
+            and ug_os_b.get("abstained") is True
+            and not ug_os_b.get("citations")
+        )
+        cases.append(
+            {
+                "id": "unified_gateway_object_set_no_leak",
+                "ok": ug_os_ok,
+                "detail": "" if ug_os_ok else "unified_gateway_object_set_leak",
             }
         )
 
@@ -5119,9 +5185,9 @@ async def run_cross_tenant_isolation_suite(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
-            "GraphIndex+graph_write+cross_domain/snapshot probes; "
-            "not global zero-leak certification"
+            "FactLedger+unified Gateway fact/object_set+ObjectSet+UnifiedAudit+"
+            "Wiki/KB+GraphRAG+caller+GraphIndex+graph_write+cross_domain/snapshot; "
+            "not global zero-leak / not N09 certified"
         ),
     }
 
