@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3080
+total_capabilities: 3085
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 611
+    caps_count: 616
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3618,6 +3618,26 @@ domains:
         type: "class"
         signature: "N05: Wiki rebuild contract error"
         module: "core/harness/knowledge_pipeline/wiki_rebuild.py"
+      - symbol: "register_gold_dataset"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: function
+        signature: "N10: register domain gold dataset (accuracy=false)"
+      - symbol: "run_knowledge_gold_eval_pipeline"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: function
+        signature: "N10: multi-domain gold eval pipeline (certified=false)"
+      - symbol: "run_knowledge_gold_eval_suite"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: function
+        signature: "N10: gold eval suite (certified=false)"
+      - symbol: "evaluate_knowledge_gold_eval_gate"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: function
+        signature: "N10: gold eval gate (certified=false)"
+      - symbol: "KnowledgeGoldEvalError"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: class
+        signature: "N10: knowledge gold eval contract error"
       - symbol: "project_facts_to_wiki"
         module: core/harness/knowledge_pipeline/wiki_rebuild.py
         type: function

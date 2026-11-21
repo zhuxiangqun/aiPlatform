@@ -18193,6 +18193,76 @@ def evaluate_wiki_rebuild_gate(suite: Optional[dict] = None) -> dict:
 
     return _gate(suite)
 
+
+def register_knowledge_gold_dataset(
+    *,
+    tenant_id: str,
+    domain_id: str,
+    version: str,
+    cases: List[Dict[str, Any]],
+    threshold: float = 0.8,
+) -> dict:
+    """CoreFacade：登记域级 gold 数据集（N10；accuracy/certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 域。
+        version: 数据集版本。
+        cases: Exact-match 用例。
+        threshold: 通过率门槛。
+    """
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        register_gold_dataset,
+    )
+
+    return register_gold_dataset(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        version=version,
+        cases=cases,
+        threshold=threshold,
+    )
+
+
+async def run_knowledge_gold_eval_pipeline(
+    *,
+    tenant_id: str,
+    domain_ids: Optional[List[str]] = None,
+) -> dict:
+    """CoreFacade：跨域 gold 评测流水线（N10；accuracy/certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_ids: 可选域列表；默认 DomainRouter。
+    """
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        run_knowledge_gold_eval_pipeline as _run,
+    )
+
+    return await _run(tenant_id=tenant_id, domain_ids=domain_ids)
+
+
+async def run_knowledge_gold_eval_suite() -> dict:
+    """CoreFacade：N10 gold 评测套件（certified/accuracy 恒 false）。"""
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        run_knowledge_gold_eval_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_knowledge_gold_eval_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N10 gold 评测门槛门（certified/accuracy 恒 false）。
+
+    Args:
+        suite: ``run_knowledge_gold_eval_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        evaluate_knowledge_gold_eval_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
