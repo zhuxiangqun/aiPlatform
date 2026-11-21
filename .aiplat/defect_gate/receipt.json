@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T22:43:39+08:00",
+  "reviewed_at": "2026-11-21T22:52:13+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "70e6d9da147fd0f700a05013497a671322deb2aefda47f6995cbd074f90343b0",
-  "head_sha": "bd4e5061ef861af7ec94b413f1a6f5b291f81607",
+  "diff_sha256": "0e0505026e32a511a2fedc78d941aae4a2239d35f12678320fe6ee692d270a7f",
+  "head_sha": "a9b0cd971873a992a8b4943e8da4e00c4624699d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 graph_neighbors deepen: explicit tenant audit + MaterialsChat passthrough; sys_graph_query still missing (documented); certified false. Local lock only."
+  "note": "N19 sys_graph_query deepen: fill missing export + audit; MaterialsChat tenant passthrough; no full graph DSL; certified false. Local lock only."
 }
