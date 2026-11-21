@@ -14,6 +14,7 @@ def test_suite_passes_and_gate_never_certifies():
     ids = {c["id"] for c in suite["cases"]}
     assert "hotpath_helper_attaches" in ids
     assert "gateway_hotpath_entry" in ids
+    assert "put_fact_hotpath_entry" in ids
 
     gate = cl.evaluate_constraint_layers_gate(suite)
     assert gate["ok"] is True
@@ -22,7 +23,7 @@ def test_suite_passes_and_gate_never_certifies():
 
 
 def test_hotpath_attach_and_env_off(monkeypatch):
-    """热路径挂 n20_constraint；env=0 时跳过。"""
+    """Gateway/put_fact 热路径挂 n20_constraint；env=0 时跳过。"""
     monkeypatch.setenv("AIPLAT_CONSTRAINT_LAYERS_HOTPATH", "1")
     hit = cl.maybe_attach_constraint_stack_hotpath(
         {"answer": "a", "abstained": False},
@@ -33,6 +34,13 @@ def test_hotpath_attach_and_env_off(monkeypatch):
     assert hit["n20_constraint"]["hotpath"] is True
     assert hit["n20_constraint"]["certified"] is False
 
+    put = cl.maybe_attach_put_fact_constraint_hotpath(
+        {"fact_id": "f1", "status": "active"},
+        actor_permissions=["kb:write"],
+    )
+    assert put["n20_constraint"]["op"] == "put_fact"
+    assert put["n20_constraint"]["enforced"] is False
+
     monkeypatch.setenv("AIPLAT_CONSTRAINT_LAYERS_HOTPATH", "0")
     assert cl.hotpath_constraint_enabled() is False
     skip = cl.maybe_attach_constraint_stack_hotpath(
@@ -41,6 +49,8 @@ def test_hotpath_attach_and_env_off(monkeypatch):
         actor_permissions=["kb:read"],
     )
     assert "n20_constraint" not in skip
+    skip_put = cl.maybe_attach_put_fact_constraint_hotpath({"fact_id": "f2"})
+    assert "n20_constraint" not in skip_put
 
 
 def test_high_risk_without_l1_blocked():

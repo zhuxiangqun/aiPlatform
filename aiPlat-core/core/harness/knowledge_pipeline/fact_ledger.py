@@ -1095,6 +1095,19 @@ class FactLedger:
                 fid,
                 exc_info=True,
             )
+        # 为什么：N20 — put_fact 热路径挂约束栈观测信封（不回滚写入）
+        try:
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_put_fact_constraint_hotpath,
+            )
+
+            record = maybe_attach_put_fact_constraint_hotpath(record)
+        except Exception:
+            logger.warning(
+                "constraint_layers put_fact hotpath failed for %s",
+                fid,
+                exc_info=True,
+            )
         return record
 
     async def _enforce_put_fact_write_gates(
