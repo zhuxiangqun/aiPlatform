@@ -3344,6 +3344,7 @@ class FactLedger:
         require_citations: bool = True,
         calibration_db_path: Optional[str] = None,
         calibration_query_type: str = "fact_gateway",
+        record_hotpath_audit: bool = True,
     ) -> Dict[str, Any]:
         """附录 M 最小查询入口：租户前置 + 无证据 abstain + N13 校准封顶。
 
@@ -3356,6 +3357,7 @@ class FactLedger:
             require_citations: 为 True 时无 citations 则 abstain。
             calibration_db_path: 可选校准库（测试/探针）。
             calibration_query_type: 校准 query_type（默认 fact_gateway）。
+            record_hotpath_audit: N19 旁路热路径落快照；统一 Gateway 调用时关以免双写。
 
         Returns:
             查询响应（含 abstained / citations）。
@@ -3439,6 +3441,23 @@ class FactLedger:
         }
         gate = validate_gateway_response(resp)
         resp["gateway_contract_ok"] = gate["ok"]
+        if record_hotpath_audit:
+            # 为什么：N19 — 直调 query_facts_gateway 旁路也落审计（统一入口已关此开关）
+            try:
+                from core.harness.knowledge_pipeline.fact_query_audit import (
+                    maybe_record_query_facts_gateway_hotpath,
+                )
+
+                maybe_record_query_facts_gateway_hotpath(
+                    tenant_id=tenant_id,
+                    query=query or "",
+                    response=resp,
+                )
+            except Exception:
+                logger.warning(
+                    "fact_query_audit query_facts_gateway hotpath failed",
+                    exc_info=True,
+                )
         return resp
 
 
@@ -3847,6 +3866,8 @@ async def unified_query_gateway(
             top_k=top_k,
             calibration_db_path=calibration_db_path,
             calibration_query_type=calibration_query_type,
+            # 为什么：统一入口由 _finish 落 N19 快照，避免旁路+统一双写
+            record_hotpath_audit=False,
         )
         # 统一入口标记（不改变 F.1 字段）
         plan = list(resp.get("route_plan") or [])

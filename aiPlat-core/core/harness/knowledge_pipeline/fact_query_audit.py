@@ -3,11 +3,11 @@
 职责：
   - 统一 Fact 变更与 Query 响应的审计快照 schema（同库同表）
   - 标记 ``runtime_authority`` 与 ActionExecution 快照字段对齐（before/after）
-  - put_fact / unified_query_gateway 热路径 best-effort 落快照（可 env 关闭）
+  - put_fact / unified_query_gateway / query_facts_gateway 热路径 best-effort 落快照（可 env 关闭）
   - 套件/门槛门：``certified`` / ``n19_full`` 恒 false
 
 非目标：
-  - 不宣称全部旁路入口（直调 query_facts / MaterialsChat 等）已强制落盘
+  - 不宣称全部旁路入口（直调 query_facts list / MaterialsChat 等）已强制落盘
   - 不合并 Package+Action 全量审计总线（N24）
   - 不宣称 N19 certified
 """
@@ -35,6 +35,7 @@ _SUITE_CASES = (
     "hotpath_helper_writes",
     "put_fact_hotpath_entry",
     "query_gateway_hotpath_entry",
+    "query_facts_gateway_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -329,6 +330,41 @@ def maybe_record_query_gateway_hotpath(
     return resp
 
 
+def maybe_record_query_facts_gateway_hotpath(
+    *,
+    tenant_id: str,
+    query: str,
+    response: Dict[str, Any],
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """query_facts_gateway 旁路热路径落 Query 快照；原样返回 response。
+
+    Args:
+        tenant_id: 租户。
+        query: 原始查询。
+        response: F.1 形响应。
+        db_path: 可选库路径。
+    """
+    resp = response if isinstance(response, dict) else {}
+    maybe_record_hotpath_audit(
+        tenant_id=tenant_id,
+        kind="query",
+        subject_ref=f"qfg:{uuid.uuid4().hex[:12]}",
+        before_snapshot={"query": query or "", "route": "fact"},
+        after_snapshot={
+            "abstained": bool(resp.get("abstained")),
+            "citations": list(resp.get("citations") or [])[:20],
+            "route_reason": str(resp.get("route_reason") or ""),
+            "answer": str(resp.get("answer") or "")[:500],
+            "gateway_contract_ok": resp.get("gateway_contract_ok"),
+        },
+        runtime_authority="query_gateway",
+        meta={"hotpath": True, "op": "query_facts_gateway", "route": "fact"},
+        db_path=db_path,
+    )
+    return resp
+
+
 def list_audit_snapshots(
     *,
     tenant_id: str,
@@ -420,7 +456,7 @@ def evaluate_fact_query_audit_gate(
         "certified": False,
         "n19_full_conformance": False,
         "note": (
-            "Fact/Query audit + put_fact/Gateway hotpath deepen; "
+            "Fact/Query audit + put_fact/unified/query_facts_gateway hotpath; "
             "not N19 certified / not all bypass paths"
         ),
     }
@@ -563,6 +599,7 @@ def run_fact_query_audit_suite(
 
         put_src = inspect.getsource(fl.FactLedger.put_fact)
         ug_src = inspect.getsource(fl.unified_query_gateway)
+        qfg_src = inspect.getsource(fl.FactLedger.query_facts_gateway)
         cases.append(
             {
                 "id": "put_fact_hotpath_entry",
@@ -577,6 +614,13 @@ def run_fact_query_audit_suite(
                 "detail": "",
             }
         )
+        cases.append(
+            {
+                "id": "query_facts_gateway_hotpath_entry",
+                "ok": "maybe_record_query_facts_gateway_hotpath" in qfg_src,
+                "detail": "",
+            }
+        )
 
         passed = sum(1 for c in cases if c.get("ok"))
         return {
@@ -588,7 +632,7 @@ def run_fact_query_audit_suite(
             "certified": False,
             "n19_full_conformance": False,
             "note": (
-                "Fact/Query audit + put_fact/Gateway hotpath deepen; "
+                "Fact/Query audit + put_fact/unified/query_facts_gateway hotpath; "
                 "not all bypass paths / not certified"
             ),
         }
