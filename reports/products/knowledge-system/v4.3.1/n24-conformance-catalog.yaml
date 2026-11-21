@@ -316,7 +316,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-constraint-layers-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/constraint_layers.py
-    note: "Extended-scoped exists (附录 N.3); L1+审批 + 知识面 L1>L2>L3 栈 deepen；非全域强制分层 / 非 Lv4 / 非 certified"
+    note: "Extended-scoped exists (附录 N.3); L1+审批 + 知识面 L1>L2>L3 栈 + Gateway 热路径 n20_constraint deepen；非全域强制分层 / 非 Lv4 / 非 certified"
   - id: N21
     level: core
     title: 防假绿

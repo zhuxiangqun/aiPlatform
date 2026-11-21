@@ -3,16 +3,19 @@
 职责：
   - 按标准分层评估约束：L1 硬门 / L2 软约束 / L3 审计
   - 强制 ``L1 > L2 > L3``：高风险无 L1 拒绝；L2 不得单独作安全边界
+  - unified_query_gateway 热路径 best-effort 挂 ``n20_constraint``（可 env 关闭）
   - 套件/门槛门：``certified`` / ``n20_full`` 恒 false
 
 非目标：
   - 不重写 ActionRegistry / PolicyGate 全路径
-  - 不宣称知识面全域已完整分层或 N20 certified
+  - 不宣称知识面全域（Wiki/KB/GraphRAG 等）已完整分层强制
   - 不并入 N08 Lv4 误报门
+  - 不宣称 N20 certified
 """
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -25,6 +28,8 @@ _SUITE_CASES = (
     "l3_audit_required_flag",
     "layer_order_l1_gt_l2_gt_l3",
     "honesty_certified_false",
+    "hotpath_helper_attaches",
+    "gateway_hotpath_entry",
 )
 
 _LAYERS = ("L1", "L2", "L3")
@@ -178,6 +183,68 @@ def evaluate_constraint_stack(
     }
 
 
+def hotpath_constraint_enabled() -> bool:
+    """Gateway 热路径挂约束栈开关（默认开；``AIPLAT_CONSTRAINT_LAYERS_HOTPATH=0`` 关）。"""
+    raw = (os.environ.get("AIPLAT_CONSTRAINT_LAYERS_HOTPATH") or "1").strip().lower()
+    return raw not in ("0", "false", "off", "no")
+
+
+def maybe_attach_constraint_stack_hotpath(
+    response: Optional[Dict[str, Any]],
+    *,
+    route: str = "",
+    actor_permissions: Optional[Sequence[str]] = None,
+    risk_level: str = "medium",
+) -> Dict[str, Any]:
+    """统一 Gateway 热路径 best-effort 挂 ``n20_constraint``；不改 F.1 裁决。
+
+    Args:
+        response: F.1 信封。
+        route: Gateway 路由名。
+        actor_permissions: 调用方权限（缺省视为可读）。
+        risk_level: 风险等级。
+    """
+    resp = dict(response) if isinstance(response, dict) else {}
+    if not hotpath_constraint_enabled():
+        return resp
+    try:
+        perms = [str(p).strip() for p in (actor_permissions or []) if str(p).strip()]
+        if not perms:
+            perms = ["kb:read"]
+        stack = evaluate_constraint_stack(
+            risk_level=risk_level or "medium",
+            required_permissions=["kb:read"],
+            actor_permissions=perms,
+            soft_constraints=[
+                {
+                    "id": "gateway_prefer_citations",
+                    "message": "prefer citations on knowledge hits",
+                }
+            ],
+            require_audit=True,
+            l1_present=True,
+        )
+        # 为什么：本切片只挂观测信封，不阻断 Gateway 主响应（非全域强制）
+        resp["n20_constraint"] = {
+            "ok": stack.get("ok"),
+            "blocked": stack.get("blocked"),
+            "block_reason": stack.get("block_reason") or "",
+            "layers_fired": list(stack.get("layers_fired") or []),
+            "warnings": list(stack.get("warnings") or []),
+            "audit": stack.get("audit") or {},
+            "route": (route or "").strip(),
+            "hotpath": True,
+            "certified": False,
+            "n20_full_conformance": False,
+        }
+        return resp
+    except Exception as exc:
+        logger.warning(
+            "constraint_layers gateway hotpath failed: %s", exc, exc_info=True
+        )
+        return resp
+
+
 def evaluate_constraint_layers_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -212,12 +279,19 @@ def evaluate_constraint_layers_gate(
         "issues": issues,
         "certified": False,
         "n20_full_conformance": False,
-        "note": "Constraint layers deepen; not N20 certified / not Lv4 redesign",
+        "note": (
+            "Constraint layers + Gateway hotpath deepen; "
+            "not N20 certified / not full surface / not Lv4 redesign"
+        ),
     }
 
 
 def run_constraint_layers_suite() -> Dict[str, Any]:
-    """N20 deepen：L1/L2/L3 分层套件（certified 恒 false）。"""
+    """N20 deepen：L1/L2/L3 分层套件（含 Gateway 热路径；certified 恒 false）。"""
+    import inspect
+
+    from core.harness.knowledge_pipeline import fact_ledger as fl
+
     cases: List[Dict[str, Any]] = []
 
     denied = evaluate_constraint_stack(
@@ -314,6 +388,32 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         }
     )
 
+    attached = maybe_attach_constraint_stack_hotpath(
+        {"answer": "x", "abstained": False, "citations": [{"source_id": "s1"}]},
+        route="fact",
+        actor_permissions=["kb:read"],
+    )
+    n20 = attached.get("n20_constraint") if isinstance(attached, dict) else None
+    cases.append(
+        {
+            "id": "hotpath_helper_attaches",
+            "ok": isinstance(n20, dict)
+            and n20.get("hotpath") is True
+            and n20.get("certified") is False
+            and "L1" in (n20.get("layers_fired") or []),
+            "detail": "",
+        }
+    )
+
+    ug_src = inspect.getsource(fl.unified_query_gateway)
+    cases.append(
+        {
+            "id": "gateway_hotpath_entry",
+            "ok": "maybe_attach_constraint_stack_hotpath" in ug_src,
+            "detail": "",
+        }
+    )
+
     passed = sum(1 for c in cases if c.get("ok"))
     return {
         "ok": passed == len(_SUITE_CASES),
@@ -323,5 +423,8 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         "certified": False,
         "n20_full_conformance": False,
         "measured_at": time.time(),
-        "note": "Constraint layers deepen; not full surface / not certified",
+        "note": (
+            "Constraint layers + Gateway hotpath deepen; "
+            "not full surface / not certified"
+        ),
     }
