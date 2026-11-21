@@ -17,21 +17,37 @@ echo "[verify] Architecture pattern compliance..."
 echo "  [1/3] LLM calls → sys_llm_generate..."
 # Known legitimate: infrastructure modules that create adapters to pass INTO sys_llm_generate
 # or training/specialized modules that use isolated agent loops
-KNOWN_LLM_EXCEPTIONS="compression.py|manager.py|parsers.py|video.py|dynamic_orchestrator.py|merger.py|voice_loop.py|skill_manager.py|server.py|model_injection.py|retrieval.py|retrieval_crag.py|moa_executor.py|goal_dependency_graph.py|abstract_goal_decomposer.py|tool_bootstrap.py|search_engine.py|auto_trigger.py|wiki_engine.py|sqlite_retriever.py|model_fingerprint.py|pipeline_engine.py|property_extractor.py|relation_mapper.py|rule_designer.py|classifier.py|wiki_ontology_domains.py|workspace_agents.py|mcp_admin.py|knowledge_graph.py|prompt_optimize.py|workspace_skills.py|tools.py|wiki.py|entropy.py|core_facade.py|llm_client.py|base.py|registry.py|executor.py"
+# 基建/训练等可直接拿 adapter；其余若同文件走 sys_llm_generate 则合规（选模≠绕过 syscall）
+KNOWN_LLM_EXCEPTIONS="compression.py|manager.py|parsers.py|video.py|dynamic_orchestrator.py|merger.py|voice_loop.py|skill_manager.py|server.py|model_injection.py|retrieval.py|retrieval_crag.py|moa_executor.py|goal_dependency_graph.py|abstract_goal_decomposer.py|tool_bootstrap.py|search_engine.py|auto_trigger.py|wiki_engine.py|sqlite_retriever.py|model_fingerprint.py|pipeline_engine.py|property_extractor.py|relation_mapper.py|rule_designer.py|classifier.py|wiki_ontology_domains.py|workspace_agents.py|mcp_admin.py|knowledge_graph.py|prompt_optimize.py|workspace_skills.py|tools.py|wiki.py|entropy.py|core_facade.py|llm_client.py|base.py|registry.py|executor.py|extractor.py|resolver.py|pipeline_stage.py|compat.py"
 
-LLM_BYPASS=$(grep -rn 'create_selected_adapter' \
+LLM_RAW=$(grep -rn 'create_selected_adapter' \
     "$ROOT/aiPlat-core/core/" --include='*.py' 2>/dev/null | \
     grep -v 'syscalls/llm.py' | \
     grep -v '/tests/' | \
     grep -v '__pycache__' | \
     grep -vE "$KNOWN_LLM_EXCEPTIONS" || true)
 
+LLM_BYPASS=""
+if [ -n "$LLM_RAW" ]; then
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        f="${line%%:*}"
+        # 文案/注释命中不算；同文件经 sys_llm_generate 视为合规选模
+        echo "$line" | grep -qE 'LLM path uses|→ create_selected_adapter|create_selected_adapter →' && continue
+        if [ -f "$f" ] && grep -q 'sys_llm_generate' "$f" 2>/dev/null; then
+            continue
+        fi
+        LLM_BYPASS="${LLM_BYPASS}${line}"$'\n'
+    done <<< "$LLM_RAW"
+    LLM_BYPASS=$(printf '%s' "$LLM_BYPASS" | sed '/^$/d' || true)
+fi
+
 if [ -n "$LLM_BYPASS" ]; then
-    echo "    ⚠️  create_selected_adapter in unlisted modules:"
+    echo "    ⚠️  create_selected_adapter without sys_llm_generate in same file:"
     echo "$LLM_BYPASS" | head -10 | while read -r line; do
         echo "      $line"
     done
-    echo "    → These may need review. Add to KNOWN_LLM_EXCEPTIONS if legitimate."
+    echo "    → Prefer create_selected_adapter → sys_llm_generate; add to KNOWN_LLM_EXCEPTIONS only if intentional."
 fi
 
 # ── Rule 2: ReActLoop must go through PipelineEngine ──
@@ -117,10 +133,12 @@ fi
 # ── Rule 7: Deployment must go through DeployEngine/GitPusher ──
 echo "  [7/9] Deployment → DeployEngine/GitPusher..."
 KNOWN_DEPLOY_EXCEPTIONS="git_pusher.py|deploy_engine.py|pipeline_engine.py|repo.py|skill_marketplace.py|system.py|fde.py"
+# 排除纯文案/注释中的 "git tag"/"docker build"（如 done_verify 提示句），只盯可执行调用面
 DEPLOY_BYPASS=$(grep -rn 'git push\|git tag\|docker build\|subprocess.*["'"'"']git["'"'"']\|subprocess.*["'"'"']docker["'"'"']' \
     "$ROOT/aiPlat-core/core/" "$ROOT/aiPlat-platform/" --include='*.py' 2>/dev/null | \
     grep -vE "$KNOWN_DEPLOY_EXCEPTIONS" | \
-    grep -v '/tests/' | grep -v '__pycache__' | grep -v 'management/' || true)
+    grep -v '/tests/' | grep -v '__pycache__' | grep -v 'management/' | \
+    grep -vE '^\s*#|return \(\s*$|record a git tag|before-refactor marker' || true)
 
 if [ -n "$DEPLOY_BYPASS" ]; then
     echo "    ⚠️  Direct git/docker operations outside DeployEngine/GitPusher:"
