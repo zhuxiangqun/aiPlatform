@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3046
+total_capabilities: 3050
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2823,7 +2823,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 580
+    caps_count: 584
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -5071,6 +5071,22 @@ domains:
       - symbol: "transition_fact_review"
         type: "function"
         signature: "W3 N12: fact review_status transition with audit"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "assert_reviewer_role"
+        type: "function"
+        signature: "N04/N12: assert configured reviewer role for publish"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "allowed_reviewer_roles"
+        type: "function"
+        signature: "N04/N12: configured reviewer roles tuple"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "run_reviewer_rbac_suite"
+        type: "function"
+        signature: "N04/N12: reviewer rbac suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "evaluate_reviewer_rbac_gate"
+        type: "function"
+        signature: "N04/N12: reviewer rbac gate (certified=false)"
         module: "core/harness/knowledge_pipeline/fact_state_machine.py"
       - symbol: "transition_fact_lifecycle"
         type: "function"

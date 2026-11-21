@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3910
+total_capabilities: 3914
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1326,7 +1326,8 @@ scan_hash: 8f9548ec24f4
 | **Conformance Pack（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/conformance_pack.py` + CoreFacade build/gate + FDE `/conformance-pack*` | ✅ | 附录 N 机读目录 `n24-conformance-catalog.yaml`；§9.4 认证槽位；证据路径校验；结构门槛门；`certified`/`n24_full_conformance` 恒 false。证据 `phase2-conformance-pack-evidence.md`。**未宣称** 24/24 / Core / SLO。生成物适用：已接线（经 Facade） | 本批 |
 | **Implementer Semantics（v4.3.1 W10 / N18 最小切片）** | `harness/knowledge_pipeline/implementer_semantics.py` + CoreFacade run/gate + FDE `/implementer-semantics*` | ✅ | conformance README 真实实现探针：Raw 不可变 / published 拒空 evidence / citation 解析 / 跨租户隔离 / customer_action 审计+幂等；门槛门；`certified` 恒 false。证据 `phase2-implementer-semantics-evidence.md`。**未宣称** 生产 RBAC 源替换 / N18 全量 / 24/24。生成物适用：已接线（经 Facade） | 本批 |
 | **Source Policy / Conflict（v4.3.1 W3 / N04）** | `harness/knowledge_pipeline/source_policy.py` + CoreFacade register/scan/adjudicate/put_fact_with_source_policy/gate + FDE `/source-policies*` `/conflicts*` | ✅ | 附录 K + 写入硬门：策略登记；冲突不自动选边；人审；published 经 transition（actor/reason）；`certified` 恒 false。证据 `phase2-source-policy-evidence.md`。**未宣称** N04 全量 / N24。生成物适用：已接线（经 Facade） | 本批 |
-| **Fact State Machine（v4.3.1 W3 / N12）** | `harness/knowledge_pipeline/fact_state_machine.py` + FactLedger `put_fact` 硬门/`get_fact` + CoreFacade review/lifecycle/claim/gate + FDE `/fact-state*` | ✅ | §7.5 + 写入硬门：禁直发 published；禁裸改状态；transition 审计；retracted 不删。证据 `phase2-fact-state-evidence.md` / `test_fact_write_gates_phase2.py`。**未宣称** reviewer RBAC / N12 全量。生成物适用：已接线（经 Facade） | 本批 |
+| **Fact State Machine（v4.3.1 W3 / N12）** | `harness/knowledge_pipeline/fact_state_machine.py` + FactLedger `put_fact` 硬门/`get_fact` + CoreFacade review/lifecycle/claim/gate + FDE `/fact-state*` | ✅ | §7.5 + 写入硬门：禁直发 published；禁裸改状态；transition 审计；retracted 不删。证据 `phase2-fact-state-evidence.md` / `test_fact_write_gates_phase2.py`。**未宣称** 部署 RBAC 真源 / N12 全量。生成物适用：已接线（经 Facade） | 本批 |
+| **Fact publish reviewer 角色门（v4.3.1 N04/N12 deepen）** | `assert_reviewer_role` / `run_reviewer_rbac_suite` / `evaluate_reviewer_rbac_gate` + Facade + HTTP `role` | ✅ | publish transition 须配置角色；env 可 opt-out；certified 恒 false。证据 `phase2-reviewer-rbac-evidence.md`。**未宣称** 部署 RBAC 真源 / N04/N12 certified。生成物适用：已接线 | 本批 |
 | **Knowledge SDK（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/sdk_generator.py` + CoreFacade + `GET/POST …/fde/sdk/*` | ✅ | 附录 E.3；ObjectType→Client 表面/Python 源码仅经 Facade；`kb:read` L1。证据 `phase2-sdk-evidence.md`。**未宣称** 多语言包发布/字段 ACL/N24 | 本批 |
 | **Knowledge SLO 遥测接线（v4.3.1 F1 deepen）** | `harness/knowledge_pipeline/slo_telemetry.py` + CoreFacade + `GET/POST …/fde/slo/*` | ✅ | 白皮书 §14 三指标采集/快照/接线门；wiring≠attainment。证据 `phase2-slo-telemetry-wiring-evidence.md`。**未宣称** 生产达标/告警/Full unconditional | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
@@ -1439,6 +1440,7 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| allowed_reviewer_roles | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | 自动同步 | 已合入 |
 | require_unified_query_route | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
 | unified_query_gateway_routes | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_fact_unified_query_gateway_gate | `core/api/core_facade.py` | ✅ | N06 统一 Gateway 门槛门 Facade | 本批 |
@@ -1449,6 +1451,9 @@ scan_hash: 8f9548ec24f4
 | unified_query_gateway | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 fact/object_set→F.1 | 本批 |
 | evaluate_claim_status_write_gate | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写门槛门；certified 恒 false | 本批 |
 | run_claim_status_write_suite | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写套件；certified 恒 false | 本批 |
+| evaluate_reviewer_rbac_gate | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N04/N12 reviewer 角色门槛门；certified 恒 false | 本批 |
+| run_reviewer_rbac_suite | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N04/N12 reviewer 角色门套件；certified 恒 false | 本批 |
+| assert_reviewer_role | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N04/N12 publish 角色校验 | 本批 |
 | transition_claim_status | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写路径；certified 恒 false | 本批 |
 | evaluate_fact_datasource_connector_matrix_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | fact_ledger_run_datasource_connector_matrix_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4811,9 +4816,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 760 | 1 | 761 |
+| Harness 执行引擎 | 761 | 1 | 762 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 655 | 9 | 664 |
+| 知识引擎（本体） | 658 | 9 | 667 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4856,7 +4861,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3899** | **11** | **3910** |
+| **总计** | **3903** | **11** | **3914** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -15,6 +15,10 @@ class FactTransitionBody(BaseModel):
     to_status: str = Field(..., min_length=1)
     actor: str = Field(..., min_length=1)
     reason: str = Field(..., min_length=1)
+    role: str = Field(
+        "",
+        description="caller role for N04/N12 reviewer RBAC (required on publish)",
+    )
 
 
 class ValidateSequenceBody(BaseModel):
@@ -90,11 +94,11 @@ async def transition_fact_review_route(
     body: FactTransitionBody = Body(...),
     tenant_id: str = Query(..., description="tenant id (required)"),
 ):
-    """审核态转换。
+    """审核态转换（publish 须 body.role）。
 
     Args:
         fact_id: Fact ID。
-        body: 目标态与人因。
+        body: 目标态、人因与角色。
         tenant_id: 租户。
     """
     from core.api.core_facade import transition_fact_review
@@ -106,6 +110,7 @@ async def transition_fact_review_route(
             to_status=body.to_status,
             actor=body.actor,
             reason=body.reason,
+            role=body.role,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

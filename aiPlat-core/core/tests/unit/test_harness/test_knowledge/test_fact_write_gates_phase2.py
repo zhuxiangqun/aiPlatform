@@ -211,6 +211,7 @@ async def test_transition_publish_blocked_by_open_conflict(
             actor="r1",
             reason="publish",
             source_policy_db_path=sp_db,
+            role="reviewer",
         )
     adjudicate_conflict(
         conflict_id=conflicts[0]["conflict_id"],
@@ -228,5 +229,6 @@ async def test_transition_publish_blocked_by_open_conflict(
         actor="r1",
         reason="publish",
         source_policy_db_path=sp_db,
+        role="reviewer",
     )
     assert published["fact"]["review_status"] == "published"
