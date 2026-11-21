@@ -380,6 +380,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-action-store-tenant-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-action-store-tenant-backfill-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-fact-query-stream-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-streams-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-fact-query-bus-hotpath-evidence.md
       - docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py

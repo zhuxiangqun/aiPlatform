@@ -1,7 +1,8 @@
 /**
- * UnifiedAuditPanel — N24 Batch J4 统一审计只读管理端薄 UI。
+ * UnifiedAuditPanel — N24 Batch J4/J12 统一审计只读管理端薄 UI。
  *
- * 经 FDE `/unified-audit*`（J3）→ CoreFacade；不写总线；不宣称 certified。
+ * 经 FDE `/unified-audit*`（J3）→ CoreFacade；J12 暴露 action_store / fact_query_audit 过滤；
+ * 不写总线；不宣称 certified。
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
@@ -27,10 +28,12 @@ function detailMessage(detail: unknown): string {
 }
 
 const STREAM_OPTIONS = [
-  { id: 'all', label: '三流全部' },
+  { id: 'all', label: '全部流' },
   { id: 'package', label: 'package' },
   { id: 'action_execution', label: 'action_execution' },
   { id: 'revision_audit', label: 'revision_audit' },
+  { id: 'action_store', label: 'action_store' },
+  { id: 'fact_query_audit', label: 'fact_query_audit' },
 ] as const;
 
 const UnifiedAuditPanel: React.FC = () => {
@@ -95,7 +98,7 @@ const UnifiedAuditPanel: React.FC = () => {
       const gate = await gateRes.json().catch(() => ({}));
       if (!gateRes.ok) throw new Error(detailMessage(gate.detail));
       const certified = Boolean(gate.certified);
-      setGateNote(`suite ok · gate certified=${certified}（J4 诚实锁：须为 false）`);
+      setGateNote(`suite ok · gate certified=${certified}（J4/J12 诚实锁：须为 false）`);
       if (certified) {
         toast?.error?.('gate.certified 为 true — 违反诚实锁');
       } else {
@@ -113,7 +116,7 @@ const UnifiedAuditPanel: React.FC = () => {
       <CardHeader className="flex flex-row items-center justify-between gap-2 py-3 px-4">
         <div className="flex items-center gap-2 text-sm text-gray-200">
           <ListTree className="h-4 w-4 text-sky-300/90" />
-          <span>Unified Audit 视图（N24 J4）</span>
+          <span>Unified Audit 视图（N24 J4/J12）</span>
           <span className="text-[11px] text-gray-500 font-normal">
             只读汇合 · 非写总线 · 非 certified
           </span>
@@ -136,8 +139,8 @@ const UnifiedAuditPanel: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-4 px-4 pb-4">
         <p className="text-[11px] text-gray-500 leading-relaxed">
-          展示 Package / ActionExecution / revision_audit 三流只读汇合。
-          不写入统一总线表，也不合并 ActionStore <code className="text-gray-400">action_audit</code>。
+          展示 Package / ActionExecution / revision_audit / action_store / fact_query_audit
+          只读汇合（可按流过滤）。本面板不写总线；不宣称 certified。
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
