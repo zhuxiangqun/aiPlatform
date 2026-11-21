@@ -187,6 +187,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
     }
     if attach_n21_query:
         # 为什么：list 主结构保留；Q&A 消费方可读 n21_query 防假绿
+        n21_ok = False
         try:
             from core.harness.knowledge_pipeline.query_abstain_citations import (
                 attach_list_retrieve_n21_envelope,
@@ -198,10 +199,30 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
                 query=question or "",
                 tenant_id=tenant_id or "",
             )
+            n21_ok = True
         except Exception as e:
             logging.warning(
                 "sys_wiki_context n21_query attach failed: %s", e, exc_info=True
             )
+        if not n21_ok and (tenant_id or "").strip():
+            # 为什么：信封失败时裸 list 已关审计；须兜底落 N19，避免 Agent 旁路漏快照
+            try:
+                from core.harness.knowledge_pipeline.fact_query_audit import (
+                    maybe_record_wiki_kb_hotpath,
+                )
+
+                out = maybe_record_wiki_kb_hotpath(
+                    tenant_id=tenant_id,
+                    response=out,
+                    channel="wiki_context",
+                    query=question or "",
+                )
+            except Exception as e:
+                logging.warning(
+                    "sys_wiki_context N19 audit fallback failed: %s",
+                    e,
+                    exc_info=True,
+                )
     return out
 
 

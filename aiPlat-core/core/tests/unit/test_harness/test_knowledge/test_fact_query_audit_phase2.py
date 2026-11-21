@@ -24,6 +24,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "bare_list_hotpath_entry" in ids
     assert "kb_qa_hotpath_entry" in ids
     assert "knowledge_retrieve_hotpath_entry" in ids
+    assert "wiki_context_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -314,3 +315,30 @@ def test_unified_kinds_share_fields(tmp_path):
         assert "after_snapshot" in item
         assert "runtime_authority" in item
         assert item["certified"] is False
+
+
+def test_wiki_context_n21_fail_falls_back_to_audit(tmp_path, monkeypatch):
+    """sys_wiki_context：n21 信封失败时仍兜底落 N19 Query 快照。"""
+    db = str(tmp_path / "fqa-wc.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("n21 attach forced fail")
+
+    monkeypatch.setattr(
+        "core.harness.knowledge_pipeline.query_abstain_citations.attach_list_retrieve_n21_envelope",
+        _boom,
+    )
+    monkeypatch.setattr(
+        "core.harness.syscalls.retrieval.sys_wiki_retrieve",
+        lambda *_a, **_k: [{"title": "t1", "text": "body", "source": "wiki"}],
+    )
+
+    from core.harness.syscalls.wiki_context import sys_wiki_context
+
+    out = sys_wiki_context("q?", tenant_id="t-wc", attach_n21_query=True)
+    assert isinstance(out, dict)
+    listed = fqa.list_audit_snapshots(tenant_id="t-wc", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "wiki_context"
