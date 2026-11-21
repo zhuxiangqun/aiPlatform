@@ -33,7 +33,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 | N18 | 实现方 5 探针 + 部署侧 RBAC 真源（禁 reference_policy 作权威）；非召回/聚合/导出/缓存全路径 / 非 certified | 至 N18 全量/签字 | implementer-semantics + `phase2-deployed-rbac-evidence.md` |
 | N19 | customer_action before/after + Fact/Query 统一审计快照；非热路径强制落盘 / 非 N24 总线全量 / 非 certified | 至 N19 全量/签字 | action-execution + `phase2-fact-query-audit-evidence.md` |
 | N20 | L1+审批 + 知识面 L1>L2>L3 约束栈；非全域强制分层 / 非 Lv4 / 非 certified | 至 N20 全量/签字 | g2/function/action + `phase2-constraint-layers-evidence.md` |
-| N21 | OCS/校准诚实锁 + Fact/object_set + Wiki/KB 查询形 + MaterialsChat RAG/trivial 捷径 + GraphRAG 信封 abstain；非 cache_hit 全量 / 非 list API 改写 / 非 certified | 至 N21 全量/签字 | ocs/calibration + `phase2-query-abstain-citations-evidence.md` |
+| N21 | OCS/校准诚实锁 + Fact/object_set + Wiki/KB 查询形 + MaterialsChat RAG/trivial/cache_hit + GraphRAG 信封 abstain；非 list API 改写 / 非 certified | 至 N21 全量/签字 | ocs/calibration + `phase2-query-abstain-citations-evidence.md` |
 | N07/N22 | ObjectSet + link.traverse ACL + 嵌套 filter + 配置驱动角色×动作轴；非 Wiki/KB 全入口 / 非部署 RBAC 真源 / 非 certified | 至 N07/N22 全量/签字 | ABox ACL + `phase2-objectset-filter-evidence.md` + `phase2-role-action-matrix-evidence.md` |
 | N08 | Registry Policy/Approval/Audit + kill switch；require_approval 强制入队；Lv4 误报门 v2（禁 0 样本假绿 + rollback）；非全量 Action Lv4 / 非 certified | 至 N08 全量/签字 | ActionRegistry + `phase2-action-policy-audit-evidence.md` + `phase2-lv4-false-positive-gate-evidence.md` |
 | N11/N14 | 本地双写对账 + 作业级切写授权（token）+ Raw↔Fact↔Index 全链路 deepen；非生产切写认证 / 非 certified | 至 N11/N14 全量/签字 | migration + cutover-auth + `phase2-raw-fact-index-reconcile-evidence.md` |
