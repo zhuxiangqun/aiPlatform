@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3098
+total_capabilities: 3107
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 629
+    caps_count: 638
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3690,6 +3690,42 @@ domains:
         module: aiPlat-platform/apps/fde/api/record_semantics_routes.py
         type: function
         signature: "POST /fde/record-semantics/suite via Facade"
+      - symbol: "load_deployed_policy"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: function
+        signature: "N18: load deployed RBAC (no reference_policy)"
+      - symbol: "evaluate_permission"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: function
+        signature: "N18: deployed permission eval (certified=false)"
+      - symbol: "run_deployed_rbac_suite"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: function
+        signature: "N18: deployed RBAC suite (certified=false)"
+      - symbol: "evaluate_deployed_rbac_gate"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: function
+        signature: "N18: deployed RBAC gate (certified=false)"
+      - symbol: "DeployedRbacError"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: class
+        signature: "N18: deployed RBAC contract error"
+      - symbol: "load_deployed_rbac_policy"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N18: Facade load deployed RBAC"
+      - symbol: "evaluate_deployed_rbac_permission"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N18: Facade permission eval (certified=false)"
+      - symbol: "evaluate_deployed_rbac_permission_route"
+        module: aiPlat-platform/apps/fde/api/deployed_rbac_routes.py
+        type: function
+        signature: "POST /fde/deployed-rbac/permission via Facade"
+      - symbol: "run_deployed_rbac_suite_route"
+        module: aiPlat-platform/apps/fde/api/deployed_rbac_routes.py
+        type: function
+        signature: "POST /fde/deployed-rbac/suite via Facade"
       - symbol: "project_facts_to_wiki"
         module: core/harness/knowledge_pipeline/wiki_rebuild.py
         type: function

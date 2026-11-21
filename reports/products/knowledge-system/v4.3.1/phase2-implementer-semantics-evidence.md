@@ -41,7 +41,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做（后续）
 
-- 替换 `reference_policy.json` 为部署侧 RBAC/ACL 真源
+- 部署侧 RBAC 真源 deepen 见 `phase2-deployed-rbac-evidence.md`（本文件不重复宣称）
 - 外部对账 adapter 全路径（unknown→succeeded/failed）
 - `semantic_cases.json` 全量状态机序列对真实 Fact Store
-- 宣称 N18 全量 / Core 符合
+- 召回/聚合/导出/缓存全路径强制经部署源；宣称 N18 全量 / Core 符合

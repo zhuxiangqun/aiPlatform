@@ -32,7 +32,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 | N15 | 标准包 schema 已发布 | **已过时**（无 deepen 债） | 保持 exists；无单独 deepen todo |
 | N16 | phase0 schema validate | **已过时**（无 deepen 债） | 同上 |
 | N17 | 记录级语义运行时权威 deepen 已接线；非 RBAC 真源 / 非全量 cases | **并入既有刀**（deepen）+ **仍开放**（全量） | deepen 见 ADR N17 + `phase2-record-semantics-evidence.md`；全量仍开放 |
-| N18 | 非生产 RBAC 源替换 / 非 certified | **仍开放** | `n18-a`；与 N04/N12「非部署 RBAC」相邻但不可合并宣称 |
+| N18 | 部署侧 RBAC 真源 deepen 已接线；非召回全路径 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（全路径） | deepen 见 ADR N18 + `phase2-deployed-rbac-evidence.md`；全路径仍开放 |
 | N19 | Fact/Query 审计快照未统一 | **仍开放** | `n19-a`；不并入 N08 Action 审计 |
 | N20 | 知识面未按标准完整 L1/L2/L3 | **仍开放** | `n20-a`；不并入 N08 Lv4 |
 | N21 | 查询统一 abstain+citations 未全覆盖 | **仍开放** | `n21-a`；不并入 N13 校准封顶 |
@@ -61,4 +61,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -c \
 ## 明确未做
 
 - 关闭任何 ADR 例外 / 置 `certified=true`
-- 全量 ObjectType 人审、Wiki 全量、gold 准确率宣称、N17 semantic_cases 全量对 Fact Store、RBAC 真源替换、Fact/Query 快照统一、L1–L3 完整分层、abstain+citations 全覆盖、生产 Raw↔Fact↔Index 对账
+- 全量 ObjectType 人审、Wiki 全量、gold 准确率宣称、N17 semantic_cases 全量对 Fact Store、N18 召回/聚合/导出全路径、Fact/Query 快照统一、L1–L3 完整分层、abstain+citations 全覆盖、生产 Raw↔Fact↔Index 对账

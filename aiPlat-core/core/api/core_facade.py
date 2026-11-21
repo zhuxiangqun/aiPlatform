@@ -18344,6 +18344,78 @@ def evaluate_record_semantics_gate(suite: Optional[dict] = None) -> dict:
 
     return _gate(suite)
 
+
+def load_deployed_rbac_policy(
+    *,
+    policy_json: Optional[str] = None,
+    policy_path: Optional[str] = None,
+) -> dict:
+    """CoreFacade：加载部署侧 RBAC 策略（N18；禁 reference_policy）。
+
+    Args:
+        policy_json: 可选 JSON。
+        policy_path: 可选路径。
+    """
+    from core.harness.knowledge_pipeline.deployed_rbac_policy import (
+        load_deployed_policy,
+    )
+
+    return load_deployed_policy(policy_json=policy_json, policy_path=policy_path)
+
+
+def evaluate_deployed_rbac_permission(
+    *,
+    role: str,
+    action: str,
+    actor_tenant: str,
+    target_tenant: str,
+    policy_json: Optional[str] = None,
+) -> dict:
+    """CoreFacade：部署侧权限评估（N18；certified 恒 false）。
+
+    Args:
+        role: 角色。
+        action: 动作。
+        actor_tenant: 调用方租户。
+        target_tenant: 目标租户。
+        policy_json: 可选策略 JSON。
+    """
+    from core.harness.knowledge_pipeline.deployed_rbac_policy import (
+        evaluate_permission,
+        load_deployed_policy,
+    )
+
+    pol = load_deployed_policy(policy_json=policy_json) if policy_json else None
+    return evaluate_permission(
+        role=role,
+        action=action,
+        actor_tenant=actor_tenant,
+        target_tenant=target_tenant,
+        policy=pol,
+    )
+
+
+def run_deployed_rbac_suite() -> dict:
+    """CoreFacade：N18 部署侧 RBAC 套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.deployed_rbac_policy import (
+        run_deployed_rbac_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_deployed_rbac_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N18 部署侧 RBAC 门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_deployed_rbac_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.deployed_rbac_policy import (
+        evaluate_deployed_rbac_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
