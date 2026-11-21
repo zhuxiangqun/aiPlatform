@@ -110,7 +110,10 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-wiki-readonly-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-rebuild-taxonomy-evidence.md
-    note: "Extended-scoped exists (附录 N.3); 三分类 rebuild_mode+reason+门槛门；非 Wiki 全量/certified"
+      - reports/products/knowledge-system/v4.3.1/phase2-wiki-rebuild-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/wiki_rebuild.py
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_wiki_rebuild_phase2.py
+    note: "Extended-scoped exists (附录 N.3); 三分类 + Fact→Wiki 派生页有条件重建；非 wiki_engine/FTS 全量/非 certified"
   - id: N06
     level: core
     title: Gateway 查询契约

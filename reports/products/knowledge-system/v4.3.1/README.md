@@ -35,6 +35,7 @@ authority: supporting
 | [phase2-scenario-evidence.md](./phase2-scenario-evidence.md) | Phase 2 W9 Knowledge Scenario（模拟不写主事实 + 合并人审） |
 | [phase2-ontology-package-evidence.md](./phase2-ontology-package-evidence.md) | Phase 2 W9 Ontology Package（版本/哈希校验 + 兼容 + 依赖锁定 + 回滚） |
 | [phase2-object-type-publish-evidence.md](./phase2-object-type-publish-evidence.md) | N02 deepen：ObjectType 人审发布（角色门；非 certified） |
+| [phase2-wiki-rebuild-evidence.md](./phase2-wiki-rebuild-evidence.md) | N05 deepen：Wiki 有条件重建派生页（非 wiki_engine 全量/非 certified） |
 | [phase2-calibration-pipeline-evidence.md](./phase2-calibration-pipeline-evidence.md) | N13 deepen：Operational 校准流水线（查询路径封顶；非真实 ECE/非 certified） |
 | [phase2-ocs-enterprise-scan-evidence.md](./phase2-ocs-enterprise-scan-evidence.md) | N23 deepen：企业域 OCS 扫描（DomainRouter+词汇预注册；非全域完整/非 certified） |
 | [phase2-confidence-calibration-evidence.md](./phase2-confidence-calibration-evidence.md) | W10 Confidence Calibration（附录 O 门槛 + 失败降级 medium） |

@@ -18120,6 +18120,79 @@ def validate_fact_rebuild_receipt(receipt: dict) -> dict:
 
     return _gate(receipt or {})
 
+
+async def fact_ledger_project_to_wiki(
+    *,
+    tenant_id: str,
+    domain_id: str,
+    clear_projected: bool = False,
+    rebuild_mode: str = "",
+    rebuild_reason: str = "",
+    exact_capable: bool = True,
+) -> dict:
+    """CoreFacade：Fact → Wiki 派生页重建（N05 deepen；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 域。
+        clear_projected: 是否先清除该域派生页。
+        rebuild_mode: 可选三分类 mode。
+        rebuild_reason: 分类理由。
+        exact_capable: 是否可精确重放。
+    """
+    from core.harness.knowledge_pipeline.wiki_rebuild import project_facts_to_wiki
+
+    return await project_facts_to_wiki(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        clear_projected=clear_projected,
+        rebuild_mode=rebuild_mode or None,
+        rebuild_reason=rebuild_reason or "",
+        exact_capable=exact_capable,
+    )
+
+
+def list_wiki_rebuild_pages(
+    *,
+    tenant_id: str,
+    domain_id: str = "",
+    limit: int = 200,
+) -> list:
+    """CoreFacade：列出 Wiki 重建派生页（租户前置）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        limit: 最大条数。
+    """
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        list_wiki_rebuild_pages as _list,
+    )
+
+    return _list(tenant_id=tenant_id, domain_id=domain_id, limit=limit)
+
+
+async def run_wiki_rebuild_suite() -> dict:
+    """CoreFacade：N05 Wiki 有条件重建套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        run_wiki_rebuild_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_wiki_rebuild_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N05 Wiki 重建门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_wiki_rebuild_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        evaluate_wiki_rebuild_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
