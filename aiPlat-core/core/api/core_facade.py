@@ -18820,6 +18820,33 @@ def attach_graphrag_n21_envelope(
     )
 
 
+def attach_list_retrieve_n21_envelope(
+    *,
+    hits: Any,
+    channel: str,
+    query: str = "",
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：Wiki/KB list 命中挂 n21_query（N21；不改 list 主结构）。
+
+    Args:
+        hits: list 命中或含 results 的上下文 dict。
+        channel: wiki / kb / wiki_context。
+        query: 原始查询。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        attach_list_retrieve_n21_envelope as _a,
+    )
+
+    return _a(
+        hits,
+        channel=channel,
+        query=query,
+        require_citations_on_hit=require_citations_on_hit,
+    )
+
+
 async def reconcile_raw_fact_index_chain(
     *,
     tenant_id: str,

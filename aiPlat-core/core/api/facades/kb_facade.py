@@ -10,7 +10,14 @@ from core.harness.knowledge.domain_router import DomainRouter
 
 
 
-def kb_retrieve(query: str, doc_ids: Any, tenant_id: Optional[str] = None, **kwargs: Any) -> Any:
+def kb_retrieve(
+    query: str,
+    doc_ids: Any,
+    tenant_id: Optional[str] = None,
+    *,
+    attach_n21_query: bool = False,
+    **kwargs: Any,
+) -> Any:
 
     """Low-level KB chunk retrieve (sys_kb_retrieve).
 
@@ -19,11 +26,23 @@ def kb_retrieve(query: str, doc_ids: Any, tenant_id: Optional[str] = None, **kwa
 
     Args:
         tenant_id: Required for multi-tenant data isolation (§5.62).
+        attach_n21_query: True 时返回 ``{hits, n21_query}``（不改 list 主命中）。
     """
 
     from core.harness.syscalls.retrieval import sys_kb_retrieve
 
-    return sys_kb_retrieve(query, doc_ids, **kwargs)
+    hits = sys_kb_retrieve(query, doc_ids, **kwargs)
+    if not attach_n21_query:
+        return hits
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        attach_list_retrieve_n21_envelope,
+    )
+
+    return attach_list_retrieve_n21_envelope(
+        hits if isinstance(hits, list) else [],
+        channel="kb",
+        query=str(query or ""),
+    )
 
 
 
@@ -71,18 +90,36 @@ async def kb_qa_retrieve(
 
 
 
-def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
+def wiki_retrieve(
+    query: str,
+    wiki_titles: list = None,
+    *,
+    attach_n21_query: bool = False,
+    **kwargs: Any,
+) -> Any:
 
     """wiki_retrieve。
 
     Args:
         query: 查询。
         wiki_titles: wiki_titles 参数。
+        attach_n21_query: True 时返回 ``{hits, n21_query}``（不改 list 主命中）。
         kwargs: kwargs 参数。
     """
     from core.harness.syscalls.retrieval import sys_wiki_retrieve
 
-    return sys_wiki_retrieve(query, wiki_titles, **kwargs)
+    hits = sys_wiki_retrieve(query, wiki_titles, **kwargs)
+    if not attach_n21_query:
+        return hits
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        attach_list_retrieve_n21_envelope,
+    )
+
+    return attach_list_retrieve_n21_envelope(
+        hits if isinstance(hits, list) else [],
+        channel="wiki",
+        query=str(query or ""),
+    )
 
 
 

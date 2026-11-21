@@ -4,10 +4,11 @@
   - 统一校验/归一化查询响应：abstain 无 citations/answer；有命中须 citations（可选强制）
   - 覆盖 Fact Gateway + object_set + Wiki/KB 查询形 + MaterialsChat RAG 出口
     + 非 RAG 捷径（time/math/greeting）+ cache_hit + GraphRAG 信封
+    + list 命中挂 ``n21_query`` 信封（不改 list 主结构）
   - 套件/门槛门：``certified`` / ``n21_full`` 恒 false
 
 非目标：
-  - 不改写 ``sys_wiki_retrieve`` / ``sys_kb_retrieve`` list API 返回形
+  - 不改写 ``sys_wiki_retrieve`` / ``sys_kb_retrieve`` list 主返回类型
   - 不并入 N13 校准封顶宣称
   - 不宣称 N21 certified
 """
@@ -17,7 +18,7 @@ import logging
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ _SUITE_CASES = (
     "materials_path",
     "materials_shortcut_path",
     "materials_cache_hit_path",
+    "list_query_shape_path",
     "graphrag_path",
     "honesty_certified_false",
 )
@@ -170,6 +172,43 @@ def pack_retrieve_hits_as_query_response(
         "certified": False,
         "n21_full_conformance": False,
     }
+
+
+def attach_list_retrieve_n21_envelope(
+    hits: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]],
+    *,
+    channel: str,
+    query: str = "",
+    require_citations_on_hit: bool = True,
+) -> Dict[str, Any]:
+    """给 Wiki/KB list 命中附加 ``n21_query`` 信封（不改 list 主结构）。
+
+    Args:
+        hits: list 命中，或含 ``results`` 的上下文 dict（如 sys_wiki_context）。
+        channel: ``wiki`` / ``kb`` / ``wiki_context``。
+        query: 原始查询。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    if isinstance(hits, dict):
+        out = dict(hits)
+        raw_hits = out.get("results")
+        if not isinstance(raw_hits, list):
+            raw_hits = out.get("hits") if isinstance(out.get("hits"), list) else []
+        list_hits = [h for h in raw_hits if isinstance(h, dict)]
+    else:
+        list_hits = [h for h in (hits or []) if isinstance(h, dict)]
+        out = {"hits": list_hits}
+    packed = pack_retrieve_hits_as_query_response(
+        list_hits, channel=channel, query=query
+    )
+    enforced = enforce_abstain_citations(
+        packed, require_citations_on_hit=require_citations_on_hit
+    )
+    out["n21_query"] = enforced
+    out["n21_list_enforced"] = True
+    out["certified"] = False
+    out["n21_full_conformance"] = False
+    return out
 
 
 def query_wiki_with_abstain(
@@ -530,6 +569,8 @@ def evaluate_query_abstain_citations_gate(
         issues.append("materials_shortcut_entry_required")
     if s.get("materials_cache_hit_entry") is not True:
         issues.append("materials_cache_hit_entry_required")
+    if s.get("list_query_shape_entry") is not True:
+        issues.append("list_query_shape_entry_required")
     cases = s.get("cases") or []
     if cases:
         failed = [c for c in cases if isinstance(c, dict) and not c.get("ok")]
@@ -553,9 +594,10 @@ def evaluate_query_abstain_citations_gate(
         "materials_graphrag_entry": True,
         "materials_shortcut_entry": True,
         "materials_cache_hit_entry": True,
+        "list_query_shape_entry": True,
         "note": (
-            "Abstain+citations + Wiki/KB + MaterialsChat RAG/shortcut/cache_hit + GraphRAG; "
-            "not N21 certified / not list API rewrite"
+            "Abstain+citations + Wiki/KB + Materials + GraphRAG + list n21_query envelope; "
+            "not N21 certified / not rewrite list primary return type"
         ),
     }
 
@@ -896,6 +938,46 @@ async def run_query_abstain_citations_suite(
             }
         )
 
+        # list 主结构不变：挂 n21_query；无 source 假命中 → abstain
+        list_ok = attach_list_retrieve_n21_envelope(
+            [{"title": "L1", "text": "list hit", "source": "wiki:L1"}],
+            channel="wiki",
+            query="list hit",
+        )
+        list_fake = attach_list_retrieve_n21_envelope(
+            [{"text": "orphan list", "score": 0.2}],
+            channel="kb",
+            query="orphan",
+        )
+        list_ctx = attach_list_retrieve_n21_envelope(
+            {
+                "results": [
+                    {"title": "C1", "text": "ctx hit", "source": "wiki:C1"}
+                ],
+                "fts5_matches": [],
+                "related_pages": [],
+            },
+            channel="wiki_context",
+            query="ctx",
+        )
+        list_env = list_ok.get("n21_query") or {}
+        cases.append(
+            {
+                "id": "list_query_shape_path",
+                "ok": (
+                    list_ok.get("n21_list_enforced") is True
+                    and isinstance(list_ok.get("hits"), list)
+                    and list_env.get("abstained") is False
+                    and bool(list_env.get("citations"))
+                    and (list_fake.get("n21_query") or {}).get("abstained") is True
+                    and isinstance(list_ctx.get("results"), list)
+                    and (list_ctx.get("n21_query") or {}).get("abstained") is False
+                    and list_ok.get("certified") is False
+                ),
+                "detail": "",
+            }
+        )
+
         cases.append(
             {
                 "id": "honesty_certified_false",
@@ -906,7 +988,8 @@ async def run_query_abstain_citations_suite(
                 and mat_ok.get("n21_full_conformance") is False
                 and sc_ok.get("n21_full_conformance") is False
                 and ch_ok.get("n21_full_conformance") is False
-                and gr_ok.get("n21_full_conformance") is False,
+                and gr_ok.get("n21_full_conformance") is False
+                and list_ok.get("n21_full_conformance") is False,
                 "detail": "",
             }
         )
@@ -923,10 +1006,11 @@ async def run_query_abstain_citations_suite(
             "materials_graphrag_entry": True,
             "materials_shortcut_entry": True,
             "materials_cache_hit_entry": True,
+            "list_query_shape_entry": True,
             "measured_at": time.time(),
             "note": (
-                "Abstain+citations + Wiki/KB + MaterialsChat RAG/shortcut/cache_hit + GraphRAG; "
-                "not N21 certified / not list API rewrite"
+                "Abstain+citations + Wiki/KB + Materials + GraphRAG + list n21_query envelope; "
+                "not N21 certified / not rewrite list primary return type"
             ),
         }
     finally:

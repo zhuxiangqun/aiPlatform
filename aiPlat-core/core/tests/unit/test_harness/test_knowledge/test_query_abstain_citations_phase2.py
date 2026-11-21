@@ -18,12 +18,14 @@ async def test_suite_passes_and_gate_never_certifies():
     assert suite["materials_graphrag_entry"] is True
     assert suite["materials_shortcut_entry"] is True
     assert suite["materials_cache_hit_entry"] is True
+    assert suite["list_query_shape_entry"] is True
 
     gate = qac.evaluate_query_abstain_citations_gate(suite)
     assert gate["ok"] is True
     assert gate["certified"] is False
     assert gate["materials_shortcut_entry"] is True
     assert gate["materials_cache_hit_entry"] is True
+    assert gate["list_query_shape_entry"] is True
     assert gate["issues"] == []
 
 
@@ -166,3 +168,27 @@ def test_graphrag_envelope_attaches_n21_query():
     assert out["n21_graphrag_enforced"] is True
     assert out["n21_query"]["abstained"] is True
     assert out["certified"] is False
+
+
+def test_list_retrieve_envelope_keeps_hits():
+    """list 主结构保留并挂 n21_query。"""
+    out = qac.attach_list_retrieve_n21_envelope(
+        [{"title": "P", "text": "body", "source": "wiki:P"}],
+        channel="wiki",
+        query="body",
+    )
+    assert out["n21_list_enforced"] is True
+    assert isinstance(out.get("hits"), list)
+    assert out["n21_query"]["abstained"] is False
+    assert out["certified"] is False
+
+
+def test_list_retrieve_orphan_hit_abstains():
+    """无 source 的 list 命中 n21_query 必须 abstain。"""
+    out = qac.attach_list_retrieve_n21_envelope(
+        [{"text": "orphan", "score": 0.1}],
+        channel="kb",
+        query="orphan",
+    )
+    assert out["n21_query"]["abstained"] is True
+    assert out["n21_query"]["citations"] == []
