@@ -3,13 +3,13 @@
 职责：
   - 按标准分层评估约束：L1 硬门 / L2 软约束 / L3 审计
   - 强制 ``L1 > L2 > L3``：高风险无 L1 拒绝；L2 不得单独作安全边界
-  - unified_query_gateway / put_fact / query_facts_gateway / MaterialsChat
-    热路径 best-effort 挂 ``n20_constraint``（可 env 关闭）
+  - unified_query_gateway / put_fact / query_facts_gateway / MaterialsChat /
+    GraphRAG 热路径 best-effort 挂 ``n20_constraint``（可 env 关闭）
   - 套件/门槛门：``certified`` / ``n20_full`` 恒 false
 
 非目标：
   - 不重写 ActionRegistry / PolicyGate 全路径
-  - 不宣称知识面全域（Wiki/KB/GraphRAG 等）已完整分层强制
+  - 不宣称知识面全域（Wiki/KB 全入口等）已完整分层强制
   - 不并入 N08 Lv4 误报门
   - 不宣称 N20 certified
 """
@@ -34,6 +34,7 @@ _SUITE_CASES = (
     "put_fact_hotpath_entry",
     "query_facts_gateway_hotpath_entry",
     "materials_chat_hotpath_entry",
+    "graphrag_hotpath_entry",
 )
 
 _LAYERS = ("L1", "L2", "L3")
@@ -427,6 +428,64 @@ def maybe_attach_materials_chat_constraint_hotpath(
         return out
 
 
+def maybe_attach_graphrag_constraint_hotpath(
+    result: Optional[Dict[str, Any]],
+    *,
+    actor_permissions: Optional[Sequence[str]] = None,
+    risk_level: str = "medium",
+) -> Dict[str, Any]:
+    """GraphRAG 旁路热路径 best-effort 挂 ``n20_constraint``。
+
+    Args:
+        result: GraphRAG retrieve / N21 信封后的回执。
+        actor_permissions: 调用方权限（缺省视为可读）。
+        risk_level: 风险等级。
+    """
+    out = dict(result) if isinstance(result, dict) else {}
+    if not hotpath_constraint_enabled():
+        return out
+    try:
+        perms = [str(p).strip() for p in (actor_permissions or []) if str(p).strip()]
+        if not perms:
+            perms = ["kb:read"]
+        stack = evaluate_constraint_stack(
+            risk_level=risk_level or "medium",
+            required_permissions=["kb:read"],
+            actor_permissions=perms,
+            soft_constraints=[
+                {
+                    "id": "graphrag_prefer_citations",
+                    "message": "prefer citations on graphrag hits",
+                }
+            ],
+            require_audit=True,
+            l1_present=True,
+        )
+        # 为什么：检索已完成；信封仅观测，不改 n21_query / gateway_f1 裁决
+        out["n20_constraint"] = {
+            "ok": stack.get("ok"),
+            "blocked": stack.get("blocked"),
+            "block_reason": stack.get("block_reason") or "",
+            "layers_fired": list(stack.get("layers_fired") or []),
+            "warnings": list(stack.get("warnings") or []),
+            "audit": stack.get("audit") or {},
+            "route": "graphrag",
+            "op": "graphrag_retrieve",
+            "hotpath": True,
+            "enforced": False,
+            "certified": False,
+            "n20_full_conformance": False,
+        }
+        return out
+    except Exception as exc:
+        logger.warning(
+            "constraint_layers graphrag hotpath failed: %s",
+            exc,
+            exc_info=True,
+        )
+        return out
+
+
 def evaluate_constraint_layers_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -463,8 +522,8 @@ def evaluate_constraint_layers_gate(
         "n20_full_conformance": False,
         "note": (
             "Constraint layers + Gateway/put_fact/query_facts_gateway/"
-            "MaterialsChat hotpath deepen; not N20 certified / not full "
-            "surface / not Lv4 redesign"
+            "MaterialsChat/GraphRAG hotpath deepen; not N20 certified / "
+            "not full surface / not Lv4 redesign"
         ),
     }
 
@@ -629,6 +688,17 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         }
     )
 
+    from core.harness.knowledge_pipeline import query_abstain_citations as qac
+
+    gr_src = inspect.getsource(qac.attach_graphrag_n21_envelope)
+    cases.append(
+        {
+            "id": "graphrag_hotpath_entry",
+            "ok": "maybe_attach_graphrag_constraint_hotpath" in gr_src,
+            "detail": "",
+        }
+    )
+
     passed = sum(1 for c in cases if c.get("ok"))
     return {
         "ok": passed == len(_SUITE_CASES),
@@ -640,6 +710,7 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         "measured_at": time.time(),
         "note": (
             "Constraint layers + Gateway/put_fact/query_facts_gateway/"
-            "MaterialsChat hotpath deepen; not full surface / not certified"
+            "MaterialsChat/GraphRAG hotpath deepen; not full surface / "
+            "not certified"
         ),
     }
