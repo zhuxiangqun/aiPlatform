@@ -7210,6 +7210,7 @@ async def record_extraction_as_claim(
         to_status="reviewed",
         actor="extraction_confirm",
         reason="confirm extraction",
+        role="reviewer",
     )
     published = await transition_fact_review(
         ledger,
@@ -7218,5 +7219,6 @@ async def record_extraction_as_claim(
         to_status="published",
         actor="extraction_confirm",
         reason="confirm extraction",
+        role="reviewer",
     )
     return {"source": src, "claim": claim, "fact": published["fact"]}

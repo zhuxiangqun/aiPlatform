@@ -5873,10 +5873,11 @@ async def put_fact_with_source_policy(
     db_path: Optional[str] = None,
     actor: str = "",
     reason: str = "",
+    role: str = "",
     ledger: Any = None,
     **kwargs: Any,
 ) -> Dict[str, Any]:
-    """W3 N04：经来源策略/冲突门写入 Fact；published 须 actor/reason。
+    """W3 N04：经来源策略/冲突门写入 Fact；published 须 actor/reason/role。
 
     Args:
         tenant_id / collection_id / subject / predicate / object: Fact 键值。
@@ -5887,6 +5888,7 @@ async def put_fact_with_source_policy(
         confidence: 置信度。
         db_path: 策略库路径。
         actor / reason: published 时必填。
+        role: 调用方角色（N04/N12；published 时校验）。
         ledger: 可选 FactLedger。
         **kwargs: 透传 put_fact。
     """
@@ -5914,6 +5916,7 @@ async def put_fact_with_source_policy(
         db_path=db_path,
         actor=actor,
         reason=reason,
+        role=role,
         **kwargs,
     )
 
