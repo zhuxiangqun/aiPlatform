@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T21:26:01+08:00",
+  "reviewed_at": "2026-11-21T21:29:43+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "750492c529e45981dc6f55b0cda31e7e61248c1eb7848489f356e67bdb13806c",
-  "head_sha": "d061ccb61677b3a5ad79aa063645790170bd7380",
+  "diff_sha256": "17108b27bc70254a1a7ba6b6301dfe5793fba7eb66cf8074c11b828f14da9223",
+  "head_sha": "4c2b42ce16fc6a5c5d33405de7279e931e7c4456",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N24 J16 UnifiedAuditPanel append optional refs/payload JSON objects; certified/n24_full stay false; no N24 full cert claim."
+  "note": "N24 J17 UnifiedAuditPanel expandable event detail (refs/payload) + bus event_type filter; certified/n24_full stay false; no N24 full cert claim."
 }
