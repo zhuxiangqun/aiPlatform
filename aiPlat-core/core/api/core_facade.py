@@ -6642,6 +6642,84 @@ def list_knowledge_migration_events(
     )
 
 
+def authorize_knowledge_migration_cutover(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    token: str,
+) -> Dict[str, Any]:
+    """N11/N14 deepen：作业级切写授权（certified 恒 false）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 授权人。
+        reason: 理由。
+        token: ``AIPLAT_KNOWLEDGE_CUTOVER_TOKEN``。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        authorize_migration_cutover,
+    )
+
+    return authorize_migration_cutover(
+        job_id,
+        tenant_id=tenant_id,
+        actor=actor,
+        reason=reason,
+        token=token,
+    )
+
+
+def request_knowledge_migration_write_cutover(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+) -> Dict[str, Any]:
+    """N11/N14 deepen：请求切写阶段（须已授权；非生产认证）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 操作人。
+        reason: 理由。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        request_write_cutover,
+    )
+
+    return request_write_cutover(
+        job_id, tenant_id=tenant_id, actor=actor, reason=reason
+    )
+
+
+def run_migration_cutover_auth_suite() -> Dict[str, Any]:
+    """N11/N14 deepen：切写授权套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        run_migration_cutover_auth_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_migration_cutover_auth_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N11/N14 deepen：切写授权门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_migration_cutover_auth_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        evaluate_migration_cutover_auth_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 async def traverse_object_links(
     request: Dict[str, Any],
     *,
