@@ -50,6 +50,21 @@ class KbQueryBody(BaseModel):
     require_citations_on_hit: bool = True
 
 
+class MaterialsBody(BaseModel):
+    """MaterialsChat RAG 出口 enforce。"""
+
+    output: Dict[str, Any] = Field(default_factory=dict)
+    require_citations_on_hit: bool = True
+
+
+class GraphragBody(BaseModel):
+    """GraphRAG 信封。"""
+
+    result: Dict[str, Any] = Field(default_factory=dict)
+    query: str = ""
+    require_citations_on_hit: bool = True
+
+
 @router.post("/query-abstain-citations/validate")
 async def validate_query_abstain_citations_route(
     body: ValidateBody = Body(...),
@@ -135,6 +150,43 @@ async def query_kb_with_abstain_route(body: KbQueryBody = Body(...)):
             doc_ids=body.doc_ids,
             collection_id=body.collection_id,
             top_k=body.top_k,
+            require_citations_on_hit=body.require_citations_on_hit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/query-abstain-citations/materials")
+async def enforce_materials_chat_output_route(body: MaterialsBody = Body(...)):
+    """MaterialsChat RAG 出口 abstain 强制。
+
+    Args:
+        body: Agent 输出载荷。
+    """
+    from core.api.core_facade import enforce_materials_chat_output
+
+    try:
+        return enforce_materials_chat_output(
+            output=body.output,
+            require_citations_on_hit=body.require_citations_on_hit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/query-abstain-citations/graphrag")
+async def attach_graphrag_n21_envelope_route(body: GraphragBody = Body(...)):
+    """GraphRAG 结果附加 n21_query 信封。
+
+    Args:
+        body: GraphRAG 回执载荷。
+    """
+    from core.api.core_facade import attach_graphrag_n21_envelope
+
+    try:
+        return attach_graphrag_n21_envelope(
+            result=body.result,
+            query=body.query,
             require_citations_on_hit=body.require_citations_on_hit,
         )
     except ValueError as exc:

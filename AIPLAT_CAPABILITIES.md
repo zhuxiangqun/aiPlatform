@@ -1315,7 +1315,7 @@ scan_hash: 8f9548ec24f4
 | **部署侧 RBAC 真源（v4.3.1 N18 deepen）** | `deployed_rbac_policy.py` + Facade + FDE `/deployed-rbac*` | ✅ | env/AIPLAT_HOME 加载；禁 reference_policy 作权威；permission+suite/gate certified 恒 false。证据 `phase2-deployed-rbac-evidence.md`。**未宣称** 召回/聚合/导出全路径 / N18 certified。生成物适用：已接线 | 本批 |
 | **Fact/Query 统一审计快照（v4.3.1 N19 deepen）** | `fact_query_audit.py` + Facade + FDE `/fact-query-audit*` | ✅ | 同表 before/after + runtime_authority；suite/gate certified 恒 false。证据 `phase2-fact-query-audit-evidence.md`。**未宣称** 热路径强制落盘 / N24 总线全量 / N19 certified。生成物适用：已接线 | 本批 |
 | **知识面约束分层（v4.3.1 N20 deepen）** | `constraint_layers.py` + Facade + FDE `/constraint-layers*` | ✅ | L1>L2>L3 栈；高风险无 L1 拒；L2 非安全边界；suite/gate certified 恒 false。证据 `phase2-constraint-layers-evidence.md`。**未宣称** 全域强制分层 / Lv4 / N20 certified。生成物适用：已接线 | 本批 |
-| **查询 abstain+citations（v4.3.1 N21 deepen）** | `query_abstain_citations.py` + Facade + FDE `/query-abstain-citations*` | ✅ | 拒答清引用；无引用命中降级 abstain；Fact/object_set + Wiki/KB 查询形入口（pack→enforce）；suite/gate certified 恒 false。证据 `phase2-query-abstain-citations-evidence.md`。**未宣称** GraphRAG/MaterialsChat 全入口 / list API 改写 / N21 certified。生成物适用：已接线 | 本批 |
+| **查询 abstain+citations（v4.3.1 N21 deepen）** | `query_abstain_citations.py` + Facade + FDE `/query-abstain-citations*` | ✅ | 拒答清引用；Fact/object_set + Wiki/KB 查询形 + MaterialsChat RAG 出口 + GraphRAG `n21_query` 信封；suite/gate certified 恒 false。证据 `phase2-query-abstain-citations-evidence.md`。**未宣称** 非 RAG 捷径强制 / list API 改写 / N21 certified。生成物适用：已接线 | 本批 |
 | **Raw↔Fact↔Index 对账（v4.3.1 N14 deepen）** | `raw_fact_index_reconcile.py` + Facade + FDE `/raw-fact-index-reconcile*` | ✅ | missing/orphan/stale 报告；cutover/certified 恒 false。证据 `phase2-raw-fact-index-reconcile-evidence.md`。**未宣称** 生产切写认证 / N14 certified。生成物适用：已接线 | 本批 |
 | **抽取 confirm→ActionRegistry（G2 收口）** | `platform_action:knowledge:confirm_extraction` + `CoreFacade.run_confirm_extraction` + `POST …/extractions/{id}/confirm` | ✅ | confirm 经 L1（`kb:write`/`admin`/`*`）；HTTP scopes→permissions；证据 `phase2-g2-evidence.md`。**未宣称** ObjectSet/N24 | 已合入 |
 | **Wiki 读模型硬门（v4.3.1 试点）** | `harness/knowledge/wiki_read_model.py` + `POST/DELETE /wiki/pages` | ✅ | `AIPLAT_WIKI_READ_MODEL_COLLECTIONS` 配置名单内人工写 → 403 `wiki_is_read_model`（默认空=不拦）；`AIPLAT_WIKI_ALLOW_MANUAL_WRITE` 破窗记 WARNING；编译器 `write_page` 不经门。证据 `phase2-wiki-readonly-evidence.md`。**未宣称** N5 全量/全局禁写/ObjectSet | 本批 |
@@ -1454,6 +1454,12 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| attach_graphrag_n21_envelope_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | 自动同步 | 已合入 |
+| enforce_materials_chat_output_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | 自动同步 | 已合入 |
+| attach_graphrag_n21_envelope | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| pack_graphrag_result_as_query_response | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| enforce_materials_chat_output | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| normalize_materials_citations | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
 | query_kb_with_abstain_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | 自动同步 | 已合入 |
 | query_wiki_with_abstain_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | 自动同步 | 已合入 |
 | query_kb_with_abstain | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
