@@ -322,7 +322,9 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-ocs-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
-    note: "Core-scoped exists (附录 N.2); OCS/校准诚实锁；查询统一 abstain+citations 未全覆盖"
+      - reports/products/knowledge-system/v4.3.1/phase2-query-abstain-citations-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/query_abstain_citations.py
+    note: "Core-scoped exists (附录 N.2); OCS/校准诚实锁 + Fact/object_set abstain+citations deepen；非 Wiki/KB 全入口强制 / 非 certified"
   - id: N22
     level: extended
     title: 实例/字段级 ACL

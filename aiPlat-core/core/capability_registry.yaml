@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3122
+total_capabilities: 3130
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 653
+    caps_count: 661
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3786,6 +3786,38 @@ domains:
         module: aiPlat-platform/apps/fde/api/constraint_layers_routes.py
         type: function
         signature: "POST /fde/constraint-layers/evaluate via Facade"
+      - symbol: "validate_abstain_citations"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: validate query abstain+citations (certified=false)"
+      - symbol: "enforce_abstain_citations"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: enforce query abstain+citations (certified=false)"
+      - symbol: "run_query_abstain_citations_suite"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: abstain+citations suite (certified=false)"
+      - symbol: "evaluate_query_abstain_citations_gate"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: abstain+citations gate (certified=false)"
+      - symbol: "QueryAbstainCitationsError"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: class
+        signature: "N21: abstain+citations contract error"
+      - symbol: "validate_query_abstain_citations"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N21: Facade validate abstain+citations"
+      - symbol: "enforce_query_abstain_citations"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N21: Facade enforce abstain+citations"
+      - symbol: "validate_query_abstain_citations_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/validate via Facade"
       - symbol: "project_facts_to_wiki"
         module: core/harness/knowledge_pipeline/wiki_rebuild.py
         type: function

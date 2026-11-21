@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T12:40:00+08:00",
+  "reviewed_at": "2026-11-21T12:55:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "f1b0d78a2a5f5f38d2db1508f703ae285b0bd61e2318d29d2ccd1238efff4ed9",
-  "head_sha": "bf81c658c33ad394a155e7327b28fa886c049595",
+  "diff_sha256": "3e46dbe7fa1f73368d1de3faea7036c0b6cc7fdf22282c12ce50f77d1cec3f75",
+  "head_sha": "0c66abddd43add4633d755a7f57ee23f303e1f5a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N20 L1>L2>L3 constraint stack; high-risk requires L1; certified/n20_full false; full-plane force and Lv4 still open."
+  "note": "N21 query abstain+citations anti-false-green (Fact/object_set); certified/n21_full false; Wiki/KB full-path still open."
 }
