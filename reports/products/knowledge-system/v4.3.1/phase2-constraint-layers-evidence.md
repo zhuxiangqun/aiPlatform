@@ -25,6 +25,7 @@ pilot_domain: lock-service
 | Gateway 热路径入口 | pass | suite `gateway_hotpath_entry` |
 | put_fact 热路径入口 | pass | suite `put_fact_hotpath_entry` |
 | query_facts_gateway 热路径入口 | pass | suite `query_facts_gateway_hotpath_entry` |
+| MaterialsChat 热路径入口 | pass | suite `materials_chat_hotpath_entry` |
 | certified 恒 false | pass | suite / gate honesty |
 
 ## 命令
@@ -40,7 +41,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 | 入口 | 路径 |
 |------|------|
 | 核心 | `evaluate_constraint_stack` / `maybe_attach_*_constraint_hotpath` / suite/gate |
-| 热路径 | `unified_query_gateway` + `put_fact` + `query_facts_gateway` → 挂 `n20_constraint`（`AIPLAT_CONSTRAINT_LAYERS_HOTPATH`；不阻断/不回滚；统一入口关旁路双挂） |
+| 热路径 | `unified_query_gateway` + `put_fact` + `query_facts_gateway` + MaterialsChat 直出 → 挂 `n20_constraint`（`AIPLAT_CONSTRAINT_LAYERS_HOTPATH`；不阻断/不回滚；统一入口关旁路双挂；直出与 Gateway 分立） |
 | Facade / HTTP | 同名 + `/fde/constraint-layers*` |
 
 ## 明确未做
