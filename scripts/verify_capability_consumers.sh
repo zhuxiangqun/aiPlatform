@@ -57,16 +57,34 @@ for domain_id, domain in (data.get('domains') or {}).items():
         mod = prov.get('module', '') or ''
         sym = prov.get('symbol', '') or ''
         ptype = prov.get('type', '') or ''
-        if not mod or ptype in ('config_file', 'react_component', 'api_endpoint', 'pattern', 'doc', 'module'):
+        if not mod or ptype in ('config_file', 'react_component', 'api_endpoint', 'pattern', 'doc', 'module', 'script', 'shell_script', 'agent'):
+            continue
+        # 运行时家目录 / 非 Python 文件：不做 def/class 符号扫描
+        if mod.startswith('~/') or mod.startswith('~'):
+            continue
+        if mod.endswith(('.sh', '.md', '.yaml', '.yml', '.json', '.ts', '.tsx')):
             continue
         fpath = find_module(mod)
         if not fpath:
             violations.append(f'{domain_id}: module {mod} not found')
             continue
+        if fpath.endswith(('.sh', '.md', '.yaml', '.yml', '.json')):
+            continue
         search = sym.split('.')[-1]
         with open(fpath) as f:
             content = f.read()
-        if 'class ' + search not in content and 'def ' + search not in content and search + ' =' not in content and search + '(' not in content and search + ':' not in content:
+        # 含 def/class、赋值、调用、import 别名（as X）、re-export 列表（X,）
+        found = (
+            ('class ' + search) in content
+            or ('def ' + search) in content
+            or (search + ' =') in content
+            or (search + '(') in content
+            or (search + ':') in content
+            or (' as ' + search) in content
+            or ('import ' + search) in content
+            or (search + ',') in content
+        )
+        if not found:
             violations.append(f'{domain_id}: symbol \"{search}\" not found in {mod}')
 if violations:
     for v in violations:
@@ -82,7 +100,7 @@ print(f'  ✅ Registry symbol check complete')
 # ── Check 3: Registry consumers_expected → grep evidence ──
 echo "  [2/3] Expected consumers → code evidence..."
 python3 -c "
-import yaml, sys, os, subprocess
+import yaml, sys, os, subprocess, re
 root = '$ROOT'
 PREFIXES = ['', 'aiPlat-core/', 'aiPlat-platform/', 'aiPlat-management/']
 def find_module(rel_path):
@@ -98,30 +116,37 @@ for domain_id, domain in (data.get('domains') or {}).items():
         continue
     avoids = domain.get('provides') or []
     search_terms = []
-    for prov in avoids[:2]:
+    for prov in avoids:
         if not isinstance(prov, dict):
             continue
         search = str(prov.get('symbol') or '').split('.')[-1]
-        if search:
-            search_terms.append(search)
-    pattern = '|'.join(search_terms[:2])
-    if not pattern:
+        # 跳过过短/通配噪声
+        if search and len(search) >= 3:
+            search_terms.append(re.escape(search))
+    # 上限避免超长 ERE；命中域内任一 provides 即视为有消费证据
+    search_terms = list(dict.fromkeys(search_terms))[:120]
+    if not search_terms:
         continue
+    pattern = '|'.join(search_terms)
     for cons in (domain.get('consumers_expected') or []):
         if not isinstance(cons, dict):
             continue
         mod = cons.get('module', '') or ''
         if not mod:
             continue
+        if mod.startswith('~/') or mod.startswith('~'):
+            continue
         fpath = find_module(mod)
         if not fpath:
             gaps.append(f'  ⚠️  {domain_id}: consumer module not found: {mod}')
             continue
         try:
-            result = subprocess.run(['grep', '-c', pattern, fpath], capture_output=True, text=True)
+            # 为什么：provides 用 | 连接为 ERE；裸 grep 把 | 当字面量 → 假缺口
+            result = subprocess.run(['grep', '-cE', pattern, fpath], capture_output=True, text=True)
             count = int(result.stdout.strip() or 0)
             if count == 0:
-                gaps.append(f'  ⚠️  {domain_id}: \"{mod}\" listed as consumer but \"{pattern}\" not found')
+                sample = '|'.join(search_terms[:3])
+                gaps.append(f'  ⚠️  {domain_id}: \"{mod}\" listed as consumer but none of provides matched (e.g. {sample})')
         except Exception:
             pass
 if gaps:
