@@ -297,7 +297,9 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - aiPlat-core/core/harness/infrastructure/action_execution.py
-    note: "Extended-scoped exists (附录 N.3); customer_action before/after；审批重入有 lock 权威；Fact/Query 快照未统一"
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-audit-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/fact_query_audit.py
+    note: "Extended-scoped exists (附录 N.3); customer_action before/after + Fact/Query 统一审计快照 deepen；非热路径强制落盘 / 非 N24 总线全量 / 非 certified"
   - id: N20
     level: extended
     title: L1/L2/L3 约束分层
