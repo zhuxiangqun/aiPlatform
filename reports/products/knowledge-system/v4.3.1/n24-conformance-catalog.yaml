@@ -127,7 +127,7 @@ items:
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_gateway_contract_phase2.py
       - reports/products/knowledge-system/v4.3.1/phase2-unified-query-gateway-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_unified_query_gateway_phase2.py
-    note: "Core-scoped exists (附录 N.2); F.1 契约 + fact/object_set/wiki/index/materials_chat 统一入口（RAG 挂 gateway_f1）；非全 Agent 出口/非认证"
+    note: "Core-scoped exists (附录 N.2); F.1 契约 + fact/object_set/wiki/index/materials_chat 统一入口（RAG/trivial/cache_hit 挂 gateway_f1）；非其它应用入口/非认证"
   - id: N07
     level: extended
     title: 权限召回前过滤

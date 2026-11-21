@@ -17101,18 +17101,20 @@ def materials_chat_to_f1_envelope(
     *,
     tenant_id: str,
     output: dict | None,
+    kind: str = "auto",
 ) -> dict:
     """CoreFacade：MaterialsChat 输出 → N06 F.1 信封（certified 恒 false）。
 
     Args:
         tenant_id: 租户。
         output: MaterialsChat Agent 输出。
+        kind: ``auto`` / ``rag`` / ``shortcut`` / ``cache_hit``。
     """
     from core.harness.knowledge_pipeline.fact_ledger import (
         materials_chat_to_f1_envelope as _m,
     )
 
-    return _m(tenant_id=tenant_id, output=output)
+    return _m(tenant_id=tenant_id, output=output, kind=kind)
 
 
 async def fact_ledger_run_unified_query_gateway_suite(

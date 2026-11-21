@@ -3552,9 +3552,10 @@ def unified_query_gateway_routes() -> Dict[str, Any]:
         "n06_full_conformance": False,
         "wiki_index_routes": True,
         "materials_chat_route": True,
+        "materials_nonrag_gateway": True,
         "note": (
-            "Core unified entry for fact+object_set+wiki+index+materials_chat F.1; "
-            "not all Agent exits / not N06 certified"
+            "Core unified entry for fact+object_set+wiki+index+materials_chat F.1 "
+            "(RAG/trivial/cache_hit); not other apps / not N06 certified"
         ),
     }
 
@@ -3584,19 +3585,44 @@ def materials_chat_to_f1_envelope(
     *,
     tenant_id: str,
     output: Optional[Dict[str, Any]],
+    kind: str = "auto",
 ) -> Dict[str, Any]:
     """MaterialsChat 输出经 N21 enforce 后映射为附录 F.1 信封。
 
     Args:
         tenant_id: 租户。
         output: MaterialsChat Agent 输出 dict。
+        kind: ``auto`` / ``rag`` / ``shortcut`` / ``cache_hit``；已 enforce 则直映。
     """
     from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_cache_hit_output,
         enforce_materials_chat_output,
+        enforce_materials_chat_shortcut_output,
+        is_materials_cache_hit,
+        is_materials_trivial_bypass,
     )
 
-    n21 = enforce_materials_chat_output(output if isinstance(output, dict) else {})
-    return _n21_to_f1_envelope(tenant_id=tenant_id, route="materials_chat", n21=n21)
+    raw = output if isinstance(output, dict) else {}
+    k = (kind or "auto").strip().lower()
+    # 为什么：已过 N21 门的输出勿二次 RAG enforce（trivial 会被误 abstain）
+    if raw.get("n21_enforced") is True and str(raw.get("n21_channel") or "").strip():
+        n21 = raw
+    elif k == "shortcut" or (
+        k == "auto" and is_materials_trivial_bypass(raw)
+    ):
+        n21 = enforce_materials_chat_shortcut_output(raw)
+    elif k == "cache_hit" or (k == "auto" and is_materials_cache_hit(raw)):
+        n21 = enforce_materials_chat_cache_hit_output(raw)
+    else:
+        n21 = enforce_materials_chat_output(raw)
+    # 为什么：trivial 捷径允许无 citations 的确定性答案进 F.1
+    allow_empty = n21.get("n21_shortcut") is True
+    return _n21_to_f1_envelope(
+        tenant_id=tenant_id,
+        route="materials_chat",
+        n21=n21,
+        allow_empty_citations=allow_empty,
+    )
 
 
 def _n21_to_f1_envelope(
@@ -3604,6 +3630,7 @@ def _n21_to_f1_envelope(
     tenant_id: str,
     route: str,
     n21: Dict[str, Any],
+    allow_empty_citations: bool = False,
 ) -> Dict[str, Any]:
     """将 N21 查询形响应映射为附录 F.1 信封。
 
@@ -3611,6 +3638,7 @@ def _n21_to_f1_envelope(
         tenant_id: 租户。
         route: ``wiki`` / ``index`` / ``materials_chat``。
         n21: N21 查询形 / MaterialsChat enforce 回执。
+        allow_empty_citations: trivial 捷径允许无引用命中。
     """
     abstained = n21.get("abstained") is True
     cites_raw = n21.get("citations") or []
@@ -3629,25 +3657,27 @@ def _n21_to_f1_envelope(
                     "locator": str(c.get("locator") or ""),
                 }
             )
-    if abstained or not citations:
+    answer = str(n21.get("answer") or "").strip()
+    if abstained or (not citations and not (allow_empty_citations and answer)):
         return _empty_f1_envelope(
             tenant_id=tenant_id,
             route_reason=f"unified:{route}:abstain",
             abstained=True,
         )
-    answer = str(n21.get("answer") or "").strip() or f"{route}_hit"
+    hit_tag = "trivial" if allow_empty_citations and not citations else "hit"
     env = _empty_f1_envelope(
         tenant_id=tenant_id,
-        route_reason=f"unified:{route}:hit",
+        route_reason=f"unified:{route}:{hit_tag}",
         abstained=False,
-        answer=answer,
+        answer=answer or f"{route}_hit",
         citations=citations,
-        confidence="medium",
+        confidence="low" if allow_empty_citations and not citations else "medium",
     )
     plan = list(env.get("route_plan") or [])
     if "unified" not in plan:
         env["route_plan"] = ["unified", *plan]
     env["n21_enforced"] = n21.get("n21_enforced") is True
+    env["n21_channel"] = str(n21.get("n21_channel") or "")
     env["certified"] = False
     env["n06_full_conformance"] = False
     return env
@@ -3857,6 +3887,7 @@ _N06_UNIFIED_GATEWAY_CASES = (
     "wiki_route_f1_ok",
     "index_route_f1_ok",
     "materials_chat_route_f1_ok",
+    "materials_nonrag_gateway_f1_ok",
     "honesty_certified_false",
 )
 
@@ -3900,6 +3931,7 @@ async def run_unified_query_gateway_suite(
             list(meta.get("routes") or []) == list(UNIFIED_QUERY_GATEWAY_ROUTES)
             and meta.get("wiki_index_routes") is True
             and meta.get("materials_chat_route") is True
+            and meta.get("materials_nonrag_gateway") is True
             and meta.get("certified") is False
         )
         cases.append(
@@ -4057,12 +4089,67 @@ async def run_unified_query_gateway_suite(
             }
         )
 
+        # trivial 捷径：无 citations 仍可 F.1 hit；cache_hit 无引用 abstain
+        sc_f1 = materials_chat_to_f1_envelope(
+            tenant_id=tenant_id,
+            output={
+                "answer": "14:30",
+                "citations": [],
+                "strategy": "trivial_bypass",
+                "intent": "trivial",
+                "quality": "trivial",
+            },
+            kind="shortcut",
+        )
+        ch_f1 = materials_chat_to_f1_envelope(
+            tenant_id=tenant_id,
+            output={
+                "answer": "cached grounded",
+                "citations": [{"source": "wiki:C", "text": "cached"}],
+                "strategy": "cache_hit",
+                "quality": "cached",
+                "mode": "cache",
+            },
+            kind="cache_hit",
+        )
+        ch_empty_f1 = materials_chat_to_f1_envelope(
+            tenant_id=tenant_id,
+            output={
+                "answer": "cached fake",
+                "citations": [],
+                "strategy": "cache_hit",
+                "quality": "cached",
+                "mode": "cache",
+            },
+            kind="cache_hit",
+        )
+        nonrag_ok = (
+            validate_gateway_response(sc_f1).get("ok") is True
+            and sc_f1.get("abstained") is False
+            and sc_f1.get("answer") == "14:30"
+            and sc_f1.get("citations") == []
+            and str(sc_f1.get("route_reason") or "").endswith(":trivial")
+            and validate_gateway_response(ch_f1).get("ok") is True
+            and ch_f1.get("abstained") is False
+            and bool(ch_f1.get("citations"))
+            and ch_empty_f1.get("abstained") is True
+            and meta.get("materials_nonrag_gateway") is True
+        )
+        cases.append(
+            {
+                "id": "materials_nonrag_gateway_f1_ok",
+                "ok": nonrag_ok,
+                "detail": "" if nonrag_ok else "materials_nonrag_gateway_failed",
+            }
+        )
+
         honesty_ok = (
             meta.get("certified") is False
             and meta.get("n06_full_conformance") is False
             and fact_resp.get("certified") is not True
             and wiki_resp.get("n06_full_conformance") is not True
             and mat_hit.get("n06_full_conformance") is not True
+            and sc_f1.get("n06_full_conformance") is not True
         )
         cases.append(
             {
@@ -4092,9 +4179,10 @@ async def run_unified_query_gateway_suite(
         "n06_full_conformance": False,
         "wiki_index_routes": True,
         "materials_chat_route": True,
+        "materials_nonrag_gateway": True,
         "note": (
-            "Unified fact+object_set+wiki+index+materials_chat F.1 entry; "
-            "not all Agent exits / not N06 certified"
+            "Unified fact+object_set+wiki+index+materials_chat F.1 "
+            "(RAG/trivial/cache_hit); not other apps / not N06 certified"
         ),
     }
 
@@ -4117,11 +4205,13 @@ def evaluate_unified_query_gateway_gate(
         issues.append("missing_required_cases")
     if s.get("certified") is True or s.get("n06_full_conformance") is True:
         issues.append("honesty_certified_flag_forbidden")
-    # 为什么：本 deepen 须声明 wiki/index + materials_chat 已接线，防旧套件冒充
+    # 为什么：本 deepen 须声明 wiki/index + materials RAG/nonrag 已接线
     if s.get("wiki_index_routes") is not True:
         issues.append("wiki_index_routes_required")
     if s.get("materials_chat_route") is not True:
         issues.append("materials_chat_route_required")
+    if s.get("materials_nonrag_gateway") is not True:
+        issues.append("materials_nonrag_gateway_required")
     return {
         "gate": "unified_query_gateway",
         "ok": not issues,
@@ -4133,9 +4223,10 @@ def evaluate_unified_query_gateway_gate(
         "n06_full_conformance": False,
         "wiki_index_routes": True,
         "materials_chat_route": True,
+        "materials_nonrag_gateway": True,
         "note": (
-            "fact+object_set+wiki+index+materials_chat unify; "
-            "not all Agent exits / N06 certified"
+            "fact+object_set+wiki+index+materials_chat unify "
+            "(RAG/trivial/cache_hit); not other apps / N06 certified"
         ),
     }
 

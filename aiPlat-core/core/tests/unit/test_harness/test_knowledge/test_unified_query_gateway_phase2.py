@@ -37,6 +37,7 @@ def test_routes_declare_fact_object_set_wiki_index_materials():
     ]
     assert meta["wiki_index_routes"] is True
     assert meta["materials_chat_route"] is True
+    assert meta["materials_nonrag_gateway"] is True
     assert meta["certified"] is False
     assert require_unified_query_route("FACT") == "fact"
     assert require_unified_query_route("wiki") == "wiki"
@@ -48,12 +49,13 @@ def test_routes_declare_fact_object_set_wiki_index_materials():
 
 @pytest.mark.asyncio
 async def test_suite_and_gate_honesty():
-    """套件全绿且 certified / n06_full 恒 false；materials_chat_route 必填。"""
+    """套件全绿且 certified / n06_full 恒 false；nonrag 门槛必填。"""
     suite = await run_unified_query_gateway_suite()
     assert suite["ok"] is True
-    assert suite["passed"] == 7
+    assert suite["passed"] == 8
     assert suite["wiki_index_routes"] is True
     assert suite["materials_chat_route"] is True
+    assert suite["materials_nonrag_gateway"] is True
     assert suite["certified"] is False
     assert suite["n06_full_conformance"] is False
     gate = evaluate_unified_query_gateway_gate(suite)
@@ -61,16 +63,17 @@ async def test_suite_and_gate_honesty():
     assert gate["certified"] is False
     assert gate["wiki_index_routes"] is True
     assert gate["materials_chat_route"] is True
+    assert gate["materials_nonrag_gateway"] is True
     bad = dict(suite)
     bad["n06_full_conformance"] = True
     honesty = evaluate_unified_query_gateway_gate(bad)
     assert honesty["ok"] is False
     assert "honesty_certified_flag_forbidden" in honesty["issues"]
     missing_flag = dict(suite)
-    missing_flag.pop("materials_chat_route", None)
+    missing_flag.pop("materials_nonrag_gateway", None)
     flag_gate = evaluate_unified_query_gateway_gate(missing_flag)
     assert flag_gate["ok"] is False
-    assert "materials_chat_route_required" in flag_gate["issues"]
+    assert "materials_nonrag_gateway_required" in flag_gate["issues"]
 
 
 @pytest.mark.asyncio
@@ -96,6 +99,20 @@ async def test_facade_unified_gateway():
     )
     assert f1.get("abstained") is False
     assert str(f1.get("route_reason") or "").startswith("unified:materials_chat:")
+    sc = materials_chat_to_f1_envelope(
+        tenant_id="n06-facade",
+        output={
+            "answer": "hi",
+            "citations": [],
+            "strategy": "trivial_bypass",
+            "intent": "trivial",
+            "quality": "trivial",
+        },
+        kind="shortcut",
+    )
+    assert sc.get("abstained") is False
+    assert sc.get("answer") == "hi"
+    assert str(sc.get("route_reason") or "").endswith(":trivial")
 
 
 def test_docs_and_wiring_state():
@@ -114,6 +131,7 @@ def test_docs_and_wiring_state():
     assert "run_unified_query_gateway_suite" in text
     assert "materials_chat_to_f1_envelope" in text
     assert "materials_chat_route" in text
+    assert "materials_nonrag_gateway" in text
     facade = ROOT / "aiPlat-core" / "core" / "api" / "core_facade.py"
     fct = facade.read_text(encoding="utf-8")
     assert "fact_ledger_unified_query_gateway" in fct
@@ -129,3 +147,5 @@ def test_docs_and_wiring_state():
     mct = mc.read_text(encoding="utf-8")
     assert "materials_chat_to_f1_envelope" in mct
     assert "gateway_f1" in mct
+    assert 'kind="shortcut"' in mct
+    assert 'kind="cache_hit"' in mct

@@ -83,32 +83,72 @@ def _n21_enforce_rag_output(
     return out
 
 
-def _n21_enforce_shortcut_output(output: Dict[str, Any]) -> Dict[str, Any]:
-    """N21：MaterialsChat time/math/greeting 捷径出口强制。
+def _n21_enforce_shortcut_output(
+    output: Dict[str, Any],
+    *,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    """N21：MaterialsChat time/math/greeting 捷径出口强制；可选挂 N06 F.1。
 
     Args:
         output: trivial_bypass 输出 dict。
+        tenant_id: 非空时附加 ``gateway_f1``。
     """
     # 为什么：捷径允许无 citations，但须走门禁打标，防假 trivial 绿通
     from core.harness.knowledge_pipeline.query_abstain_citations import (
         enforce_materials_chat_shortcut_output,
     )
 
-    return enforce_materials_chat_shortcut_output(output)
+    out = enforce_materials_chat_shortcut_output(output)
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            from core.harness.knowledge_pipeline.fact_ledger import (
+                materials_chat_to_f1_envelope,
+            )
+
+            out["gateway_f1"] = materials_chat_to_f1_envelope(
+                tenant_id=tid, output=out, kind="shortcut"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N06 materials shortcut F.1 attach skipped", exc_info=True
+            )
+    return out
 
 
-def _n21_enforce_cache_hit_output(output: Dict[str, Any]) -> Dict[str, Any]:
-    """N21：MaterialsChat 语义缓存命中出口强制。
+def _n21_enforce_cache_hit_output(
+    output: Dict[str, Any],
+    *,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    """N21：MaterialsChat 语义缓存命中出口强制；可选挂 N06 F.1。
 
     Args:
         output: cache_hit 输出 dict。
+        tenant_id: 非空时附加 ``gateway_f1``。
     """
     # 为什么：缓存答案仍是知识命中，无 citations 不得绿通
     from core.harness.knowledge_pipeline.query_abstain_citations import (
         enforce_materials_chat_cache_hit_output,
     )
 
-    return enforce_materials_chat_cache_hit_output(output)
+    out = enforce_materials_chat_cache_hit_output(output)
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            from core.harness.knowledge_pipeline.fact_ledger import (
+                materials_chat_to_f1_envelope,
+            )
+
+            out["gateway_f1"] = materials_chat_to_f1_envelope(
+                tenant_id=tid, output=out, kind="cache_hit"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N06 materials cache_hit F.1 attach skipped", exc_info=True
+            )
+    return out
 
 
 def _is_delivery_mode(vars0: Dict[str, Any]) -> bool:
@@ -448,7 +488,7 @@ class MaterialsChatAgent(BaseAgent):
                         }
                         return AgentResult(
                             success=True,
-                            output=_n21_enforce_cache_hit_output(_out),
+                            output=_n21_enforce_cache_hit_output(_out, tenant_id=str(tenant_id or "")),
                             metadata={"source": "semantic_cache", "pipeline_trace": pipeline_trace},
                         )
                 except Exception:
@@ -497,8 +537,9 @@ class MaterialsChatAgent(BaseAgent):
                              "strategy": "trivial_bypass", "skills_used": [],
                              "turn_summary": "time query", "intent": "trivial",
                              "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                             "quality": "trivial"}
-                        ),
+                             "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
                 math_result = handle_math_expression(question)
                 if math_result:
@@ -508,8 +549,9 @@ class MaterialsChatAgent(BaseAgent):
                              "strategy": "trivial_bypass", "skills_used": [],
                              "turn_summary": "math query", "intent": "trivial",
                              "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                             "quality": "trivial"}
-                        ),
+                             "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
             except ImportError:
                 pass  # noqa: optional-dependency
@@ -521,7 +563,8 @@ class MaterialsChatAgent(BaseAgent):
                          "strategy": "trivial_bypass", "skills_used": [],
                          "turn_summary": "greeting", "intent": "trivial",
                          "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                         "quality": "trivial"}
+                         "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
                     ),
                     metadata={"intent": "trivial", "strategy": "trivial_bypass"})
             if _t_check in ("谢谢", "多谢", "thank", "thanks", "thank you"):
@@ -532,7 +575,8 @@ class MaterialsChatAgent(BaseAgent):
                          "strategy": "trivial_bypass", "skills_used": [],
                          "turn_summary": "thanks", "intent": "trivial",
                          "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                         "quality": "trivial"}
+                         "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
                     ),
                     metadata={"intent": "trivial", "strategy": "trivial_bypass"})
             if _t_re.match(r'^[+\-]?\d+(\.\d+)?\s*[\+\-\*\/\^]\s*[+\-]?\d+(\.\d+)?$', question.strip()):
@@ -545,8 +589,9 @@ class MaterialsChatAgent(BaseAgent):
                              "strategy": "trivial_bypass", "skills_used": [],
                              "turn_summary": "math", "intent": "trivial",
                              "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                             "quality": "trivial"}
-                        ),
+                             "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
@@ -758,8 +803,9 @@ class MaterialsChatAgent(BaseAgent):
                              "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
                              "reasoning_path": reasoning_path,
                              "pipeline_trace": pipeline_trace,
-                             "quality": "cached"}
-                        ),
+                             "quality": "cached"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                         metadata={"intent": intent, "strategy": "cache_hit", "cache_level": cached.get("level", ""),
                                    "doc_count": len(doc_ids)},
                     )
