@@ -33,6 +33,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "graph_query_hotpath_entry" in ids
     assert "wiki_search_pages_bare_hotpath_entry" in ids
     assert "fde_clarify_tenant_hotpath_entry" in ids
+    assert "wiki_engine_search_pages_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -663,3 +664,33 @@ def test_fde_clarify_knowledge_context_passes_tenant(tmp_path, monkeypatch):
     fde_mod._get_knowledge_context("需要澄清的业务问题文本足够长", tenant_id="")
     assert seen.get("tenant_id") == ""
     assert fqa.list_audit_snapshots(tenant_id="t-fde", db_path=db)["count"] == 1
+
+
+def test_wiki_engine_search_pages_opt_in_hotpath(tmp_path, monkeypatch):
+    """wiki_engine.search_pages：opt-in 才落 N19；默认关不刷库。"""
+    db = str(tmp_path / "fqa-we.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+
+    from core.harness.knowledge import wiki_engine as we
+
+    monkeypatch.setattr(we, "_ensure_dirs", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        we,
+        "_wiki_root",
+        lambda *_a, **_k: type(
+            "R",
+            (),
+            {"iterdir": lambda self: []},
+        )(),
+    )
+
+    # 默认关：无快照
+    we.search_pages("q", tenant_id="t-we")
+    assert fqa.list_audit_snapshots(tenant_id="t-we", db_path=db)["count"] == 0
+
+    # opt-in：落盘
+    we.search_pages("q", tenant_id="t-we", record_hotpath_audit=True)
+    listed = fqa.list_audit_snapshots(tenant_id="t-we", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "wiki_engine_search_pages"

@@ -62,6 +62,7 @@ _SUITE_CASES = (
     "graph_query_hotpath_entry",
     "wiki_search_pages_bare_hotpath_entry",
     "fde_clarify_tenant_hotpath_entry",
+    "wiki_engine_search_pages_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -928,7 +929,8 @@ def evaluate_fact_query_audit_gate(
             "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
             "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
             "ontology_context/ontology_urn/graph_neighbors/graph_query/"
-            "wiki_search_pages_bare/fde_clarify_tenant hotpath; "
+            "wiki_search_pages_bare/fde_clarify_tenant/"
+            "wiki_engine_search_pages hotpath; "
             "not N19 certified / not all bypass paths"
         ),
     }
@@ -1324,6 +1326,21 @@ def run_fact_query_audit_suite(
             }
         )
 
+        from core.harness.knowledge import wiki_engine as we
+
+        we_src = inspect.getsource(we.search_pages)
+        cases.append(
+            {
+                "id": "wiki_engine_search_pages_hotpath_entry",
+                "ok": (
+                    "maybe_record_bare_list_hotpath" in we_src
+                    and "wiki_engine_search_pages" in we_src
+                    and "record_hotpath_audit" in we_src
+                ),
+                "detail": "",
+            }
+        )
+
         passed = sum(1 for c in cases if c.get("ok"))
         return {
             "ok": passed == len(_SUITE_CASES),
@@ -1338,7 +1355,8 @@ def run_fact_query_audit_suite(
                 "MaterialsChat/GraphRAG/Wiki-KB/bare list/KB Q&A/"
                 "knowledge_retrieve/wiki_context/wiki_structured/wiki_pages/"
                 "ontology_context/ontology_urn/graph_neighbors/graph_query/"
-                "wiki_search_pages_bare/fde_clarify_tenant hotpath; "
+                "wiki_search_pages_bare/fde_clarify_tenant/"
+                "wiki_engine_search_pages hotpath; "
                 "not all bypass paths / not certified"
             ),
         }

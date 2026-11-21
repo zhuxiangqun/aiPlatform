@@ -1683,10 +1683,19 @@ def _execute_contradict(prop, from_title, to_title) -> Dict[str, Any]:
 
 # ── Search ─────────────────────────────────────────────────────
 
-def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
-                   limit: int = 20, collection_id: str = DomainRouter.default_collection(),
-                   department: str = "", effective_after: str = "",
-                   expiry_before: str = "") -> List[Dict[str, Any]]:
+def search_pages(
+    query: str = "",
+    *,
+    tags: List[str] = None,
+    category: str = "",
+    limit: int = 20,
+    collection_id: str = DomainRouter.default_collection(),
+    department: str = "",
+    effective_after: str = "",
+    expiry_before: str = "",
+    tenant_id: str = "",
+    record_hotpath_audit: bool = False,
+) -> List[Dict[str, Any]]:
     """Search wiki pages by title, tags, body, with K4 metadata filters.
 
     Args:
@@ -1698,6 +1707,8 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
         department: department 参数。
         effective_after: effective_after 参数。
         expiry_before: expiry_before 参数。
+        tenant_id: 非空且 ``record_hotpath_audit`` 时落 N19 裸 list 审计。
+        record_hotpath_audit: 默认 False（内部全量调用点禁刷库）；Facade 已审计时勿开。
     """
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
@@ -1766,7 +1777,26 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
             })
 
     results.sort(key=lambda r: r["last_updated"], reverse=True)
-    return results[:limit]
+    out = results[:limit]
+    tid = (tenant_id or "").strip()
+    if tid and record_hotpath_audit:
+        # 为什么：引擎直连旁路 opt-in 审计；默认关，避免内部全量扫描刷库/与 Facade 双写
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_bare_list_hotpath,
+            )
+
+            maybe_record_bare_list_hotpath(
+                tenant_id=tid,
+                hits=out if isinstance(out, list) else [],
+                channel="wiki_engine_search_pages",
+                query=query or "",
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 wiki_engine.search_pages audit skipped", exc_info=True
+            )
+    return out
 
 
 def traverse_links(start_title: str, depth: int = 2, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:

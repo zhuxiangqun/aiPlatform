@@ -42,6 +42,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做
 
-- 引擎层 `wiki_engine.search_pages` 全调用点强制落盘
 - TripleStore 按 tenant 隔离
 - 全部旁路 / N19 certified
