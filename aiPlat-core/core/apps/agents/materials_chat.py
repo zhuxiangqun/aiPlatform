@@ -48,18 +48,39 @@ def _build_turn_summary(question: str, answer: str) -> str:
     return build_turn_summary(question, answer)
 
 
-def _n21_enforce_rag_output(output: Dict[str, Any]) -> Dict[str, Any]:
-    """N21：MaterialsChat RAG 出口 abstain+citations 强制。
+def _n21_enforce_rag_output(
+    output: Dict[str, Any],
+    *,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    """N21：MaterialsChat RAG 出口 abstain+citations 强制；可选挂 N06 F.1。
 
     Args:
         output: Agent 输出 dict。
+        tenant_id: 非空时附加 ``gateway_f1``（N06 materials_chat 路由）。
     """
     # 为什么：RAG 假命中不得带空 citations 绿通
     from core.harness.knowledge_pipeline.query_abstain_citations import (
         enforce_materials_chat_output,
     )
 
-    return enforce_materials_chat_output(output)
+    out = enforce_materials_chat_output(output)
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            # 为什么：RAG 出口收敛到统一 Gateway F.1；非 certified
+            from core.harness.knowledge_pipeline.fact_ledger import (
+                materials_chat_to_f1_envelope,
+            )
+
+            out["gateway_f1"] = materials_chat_to_f1_envelope(
+                tenant_id=tid, output=out
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N06 materials_chat F.1 attach skipped", exc_info=True
+            )
+    return out
 
 
 def _n21_enforce_shortcut_output(output: Dict[str, Any]) -> Dict[str, Any]:
@@ -892,7 +913,8 @@ class MaterialsChatAgent(BaseAgent):
                                         "quality": quality,
                                         "hallucination": hallucination_meta,
                                         "rag_diagnosis": rag_diagnosis,
-                                    }
+                                    },
+                                    tenant_id=str(tenant_id or ""),
                                 )
                                 _meta = {"intent": intent, "strategy": "domain_skill", "domain": domain_id,
                                          "skill": skill_name, "doc_count": len(doc_ids)}
@@ -987,7 +1009,8 @@ class MaterialsChatAgent(BaseAgent):
                                 "quality": quality,
                                 "hallucination": hallucination_meta,
                                 "rag_diagnosis": rag_diagnosis,
-                            }
+                            },
+                            tenant_id=str(tenant_id or ""),
                         )
                         _meta = {"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
                                  "grill_suggested": bool(onto_mapping and onto_mapping.get("matched_classes") and onto_mapping["matched_classes"][0].get("score", 0) < 0.5),
@@ -1062,7 +1085,8 @@ class MaterialsChatAgent(BaseAgent):
                     "quality": quality,
                     "hallucination": hallucination_meta,
                     "rag_diagnosis": rag_diagnosis,
-                }
+                },
+                tenant_id=str(tenant_id or ""),
             )
             _meta = {
                 "intent": intent,

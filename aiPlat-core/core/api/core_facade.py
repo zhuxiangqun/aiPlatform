@@ -17070,16 +17070,18 @@ async def fact_ledger_unified_query_gateway(
     object_set_request: dict | None = None,
     permissions: list | None = None,
     role: str = "",
+    materials_output: dict | None = None,
 ) -> dict:
-    """CoreFacade：N06 统一 Query Gateway（fact/object_set → F.1；非 Wiki）。
+    """CoreFacade：N06 统一 Query Gateway（fact/object_set/wiki/index/materials_chat → F.1）。
 
     Args:
         tenant_id: 租户。
         query: 查询串。
-        route: fact / object_set。
-        collection_id / domain_id / top_k: fact 参数。
+        route: fact / object_set / wiki / index / materials_chat。
+        collection_id / domain_id / top_k: fact/wiki/index 参数。
         object_set_request: object_set 请求。
         permissions / role: object_set L1/ACL。
+        materials_output: materials_chat 路由 Agent 输出。
     """
     return await unified_query_gateway(
         tenant_id=tenant_id,
@@ -17091,7 +17093,26 @@ async def fact_ledger_unified_query_gateway(
         object_set_request=object_set_request,
         permissions=permissions,
         role=role,
+        materials_output=materials_output,
     )
+
+
+def materials_chat_to_f1_envelope(
+    *,
+    tenant_id: str,
+    output: dict | None,
+) -> dict:
+    """CoreFacade：MaterialsChat 输出 → N06 F.1 信封（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        output: MaterialsChat Agent 输出。
+    """
+    from core.harness.knowledge_pipeline.fact_ledger import (
+        materials_chat_to_f1_envelope as _m,
+    )
+
+    return _m(tenant_id=tenant_id, output=output)
 
 
 async def fact_ledger_run_unified_query_gateway_suite(
