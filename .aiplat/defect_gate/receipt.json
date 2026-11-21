@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T23:02:41+08:00",
+  "reviewed_at": "2026-11-21T23:24:18+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "a2f6f7865973cec55b1a4bbd5b463857cab72ef55109a9bd577219e6e7c50e89",
-  "head_sha": "affadcbdf6e0525368ddd94d56f8bae8f8e3af67",
+  "diff_sha256": "19599649ba9c969b5f8d9a2d3a8b7e7dd3e4a993109bbed405c47ddf3d2ca463",
+  "head_sha": "26ffbe16b8986e733e8bf0e228b0df2e0aa34685",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 bare wiki_search_pages: list return preserved; envelope disables lower audit; wiki_engine.search_pages residual documented; certified false. Local lock only."
+  "note": "N19 FDE clarify tenant passthrough; DomainRouter shadow fixed; wiki_engine.search_pages residual still open; certified false. Local lock only."
 }
