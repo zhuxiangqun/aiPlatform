@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T21:29:43+08:00",
+  "reviewed_at": "2026-11-21T21:38:47+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "17108b27bc70254a1a7ba6b6301dfe5793fba7eb66cf8074c11b828f14da9223",
-  "head_sha": "4c2b42ce16fc6a5c5d33405de7279e931e7c4456",
+  "diff_sha256": "82e7b4a53b12915c8cd7f2e13bfcffc05c6de830003620142e36c7f049d165b5",
+  "head_sha": "9cd9922f64d0ee687e4fbd1443a4f1e44746f516",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N24 J17 UnifiedAuditPanel expandable event detail (refs/payload) + bus event_type filter; certified/n24_full stay false; no N24 full cert claim."
+  "note": "N19 sys_wiki_context n21-fail audit fallback + suite wiki_context_hotpath_entry; certified/n19_full stay false; no N19 full cert claim."
 }
