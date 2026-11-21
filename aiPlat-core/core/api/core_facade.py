@@ -7411,6 +7411,26 @@ def get_abox_crud_matrix() -> Dict[str, Any]:
     return crud_matrix_doc()
 
 
+def run_role_action_matrix_suite() -> Dict[str, Any]:
+    """N07/N22 deepen：角色×动作轴套件（certified 恒 false）。"""
+    from core.policy.graph_abox_acl import run_role_action_matrix_suite as _run
+
+    return _run()
+
+
+def evaluate_role_action_matrix_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N07/N22 deepen：角色×动作轴门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_role_action_matrix_suite`` 回执。
+    """
+    from core.policy.graph_abox_acl import evaluate_role_action_matrix_gate as _gate
+
+    return _gate(suite)
+
+
 def set_graph_entity_acl(
     domain_id: str,
     entity_id: str,

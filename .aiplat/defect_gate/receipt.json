@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T09:59:12+08:00",
+  "reviewed_at": "2026-11-21T10:03:04+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "0cde1535c7a81ef5dacfbf315b4f338f3b7aa7cba0a4d23c154dc58c3b3effac",
-  "head_sha": "68ef302f64adca192471ac2e3ce0a8cf915a2b08",
+  "diff_sha256": "b7f2b1acea90f8fd285ce996099971d4e5a479d961b75a0109d6973c9392bae7",
+  "head_sha": "063bd1cf266d235c6cf965441945b37fad9f803e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N07/N22 nested filter: flat equality preserved; invalid_filter\u2260ok; certified honesty lock; Wiki/KB ACL not claimed."
+  "note": "N07/N22 role\u00d7action: matrix before instance ACL; unknown role deny; certified honesty; not deploy RBAC."
 }

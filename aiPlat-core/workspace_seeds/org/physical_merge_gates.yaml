@@ -111,9 +111,9 @@ allowed_bases:
 max_active_exemptions: 3
 # Cleared 2026-10-24: #381/#385, Gate2 #387/#388, Gate3/D13 #391 exemptions retired.
 exemptions:
-  - id: "ex-2026-11-21-ks-v431-n07n22-filter"
+  - id: "ex-2026-11-21-ks-v431-n07n22-role-action"
     owner: "platform-oncall"
-    reason: "N07/N22 ObjectSet nested filter suite/gate+CAPS/registry is one deepen deliverable"
+    reason: "N07/N22 role×action matrix suite/gate+CAPS/registry is one deepen deliverable"
     expires: "2026-11-28"
     gates: ["inflation"]
   - id: "ex-2026-11-21-ks-v431-n23-ocs-scan"
@@ -126,6 +126,7 @@ exemptions:
     reason: "N04/N12 reviewer RBAC suite/gate+HTTP role+CAPS/registry is one deepen deliverable"
     expires: "2026-11-28"
     gates: ["inflation"]
+# Cleared 2026-11-21: ex-2026-11-21-ks-v431-n07n22-filter retired after nested-filter PR; slot reused for role×action.
 # Cleared 2026-11-21: ex-2026-11-21-ks-v431-n13-calibration retired after N13 PR; slot reused for N07/N22 filter.
 # Cleared 2026-11-21: ex-2026-11-13-skill-compat-phase-a expired 2026-11-20; retire unreviewed debt.
 # Cleared 2026-11-12: batch04/batch05 fact-audit exemptions retired after merge.

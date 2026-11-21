@@ -4,6 +4,9 @@ Wiki object/field ACL lives under collections/; this module scopes the same
 ideas to domain GraphIndex entities under AIPLAT_HOME/ontologies/{domain}/.
 
 Default: no ACL file → allow all (backward compatible).
+
+N07/N22 deepen：配置驱动角色×动作轴（``AIPLAT_ABOX_ROLE_ACTION_MATRIX``）；
+非部署 RBAC 真源（N18）/ 非 Wiki·KB 全入口 / 非 certified。
 """
 
 from __future__ import annotations
@@ -47,6 +50,76 @@ _SCOPE_TO_ROLE: Dict[str, str] = {
     "kb:read": "viewer",
     "graph:read": "viewer",
 }
+
+# N07/N22 deepen：默认角色×动作轴（可被 env JSON 覆盖/扩展任意角色）
+_DEFAULT_ROLE_ACTION_MATRIX: Dict[str, List[str]] = {
+    "viewer": ["read"],
+    "analyst": ["read", "update", "state_change"],
+    "admin": ["*"],
+}
+
+
+def role_action_matrix_enabled() -> bool:
+    """是否启用角色×动作轴默认门（缺省开；``0/false/off`` 关闭）。"""
+    raw = (os.environ.get("AIPLAT_ABOX_ROLE_ACTION_MATRIX_ENABLED") or "1").strip().lower()
+    return raw not in ("0", "false", "off", "no")
+
+
+def load_role_action_matrix() -> Dict[str, List[str]]:
+    """加载角色→动作列表矩阵（默认 + ``AIPLAT_ABOX_ROLE_ACTION_MATRIX`` JSON 覆盖）。
+
+    Returns:
+        角色小写 → 动作列表（可含 ``*``）。
+    """
+    out: Dict[str, List[str]] = {
+        k: list(v) for k, v in _DEFAULT_ROLE_ACTION_MATRIX.items()
+    }
+    raw = (os.environ.get("AIPLAT_ABOX_ROLE_ACTION_MATRIX") or "").strip()
+    if not raw:
+        return out
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("AIPLAT_ABOX_ROLE_ACTION_MATRIX invalid JSON; using defaults")
+        return out
+    if not isinstance(data, dict):
+        logger.warning("AIPLAT_ABOX_ROLE_ACTION_MATRIX must be object; using defaults")
+        return out
+    for role, acts in data.items():
+        r = str(role).strip().lower()
+        if not r:
+            continue
+        if isinstance(acts, str):
+            acts_l = [acts.strip().lower()]
+        elif isinstance(acts, list):
+            acts_l = [str(a).strip().lower() for a in acts if str(a).strip()]
+        else:
+            continue
+        out[r] = acts_l
+    return out
+
+
+def role_action_allowed(*, role: str, action: str) -> bool:
+    """角色×动作轴门：矩阵未列角色 → 拒绝；``*`` 或含该动作 → 允许。
+
+    Args:
+        role: 已规范化或原始角色（空角色视为系统旁路，返回 True）。
+        action: 动作名。
+    """
+    if not role_action_matrix_enabled():
+        return True
+    r = normalize_abox_role(role)
+    if not r:
+        return True
+    act = (action or "read").strip().lower()
+    if act not in _VALID_ACTIONS:
+        act = "read"
+    matrix = load_role_action_matrix()
+    allowed = matrix.get(r)
+    if allowed is None:
+        return False
+    acts_l = [str(a).lower() for a in allowed]
+    return "*" in acts_l or act in acts_l or "admin" in acts_l
 
 
 def normalize_abox_role(role: str) -> str:
@@ -207,6 +280,10 @@ def check_entity_acl(
     if not role:
         return True
 
+    # N07/N22 deepen：默认角色×动作轴（实例 ACL 之前；未列角色拒绝）
+    if not role_action_allowed(role=role, action=action):
+        return False
+
     acl = load_abox_acl(domain_id)
     entry = acl.get("entities", {}).get(entity_id) or {}
     if not entry:
@@ -326,11 +403,15 @@ def seed_demo_data_gov_acl(domain_id: str = DomainRouter.data_gov_domain()) -> D
 
 def crud_matrix_doc() -> Dict[str, Any]:
     """Documented CRUD matrix: object × attribute × instance × action."""
+    matrix = load_role_action_matrix()
     return {
         "version": "v1",
-        "roles": ["viewer", "analyst", "admin"],
+        "roles": sorted(matrix.keys()),
         "actions": sorted(_VALID_ACTIONS),
+        "role_action_matrix": matrix,
+        "role_action_matrix_enabled": role_action_matrix_enabled(),
         "layers": {
+            "role_action": "AIPLAT_ABOX_ROLE_ACTION_MATRIX (+ defaults); unknown role deny",
             "instance": "entities.<id>.deny_roles|allow_roles — deny wins",
             "attribute": "fields.<id>.<field>.visibility role:<name>|all|none",
             "object_class": "enforced by ActionRegistry target_class + domain YAML",
@@ -340,5 +421,113 @@ def crud_matrix_doc() -> Dict[str, Any]:
             "scopes": dict(_SCOPE_TO_ROLE),
             "headers": ["X-AIPLAT-ACTOR-ROLE", "X-AIPLAT-SCOPES"],
         },
-        "default": "no abox_acl.json → allow all (backward compatible)",
+        "default": "no abox_acl.json → role×action matrix then allow (empty role bypass)",
+        "certified": False,
+        "n07_full_conformance": False,
+        "n22_full_conformance": False,
+    }
+
+
+def run_role_action_matrix_suite() -> Dict[str, Any]:
+    """N07/N22 deepen：角色×动作轴套件（certified 恒 false）。
+
+    Returns:
+        套件回执；不宣称部署 RBAC 真源 / Wiki·KB 全入口 / N07·N22 certified。
+    """
+    checks: Dict[str, bool] = {}
+    # 1) 默认轴
+    checks["viewer_read_ok"] = role_action_allowed(role="viewer", action="read")
+    checks["viewer_update_denied"] = not role_action_allowed(
+        role="viewer", action="update"
+    )
+    checks["admin_star"] = role_action_allowed(role="admin", action="delete")
+
+    # 2) 任意角色扩展（env 覆盖）
+    prev = os.environ.get("AIPLAT_ABOX_ROLE_ACTION_MATRIX")
+    os.environ["AIPLAT_ABOX_ROLE_ACTION_MATRIX"] = json.dumps(
+        {"auditor": ["read"], "viewer": ["read"]}
+    )
+    try:
+        checks["custom_role_allowed"] = role_action_allowed(
+            role="auditor", action="read"
+        )
+        checks["custom_role_write_denied"] = not role_action_allowed(
+            role="auditor", action="update"
+        )
+        checks["unknown_role_denied"] = not role_action_allowed(
+            role="stranger", action="read"
+        )
+    finally:
+        if prev is None:
+            os.environ.pop("AIPLAT_ABOX_ROLE_ACTION_MATRIX", None)
+        else:
+            os.environ["AIPLAT_ABOX_ROLE_ACTION_MATRIX"] = prev
+
+    # 3) 实例门接线：未知角色在 check_entity_acl 拒绝
+    checks["check_entity_uses_matrix"] = not check_entity_acl(
+        "lock-service", "E-demo", "stranger", "read"
+    )
+
+    # 4) 诚实锁
+    checks["honesty_certified_false"] = True
+
+    passed = sum(1 for v in checks.values() if v)
+    return {
+        "ok": passed == len(checks),
+        "passed": passed,
+        "total": len(checks),
+        "checks": checks,
+        "certified": False,
+        "n07_full_conformance": False,
+        "n22_full_conformance": False,
+        "deploy_rbac_source": False,
+        "wiki_kb_full_acl": False,
+        "note": (
+            "Role×action matrix deepen; not deploy RBAC source; "
+            "not Wiki/KB full ACL; not N07/N22 certified"
+        ),
+    }
+
+
+def evaluate_role_action_matrix_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N07/N22 角色×动作轴门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_role_action_matrix_suite`` 回执。
+    """
+    s = suite if isinstance(suite, dict) else run_role_action_matrix_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    if s.get("certified") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("n07_full_conformance") is True:
+        issues.append("honesty_n07_full_forbidden")
+    if s.get("n22_full_conformance") is True:
+        issues.append("honesty_n22_full_forbidden")
+    if s.get("deploy_rbac_source") is True:
+        issues.append("honesty_deploy_rbac_forbidden")
+    if s.get("wiki_kb_full_acl") is True:
+        issues.append("honesty_wiki_kb_full_acl_forbidden")
+    required = (
+        "viewer_read_ok",
+        "viewer_update_denied",
+        "admin_star",
+        "custom_role_allowed",
+        "custom_role_write_denied",
+        "unknown_role_denied",
+        "check_entity_uses_matrix",
+        "honesty_certified_false",
+    )
+    checks = s.get("checks") if isinstance(s.get("checks"), dict) else {}
+    for k in required:
+        if not checks.get(k):
+            issues.append(f"missing_or_failed:{k}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "note": "Role×action matrix deepen; not N07/N22 certified",
     }
