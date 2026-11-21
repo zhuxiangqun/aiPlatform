@@ -614,22 +614,20 @@ class AsyncActionRegistry:
             1 for r in action_records
             if str(r.get("result_status", "")).lower() in fp_markers
         )
-        fp_rate = (false_positives / total) if total else 0.0
-        allowed = fp_rate < CLOSURE_FP_RATE_MAX
-        return {
-            "action_id": action_id,
-            "level": str(level),
-            "total": total,
-            "false_positives": false_positives,
-            "fp_rate": round(fp_rate, 4),
-            "fp_rate_max": CLOSURE_FP_RATE_MAX,
-            "allowed": allowed,
-            "reason": (
-                f"fp_rate={fp_rate:.4f} < {CLOSURE_FP_RATE_MAX} — auto-close allowed"
-                if allowed
-                else f"fp_rate={fp_rate:.4f} ≥ {CLOSURE_FP_RATE_MAX} — downgrade to human confirmation"
-            ),
-        }
+        # 为什么：N08 Lv4 误报门重设计 — 委托 v2（禁 0 样本假绿 + 要求 rollback）
+        from core.harness.knowledge_pipeline.lv4_false_positive_gate import (
+            evaluate_lv4_fp_gate,
+        )
+
+        gate = evaluate_lv4_fp_gate(
+            action_id=action_id,
+            total=total,
+            false_positives=false_positives,
+            rollback_action_id=str(getattr(c, "rollback_action_id", "") or ""),
+            fp_rate_max=CLOSURE_FP_RATE_MAX,
+        )
+        gate["level"] = str(level)
+        return gate
 
     # ═══════════════════════════════════════════════════════
     # Private helpers
