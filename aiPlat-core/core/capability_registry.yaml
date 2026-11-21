@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3066
+total_capabilities: 3074
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 597
+    caps_count: 605
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -5116,6 +5116,38 @@ domains:
         type: "function"
         signature: "W3 N12: fact review_status transition with audit"
         module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "submit_object_type_draft"
+        type: "function"
+        signature: "N02: submit ObjectType draft (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "transition_object_type"
+        type: "function"
+        signature: "N02: ObjectType status transition with publish role gate"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "get_published_object_type"
+        type: "function"
+        signature: "N02: read published ObjectType definition"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "run_object_type_publish_suite"
+        type: "function"
+        signature: "N02: ObjectType publish suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "evaluate_object_type_publish_gate"
+        type: "function"
+        signature: "N02: ObjectType publish gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "assert_object_type_publish_role"
+        type: "function"
+        signature: "N02: assert configured role for ObjectType publish"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "list_object_type_versions"
+        type: "function"
+        signature: "N02: list ObjectType versions (tenant-scoped)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "assert_schema_object_types_published"
+        type: "function"
+        signature: "N02: optional Package schema ObjectType publish gate"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
       - symbol: "assert_reviewer_role"
         type: "function"
         signature: "N04/N12: assert configured reviewer role for publish"
@@ -5208,6 +5240,8 @@ domains:
         reason: "域成熟度评分"
       - module: "core/harness/knowledge/ontology_completeness.py"
         reason: "OCS 本体完整性六维评分"
+      - module: "core/api/core_facade.py"
+        reason: "N02 ObjectType publish Facade 入口"
 
   # ══════════════════════════════════════════════════════════════
   # 四、RAG 检索 (10 caps)

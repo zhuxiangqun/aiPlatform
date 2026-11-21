@@ -70,7 +70,10 @@ items:
     evidence:
       - aiPlat-core/workspace_seeds/ontologies/lock-service.yaml
       - reports/products/knowledge-system/v4.3.1/phase2-ontology-package-evidence.md
-    note: "Core-scoped exists (附录 N.2); 域 YAML version + Package 最小切片；缺全量 ObjectType 人审发布流水线"
+      - reports/products/knowledge-system/v4.3.1/phase2-object-type-publish-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/object_type_publish.py
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_object_type_publish_phase2.py
+    note: "Core-scoped exists (附录 N.2); 域 YAML version + Package + ObjectType draft→人审发布（角色门；Package schema 门可选）；非全量发布门户/非种子替换/非 N02 certified"
   - id: N03
     level: core
     title: Fact/Claim 有 evidence
