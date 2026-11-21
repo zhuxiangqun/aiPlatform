@@ -8,12 +8,12 @@
     / KB Q&A（``sys_crag_retrieve`` / ``kb_qa_retrieve`` / RAG Agent）
     / 统一 ``sys_knowledge_retrieve``（会话/Builder/技能）热路径
     best-effort 落快照（可 env 关闭）
+  - 快照写入后 best-effort 追加统一审计总线（N24 J11；可 env 关）
   - 套件/门槛门：``certified`` / ``n19_full`` 恒 false
 
 非目标：
   - 不宣称全部旁路入口已强制落盘
-  - 不合并 Package+Action 全量审计总线（N24）
-  - 不宣称 N19 certified
+  - 不宣称 N24 / N19 certified
 """
 from __future__ import annotations
 
@@ -189,7 +189,7 @@ def record_audit_snapshot(
         conn.commit()
     finally:
         conn.close()
-    return {
+    out = {
         "snapshot_id": sid,
         "tenant_id": tid,
         "kind": k,
@@ -202,12 +202,62 @@ def record_audit_snapshot(
         "certified": False,
         "n19_full_conformance": False,
     }
+    # 为什么：N24 J11 — Fact/Query 热路径 best-effort 写总线；与 materialize 幂等共存
+    _maybe_append_fact_query_to_bus(out)
+    return out
 
 
 def hotpath_audit_enabled() -> bool:
     """热路径落快照开关（默认开；``AIPLAT_FACT_QUERY_AUDIT_HOTPATH=0`` 关闭）。"""
     raw = (os.environ.get("AIPLAT_FACT_QUERY_AUDIT_HOTPATH") or "1").strip().lower()
     return raw not in ("0", "false", "off", "no")
+
+
+def bus_hotpath_enabled() -> bool:
+    """Fact/Query → 统一审计总线热路径开关（默认开；``AIPLAT_FACT_QUERY_AUDIT_BUS_HOTPATH=0`` 关）。"""
+    raw = (os.environ.get("AIPLAT_FACT_QUERY_AUDIT_BUS_HOTPATH") or "1").strip().lower()
+    return raw not in ("0", "false", "off", "no")
+
+
+def _maybe_append_fact_query_to_bus(row: Dict[str, Any]) -> None:
+    """N24 J11：快照写入后 best-effort 追加统一审计总线（幂等 event_id=fqa:…）。
+
+    Args:
+        row: ``record_audit_snapshot`` 回执。
+    """
+    if not bus_hotpath_enabled():
+        return
+    tid = str((row or {}).get("tenant_id") or "").strip()
+    sid = str((row or {}).get("snapshot_id") or "").strip()
+    if not tid or not sid:
+        return
+    try:
+        from core.harness.knowledge_pipeline.unified_audit_bus import (
+            append_unified_audit_event,
+        )
+
+        kind = str(row.get("kind") or "query")
+        append_unified_audit_event(
+            tenant_id=tid,
+            event_id=f"fqa:{sid}",
+            stream="fact_query_audit",
+            event_type=kind,
+            occurred_at=float(row.get("recorded_at") or time.time()),
+            actor=str((row.get("meta") or {}).get("actor") or ""),
+            subject=str(row.get("subject_ref") or ""),
+            refs={
+                "runtime_authority": row.get("runtime_authority") or "",
+                "kind": kind,
+            },
+            payload=row,
+        )
+    except Exception:
+        # 为什么：总线失败不得拖垮 Fact/Query 审计主路径
+        logger.warning(
+            "unified_audit_bus append failed for fact_query_audit %s",
+            sid,
+            exc_info=True,
+        )
 
 
 def _fact_slice(rec: Optional[Dict[str, Any]]) -> Dict[str, Any]:

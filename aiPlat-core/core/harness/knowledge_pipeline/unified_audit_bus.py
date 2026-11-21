@@ -1,4 +1,4 @@
-"""N24 Unified Audit Bus（Batch J5–J7）— append-only 写总线。
+"""N24 Unified Audit Bus（Batch J5–J7/J11）— append-only 写总线。
 
 职责：租户隔离的统一审计事件落盘；幂等 append；从只读汇合 materialize；suite/gate 诚实锁。
 非目标：不宣称 N24 certified；不改写 ActionStore 历史行。
@@ -19,6 +19,7 @@ _N24_UNIFIED_AUDIT_BUS_CASES = (
     "package_hotpath_to_bus",
     "action_hotpath_to_bus",
     "action_store_hotpath_to_bus",
+    "fact_query_hotpath_to_bus",
     "materialize_source_streams",
     "cross_tenant_empty",
 )
@@ -569,8 +570,8 @@ async def run_unified_audit_bus_suite(
             record_audit_snapshot,
         )
 
-        # 为什么：J10 — materialize 须能吞入 N19 Fact/Query 快照流
-        record_audit_snapshot(
+        # 为什么：J11 — Fact/Query 写入后热路径直写总线；J10 materialize 幂等共存
+        fqa_row = record_audit_snapshot(
             tenant_id=tenant_id,
             kind="query",
             subject_ref="n24-uab-fqa",
@@ -578,6 +579,18 @@ async def run_unified_audit_bus_suite(
             runtime_authority="query_gateway",
             meta={"hotpath": True, "op": "suite"},
             db_path=fqa_db,
+        )
+        fqa_bus = list_unified_audit_bus_events(
+            tenant_id=tenant_id, stream="fact_query_audit", limit=50, db_path=bus_db
+        )
+        fqa_eid = f"fqa:{fqa_row.get('snapshot_id')}"
+        fqa_ok = any(e.get("event_id") == fqa_eid for e in fqa_bus)
+        cases.append(
+            {
+                "id": "fact_query_hotpath_to_bus",
+                "ok": fqa_ok,
+                "detail": "" if fqa_ok else "fact_query_hotpath_missing",
+            }
         )
 
         mat = await materialize_unified_audit_from_view(
@@ -643,7 +656,7 @@ async def run_unified_audit_bus_suite(
         "n24_full_conformance": False,
         "note": (
             "append-only bus + Package/Action/revision/ActionStore/"
-            "FactQuery hot-path; not N24 certified"
+            "FactQuery(J10 view+J11 hotpath); not N24 certified"
         ),
     }
 
