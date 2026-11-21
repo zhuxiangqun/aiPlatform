@@ -76,6 +76,20 @@ def _n21_enforce_shortcut_output(output: Dict[str, Any]) -> Dict[str, Any]:
     return enforce_materials_chat_shortcut_output(output)
 
 
+def _n21_enforce_cache_hit_output(output: Dict[str, Any]) -> Dict[str, Any]:
+    """N21：MaterialsChat 语义缓存命中出口强制。
+
+    Args:
+        output: cache_hit 输出 dict。
+    """
+    # 为什么：缓存答案仍是知识命中，无 citations 不得绿通
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_cache_hit_output,
+    )
+
+    return enforce_materials_chat_cache_hit_output(output)
+
+
 def _is_delivery_mode(vars0: Dict[str, Any]) -> bool:
     """Q&A vs Delivery: delivery/task/governed require outcome gates, not answer-complete."""
     mode = str(vars0.get("mode") or vars0.get("delivery_mode") or "").strip().lower()
@@ -401,9 +415,19 @@ class MaterialsChatAgent(BaseAgent):
                     cached = await try_cache_hit(question, collection_id_pre)
                     if cached:
                         _trace("缓存命中", f"语义缓存L1/L2", cached=True)
+                        _ans = cached.get("answer")
+                        _out = {
+                            "answer": _ans if isinstance(_ans, str) else str(_ans or ""),
+                            "citations": cached.get("citations") or [],
+                            "items": [],
+                            "strategy": "cache_hit",
+                            "quality": "cached",
+                            "mode": "cache",
+                            "pipeline_trace": pipeline_trace,
+                        }
                         return AgentResult(
                             success=True,
-                            output=cached["answer"],
+                            output=_n21_enforce_cache_hit_output(_out),
                             metadata={"source": "semantic_cache", "pipeline_trace": pipeline_trace},
                         )
                 except Exception:
@@ -704,15 +728,17 @@ class MaterialsChatAgent(BaseAgent):
                            cache_level=cached.get("level", ""))
                     return AgentResult(
                         success=True,
-                        output={"answer": cached["answer"],
-                                "citations": cached.get("citations", []), "items": [],
-                                "scope_applied": scope, "strategy": "cache_hit",
-                                "skills_used": [], "turn_summary": "",
-                                "intent": intent, "mode": "cache", "analysis": analysis,
-                                "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
-                                "reasoning_path": reasoning_path,
-                                "pipeline_trace": pipeline_trace,
-                                "quality": "cached"},
+                        output=_n21_enforce_cache_hit_output(
+                            {"answer": cached["answer"],
+                             "citations": cached.get("citations", []), "items": [],
+                             "scope_applied": scope, "strategy": "cache_hit",
+                             "skills_used": [], "turn_summary": "",
+                             "intent": intent, "mode": "cache", "analysis": analysis,
+                             "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
+                             "reasoning_path": reasoning_path,
+                             "pipeline_trace": pipeline_trace,
+                             "quality": "cached"}
+                        ),
                         metadata={"intent": intent, "strategy": "cache_hit", "cache_level": cached.get("level", ""),
                                    "doc_count": len(doc_ids)},
                     )

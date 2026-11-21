@@ -17,11 +17,13 @@ async def test_suite_passes_and_gate_never_certifies():
     assert suite["wiki_kb_query_entry"] is True
     assert suite["materials_graphrag_entry"] is True
     assert suite["materials_shortcut_entry"] is True
+    assert suite["materials_cache_hit_entry"] is True
 
     gate = qac.evaluate_query_abstain_citations_gate(suite)
     assert gate["ok"] is True
     assert gate["certified"] is False
     assert gate["materials_shortcut_entry"] is True
+    assert gate["materials_cache_hit_entry"] is True
     assert gate["issues"] == []
 
 
@@ -122,6 +124,38 @@ def test_materials_fake_shortcut_falls_back_to_rag_abstain():
     )
     assert out["abstained"] is True
     assert out["n21_channel"] == "materials_chat"
+
+
+def test_materials_cache_hit_without_citations_abstains():
+    """cache_hit 无引用必须 abstain。"""
+    out = qac.enforce_materials_chat_cache_hit_output(
+        {
+            "answer": "cached fake",
+            "citations": [],
+            "strategy": "cache_hit",
+            "quality": "cached",
+            "mode": "cache",
+        }
+    )
+    assert out["abstained"] is True
+    assert out["n21_channel"] == "materials_chat_cache_hit"
+    assert out["n21_cache_hit"] is True
+
+
+def test_materials_cache_hit_keeps_citations():
+    """cache_hit 有引用保留答案。"""
+    out = qac.enforce_materials_chat_cache_hit_output(
+        {
+            "answer": "cached ok",
+            "citations": [{"source": "wiki:X", "text": "body"}],
+            "strategy": "cache_hit",
+            "quality": "cached",
+            "mode": "cache",
+        }
+    )
+    assert out["abstained"] is False
+    assert out["citations"]
+    assert out["certified"] is False
 
 
 def test_graphrag_envelope_attaches_n21_query():

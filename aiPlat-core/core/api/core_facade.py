@@ -18744,6 +18744,37 @@ def is_materials_trivial_bypass(*, output: Dict[str, Any]) -> bool:
     return _i(output)
 
 
+def enforce_materials_chat_cache_hit_output(
+    *,
+    output: Dict[str, Any],
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：MaterialsChat cache_hit 出口强制（N21；certified 恒 false）。
+
+    Args:
+        output: cache_hit 输出。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_cache_hit_output as _e,
+    )
+
+    return _e(output, require_citations_on_hit=require_citations_on_hit)
+
+
+def is_materials_cache_hit(*, output: Dict[str, Any]) -> bool:
+    """CoreFacade：判定 MaterialsChat 是否 cache_hit（N21）。
+
+    Args:
+        output: Agent 输出。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        is_materials_cache_hit as _i,
+    )
+
+    return _i(output)
+
+
 def attach_graphrag_n21_envelope(
     *,
     result: Dict[str, Any],

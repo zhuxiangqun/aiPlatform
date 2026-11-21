@@ -191,6 +191,26 @@ async def enforce_materials_chat_shortcut_output_route(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/query-abstain-citations/materials-cache-hit")
+async def enforce_materials_chat_cache_hit_output_route(
+    body: MaterialsBody = Body(...),
+):
+    """MaterialsChat 语义缓存命中出口强制。
+
+    Args:
+        body: cache_hit 输出载荷。
+    """
+    from core.api.core_facade import enforce_materials_chat_cache_hit_output
+
+    try:
+        return enforce_materials_chat_cache_hit_output(
+            output=body.output,
+            require_citations_on_hit=body.require_citations_on_hit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/query-abstain-citations/graphrag")
 async def attach_graphrag_n21_envelope_route(body: GraphragBody = Body(...)):
     """GraphRAG 结果附加 n21_query 信封。
