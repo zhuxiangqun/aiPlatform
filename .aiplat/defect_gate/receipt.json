@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T20:32:55+08:00",
+  "reviewed_at": "2026-11-21T20:40:37+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "23ca1ab3fb420a9c43dc21dd40adbc1946f15523b5b9c2f598def15091ac7d62",
-  "head_sha": "f059c346aad69aceb228415edde910a83033cbf1",
+  "diff_sha256": "540e0639e5028113253fa6852481c7371ad9c2af7d9c0e5b8d5e8bd6be1d1b99",
+  "head_sha": "64579511a729f7241e948924c0dfb0f6b506de06",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N24 J10 Fact/Query audit stream fan-in to unified view + materialize; certified/n24_full stay false; no N24 full cert claim."
+  "note": "N24 J11 Fact/Query hotpath → unified bus append (fqa:{sid} idempotent); certified/n24_full stay false; no N24 full cert claim."
 }
