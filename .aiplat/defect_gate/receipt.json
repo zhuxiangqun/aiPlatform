@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T10:45:23+08:00",
+  "reviewed_at": "2026-11-21T10:49:10+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "f85f775ac0ad57f4143a4b62dee236ebb500ac7a622a6765a7fde8fbfc3c35a3",
-  "head_sha": "a3d225b7500215b1299ccc364a64d43fd9f38c21",
+  "diff_sha256": "2ff42c80172b0d64bf1a533a99210135990a1357dd9b1b528ccd2369cf247dbc",
+  "head_sha": "eb37bbc9b460d986a973527498820ecd6fd2d5ce",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Verifier heuristic fix + stale consumers_expected prune only. Does not certify appendix N or close ADR exceptions. Check3 remains WARNING unless BLOCK_CAPABILITY_GAP=1."
+  "note": "Docs-only: fixed N09 catalog YAML nesting that broke build_conformance_pack; triage classifies non-ADR residuals without closing exceptions or claiming certified."
 }
