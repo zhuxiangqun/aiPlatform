@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T17:00:00+08:00",
+  "reviewed_at": "2026-11-21T17:10:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "fa29e2c30c4f51d4a2be9fa11f41a2b3d31c760a5dfa9b6ff03d56b74fb80200",
-  "head_sha": "eb53af32bcb22874f0a75e1039e8db052ec84d26",
+  "diff_sha256": "32b822835456d96c23be15d68776108af47b93ec3a2a7220aae582cd6f6bc38a",
+  "head_sha": "8f746c86562f097803ad25dce747c335053b198a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 query_facts list hotpath: bypass audit on; gateway sets record_hotpath_audit=False; MaterialsChat still open; certified false. Local lock only."
+  "note": "N20 put_fact n20_constraint: attach-only after write; never rolls back; env-off skips; Wiki/KB full surface still open; certified false. Local lock only."
 }

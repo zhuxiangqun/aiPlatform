@@ -3,7 +3,7 @@
 职责：
   - 按标准分层评估约束：L1 硬门 / L2 软约束 / L3 审计
   - 强制 ``L1 > L2 > L3``：高风险无 L1 拒绝；L2 不得单独作安全边界
-  - unified_query_gateway 热路径 best-effort 挂 ``n20_constraint``（可 env 关闭）
+  - unified_query_gateway / put_fact 热路径 best-effort 挂 ``n20_constraint``（可 env 关闭）
   - 套件/门槛门：``certified`` / ``n20_full`` 恒 false
 
 非目标：
@@ -30,6 +30,7 @@ _SUITE_CASES = (
     "honesty_certified_false",
     "hotpath_helper_attaches",
     "gateway_hotpath_entry",
+    "put_fact_hotpath_entry",
 )
 
 _LAYERS = ("L1", "L2", "L3")
@@ -233,7 +234,9 @@ def maybe_attach_constraint_stack_hotpath(
             "warnings": list(stack.get("warnings") or []),
             "audit": stack.get("audit") or {},
             "route": (route or "").strip(),
+            "op": "unified_query_gateway",
             "hotpath": True,
+            "enforced": False,
             "certified": False,
             "n20_full_conformance": False,
         }
@@ -243,6 +246,62 @@ def maybe_attach_constraint_stack_hotpath(
             "constraint_layers gateway hotpath failed: %s", exc, exc_info=True
         )
         return resp
+
+
+def maybe_attach_put_fact_constraint_hotpath(
+    record: Optional[Dict[str, Any]],
+    *,
+    actor_permissions: Optional[Sequence[str]] = None,
+    risk_level: str = "medium",
+) -> Dict[str, Any]:
+    """put_fact 热路径 best-effort 挂 ``n20_constraint``；不阻断写入。
+
+    Args:
+        record: Fact 写入回执。
+        actor_permissions: 调用方权限（缺省视为可写）。
+        risk_level: 风险等级。
+    """
+    out = dict(record) if isinstance(record, dict) else {}
+    if not hotpath_constraint_enabled():
+        return out
+    try:
+        perms = [str(p).strip() for p in (actor_permissions or []) if str(p).strip()]
+        if not perms:
+            perms = ["kb:write"]
+        stack = evaluate_constraint_stack(
+            risk_level=risk_level or "medium",
+            required_permissions=["kb:write"],
+            actor_permissions=perms,
+            soft_constraints=[
+                {
+                    "id": "prefer_draft_then_publish",
+                    "message": "prefer draft then transition publish",
+                }
+            ],
+            require_audit=True,
+            l1_present=True,
+        )
+        # 为什么：写入已完成；信封仅观测，禁止用 blocked 回滚 put_fact
+        out["n20_constraint"] = {
+            "ok": stack.get("ok"),
+            "blocked": stack.get("blocked"),
+            "block_reason": stack.get("block_reason") or "",
+            "layers_fired": list(stack.get("layers_fired") or []),
+            "warnings": list(stack.get("warnings") or []),
+            "audit": stack.get("audit") or {},
+            "route": "put_fact",
+            "op": "put_fact",
+            "hotpath": True,
+            "enforced": False,
+            "certified": False,
+            "n20_full_conformance": False,
+        }
+        return out
+    except Exception as exc:
+        logger.warning(
+            "constraint_layers put_fact hotpath failed: %s", exc, exc_info=True
+        )
+        return out
 
 
 def evaluate_constraint_layers_gate(
@@ -280,7 +339,7 @@ def evaluate_constraint_layers_gate(
         "certified": False,
         "n20_full_conformance": False,
         "note": (
-            "Constraint layers + Gateway hotpath deepen; "
+            "Constraint layers + Gateway/put_fact hotpath deepen; "
             "not N20 certified / not full surface / not Lv4 redesign"
         ),
     }
@@ -406,10 +465,18 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
     )
 
     ug_src = inspect.getsource(fl.unified_query_gateway)
+    put_src = inspect.getsource(fl.FactLedger.put_fact)
     cases.append(
         {
             "id": "gateway_hotpath_entry",
             "ok": "maybe_attach_constraint_stack_hotpath" in ug_src,
+            "detail": "",
+        }
+    )
+    cases.append(
+        {
+            "id": "put_fact_hotpath_entry",
+            "ok": "maybe_attach_put_fact_constraint_hotpath" in put_src,
             "detail": "",
         }
     )
@@ -424,7 +491,7 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         "n20_full_conformance": False,
         "measured_at": time.time(),
         "note": (
-            "Constraint layers + Gateway hotpath deepen; "
+            "Constraint layers + Gateway/put_fact hotpath deepen; "
             "not full surface / not certified"
         ),
     }
