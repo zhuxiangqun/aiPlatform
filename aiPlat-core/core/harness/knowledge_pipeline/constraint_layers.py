@@ -4,12 +4,12 @@
   - 按标准分层评估约束：L1 硬门 / L2 软约束 / L3 审计
   - 强制 ``L1 > L2 > L3``：高风险无 L1 拒绝；L2 不得单独作安全边界
   - unified_query_gateway / put_fact / query_facts_gateway / MaterialsChat /
-    GraphRAG 热路径 best-effort 挂 ``n20_constraint``（可 env 关闭）
+    GraphRAG / Wiki-KB 热路径 best-effort 挂 ``n20_constraint``（可 env 关闭）
   - 套件/门槛门：``certified`` / ``n20_full`` 恒 false
 
 非目标：
   - 不重写 ActionRegistry / PolicyGate 全路径
-  - 不宣称知识面全域（Wiki/KB 全入口等）已完整分层强制
+  - 不宣称知识面全域（裸 list retrieve 全入口等）已完整分层强制
   - 不并入 N08 Lv4 误报门
   - 不宣称 N20 certified
 """
@@ -35,6 +35,7 @@ _SUITE_CASES = (
     "query_facts_gateway_hotpath_entry",
     "materials_chat_hotpath_entry",
     "graphrag_hotpath_entry",
+    "wiki_kb_hotpath_entry",
 )
 
 _LAYERS = ("L1", "L2", "L3")
@@ -486,6 +487,68 @@ def maybe_attach_graphrag_constraint_hotpath(
         return out
 
 
+def maybe_attach_wiki_kb_constraint_hotpath(
+    response: Optional[Dict[str, Any]],
+    *,
+    channel: str = "wiki",
+    actor_permissions: Optional[Sequence[str]] = None,
+    risk_level: str = "medium",
+) -> Dict[str, Any]:
+    """Wiki/KB 查询形与 list 信封热路径 best-effort 挂 ``n20_constraint``。
+
+    Args:
+        response: Wiki/KB 查询形或 list 信封 dict。
+        channel: ``wiki`` / ``kb`` / ``wiki_context`` 等。
+        actor_permissions: 调用方权限（缺省视为可读）。
+        risk_level: 风险等级。
+    """
+    out = dict(response) if isinstance(response, dict) else {}
+    if not hotpath_constraint_enabled():
+        return out
+    try:
+        perms = [str(p).strip() for p in (actor_permissions or []) if str(p).strip()]
+        if not perms:
+            perms = ["kb:read"]
+        ch = (channel or "wiki").strip() or "wiki"
+        stack = evaluate_constraint_stack(
+            risk_level=risk_level or "medium",
+            required_permissions=["kb:read"],
+            actor_permissions=perms,
+            soft_constraints=[
+                {
+                    "id": "wiki_kb_prefer_citations",
+                    "message": "prefer citations on wiki/kb hits",
+                }
+            ],
+            require_audit=True,
+            l1_present=True,
+        )
+        # 为什么：检索已完成；信封仅观测，不改 n21_query / abstain 裁决
+        out["n20_constraint"] = {
+            "ok": stack.get("ok"),
+            "blocked": stack.get("blocked"),
+            "block_reason": stack.get("block_reason") or "",
+            "layers_fired": list(stack.get("layers_fired") or []),
+            "warnings": list(stack.get("warnings") or []),
+            "audit": stack.get("audit") or {},
+            "route": ch,
+            "op": "wiki_kb",
+            "channel": ch,
+            "hotpath": True,
+            "enforced": False,
+            "certified": False,
+            "n20_full_conformance": False,
+        }
+        return out
+    except Exception as exc:
+        logger.warning(
+            "constraint_layers wiki_kb hotpath failed: %s",
+            exc,
+            exc_info=True,
+        )
+        return out
+
+
 def evaluate_constraint_layers_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -522,8 +585,8 @@ def evaluate_constraint_layers_gate(
         "n20_full_conformance": False,
         "note": (
             "Constraint layers + Gateway/put_fact/query_facts_gateway/"
-            "MaterialsChat/GraphRAG hotpath deepen; not N20 certified / "
-            "not full surface / not Lv4 redesign"
+            "MaterialsChat/GraphRAG/Wiki-KB hotpath deepen; not N20 "
+            "certified / not full surface / not Lv4 redesign"
         ),
     }
 
@@ -699,6 +762,19 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         }
     )
 
+    wk_src = (
+        inspect.getsource(qac.attach_list_retrieve_n21_envelope)
+        + inspect.getsource(qac.query_wiki_with_abstain)
+        + inspect.getsource(qac.query_kb_with_abstain)
+    )
+    cases.append(
+        {
+            "id": "wiki_kb_hotpath_entry",
+            "ok": "maybe_attach_wiki_kb_constraint_hotpath" in wk_src,
+            "detail": "",
+        }
+    )
+
     passed = sum(1 for c in cases if c.get("ok"))
     return {
         "ok": passed == len(_SUITE_CASES),
@@ -710,7 +786,7 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         "measured_at": time.time(),
         "note": (
             "Constraint layers + Gateway/put_fact/query_facts_gateway/"
-            "MaterialsChat/GraphRAG hotpath deepen; not full surface / "
-            "not certified"
+            "MaterialsChat/GraphRAG/Wiki-KB hotpath deepen; not full "
+            "surface / not certified"
         ),
     }

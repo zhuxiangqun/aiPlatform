@@ -208,6 +208,17 @@ def attach_list_retrieve_n21_envelope(
     out["n21_list_enforced"] = True
     out["certified"] = False
     out["n21_full_conformance"] = False
+    try:
+        # 为什么：N20 — Wiki/KB list 信封挂约束观测；不改 n21_query / list 主结构
+        from core.harness.knowledge_pipeline.constraint_layers import (
+            maybe_attach_wiki_kb_constraint_hotpath,
+        )
+
+        out = maybe_attach_wiki_kb_constraint_hotpath(out, channel=channel)
+    except Exception:
+        logger.warning(
+            "N20 wiki_kb list constraint hotpath skipped", exc_info=True
+        )
     return out
 
 
@@ -246,9 +257,21 @@ def query_wiki_with_abstain(
             logger.warning("query_wiki_with_abstain retrieve failed: %s", exc, exc_info=True)
             hits = []
     packed = pack_retrieve_hits_as_query_response(hits, channel="wiki", query=q)
-    return enforce_abstain_citations(
+    out = enforce_abstain_citations(
         packed, require_citations_on_hit=require_citations_on_hit
     )
+    try:
+        # 为什么：N20 — Wiki 查询形挂约束观测；统一 Gateway 另由 _finish 挂 F.1
+        from core.harness.knowledge_pipeline.constraint_layers import (
+            maybe_attach_wiki_kb_constraint_hotpath,
+        )
+
+        out = maybe_attach_wiki_kb_constraint_hotpath(out, channel="wiki")
+    except Exception:
+        logger.warning(
+            "N20 wiki query constraint hotpath skipped", exc_info=True
+        )
+    return out
 
 
 def query_kb_with_abstain(
@@ -292,9 +315,21 @@ def query_kb_with_abstain(
             logger.warning("query_kb_with_abstain retrieve failed: %s", exc, exc_info=True)
             hits = []
     packed = pack_retrieve_hits_as_query_response(hits, channel="kb", query=q)
-    return enforce_abstain_citations(
+    out = enforce_abstain_citations(
         packed, require_citations_on_hit=require_citations_on_hit
     )
+    try:
+        # 为什么：N20 — KB 查询形挂约束观测；统一 Gateway index 路由另由 _finish 挂
+        from core.harness.knowledge_pipeline.constraint_layers import (
+            maybe_attach_wiki_kb_constraint_hotpath,
+        )
+
+        out = maybe_attach_wiki_kb_constraint_hotpath(out, channel="kb")
+    except Exception:
+        logger.warning(
+            "N20 kb query constraint hotpath skipped", exc_info=True
+        )
+    return out
 
 
 def normalize_materials_citations(citations: Any) -> List[Dict[str, str]]:
