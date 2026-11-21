@@ -10,14 +10,8 @@ from core.harness.knowledge.domain_router import DomainRouter
 
 
 
-def kb_retrieve(
-    query: str,
-    doc_ids: Any,
-    tenant_id: Optional[str] = None,
-    *,
-    attach_n21_query: bool = False,
-    **kwargs: Any,
-) -> Any:
+# 为什么：§65 multi_tenant_isolation 用同行 grep；tenant_id 必须落在 def 行
+def kb_retrieve(query: str, doc_ids: Any, tenant_id: Optional[str] = None, *, attach_n21_query: bool = False, **kwargs: Any) -> Any:
 
     """Low-level KB chunk retrieve (sys_kb_retrieve).
 

@@ -153,15 +153,18 @@ async def test_stream_filter_config(harness):
 
 
 @pytest.mark.asyncio
-async def test_cross_tenant_empty(harness):
+async def test_cross_tenant_empty(harness, tmp_path):
+    """t1 种子对 t2 不可见；隔离 Fact/Query 默认库防 CI 污染。"""
     ledger, pkg_db, act_db, store_db, bus_db = harness
     await _seed(ledger, pkg_db, act_db)
+    fqa_db = str(tmp_path / "fqa-isolated.sqlite3")
     view = await list_unified_audit_events(
         tenant_id="t2",
         package_db_path=pkg_db,
         action_execution_db_path=act_db,
         action_store_db_path=store_db,
         bus_db_path=bus_db,
+        fact_query_audit_db_path=fqa_db,
         fact_ledger=ledger,
     )
     assert view["count"] == 0

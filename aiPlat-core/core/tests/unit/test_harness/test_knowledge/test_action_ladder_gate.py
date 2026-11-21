@@ -17,7 +17,19 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-def _make_registry(tmp_path, level: ActionLevel) -> AsyncActionRegistry:
+def _make_registry(
+    tmp_path,
+    level: ActionLevel,
+    *,
+    rollback_action_id: str = "test_auto_rollback",
+) -> AsyncActionRegistry:
+    """构造带可选 rollback 的测试注册表（对齐 N08 Lv4 门 v2）。
+
+    Args:
+        tmp_path: pytest 临时目录。
+        level: Action 阶梯等级。
+        rollback_action_id: Lv4 放行所需回滚动作；空串测缺失路径。
+    """
     db = str(tmp_path / "exec_store.db")
     reg = AsyncActionRegistry()
     reg._store.db_path = db
@@ -32,6 +44,7 @@ def _make_registry(tmp_path, level: ActionLevel) -> AsyncActionRegistry:
         label="自动闭环动作",
         domain_id="default",
         action_level=level,
+        rollback_action_id=rollback_action_id,
     ))
     reg._handlers["test_auto"] = handler
     return reg
@@ -47,33 +60,34 @@ def test_action_level_ladder():
 
 
 def test_closure_gate_rejects_high_fp(tmp_path):
+    """≥min_samples 且高误报 → 拒绝（对齐 Lv4 门 v2）。"""
     reg = _make_registry(tmp_path, ActionLevel.LV4_AUTO_CLOSE)
 
     async def scenario():
         await reg._store.initialize()
-        # 造 3 条历史：2 条误报 → fp_rate=0.667 ≥ 0.5%
-        for i in range(3):
+        # 为什么：v2 要求 ≥10 样本才算 fp_rate；3 条会走 insufficient_history
+        for i in range(12):
             await reg._store.insert_audit({
                 "action_id": "test_auto",
                 "entity_id": f"e{i}",
                 "domain_id": "d",
-                "result_status": "corrected" if i < 2 else "executed",
+                "result_status": "corrected" if i < 8 else "executed",
             })
         gate = await reg.compute_closure_gate("test_auto")
-        assert gate["total"] == 3
-        assert gate["false_positives"] == 2
-        assert gate["fp_rate"] == 0.6667
+        assert gate["total"] == 12
+        assert gate["false_positives"] == 8
+        assert gate["fp_rate"] == round(8 / 12, 4)
         assert gate["allowed"] is False
 
     _run(scenario())
 
 
 def test_closure_gate_allows_low_fp(tmp_path):
+    """足样本 + rollback + 0 误报 → allowed。"""
     reg = _make_registry(tmp_path, ActionLevel.LV4_AUTO_CLOSE)
 
     async def scenario():
         await reg._store.initialize()
-        # 200 条执行，0 误报 → allowed
         for i in range(200):
             await reg._store.insert_audit({
                 "action_id": "test_auto",
@@ -104,7 +118,6 @@ def test_execute_lv4_blocked_by_gate(tmp_path, monkeypatch):
     """Lv4 但误报率超标 → execute 返回 closure_gated，handler 不执行。"""
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
     reg = _make_registry(tmp_path, ActionLevel.LV4_AUTO_CLOSE)
-    # 造一个真实 GraphIndex 实体，让 execute 的实体加载通过
     from core.harness.ontology_engine.graph_index import GraphIndex
     g = GraphIndex.load("default")
     g.add_entity(entity_id="x1", entity_name="X1", class_name="C")
@@ -113,7 +126,7 @@ def test_execute_lv4_blocked_by_gate(tmp_path, monkeypatch):
 
     async def scenario():
         await reg._store.initialize()
-        for i in range(2):
+        for i in range(10):
             await reg._store.insert_audit({
                 "action_id": "test_auto",
                 "entity_id": f"e{i}",
@@ -133,7 +146,7 @@ def test_execute_lv4_blocked_by_gate(tmp_path, monkeypatch):
 
 
 def test_execute_lv4_passes_gate(tmp_path, monkeypatch):
-    """Lv4 且误报率 0 → 执行成功。"""
+    """Lv4 + 足样本 + rollback + 0 误报 → 执行成功。"""
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
     reg = _make_registry(tmp_path, ActionLevel.LV4_AUTO_CLOSE)
     from core.harness.ontology_engine.graph_index import GraphIndex

@@ -4220,7 +4220,7 @@ async def run_unified_query_gateway_suite(
             tenant_id=tenant_id,
             query="n06-wiki-no-such-page-xyz",
             route="wiki",
-            collection_id="default",
+            collection_id=DomainRouter.default_collection(),
             ledger=lg,
         )
         wiki_ok = (
