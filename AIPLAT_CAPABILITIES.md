@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4042
+total_capabilities: 4047
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1304,7 +1304,7 @@ scan_hash: 8f9548ec24f4
 | **Operational 可认证路径（v4.3.1 Phase O）** | `evaluate_operational_ready_gate` / `evaluate_pilot_operational_certification` + Facade + FDE `/operational-ready` `/pilot-operational-cert` | ✅ | 附录 N.4 六项 + `operational_ready`；非作者批准（朱莹）→ `pilot_operational_certified`。证据 `phase2-operational-cert-path-evidence.md` + `pilot-operational-approval-record.approved.json`。**未宣称** 全量 certified / 24/24。生成物适用：已接线（HTTP） | 本批 |
 | **全量可认证路径（v4.3.1 Phase F）** | `evaluate_full_ready_gate` / `evaluate_full_certification` + Facade + FDE `/full-ready` `/full-cert` | ✅ | 附录 N.6：24 exists + 三级徽章 + 独立全量批准（朱向群，conditional）→ `certified` / `n24_full_conformance`。证据 `phase2-full-cert-path-evidence.md` + `pilot-full-approval-record.approved.json`。**未宣称** 准确率 / 生产 SLO 遥测。生成物适用：已接线（HTTP） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
-| **统一 Query Gateway（v4.3.1 N06 deepen）** | `unified_query_gateway` / `materials_chat_to_f1_envelope` / suite/gate + Facade | ✅ | fact+object_set+wiki+index+materials_chat → F.1；MaterialsChat RAG/trivial/cache_hit 挂 `gateway_f1`；certified 恒 false。证据 `phase2-unified-query-gateway-evidence.md`。**未宣称** 其它应用入口 / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **统一 Query Gateway（v4.3.1 N06 deepen）** | `unified_query_gateway` / `materials_chat_to_f1_envelope` / `graphrag_to_f1_envelope` / suite/gate + Facade | ✅ | fact+object_set+wiki+index+materials_chat+graphrag → F.1；Materials/GraphRAG 挂 `gateway_f1`；certified 恒 false。证据 `phase2-unified-query-gateway-evidence.md`。**未宣称** 全部其它应用入口 / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Confidence 校准流水线（v4.3.1 N13 deepen）** | `apply_calibration_ceiling` / `run_calibration_pipeline_suite` / `evaluate_calibration_pipeline_gate` + fact gateway 封顶 + Facade | ✅ | 查询路径按校准天花板封顶；未达标/缺失 → ≤medium；suite/gate certified 恒 false。证据 `phase2-calibration-pipeline-evidence.md`。**未宣称** 真实 ECE 训练 / 准确率 / N13 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Claim 证据硬门+冲突+状态写（v4.3.1 N03 F2+write）** | `put_claim` / `record_claim_conflict` / `transition_claim_status`→`put_claim` / suite/gate + Facade 同名 + `POST …/claims/{id}/status-transition` | ✅ | published 无证据拒；同键冲突；状态写路径（合法边+审计+持久化）；certified 恒 false。证据 `phase2-claim-status-write-evidence.md`。**未宣称** 全量 Claim 生命周期产品 / N03 certified。生成物适用：已接线（经 Facade/HTTP） | 本批 |
 | **Fact→Graph 投影 + Action L1（v4.3.1 Phase 2 G2）** | `fact_projector.py` + `action_registry` Step 3.25 + `POST …/extractions/facts/rebuild` | ✅ | `project_facts_to_graph`（`exact_replay_from_facts`）；`required_permissions` 缺省 → `policy_denied`；试点合同 `lock_service_accept_order.yaml`。证据 `phase2-g2-evidence.md`。**未宣称** Wiki 只读/ObjectSet/N24 | 已合入 |
@@ -1560,6 +1560,7 @@ scan_hash: 8f9548ec24f4
 | unified_query_gateway_routes | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_fact_unified_query_gateway_gate | `core/api/core_facade.py` | ✅ | N06 统一 Gateway 门槛门 Facade | 本批 |
 | materials_chat_to_f1_envelope | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 MaterialsChat→F.1 映射 | 本批 |
+| graphrag_to_f1_envelope | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 GraphRAG→F.1 映射 | 本批 |
 | fact_ledger_run_unified_query_gateway_suite | `core/api/core_facade.py` | ✅ | N06 统一 Gateway 套件 Facade | 本批 |
 | fact_ledger_unified_query_gateway | `core/api/core_facade.py` | ✅ | N06 统一 Gateway Facade | 本批 |
 | evaluate_unified_query_gateway_gate | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 统一 Gateway 门槛门 | 本批 |
@@ -4949,7 +4950,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 775 | 1 | 776 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 772 | 9 | 781 |
+| 知识引擎（本体） | 777 | 9 | 786 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4992,7 +4993,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4031** | **11** | **4042** |
+| **总计** | **4036** | **11** | **4047** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3169
+total_capabilities: 3171
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 700
+    caps_count: 702
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3124,15 +3124,19 @@ domains:
         signature: "evaluate_gateway_contract_gate(responses)→gate (certified=false)"
       - symbol: "unified_query_gateway"
         type: "function"
-        signature: "N06: unified fact/object_set/wiki/index/materials_chat→F.1 (certified=false)"
+        signature: "N06: unified fact/object_set/wiki/index/materials_chat/graphrag→F.1 (certified=false)"
         module: "core/harness/knowledge_pipeline/fact_ledger.py"
       - symbol: "materials_chat_to_f1_envelope"
         type: "function"
         signature: "N06: MaterialsChat output→F.1 via N21 (certified=false)"
         module: "core/harness/knowledge_pipeline/fact_ledger.py"
+      - symbol: "graphrag_to_f1_envelope"
+        type: "function"
+        signature: "N06: GraphRAG result→F.1 via N21 (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_ledger.py"
       - symbol: "unified_query_gateway_routes"
         type: "function"
-        signature: "N06: declare unified gateway routes incl materials_chat (certified=false)"
+        signature: "N06: declare unified gateway routes incl materials/graphrag (certified=false)"
         module: "core/harness/knowledge_pipeline/fact_ledger.py"
       - symbol: "require_unified_query_route"
         type: "function"
@@ -3153,6 +3157,10 @@ domains:
       - symbol: "materials_chat_to_f1_envelope"
         type: "function"
         signature: "CoreFacade materials_chat_to_f1_envelope"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "graphrag_to_f1_envelope"
+        type: "function"
+        signature: "CoreFacade graphrag_to_f1_envelope"
         module: "aiPlat-core/core/api/core_facade.py"
       - symbol: "fact_ledger_run_unified_query_gateway_suite"
         type: "function"
