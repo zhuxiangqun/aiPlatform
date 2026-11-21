@@ -174,6 +174,23 @@ async def enforce_materials_chat_output_route(body: MaterialsBody = Body(...)):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/query-abstain-citations/materials-shortcut")
+async def enforce_materials_chat_shortcut_output_route(
+    body: MaterialsBody = Body(...),
+):
+    """MaterialsChat 非 RAG 捷径出口强制（time/math/greeting）。
+
+    Args:
+        body: trivial_bypass 输出载荷。
+    """
+    from core.api.core_facade import enforce_materials_chat_shortcut_output
+
+    try:
+        return enforce_materials_chat_shortcut_output(output=body.output)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/query-abstain-citations/graphrag")
 async def attach_graphrag_n21_envelope_route(body: GraphragBody = Body(...)):
     """GraphRAG 结果附加 n21_query 信封。

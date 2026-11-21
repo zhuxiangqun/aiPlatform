@@ -18715,6 +18715,35 @@ def enforce_materials_chat_output(
     return _e(output, require_citations_on_hit=require_citations_on_hit)
 
 
+def enforce_materials_chat_shortcut_output(
+    *,
+    output: Dict[str, Any],
+) -> dict:
+    """CoreFacade：MaterialsChat 非 RAG 捷径出口强制（N21；certified 恒 false）。
+
+    Args:
+        output: trivial_bypass 输出。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_shortcut_output as _e,
+    )
+
+    return _e(output)
+
+
+def is_materials_trivial_bypass(*, output: Dict[str, Any]) -> bool:
+    """CoreFacade：判定 MaterialsChat 是否 trivial 捷径（N21）。
+
+    Args:
+        output: Agent 输出。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        is_materials_trivial_bypass as _i,
+    )
+
+    return _i(output)
+
+
 def attach_graphrag_n21_envelope(
     *,
     result: Dict[str, Any],

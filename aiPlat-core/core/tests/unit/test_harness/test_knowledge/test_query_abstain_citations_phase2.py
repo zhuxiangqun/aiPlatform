@@ -16,10 +16,12 @@ async def test_suite_passes_and_gate_never_certifies():
     assert suite["n21_full_conformance"] is False
     assert suite["wiki_kb_query_entry"] is True
     assert suite["materials_graphrag_entry"] is True
+    assert suite["materials_shortcut_entry"] is True
 
     gate = qac.evaluate_query_abstain_citations_gate(suite)
     assert gate["ok"] is True
     assert gate["certified"] is False
+    assert gate["materials_shortcut_entry"] is True
     assert gate["issues"] == []
 
 
@@ -89,6 +91,33 @@ def test_pack_kb_orphan_hit_abstains():
 def test_materials_rag_without_citations_abstains():
     """MaterialsChat RAG 无引用必须 abstain。"""
     out = qac.enforce_materials_chat_output(
+        {"answer": "fake", "citations": [], "strategy": "direct_retrieve"}
+    )
+    assert out["abstained"] is True
+    assert out["n21_channel"] == "materials_chat"
+
+
+def test_materials_shortcut_allows_empty_citations():
+    """trivial 捷径允许无 citations 的答案。"""
+    out = qac.enforce_materials_chat_shortcut_output(
+        {
+            "answer": "hi",
+            "citations": [],
+            "strategy": "trivial_bypass",
+            "intent": "trivial",
+            "quality": "trivial",
+        }
+    )
+    assert out["abstained"] is False
+    assert out["answer"] == "hi"
+    assert out["n21_channel"] == "materials_chat_shortcut"
+    assert out["n21_shortcut"] is True
+    assert out["certified"] is False
+
+
+def test_materials_fake_shortcut_falls_back_to_rag_abstain():
+    """未标记 trivial 的假捷径回退 RAG 门并 abstain。"""
+    out = qac.enforce_materials_chat_shortcut_output(
         {"answer": "fake", "citations": [], "strategy": "direct_retrieve"}
     )
     assert out["abstained"] is True

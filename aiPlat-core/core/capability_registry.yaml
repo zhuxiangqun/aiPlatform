@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3155
+total_capabilities: 3158
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 686
+    caps_count: 689
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3846,6 +3846,14 @@ domains:
         module: core/harness/knowledge_pipeline/query_abstain_citations.py
         type: function
         signature: "N21: MaterialsChat RAG output abstain enforce (certified=false)"
+      - symbol: "is_materials_trivial_bypass"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: detect MaterialsChat trivial shortcut (certified=false)"
+      - symbol: "enforce_materials_chat_shortcut_output"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: MaterialsChat trivial shortcut enforce (certified=false)"
       - symbol: "pack_graphrag_result_as_query_response"
         module: core/harness/knowledge_pipeline/query_abstain_citations.py
         type: function
@@ -3858,6 +3866,10 @@ domains:
         module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
         type: function
         signature: "POST /fde/query-abstain-citations/materials via Facade"
+      - symbol: "enforce_materials_chat_shortcut_output_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/materials-shortcut via Facade"
       - symbol: "attach_graphrag_n21_envelope_route"
         module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
         type: function
