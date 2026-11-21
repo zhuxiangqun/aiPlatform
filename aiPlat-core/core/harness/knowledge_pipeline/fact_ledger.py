@@ -3547,13 +3547,14 @@ def evaluate_gateway_contract_gate(
     }
 
 
-# 为什么：N06 统一入口含 wiki/index/materials_chat；Agent 非 RAG 全出口仍可并行
+# 为什么：N06 统一入口含 wiki/index/materials_chat/graphrag；其它 Agent 全出口仍可并行
 UNIFIED_QUERY_GATEWAY_ROUTES: Tuple[str, ...] = (
     "fact",
     "object_set",
     "wiki",
     "index",
     "materials_chat",
+    "graphrag",
 )
 
 
@@ -3570,9 +3571,10 @@ def unified_query_gateway_routes() -> Dict[str, Any]:
         "wiki_index_routes": True,
         "materials_chat_route": True,
         "materials_nonrag_gateway": True,
+        "graphrag_route": True,
         "note": (
-            "Core unified entry for fact+object_set+wiki+index+materials_chat F.1 "
-            "(RAG/trivial/cache_hit); not other apps / not N06 certified"
+            "Core unified entry for fact+object_set+wiki+index+materials_chat"
+            "+graphrag F.1; not all other apps / not N06 certified"
         ),
     }
 
@@ -3581,7 +3583,8 @@ def require_unified_query_route(route: str) -> str:
     """校验统一 Gateway 路由名。
 
     Args:
-        route: ``fact`` / ``object_set`` / ``wiki`` / ``index`` / ``materials_chat``。
+        route: ``fact`` / ``object_set`` / ``wiki`` / ``index`` /
+            ``materials_chat`` / ``graphrag``。
 
     Returns:
         规范化小写路由名。
@@ -3596,6 +3599,35 @@ def require_unified_query_route(route: str) -> str:
             f"routes={list(UNIFIED_QUERY_GATEWAY_ROUTES)}"
         )
     return r
+
+
+def graphrag_to_f1_envelope(
+    *,
+    tenant_id: str,
+    result: Optional[Dict[str, Any]],
+    query: str = "",
+) -> Dict[str, Any]:
+    """GraphRAG retrieve 结果经 N21 信封后映射为附录 F.1。
+
+    Args:
+        tenant_id: 租户。
+        result: GraphRAGRetriever.retrieve 回执（可已含 ``n21_query``）。
+        query: 原始查询。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        attach_graphrag_n21_envelope,
+    )
+
+    raw = result if isinstance(result, dict) else {}
+    n21 = raw.get("n21_query") if isinstance(raw.get("n21_query"), dict) else None
+    if n21 is None:
+        wrapped = attach_graphrag_n21_envelope(raw, query=query)
+        n21 = wrapped.get("n21_query") if isinstance(wrapped, dict) else {}
+    return _n21_to_f1_envelope(
+        tenant_id=tenant_id,
+        route="graphrag",
+        n21=n21 if isinstance(n21, dict) else {},
+    )
 
 
 def materials_chat_to_f1_envelope(
@@ -3653,7 +3685,7 @@ def _n21_to_f1_envelope(
 
     Args:
         tenant_id: 租户。
-        route: ``wiki`` / ``index`` / ``materials_chat``。
+        route: ``wiki`` / ``index`` / ``materials_chat`` / ``graphrag``。
         n21: N21 查询形 / MaterialsChat enforce 回执。
         allow_empty_citations: trivial 捷径允许无引用命中。
     """
@@ -3754,13 +3786,15 @@ async def unified_query_gateway(
     calibration_db_path: Optional[str] = None,
     calibration_query_type: str = "fact_gateway",
     materials_output: Optional[Dict[str, Any]] = None,
+    graphrag_result: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """N06 deepen：统一 Query Gateway（fact/object_set/wiki/index/materials_chat → F.1）。
+    """N06 deepen：统一 Query Gateway（含 materials_chat/graphrag → F.1）。
 
     Args:
         tenant_id: 租户。
         query: 查询串（fact/wiki/index 路由使用）。
-        route: ``fact`` / ``object_set`` / ``wiki`` / ``index`` / ``materials_chat``。
+        route: ``fact`` / ``object_set`` / ``wiki`` / ``index`` /
+            ``materials_chat`` / ``graphrag``。
         collection_id / domain_id / top_k: fact/wiki/index 路由参数。
         object_set_request: object_set 路由请求 dict。
         permissions / role: object_set L1/ACL。
@@ -3768,6 +3802,7 @@ async def unified_query_gateway(
         bindings_path: 可选 ObjectType 绑定路径（object_set 探针/测试）。
         calibration_db_path / calibration_query_type: N13 校准封顶透传。
         materials_output: materials_chat 路由的 Agent 输出（缺省则 abstain）。
+        graphrag_result: graphrag 路由的 retrieve 回执（缺省则 abstain）。
 
     Returns:
         附录 F.1 信封；``certified`` 不在此回执宣称。
@@ -3866,6 +3901,16 @@ async def unified_query_gateway(
             )
         )
 
+    if r == "graphrag":
+        # 为什么：GraphRAG 经 N21 信封 → F.1；无结果则 abstain（非跑全检索）
+        return _finish(
+            graphrag_to_f1_envelope(
+                tenant_id=tid,
+                result=graphrag_result if isinstance(graphrag_result, dict) else {},
+                query=query or "",
+            )
+        )
+
     # object_set → F.1 信封（无命中则 abstain）
     from core.harness.knowledge_pipeline.object_set import (
         query_object_set as _query_os,
@@ -3932,6 +3977,7 @@ _N06_UNIFIED_GATEWAY_CASES = (
     "index_route_f1_ok",
     "materials_chat_route_f1_ok",
     "materials_nonrag_gateway_f1_ok",
+    "graphrag_route_f1_ok",
     "honesty_certified_false",
 )
 
@@ -3942,7 +3988,7 @@ async def run_unified_query_gateway_suite(
     tenant_id: str = "n06-unified-gw-tenant",
     domain_id: str = "",
 ) -> Dict[str, Any]:
-    """N06 统一 Gateway 加深套件（含 materials_chat；非全 Agent 出口/非 certified）。
+    """N06 统一 Gateway 加深套件（含 materials/graphrag；非其它全应用/非 certified）。
 
     Args:
         ledger: 可选账本。
@@ -3976,6 +4022,7 @@ async def run_unified_query_gateway_suite(
             and meta.get("wiki_index_routes") is True
             and meta.get("materials_chat_route") is True
             and meta.get("materials_nonrag_gateway") is True
+            and meta.get("graphrag_route") is True
             and meta.get("certified") is False
         )
         cases.append(
@@ -4187,6 +4234,46 @@ async def run_unified_query_gateway_suite(
             }
         )
 
+        gr_hit = await unified_query_gateway(
+            tenant_id=tenant_id,
+            route="graphrag",
+            query="graphrag grounded",
+            graphrag_result={
+                "mode": "graphrag",
+                "chunks": [
+                    {
+                        "title": "G1",
+                        "content": "grounded graph chunk",
+                        "source": "wiki:G1",
+                    }
+                ],
+            },
+            ledger=lg,
+        )
+        gr_empty = await unified_query_gateway(
+            tenant_id=tenant_id,
+            route="graphrag",
+            query="graphrag empty",
+            graphrag_result={"mode": "vector_only", "chunks": []},
+            ledger=lg,
+        )
+        gr_ok = (
+            validate_gateway_response(gr_hit).get("ok") is True
+            and gr_hit.get("abstained") is False
+            and bool(gr_hit.get("citations"))
+            and str(gr_hit.get("route_reason") or "").startswith("unified:graphrag:")
+            and gr_empty.get("abstained") is True
+            and require_unified_query_route("graphrag") == "graphrag"
+            and meta.get("graphrag_route") is True
+        )
+        cases.append(
+            {
+                "id": "graphrag_route_f1_ok",
+                "ok": gr_ok,
+                "detail": "" if gr_ok else "graphrag_route_failed",
+            }
+        )
+
         honesty_ok = (
             meta.get("certified") is False
             and meta.get("n06_full_conformance") is False
@@ -4194,6 +4281,7 @@ async def run_unified_query_gateway_suite(
             and wiki_resp.get("n06_full_conformance") is not True
             and mat_hit.get("n06_full_conformance") is not True
             and sc_f1.get("n06_full_conformance") is not True
+            and gr_hit.get("n06_full_conformance") is not True
         )
         cases.append(
             {
@@ -4224,9 +4312,10 @@ async def run_unified_query_gateway_suite(
         "wiki_index_routes": True,
         "materials_chat_route": True,
         "materials_nonrag_gateway": True,
+        "graphrag_route": True,
         "note": (
-            "Unified fact+object_set+wiki+index+materials_chat F.1 "
-            "(RAG/trivial/cache_hit); not other apps / not N06 certified"
+            "Unified fact+object_set+wiki+index+materials_chat+graphrag F.1; "
+            "not all other apps / not N06 certified"
         ),
     }
 
@@ -4256,6 +4345,8 @@ def evaluate_unified_query_gateway_gate(
         issues.append("materials_chat_route_required")
     if s.get("materials_nonrag_gateway") is not True:
         issues.append("materials_nonrag_gateway_required")
+    if s.get("graphrag_route") is not True:
+        issues.append("graphrag_route_required")
     return {
         "gate": "unified_query_gateway",
         "ok": not issues,
@@ -4268,9 +4359,10 @@ def evaluate_unified_query_gateway_gate(
         "wiki_index_routes": True,
         "materials_chat_route": True,
         "materials_nonrag_gateway": True,
+        "graphrag_route": True,
         "note": (
-            "fact+object_set+wiki+index+materials_chat unify "
-            "(RAG/trivial/cache_hit); not other apps / N06 certified"
+            "fact+object_set+wiki+index+materials_chat+graphrag unify; "
+            "not all other apps / N06 certified"
         ),
     }
 

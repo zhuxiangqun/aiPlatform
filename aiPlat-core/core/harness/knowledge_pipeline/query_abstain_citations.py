@@ -525,13 +525,15 @@ def attach_graphrag_n21_envelope(
     *,
     query: str = "",
     require_citations_on_hit: bool = True,
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
-    """给 GraphRAG 结果附加 ``n21_query`` 信封（不改变 chunks 主结构）。
+    """给 GraphRAG 结果附加 ``n21_query``；租户非空时挂 N06 ``gateway_f1``。
 
     Args:
         result: GraphRAG retrieve 回执。
         query: 原始查询。
         require_citations_on_hit: 无引用则 abstain。
+        tenant_id: 非空时附加 ``gateway_f1``（N06 graphrag 路由）。
     """
     out = dict(result) if isinstance(result, dict) else {}
     packed = pack_graphrag_result_as_query_response(out, query=query)
@@ -542,6 +544,21 @@ def attach_graphrag_n21_envelope(
     out["certified"] = False
     out["n21_full_conformance"] = False
     out["n21_graphrag_enforced"] = True
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            # 为什么：GraphRAG 生产出口收敛到统一 Gateway F.1；非 certified
+            from core.harness.knowledge_pipeline.fact_ledger import (
+                graphrag_to_f1_envelope,
+            )
+
+            out["gateway_f1"] = graphrag_to_f1_envelope(
+                tenant_id=tid, result=out, query=query
+            )
+        except Exception:
+            logger.warning(
+                "N06 graphrag F.1 attach skipped", exc_info=True
+            )
     return out
 
 

@@ -17071,17 +17071,19 @@ async def fact_ledger_unified_query_gateway(
     permissions: list | None = None,
     role: str = "",
     materials_output: dict | None = None,
+    graphrag_result: dict | None = None,
 ) -> dict:
-    """CoreFacade：N06 统一 Query Gateway（fact/object_set/wiki/index/materials_chat → F.1）。
+    """CoreFacade：N06 统一 Query Gateway（含 materials/graphrag → F.1）。
 
     Args:
         tenant_id: 租户。
         query: 查询串。
-        route: fact / object_set / wiki / index / materials_chat。
+        route: fact / object_set / wiki / index / materials_chat / graphrag。
         collection_id / domain_id / top_k: fact/wiki/index 参数。
         object_set_request: object_set 请求。
         permissions / role: object_set L1/ACL。
         materials_output: materials_chat 路由 Agent 输出。
+        graphrag_result: graphrag 路由 retrieve 回执。
     """
     return await unified_query_gateway(
         tenant_id=tenant_id,
@@ -17094,6 +17096,7 @@ async def fact_ledger_unified_query_gateway(
         permissions=permissions,
         role=role,
         materials_output=materials_output,
+        graphrag_result=graphrag_result,
     )
 
 
@@ -17115,6 +17118,26 @@ def materials_chat_to_f1_envelope(
     )
 
     return _m(tenant_id=tenant_id, output=output, kind=kind)
+
+
+def graphrag_to_f1_envelope(
+    *,
+    tenant_id: str,
+    result: dict | None,
+    query: str = "",
+) -> dict:
+    """CoreFacade：GraphRAG 结果 → N06 F.1 信封（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        result: GraphRAG retrieve 回执。
+        query: 原始查询。
+    """
+    from core.harness.knowledge_pipeline.fact_ledger import (
+        graphrag_to_f1_envelope as _g,
+    )
+
+    return _g(tenant_id=tenant_id, result=result, query=query)
 
 
 async def fact_ledger_run_unified_query_gateway_suite(
@@ -18803,20 +18826,25 @@ def attach_graphrag_n21_envelope(
     result: Dict[str, Any],
     query: str = "",
     require_citations_on_hit: bool = True,
+    tenant_id: str = "",
 ) -> dict:
-    """CoreFacade：GraphRAG 结果附加 n21_query 信封（N21；certified 恒 false）。
+    """CoreFacade：GraphRAG 附加 n21_query；租户非空时挂 gateway_f1。
 
     Args:
         result: GraphRAG retrieve 回执。
         query: 原始查询。
         require_citations_on_hit: 无引用则 abstain。
+        tenant_id: 非空时附加 N06 ``gateway_f1``。
     """
     from core.harness.knowledge_pipeline.query_abstain_citations import (
         attach_graphrag_n21_envelope as _a,
     )
 
     return _a(
-        result, query=query, require_citations_on_hit=require_citations_on_hit
+        result,
+        query=query,
+        require_citations_on_hit=require_citations_on_hit,
+        tenant_id=tenant_id,
     )
 
 

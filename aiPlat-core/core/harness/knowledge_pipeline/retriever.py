@@ -66,6 +66,7 @@ class GraphRAGRetriever:
                     "note": "No entities extracted from query",
                 },
                 query=query,
+                tenant_id=tenant_id,
             )
 
         # Locate entities in graph
@@ -94,6 +95,7 @@ class GraphRAGRetriever:
                     "note": "Entities found in query but not in graph",
                 },
                 query=query,
+                tenant_id=tenant_id,
             )
 
         # ── Layer 2: Subgraph extraction (2-hop) ──
@@ -129,6 +131,7 @@ class GraphRAGRetriever:
                 "reasoning_paths": paths,
             },
             query=query,
+            tenant_id=tenant_id,
         )
 
     # ═══════════════════════════════════════════════════════
