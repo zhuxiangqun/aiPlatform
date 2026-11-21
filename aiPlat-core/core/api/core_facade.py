@@ -18697,6 +18697,46 @@ def query_kb_with_abstain(
     )
 
 
+def enforce_materials_chat_output(
+    *,
+    output: Dict[str, Any],
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：MaterialsChat RAG 出口 abstain 强制（N21；certified 恒 false）。
+
+    Args:
+        output: Agent 输出。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_output as _e,
+    )
+
+    return _e(output, require_citations_on_hit=require_citations_on_hit)
+
+
+def attach_graphrag_n21_envelope(
+    *,
+    result: Dict[str, Any],
+    query: str = "",
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：GraphRAG 结果附加 n21_query 信封（N21；certified 恒 false）。
+
+    Args:
+        result: GraphRAG retrieve 回执。
+        query: 原始查询。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        attach_graphrag_n21_envelope as _a,
+    )
+
+    return _a(
+        result, query=query, require_citations_on_hit=require_citations_on_hit
+    )
+
+
 async def reconcile_raw_fact_index_chain(
     *,
     tenant_id: str,

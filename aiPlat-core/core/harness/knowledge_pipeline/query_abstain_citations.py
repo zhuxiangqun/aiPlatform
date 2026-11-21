@@ -2,12 +2,12 @@
 
 职责：
   - 统一校验/归一化查询响应：abstain 无 citations/answer；有命中须 citations（可选强制）
-  - 覆盖 Fact Gateway + unified object_set + Wiki/KB 查询形入口
+  - 覆盖 Fact Gateway + object_set + Wiki/KB 查询形 + MaterialsChat RAG 出口 + GraphRAG 信封
   - 套件/门槛门：``certified`` / ``n21_full`` 恒 false
 
 非目标：
   - 不改写 ``sys_wiki_retrieve`` / ``sys_kb_retrieve`` list API 返回形
-  - 不强制 GraphRAG / MaterialsChat 全入口热路径
+  - 不强制 MaterialsChat 非 RAG 捷径（time/math 等）
   - 不并入 N13 校准封顶宣称
   - 不宣称 N21 certified
 """
@@ -29,6 +29,8 @@ _SUITE_CASES = (
     "object_set_path",
     "wiki_path",
     "kb_path",
+    "materials_path",
+    "graphrag_path",
     "honesty_certified_false",
 )
 
@@ -247,6 +249,135 @@ def query_kb_with_abstain(
     )
 
 
+def normalize_materials_citations(citations: Any) -> List[Dict[str, str]]:
+    """将 MaterialsChat/CRAG 引用归一为 ``source_id`` 列表。
+
+    Args:
+        citations: 原始 citations（dict/str 混排）。
+    """
+    out: List[Dict[str, str]] = []
+    if not isinstance(citations, list):
+        return out
+    for c in citations:
+        if isinstance(c, dict):
+            sid = str(
+                c.get("source")
+                or c.get("source_id")
+                or c.get("title")
+                or c.get("doc_id")
+                or ""
+            ).strip()
+            if not sid:
+                continue
+            out.append(
+                {
+                    "source_id": sid,
+                    "locator": str(c.get("title") or c.get("locator") or ""),
+                    "quote": str(c.get("text") or c.get("quote") or "")[:200],
+                }
+            )
+        elif isinstance(c, str) and c.strip():
+            out.append({"source_id": c.strip(), "locator": "", "quote": ""})
+    return out
+
+
+def enforce_materials_chat_output(
+    output: Optional[Dict[str, Any]],
+    *,
+    require_citations_on_hit: bool = True,
+) -> Dict[str, Any]:
+    """MaterialsChat RAG 出口：归一 citations 后 enforce（保留其余字段）。
+
+    Args:
+        output: Agent 输出 dict（含 answer/citations）。
+        require_citations_on_hit: 无引用则降级 abstain。
+    """
+    if not isinstance(output, dict):
+        raise QueryAbstainCitationsError("materials_output_must_be_dict")
+    out = dict(output)
+    probe = {
+        "answer": str(out.get("answer") or ""),
+        "citations": normalize_materials_citations(out.get("citations")),
+        "abstained": out.get("abstained") is True,
+    }
+    enforced = enforce_abstain_citations(
+        probe, require_citations_on_hit=require_citations_on_hit
+    )
+    out["answer"] = enforced.get("answer") or ""
+    out["citations"] = enforced.get("citations") or []
+    out["abstained"] = enforced.get("abstained") is True
+    out["n21_enforced"] = True
+    out["n21_channel"] = "materials_chat"
+    out["certified"] = False
+    out["n21_full_conformance"] = False
+    if enforced.get("route_reason"):
+        out["route_reason"] = str(out.get("route_reason") or "") + str(
+            enforced.get("route_reason") or ""
+        )
+    return out
+
+
+def pack_graphrag_result_as_query_response(
+    result: Optional[Dict[str, Any]],
+    *,
+    query: str = "",
+) -> Dict[str, Any]:
+    """将 GraphRAG ``retrieve`` 结果打包为查询形响应。
+
+    Args:
+        result: GraphRAGRetriever.retrieve 回执。
+        query: 原始查询。
+    """
+    r = result if isinstance(result, dict) else {}
+    chunks = r.get("chunks") or []
+    hits: List[Dict[str, Any]] = []
+    if isinstance(chunks, list):
+        for c in chunks:
+            if not isinstance(c, dict):
+                continue
+            hits.append(
+                {
+                    "title": c.get("title") or "",
+                    "text": c.get("content") or c.get("text") or "",
+                    "source": c.get("source")
+                    or c.get("doc_id")
+                    or c.get("title")
+                    or "",
+                    "score": c.get("score"),
+                }
+            )
+    packed = pack_retrieve_hits_as_query_response(
+        hits, channel="graphrag", query=query
+    )
+    packed["graphrag_mode"] = r.get("mode") or ""
+    return packed
+
+
+def attach_graphrag_n21_envelope(
+    result: Optional[Dict[str, Any]],
+    *,
+    query: str = "",
+    require_citations_on_hit: bool = True,
+) -> Dict[str, Any]:
+    """给 GraphRAG 结果附加 ``n21_query`` 信封（不改变 chunks 主结构）。
+
+    Args:
+        result: GraphRAG retrieve 回执。
+        query: 原始查询。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    out = dict(result) if isinstance(result, dict) else {}
+    packed = pack_graphrag_result_as_query_response(out, query=query)
+    enforced = enforce_abstain_citations(
+        packed, require_citations_on_hit=require_citations_on_hit
+    )
+    out["n21_query"] = enforced
+    out["certified"] = False
+    out["n21_full_conformance"] = False
+    out["n21_graphrag_enforced"] = True
+    return out
+
+
 def evaluate_query_abstain_citations_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -262,9 +393,11 @@ def evaluate_query_abstain_citations_gate(
         issues.append("honesty_certified_flag_forbidden")
     if s.get("n21_full_conformance") is True:
         issues.append("honesty_n21_full_flag_forbidden")
-    # 为什么：本 deepen 须声明 Wiki/KB 查询形已接线，防旧套件冒充
+    # 为什么：本 deepen 须声明 Wiki/KB + Materials/GraphRAG 已接线，防旧套件冒充
     if s.get("wiki_kb_query_entry") is not True:
         issues.append("wiki_kb_query_entry_required")
+    if s.get("materials_graphrag_entry") is not True:
+        issues.append("materials_graphrag_entry_required")
     cases = s.get("cases") or []
     if cases:
         failed = [c for c in cases if isinstance(c, dict) and not c.get("ok")]
@@ -285,9 +418,10 @@ def evaluate_query_abstain_citations_gate(
         "certified": False,
         "n21_full_conformance": False,
         "wiki_kb_query_entry": True,
+        "materials_graphrag_entry": True,
         "note": (
-            "Abstain+citations + Wiki/KB query entry; "
-            "not GraphRAG/MaterialsChat full / not N21 certified"
+            "Abstain+citations + Wiki/KB + MaterialsChat RAG + GraphRAG envelope; "
+            "not N21 certified / not non-RAG shortcuts"
         ),
     }
 
@@ -474,13 +608,76 @@ async def run_query_abstain_citations_suite(
             }
         )
 
+        # MaterialsChat RAG 出口：无引用假答案 → abstain；有 source 保留
+        mat_fake = enforce_materials_chat_output(
+            {"answer": "fake rag", "citations": [], "strategy": "direct_retrieve"}
+        )
+        mat_ok = enforce_materials_chat_output(
+            {
+                "answer": "grounded",
+                "citations": [{"source": "wiki:P", "text": "grounded"}],
+                "strategy": "direct_retrieve",
+            }
+        )
+        mat_v = validate_abstain_citations(
+            {
+                "answer": mat_ok.get("answer") or "",
+                "citations": mat_ok.get("citations") or [],
+                "abstained": mat_ok.get("abstained") is True,
+            }
+        )
+        cases.append(
+            {
+                "id": "materials_path",
+                "ok": (
+                    mat_fake.get("abstained") is True
+                    and mat_fake.get("citations") == []
+                    and mat_ok.get("abstained") is False
+                    and bool(mat_ok.get("citations"))
+                    and mat_v.get("ok") is True
+                    and mat_ok.get("n21_channel") == "materials_chat"
+                ),
+                "detail": ",".join(mat_v.get("errors") or []),
+            }
+        )
+
+        # GraphRAG 信封：无 chunk → abstain；有 source chunk 保留
+        gr_empty = attach_graphrag_n21_envelope(
+            {"mode": "vector_only", "chunks": []}, query="none"
+        )
+        gr_ok = attach_graphrag_n21_envelope(
+            {
+                "mode": "graphrag",
+                "chunks": [
+                    {"title": "G1", "content": "graph hit", "source": "doc:G1"}
+                ],
+            },
+            query="graph hit",
+        )
+        gr_env = gr_ok.get("n21_query") or {}
+        cases.append(
+            {
+                "id": "graphrag_path",
+                "ok": (
+                    (gr_empty.get("n21_query") or {}).get("abstained") is True
+                    and gr_empty.get("n21_graphrag_enforced") is True
+                    and gr_env.get("abstained") is False
+                    and bool(gr_env.get("citations"))
+                    and gr_ok.get("certified") is False
+                ),
+                "detail": "",
+            }
+        )
+
         cases.append(
             {
                 "id": "honesty_certified_false",
                 "ok": fact_norm.get("certified") is False
                 and uq_norm.get("n21_full_conformance") is False
                 and wiki_ok.get("n21_full_conformance") is False
-                and kb_live.get("certified") is False,
+                and kb_live.get("certified") is False
+                and mat_ok.get("n21_full_conformance") is False
+                and gr_ok.get("n21_full_conformance") is False,
                 "detail": "",
             }
         )
@@ -494,10 +691,11 @@ async def run_query_abstain_citations_suite(
             "certified": False,
             "n21_full_conformance": False,
             "wiki_kb_query_entry": True,
+            "materials_graphrag_entry": True,
             "measured_at": time.time(),
             "note": (
-                "Abstain+citations + Wiki/KB query entry; "
-                "not GraphRAG/MaterialsChat full / not certified"
+                "Abstain+citations + Wiki/KB + MaterialsChat RAG + GraphRAG envelope; "
+                "not N21 certified / not non-RAG shortcuts"
             ),
         }
     finally:

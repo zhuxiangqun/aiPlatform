@@ -15,6 +15,7 @@ async def test_suite_passes_and_gate_never_certifies():
     assert suite["certified"] is False
     assert suite["n21_full_conformance"] is False
     assert suite["wiki_kb_query_entry"] is True
+    assert suite["materials_graphrag_entry"] is True
 
     gate = qac.evaluate_query_abstain_citations_gate(suite)
     assert gate["ok"] is True
@@ -83,3 +84,22 @@ def test_pack_kb_orphan_hit_abstains():
     out = qac.enforce_abstain_citations(packed)
     assert out["abstained"] is True
     assert out["citations"] == []
+
+
+def test_materials_rag_without_citations_abstains():
+    """MaterialsChat RAG 无引用必须 abstain。"""
+    out = qac.enforce_materials_chat_output(
+        {"answer": "fake", "citations": [], "strategy": "direct_retrieve"}
+    )
+    assert out["abstained"] is True
+    assert out["n21_channel"] == "materials_chat"
+
+
+def test_graphrag_envelope_attaches_n21_query():
+    """GraphRAG 结果附加 n21_query 信封。"""
+    out = qac.attach_graphrag_n21_envelope(
+        {"mode": "vector_only", "chunks": []}, query="x"
+    )
+    assert out["n21_graphrag_enforced"] is True
+    assert out["n21_query"]["abstained"] is True
+    assert out["certified"] is False

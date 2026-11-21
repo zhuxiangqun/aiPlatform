@@ -48,6 +48,20 @@ def _build_turn_summary(question: str, answer: str) -> str:
     return build_turn_summary(question, answer)
 
 
+def _n21_enforce_rag_output(output: Dict[str, Any]) -> Dict[str, Any]:
+    """N21：MaterialsChat RAG 出口 abstain+citations 强制。
+
+    Args:
+        output: Agent 输出 dict。
+    """
+    # 为什么：RAG 假命中不得带空 citations 绿通；time/math 捷径不走此门
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_output,
+    )
+
+    return enforce_materials_chat_output(output)
+
+
 def _is_delivery_mode(vars0: Dict[str, Any]) -> bool:
     """Q&A vs Delivery: delivery/task/governed require outcome gates, not answer-complete."""
     mode = str(vars0.get("mode") or vars0.get("delivery_mode") or "").strip().lower()
@@ -808,16 +822,28 @@ class MaterialsChatAgent(BaseAgent):
                                     domain_id or "",
                                     run_context.get("entity", "") if run_context else ""
                                 )
-                                _out = {"answer": answer, "citations": citations, "items": [],
+                                _out = _n21_enforce_rag_output(
+                                    {
+                                        "answer": answer,
+                                        "citations": citations,
+                                        "items": [],
                                         "related": related,
-                                        "scope_applied": scope, "strategy": "domain_skill",
-                                        "skills_used": [skill_name], "turn_summary": turn_summary,
-                                        "intent": intent, "mode": str(vars0.get("mode") or ""),
+                                        "scope_applied": scope,
+                                        "strategy": "domain_skill",
+                                        "skills_used": [skill_name],
+                                        "turn_summary": turn_summary,
+                                        "intent": intent,
+                                        "mode": str(vars0.get("mode") or ""),
                                         "analysis": analysis,
-                                        "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
-                                        "reasoning_path": reasoning_path, "pipeline_trace": pipeline_trace,
-                                        "quality": quality, "hallucination": hallucination_meta,
-                                        "rag_diagnosis": rag_diagnosis}
+                                        "retrieval_policy": retrieval_policy,
+                                        "answer_strategy": answer_strategy,
+                                        "reasoning_path": reasoning_path,
+                                        "pipeline_trace": pipeline_trace,
+                                        "quality": quality,
+                                        "hallucination": hallucination_meta,
+                                        "rag_diagnosis": rag_diagnosis,
+                                    }
+                                )
                                 _meta = {"intent": intent, "strategy": "domain_skill", "domain": domain_id,
                                          "skill": skill_name, "doc_count": len(doc_ids)}
                                 blocked = _delivery_gate_block(
@@ -892,17 +918,27 @@ class MaterialsChatAgent(BaseAgent):
                             retrieved_count=len(citations),
                         )
 
-                        _out = {"answer": answer, "citations": citations, "items": [],
-                                "scope_applied": scope, "strategy": "direct_retrieve",
-                                "skills_used": ["sys_crag_retrieve"], "turn_summary": _build_turn_summary(question, answer),
-                                "intent": intent, "mode": str(vars0.get("mode") or ""),
+                        _out = _n21_enforce_rag_output(
+                            {
+                                "answer": answer,
+                                "citations": citations,
+                                "items": [],
+                                "scope_applied": scope,
+                                "strategy": "direct_retrieve",
+                                "skills_used": ["sys_crag_retrieve"],
+                                "turn_summary": _build_turn_summary(question, answer),
+                                "intent": intent,
+                                "mode": str(vars0.get("mode") or ""),
                                 "analysis": analysis,
-                                "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
+                                "retrieval_policy": retrieval_policy,
+                                "answer_strategy": answer_strategy,
                                 "reasoning_path": reasoning_path,
                                 "pipeline_trace": pipeline_trace,
                                 "quality": quality,
                                 "hallucination": hallucination_meta,
-                                "rag_diagnosis": rag_diagnosis}
+                                "rag_diagnosis": rag_diagnosis,
+                            }
+                        )
                         _meta = {"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
                                  "grill_suggested": bool(onto_mapping and onto_mapping.get("matched_classes") and onto_mapping["matched_classes"][0].get("score", 0) < 0.5),
                                  "domain_id": domain_id, "collection_id": collection_id}
@@ -957,25 +993,27 @@ class MaterialsChatAgent(BaseAgent):
                 retrieved_count=len(citations),
             )
 
-            _out = {
-                "answer": answer,
-                "citations": citations,
-                "items": out.get("items") or [],
-                "scope_applied": scope,
-                "strategy": strategy,
-                "skills_used": skills_used,
-                "turn_summary": turn_summary,
-                "intent": intent,
-                "mode": mode or str(vars0.get("mode") or ""),
-                "analysis": analysis,
-                "retrieval_policy": retrieval_policy,
-                "answer_strategy": answer_strategy,
-                "reasoning_path": reasoning_path,
-                "pipeline_trace": pipeline_trace,
-                "quality": quality,
-                "hallucination": hallucination_meta,
-                "rag_diagnosis": rag_diagnosis,
-            }
+            _out = _n21_enforce_rag_output(
+                {
+                    "answer": answer,
+                    "citations": citations,
+                    "items": out.get("items") or [],
+                    "scope_applied": scope,
+                    "strategy": strategy,
+                    "skills_used": skills_used,
+                    "turn_summary": turn_summary,
+                    "intent": intent,
+                    "mode": mode or str(vars0.get("mode") or ""),
+                    "analysis": analysis,
+                    "retrieval_policy": retrieval_policy,
+                    "answer_strategy": answer_strategy,
+                    "reasoning_path": reasoning_path,
+                    "pipeline_trace": pipeline_trace,
+                    "quality": quality,
+                    "hallucination": hallucination_meta,
+                    "rag_diagnosis": rag_diagnosis,
+                }
+            )
             _meta = {
                 "intent": intent,
                 "skill_name": skill_name,

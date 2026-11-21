@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / N21 查询 abstain+citations 证据
 
 > 实施权威：附录 N N21 deepen（防假绿）。  
-> **未宣称** N21 certified / GraphRAG·MaterialsChat 全入口热路径强制 / N13 准确率达标 / 改写 list API。
+> **未宣称** N21 certified / MaterialsChat 非 RAG 捷径强制 / list API 改写 / N13 准确率达标。
 
 ## 检查表
 
@@ -23,7 +23,10 @@ pilot_domain: lock-service
 | object_set 路径 | pass | suite `object_set_path` |
 | Wiki 查询形入口 | pass | suite `wiki_path` |
 | KB 查询形入口 | pass | suite `kb_path` |
+| MaterialsChat RAG 出口 | pass | suite `materials_path` |
+| GraphRAG 信封 | pass | suite `graphrag_path` |
 | wiki_kb_query_entry | pass | suite / gate |
+| materials_graphrag_entry | pass | suite / gate |
 | certified 恒 false | pass | suite / gate honesty |
 
 ## 命令
@@ -31,19 +34,20 @@ pilot_domain: lock-service
 ```bash
 PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
   aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_query_abstain_citations_phase2.py -v
-# 预期：6 passed
+# 预期：8 passed
 ```
 
 ## 接线
 
 | 入口 | 路径 |
 |------|------|
-| 核心 | `validate/enforce` + `pack_retrieve_hits_as_query_response` + `query_wiki/kb_with_abstain` + suite/gate |
-| Facade / HTTP | 同名 + `/fde/query-abstain-citations*`（含 `/wiki` `/kb`） |
+| 核心 | validate/enforce + pack + wiki/kb + `enforce_materials_chat_output` + `attach_graphrag_n21_envelope` |
+| 生产 | MaterialsChat RAG 出口；`GraphRAGRetriever.retrieve` 信封 |
+| Facade / HTTP | `/fde/query-abstain-citations*`（含 `/materials` `/graphrag`） |
 
 ## 明确未做
 
-- GraphRAG / MaterialsChat 全入口热路径强制 enforce
+- MaterialsChat time/math/greeting 等非 RAG 捷径强制 enforce
 - 改写 `sys_wiki_retrieve` / `sys_kb_retrieve` list 返回形
 - 并入 N13 校准准确率宣称
 - N21 certified / 关闭 ADR 例外冒充签字
