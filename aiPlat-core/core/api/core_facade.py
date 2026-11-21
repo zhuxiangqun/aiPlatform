@@ -18494,6 +18494,61 @@ def evaluate_fact_query_audit_gate(suite: Optional[dict] = None) -> dict:
 
     return _gate(suite)
 
+
+def evaluate_knowledge_constraint_stack(
+    *,
+    risk_level: str = "medium",
+    required_permissions: Optional[List[str]] = None,
+    actor_permissions: Optional[List[str]] = None,
+    soft_constraints: Optional[List[Dict[str, Any]]] = None,
+    require_audit: bool = True,
+    l1_present: bool = True,
+) -> dict:
+    """CoreFacade：知识面 L1/L2/L3 约束栈（N20；certified 恒 false）。
+
+    Args:
+        risk_level: 风险等级。
+        required_permissions: L1 所需权限。
+        actor_permissions: 调用方权限。
+        soft_constraints: L2 软约束。
+        require_audit: 是否要求 L3 审计。
+        l1_present: 是否声明 L1 门。
+    """
+    from core.harness.knowledge_pipeline.constraint_layers import (
+        evaluate_constraint_stack,
+    )
+
+    return evaluate_constraint_stack(
+        risk_level=risk_level,
+        required_permissions=required_permissions,
+        actor_permissions=actor_permissions,
+        soft_constraints=soft_constraints,
+        require_audit=require_audit,
+        l1_present=l1_present,
+    )
+
+
+def run_constraint_layers_suite() -> dict:
+    """CoreFacade：N20 约束分层套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.constraint_layers import (
+        run_constraint_layers_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_constraint_layers_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N20 约束分层门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_constraint_layers_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.constraint_layers import (
+        evaluate_constraint_layers_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
