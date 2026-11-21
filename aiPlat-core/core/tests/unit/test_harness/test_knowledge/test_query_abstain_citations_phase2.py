@@ -14,6 +14,7 @@ async def test_suite_passes_and_gate_never_certifies():
     assert suite["passed"] == suite["total"]
     assert suite["certified"] is False
     assert suite["n21_full_conformance"] is False
+    assert suite["wiki_kb_query_entry"] is True
 
     gate = qac.evaluate_query_abstain_citations_gate(suite)
     assert gate["ok"] is True
@@ -57,3 +58,28 @@ def test_validate_rejects_abstain_with_citations():
     )
     assert v["ok"] is False
     assert "abstained_must_not_have_citations" in v["errors"]
+
+
+def test_pack_wiki_hits_keep_citations():
+    """Wiki 命中打包保留 citations。"""
+    packed = qac.pack_retrieve_hits_as_query_response(
+        [{"title": "P", "text": "body", "source": "wiki:P"}],
+        channel="wiki",
+        query="body",
+    )
+    out = qac.enforce_abstain_citations(packed)
+    assert out["abstained"] is False
+    assert out["citations"]
+    assert out["channel"] == "wiki"
+
+
+def test_pack_kb_orphan_hit_abstains():
+    """无 source 标识的 KB 命中打包后必须 abstain。"""
+    packed = qac.pack_retrieve_hits_as_query_response(
+        [{"text": "orphan", "score": 0.4}],
+        channel="kb",
+        query="orphan",
+    )
+    out = qac.enforce_abstain_citations(packed)
+    assert out["abstained"] is True
+    assert out["citations"] == []

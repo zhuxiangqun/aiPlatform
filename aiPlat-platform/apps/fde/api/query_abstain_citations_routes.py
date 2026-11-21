@@ -1,7 +1,7 @@
 """FDE N21 查询 abstain+citations — 薄路由，经 CoreFacade。"""
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, Field
@@ -27,6 +27,27 @@ class GateBody(BaseModel):
     """门槛门探针。"""
 
     suite: Optional[Dict[str, Any]] = None
+
+
+class WikiQueryBody(BaseModel):
+    """Wiki 查询形 + abstain。"""
+
+    query: str = ""
+    tenant_id: str = ""
+    collection_ids: Optional[List[str]] = None
+    top_k: int = 8
+    require_citations_on_hit: bool = True
+
+
+class KbQueryBody(BaseModel):
+    """KB 查询形 + abstain。"""
+
+    query: str = ""
+    tenant_id: str = ""
+    doc_ids: Optional[List[str]] = None
+    collection_id: str = ""
+    top_k: int = 8
+    require_citations_on_hit: bool = True
 
 
 @router.post("/query-abstain-citations/validate")
@@ -75,6 +96,49 @@ async def run_query_abstain_citations_suite_route():
     from core.api.core_facade import run_query_abstain_citations_suite
 
     return await run_query_abstain_citations_suite()
+
+
+@router.post("/query-abstain-citations/wiki")
+async def query_wiki_with_abstain_route(body: WikiQueryBody = Body(...)):
+    """Wiki 查询形入口 + abstain 强制。
+
+    Args:
+        body: Wiki 查询载荷。
+    """
+    from core.api.core_facade import query_wiki_with_abstain
+
+    try:
+        return query_wiki_with_abstain(
+            body.query,
+            tenant_id=body.tenant_id,
+            collection_ids=body.collection_ids,
+            top_k=body.top_k,
+            require_citations_on_hit=body.require_citations_on_hit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/query-abstain-citations/kb")
+async def query_kb_with_abstain_route(body: KbQueryBody = Body(...)):
+    """KB 查询形入口 + abstain 强制。
+
+    Args:
+        body: KB 查询载荷。
+    """
+    from core.api.core_facade import query_kb_with_abstain
+
+    try:
+        return query_kb_with_abstain(
+            body.query,
+            tenant_id=body.tenant_id,
+            doc_ids=body.doc_ids,
+            collection_id=body.collection_id,
+            top_k=body.top_k,
+            require_citations_on_hit=body.require_citations_on_hit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/query-abstain-citations/gate")
