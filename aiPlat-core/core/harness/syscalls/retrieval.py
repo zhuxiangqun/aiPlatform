@@ -1231,6 +1231,8 @@ def sys_knowledge_retrieve(
 
     actor_scopes: List[str] = None,
 
+    record_hotpath_audit: bool = True,
+
 ) -> List[Dict[str, Any]]:
 
     """Unified knowledge retrieval — parallel Wiki + KB via RRF fusion.
@@ -1251,6 +1253,8 @@ def sys_knowledge_retrieve(
 
                      If False, use KB directly (backward compat).
 
+        record_hotpath_audit: N19 统一检索热路径；HyDE/CRAG 上层关以免双写。
+
 
 
     Returns:
@@ -1267,6 +1271,28 @@ def sys_knowledge_retrieve(
 
     results: List[Dict[str, Any]] = []
 
+    def _finish(hits: List[Dict[str, Any]], *, route: str = "rrf"):
+        # 为什么：N19 — 统一 knowledge_retrieve 旁路落快照；HyDE/CRAG 关开关防双写
+        out = hits if isinstance(hits, list) else []
+        if record_hotpath_audit:
+            try:
+                from core.harness.knowledge_pipeline.fact_query_audit import (
+                    maybe_record_knowledge_retrieve_hotpath,
+                )
+
+                maybe_record_knowledge_retrieve_hotpath(
+                    tenant_id=tenant_id or "",
+                    hits=out,
+                    query=query or "",
+                    route=route,
+                )
+            except Exception:
+                logging.getLogger(__name__).warning(
+                    "N19 knowledge_retrieve hotpath audit skipped",
+                    exc_info=True,
+                )
+        return out
+
 
 
     if not wiki_first:
@@ -1282,6 +1308,9 @@ def sys_knowledge_retrieve(
                 collection_id=collection_id, domain_id=domain_id,
 
                 tenant_id=tenant_id, top_k=top_k,
+
+                # 为什么：本入口落 knowledge_retrieve 审计；关裸 list 防双写
+                record_hotpath_audit=False,
 
             )
 
@@ -1307,7 +1336,7 @@ def sys_knowledge_retrieve(
 
             f"sys_knowledge_retrieve: total={_total:.3f}s kb-only results={len(results)}")
 
-        return results
+        return _finish(results, route="kb_only")
 
 
 
@@ -1343,6 +1372,9 @@ def sys_knowledge_retrieve(
                 class_uri=target_class, expand_subclasses=expand_subclasses,
 
                 inference_expand=inference_expand,
+
+                # 为什么：本入口落 knowledge_retrieve 审计；关裸 list 防双写
+                record_hotpath_audit=False,
 
             )
 
@@ -1381,6 +1413,9 @@ def sys_knowledge_retrieve(
                 collection_id=collection_id, domain_id=domain_id,
 
                 tenant_id=tenant_id, top_k=max(top_k, 10),
+
+                # 为什么：本入口落 knowledge_retrieve 审计；关裸 list 防双写
+                record_hotpath_audit=False,
 
             )
 
@@ -1484,7 +1519,7 @@ def sys_knowledge_retrieve(
 
             f"sys_knowledge_retrieve: total={_total:.3f}s graph-early-exit results={len(results)}")
 
-        return results
+        return _finish(results, route="graph_early")
 
 
 
@@ -1746,7 +1781,7 @@ def sys_knowledge_retrieve(
     except Exception:
         logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
-    return results[:top_k]
+    return _finish(results[:top_k], route="rrf")
 
 
 

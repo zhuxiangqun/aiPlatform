@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4063
+total_capabilities: 4064
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1313,7 +1313,7 @@ scan_hash: 8f9548ec24f4
 | **知识域 Gold 评测（v4.3.1 N10 deepen）** | `knowledge_gold_eval.py` + Facade + FDE `/knowledge-gold*` | ✅ | 域级 Exact-match gold 登记/评测/跨域扫描；accuracy_claim/certified 恒 false。证据 `phase2-knowledge-gold-eval-evidence.md`。**未宣称** LLM judge / 准确率达标 / N10 certified。生成物适用：已接线 | 本批 |
 | **记录级语义校验（v4.3.1 N17 deepen）** | `record_semantics.py` + Facade + FDE `/record-semantics*` | ✅ | validate/transition/FactLedger scan；suite/gate certified 恒 false；runtime_authority。证据 `phase2-record-semantics-evidence.md`。**未宣称** reference_policy 替换 / semantic_cases 全量 / N17 certified。生成物适用：已接线 | 本批 |
 | **部署侧 RBAC 真源（v4.3.1 N18 deepen）** | `deployed_rbac_policy.py` + Facade + FDE `/deployed-rbac*` | ✅ | env/AIPLAT_HOME 加载；禁 reference_policy 作权威；permission+suite/gate certified 恒 false。证据 `phase2-deployed-rbac-evidence.md`。**未宣称** 召回/聚合/导出全路径 / N18 certified。生成物适用：已接线 | 本批 |
-| **Fact/Query 统一审计快照（v4.3.1 N19 deepen）** | `fact_query_audit.py` + Facade + FDE `/fact-query-audit*` | ✅ | 同表 before/after + runtime_authority；`put_fact`/`unified_query_gateway`/`query_facts_gateway`/`query_facts` list/`MaterialsChat`/GraphRAG/Wiki-KB/裸 list/`sys_crag_retrieve`·`kb_qa_retrieve`（RAG Agent）热路径 best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`；上层关下层防双写）；suite/gate certified 恒 false。证据 `phase2-fact-query-audit-evidence.md`。**未宣称** 全部旁路强制落盘 / N24 总线全量 / N19 certified。生成物适用：已接线 | 本批 |
+| **Fact/Query 统一审计快照（v4.3.1 N19 deepen）** | `fact_query_audit.py` + Facade + FDE `/fact-query-audit*` | ✅ | 同表 before/after + runtime_authority；`put_fact`/`unified_query_gateway`/`query_facts_gateway`/`query_facts` list/`MaterialsChat`/GraphRAG/Wiki-KB/裸 list/`sys_crag_retrieve`·`kb_qa_retrieve`/`sys_knowledge_retrieve` 热路径 best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`；上层关下层防双写）；suite/gate certified 恒 false。证据 `phase2-fact-query-audit-evidence.md`。**未宣称** 全部旁路强制落盘 / N24 总线全量 / N19 certified。生成物适用：已接线 | 本批 |
 | **知识面约束分层（v4.3.1 N20 deepen）** | `constraint_layers.py` + Facade + FDE `/constraint-layers*` | ✅ | L1>L2>L3 栈；高风险无 L1 拒；L2 非安全边界；`unified_query_gateway`/`put_fact`/`query_facts_gateway`/MaterialsChat/GraphRAG/Wiki-KB/裸 list/`query_facts` list 热路径挂 `n20_constraint`（`AIPLAT_CONSTRAINT_LAYERS_HOTPATH`；list 仍为 list 主返回）；suite/gate certified 恒 false。证据 `phase2-constraint-layers-evidence.md`。**未宣称** list→dict 改写 / Lv4 / N20 certified。生成物适用：已接线 | 本批 |
 | **查询 abstain+citations（v4.3.1 N21 deepen）** | `query_abstain_citations.py` + Facade + FDE `/query-abstain-citations*` | ✅ | 拒答清引用；Fact/object_set + Wiki/KB + Materials RAG/trivial/cache_hit + GraphRAG + list 挂 `n21_query`；suite/gate certified 恒 false。证据 `phase2-query-abstain-citations-evidence.md`。**未宣称** 改写 list 主返回类型 / N21 certified。生成物适用：已接线 | 本批 |
 | **Raw↔Fact↔Index 对账（v4.3.1 N14 deepen）** | `raw_fact_index_reconcile.py` + Facade + FDE `/raw-fact-index-reconcile*` | ✅ | missing/orphan/stale 报告；cutover/certified 恒 false。证据 `phase2-raw-fact-index-reconcile-evidence.md`。**未宣称** 生产切写认证 / N14 certified。生成物适用：已接线 | 本批 |
@@ -1457,6 +1457,7 @@ scan_hash: 8f9548ec24f4
 | maybe_record_wiki_kb_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
 | maybe_record_bare_list_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
 | maybe_record_kb_qa_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_knowledge_retrieve_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
 | maybe_record_graphrag_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
 | maybe_stamp_bare_list_constraint_hotpath | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
 | ConstraintAwareHitList | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
@@ -4966,7 +4967,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 775 | 1 | 776 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 793 | 9 | 802 |
+| 知识引擎（本体） | 794 | 9 | 803 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5009,7 +5010,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4052** | **11** | **4063** |
+| **总计** | **4053** | **11** | **4064** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
