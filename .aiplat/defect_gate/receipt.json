@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T18:23:34+08:00",
+  "reviewed_at": "2026-11-21T18:30:21+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "040b24af7a62b22bec2617e784ab8d5b10257a5fd042e634695ddf967de1d56f",
-  "head_sha": "0a0ddc1cd2cd9f93326f3b83512539ab060565a4",
+  "diff_sha256": "f1ba2eeaa91e17002f8b0896f75f687d4ae2101d3d5eed3e38006a49c3b7cbde",
+  "head_sha": "6407bf3f1d36f74b31e53f939f76dc61f3a1932a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N20 GraphRAG hotpath attach-only via attach_graphrag_n21_envelope; certified/n20_full stay false; Wiki/KB full surface still open."
+  "note": "N20 Wiki/KB hotpath attach-only on query forms + list n21 envelope; certified/n20_full stay false; bare list retrieve still open."
 }

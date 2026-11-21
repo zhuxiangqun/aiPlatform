@@ -18,6 +18,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "query_facts_gateway_hotpath_entry" in ids
     assert "materials_chat_hotpath_entry" in ids
     assert "graphrag_hotpath_entry" in ids
+    assert "wiki_kb_hotpath_entry" in ids
 
     gate = cl.evaluate_constraint_layers_gate(suite)
     assert gate["ok"] is True
@@ -26,7 +27,7 @@ def test_suite_passes_and_gate_never_certifies():
 
 
 def test_hotpath_attach_and_env_off(monkeypatch):
-    """Gateway/put_fact/query_facts_gateway/MaterialsChat/GraphRAG 热路径挂 n20_constraint；env=0 时跳过。"""
+    """Gateway/put_fact/query_facts_gateway/MaterialsChat/GraphRAG/Wiki-KB 热路径挂 n20_constraint；env=0 时跳过。"""
     monkeypatch.setenv("AIPLAT_CONSTRAINT_LAYERS_HOTPATH", "1")
     hit = cl.maybe_attach_constraint_stack_hotpath(
         {"answer": "a", "abstained": False},
@@ -71,6 +72,16 @@ def test_hotpath_attach_and_env_off(monkeypatch):
     assert gr["n20_constraint"]["enforced"] is False
     assert gr["n20_constraint"]["certified"] is False
 
+    wk = cl.maybe_attach_wiki_kb_constraint_hotpath(
+        {"hits": [{"source": "w1"}], "n21_query": {"abstained": False}},
+        channel="wiki",
+        actor_permissions=["kb:read"],
+    )
+    assert wk["n20_constraint"]["op"] == "wiki_kb"
+    assert wk["n20_constraint"]["channel"] == "wiki"
+    assert wk["n20_constraint"]["enforced"] is False
+    assert wk["n20_constraint"]["certified"] is False
+
     monkeypatch.setenv("AIPLAT_CONSTRAINT_LAYERS_HOTPATH", "0")
     assert cl.hotpath_constraint_enabled() is False
     skip = cl.maybe_attach_constraint_stack_hotpath(
@@ -91,6 +102,10 @@ def test_hotpath_attach_and_env_off(monkeypatch):
     assert "n20_constraint" not in skip_mc
     skip_gr = cl.maybe_attach_graphrag_constraint_hotpath({"mode": "vector_only"})
     assert "n20_constraint" not in skip_gr
+    skip_wk = cl.maybe_attach_wiki_kb_constraint_hotpath(
+        {"hits": []}, channel="kb"
+    )
+    assert "n20_constraint" not in skip_wk
 
 
 def test_high_risk_without_l1_blocked():

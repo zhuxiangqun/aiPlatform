@@ -27,6 +27,7 @@ pilot_domain: lock-service
 | query_facts_gateway 热路径入口 | pass | suite `query_facts_gateway_hotpath_entry` |
 | MaterialsChat 热路径入口 | pass | suite `materials_chat_hotpath_entry` |
 | GraphRAG 热路径入口 | pass | suite `graphrag_hotpath_entry` |
+| Wiki/KB 热路径入口 | pass | suite `wiki_kb_hotpath_entry` |
 | certified 恒 false | pass | suite / gate honesty |
 
 ## 命令
@@ -42,12 +43,12 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 | 入口 | 路径 |
 |------|------|
 | 核心 | `evaluate_constraint_stack` / `maybe_attach_*_constraint_hotpath` / suite/gate |
-| 热路径 | `unified_query_gateway` + `put_fact` + `query_facts_gateway` + MaterialsChat 直出 + GraphRAG `attach_graphrag_n21_envelope` → 挂 `n20_constraint`（`AIPLAT_CONSTRAINT_LAYERS_HOTPATH`；不阻断/不回滚；统一入口关旁路双挂；直出与 Gateway 分立） |
+| 热路径 | `unified_query_gateway` + `put_fact` + `query_facts_gateway` + MaterialsChat 直出 + GraphRAG + Wiki/KB（list 信封 + query_wiki/kb_with_abstain）→ 挂 `n20_constraint`（`AIPLAT_CONSTRAINT_LAYERS_HOTPATH`；不阻断/不回滚；统一入口关旁路双挂；直出与 Gateway 分立） |
 | Facade / HTTP | 同名 + `/fde/constraint-layers*` |
 
 ## 明确未做
 
 - 重写 ActionRegistry / PolicyGate 全路径为唯一栈
-- 知识面全域（Wiki/KB 全入口等）完整强制分层
+- 裸 `sys_wiki_retrieve` / `sys_kb_retrieve` list 主返回路径强制分层（仍仅信封入口）
 - 热路径 `blocked` 写回 F.1 `abstained` 或回滚 `put_fact`（刻意仅观测信封）
 - N08 Lv4 误报门重设计；N20 certified
