@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T13:05:00+08:00",
+  "reviewed_at": "2026-11-21T13:20:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "7f80fc95890b037ad2eb78bc639b664316517979eecba3c031cecc45a105af93",
-  "head_sha": "f7bbc0763bb7da3ed475b597beb3df5e022a5afc",
+  "diff_sha256": "80c61dbfc5d6cb3f14ae4eb62c0b16c6707270149939c06b57239be1e43c2275",
+  "head_sha": "98d18b7b0913ff283ef3bb5b8add385f8bad3173",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N14 Raw↔Fact↔Index reconcile; cutover/production_reconcile_certified/n14_full forced false."
+  "note": "N08 Lv4 FP gate v2; zero-sample deny + rollback required; certified/n08_full forced false."
 }
