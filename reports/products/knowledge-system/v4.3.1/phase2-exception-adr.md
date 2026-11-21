@@ -29,6 +29,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 | N04/N12 | 写入硬门+transition + 配置驱动 reviewer 角色门（publish）；非部署 RBAC 真源 / 非 certified | 至 N04/N12 全量/签字 | source_policy + `phase2-reviewer-rbac-evidence.md` |
 | N05 | 三分类 rebuild_mode+reason + Fact→Wiki 派生页有条件重建；非 wiki_engine/FTS 全量 / 非 certified | 至 N05 全量/签字 | rebuild-taxonomy + `phase2-wiki-rebuild-evidence.md` |
 | N10 | 附录 O 校准门槛 + 域级 Exact-match gold 流水线（DomainRouter/显式域）；非 LLM judge / 非准确率宣称 / 非 certified | 至 N10 全量/签字 | calibration + `phase2-knowledge-gold-eval-evidence.md` |
+| N17 | 记录级语义运行时权威（validate/transition/FactLedger scan）；非 reference_policy 替换 / 非 semantic_cases 全量对 Fact Store / 非 certified | 至 N17 全量/签字 | `phase2-record-semantics-evidence.md` |
 | N07/N22 | ObjectSet + link.traverse ACL + 嵌套 filter + 配置驱动角色×动作轴；非 Wiki/KB 全入口 / 非部署 RBAC 真源 / 非 certified | 至 N07/N22 全量/签字 | ABox ACL + `phase2-objectset-filter-evidence.md` + `phase2-role-action-matrix-evidence.md` |
 | N08 | Registry Policy/Approval/Audit + kill switch；require_approval 无 threshold 强制入队；非 Lv4 全量 / 非 certified | 至 N08 全量/签字 | ActionRegistry + `phase2-action-policy-audit-evidence.md` |
 | N11/N14 | 本地双写对账 + 作业级切写授权（token）；非生产切写认证 / 非 certified | 至 N11/N14 全量/签字 | migration + `phase2-migration-cutover-auth-evidence.md` |

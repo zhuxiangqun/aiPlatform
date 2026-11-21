@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3956
+total_capabilities: 3959
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1310,6 +1310,7 @@ scan_hash: 8f9548ec24f4
 | **重建条件三分类（v4.3.1 N05 partial）** | `classify_rebuild` / `validate_rebuild_receipt` + Facade `validate_fact_rebuild_receipt` | ✅ | `rebuild_mode∈{exact,semantic,non}` + `rebuild_reason`；禁不可重建标 exact；certified 恒 false。证据 `phase2-rebuild-taxonomy-evidence.md`。**未宣称** Wiki 全量/N05 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Wiki 有条件重建（v4.3.1 N05 deepen）** | `wiki_rebuild.py` + Facade `fact_ledger_project_to_wiki` + FDE `/wiki-rebuild*` | ✅ | Fact→Wiki 派生页；复用三分类；non 不写；suite/gate certified 恒 false。证据 `phase2-wiki-rebuild-evidence.md`。**未宣称** wiki_engine/FTS 全量 / N05 certified。生成物适用：已接线 | 本批 |
 | **知识域 Gold 评测（v4.3.1 N10 deepen）** | `knowledge_gold_eval.py` + Facade + FDE `/knowledge-gold*` | ✅ | 域级 Exact-match gold 登记/评测/跨域扫描；accuracy_claim/certified 恒 false。证据 `phase2-knowledge-gold-eval-evidence.md`。**未宣称** LLM judge / 准确率达标 / N10 certified。生成物适用：已接线 | 本批 |
+| **记录级语义校验（v4.3.1 N17 deepen）** | `record_semantics.py` + Facade + FDE `/record-semantics*` | ✅ | validate/transition/FactLedger scan；suite/gate certified 恒 false；runtime_authority。证据 `phase2-record-semantics-evidence.md`。**未宣称** reference_policy 替换 / semantic_cases 全量 / N17 certified。生成物适用：已接线 | 本批 |
 | **抽取 confirm→ActionRegistry（G2 收口）** | `platform_action:knowledge:confirm_extraction` + `CoreFacade.run_confirm_extraction` + `POST …/extractions/{id}/confirm` | ✅ | confirm 经 L1（`kb:write`/`admin`/`*`）；HTTP scopes→permissions；证据 `phase2-g2-evidence.md`。**未宣称** ObjectSet/N24 | 已合入 |
 | **Wiki 读模型硬门（v4.3.1 试点）** | `harness/knowledge/wiki_read_model.py` + `POST/DELETE /wiki/pages` | ✅ | `AIPLAT_WIKI_READ_MODEL_COLLECTIONS` 配置名单内人工写 → 403 `wiki_is_read_model`（默认空=不拦）；`AIPLAT_WIKI_ALLOW_MANUAL_WRITE` 破窗记 WARNING；编译器 `write_page` 不经门。证据 `phase2-wiki-readonly-evidence.md`。**未宣称** N5 全量/全局禁写/ObjectSet | 本批 |
 | **FunctionContract（v4.3.1 W5 最小切片）** | `harness/infrastructure/function_contract.py` + `function_registry.py` + `builtin_functions.py` + `POST …/fde/functions/{id}/invoke` | ✅ | 附录 C.3 合同；`side_effects=true`→`side_effects_forbidden`；`required_permissions` L1（对齐 Action）；YAML seed `workspace_seeds/functions` + `AIPLAT_HOME/functions`；CoreFacade `invoke_function`。证据 `phase2-function-contract-evidence.md`。**未宣称** ObjectSet/Interface/副作用分级/N24 | 本批 |
@@ -1447,6 +1448,17 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| run_record_semantics_suite_route | `aiPlat-platform/apps/fde/api/record_semantics_routes.py` | ✅ | 自动同步 | 已合入 |
+| validate_record_semantics_route | `aiPlat-platform/apps/fde/api/record_semantics_routes.py` | ✅ | 自动同步 | 已合入 |
+| scan_record_semantics_facts | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| validate_record_transition | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| validate_record_semantics | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| RecordSemanticsError | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_record_semantics_gate | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| run_record_semantics_suite | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| scan_ledger_facts | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| validate_transition | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| validate_record | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_domain_gold | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
 | get_gold_dataset | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
 | KnowledgeGoldEvalError | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
@@ -4859,9 +4871,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 768 | 1 | 769 |
+| Harness 执行引擎 | 769 | 1 | 770 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 693 | 9 | 702 |
+| 知识引擎（本体） | 695 | 9 | 704 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4904,7 +4916,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3945** | **11** | **3956** |
+| **总计** | **3948** | **11** | **3959** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

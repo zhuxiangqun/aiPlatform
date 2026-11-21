@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T12:10:00+08:00",
+  "reviewed_at": "2026-11-21T12:20:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "bbe99c277091dca6133842ccb88514320b2ef032b9470a72ac1b4f8781282b09",
-  "head_sha": "dec5ddb0e1017d98a859d3015543986868b81724",
+  "diff_sha256": "3fa27275a7bed731b17039a725a615ecccd89ea1d8a32781c4de7a4c18d39417",
+  "head_sha": "19481c441f2089e95319610c9c79e9877dac2e39",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N10 domain gold Exact-match pipeline via DomainRouter/explicit domains; accuracy_claim/certified/n10_full forced false; no LLM judge."
+  "note": "N17 record-level semantic runtime authority (validate/transition/ledger scan); certified/n17_full forced false; not reference_policy replace."
 }

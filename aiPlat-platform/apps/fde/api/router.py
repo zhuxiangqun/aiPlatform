@@ -56,6 +56,7 @@ from .fact_state_routes import router as _fact_state_router
 from .object_type_publish_routes import router as _object_type_publish_router
 from .wiki_rebuild_routes import router as _wiki_rebuild_router
 from .knowledge_gold_eval_routes import router as _knowledge_gold_eval_router
+from .record_semantics_routes import router as _record_semantics_router
 from .revision_restore_routes import router as _revision_restore_router
 from .unified_audit_routes import router as _unified_audit_router
 from .rapid_insight import router as _rapid_insight_router
@@ -110,6 +111,7 @@ router.include_router(_fact_state_router, prefix="/fde")
 router.include_router(_object_type_publish_router, prefix="/fde")
 router.include_router(_wiki_rebuild_router, prefix="/fde")
 router.include_router(_knowledge_gold_eval_router, prefix="/fde")
+router.include_router(_record_semantics_router, prefix="/fde")
 router.include_router(_revision_restore_router, prefix="/fde")
 router.include_router(_unified_audit_router, prefix="/fde")
 router.include_router(_rapid_insight_router, prefix="/fde")

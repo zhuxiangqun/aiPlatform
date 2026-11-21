@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3087
+total_capabilities: 3098
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 618
+    caps_count: 629
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3646,6 +3646,50 @@ domains:
         module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
         type: class
         signature: "N10: knowledge gold eval contract error"
+      - symbol: "validate_record"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: record-level semantic validate (certified=false)"
+      - symbol: "validate_transition"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: state-machine transition validate (certified=false)"
+      - symbol: "scan_ledger_facts"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: FactLedger record-level scan (certified=false)"
+      - symbol: "run_record_semantics_suite"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: record semantics suite (certified=false)"
+      - symbol: "evaluate_record_semantics_gate"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: record semantics gate (certified=false)"
+      - symbol: "RecordSemanticsError"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: class
+        signature: "N17: record semantics contract error"
+      - symbol: "validate_record_semantics"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N17: Facade record validate (certified=false)"
+      - symbol: "validate_record_transition"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N17: Facade transition validate (certified=false)"
+      - symbol: "scan_record_semantics_facts"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N17: Facade FactLedger scan (certified=false)"
+      - symbol: "validate_record_semantics_route"
+        module: aiPlat-platform/apps/fde/api/record_semantics_routes.py
+        type: function
+        signature: "POST /fde/record-semantics/validate via Facade"
+      - symbol: "run_record_semantics_suite_route"
+        module: aiPlat-platform/apps/fde/api/record_semantics_routes.py
+        type: function
+        signature: "POST /fde/record-semantics/suite via Facade"
       - symbol: "project_facts_to_wiki"
         module: core/harness/knowledge_pipeline/wiki_rebuild.py
         type: function

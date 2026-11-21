@@ -18263,6 +18263,87 @@ def evaluate_knowledge_gold_eval_gate(suite: Optional[dict] = None) -> dict:
 
     return _gate(suite)
 
+
+def validate_record_semantics(
+    *,
+    kind: str,
+    data: Dict[str, Any],
+) -> dict:
+    """CoreFacade：单条记录级语义校验（N17；certified 恒 false）。
+
+    Args:
+        kind: 记录类型。
+        data: 记录载荷。
+    """
+    from core.harness.knowledge_pipeline.record_semantics import validate_record
+
+    return validate_record(kind, data)
+
+
+def validate_record_transition(
+    *,
+    machine: str,
+    from_state: str,
+    to_state: str,
+) -> dict:
+    """CoreFacade：状态机单步转换校验（N17；certified 恒 false）。
+
+    Args:
+        machine: 状态机名。
+        from_state: 源状态。
+        to_state: 目标状态。
+    """
+    from core.harness.knowledge_pipeline.record_semantics import validate_transition
+
+    return validate_transition(machine, from_state, to_state)
+
+
+async def scan_record_semantics_facts(
+    *,
+    tenant_id: str,
+    domain_id: Optional[str] = None,
+    collection_id: Optional[str] = None,
+    limit: int = 100,
+) -> dict:
+    """CoreFacade：扫描 FactLedger 记录级语义违规（N17；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        collection_id: 可选集合。
+        limit: 扫描上限。
+    """
+    from core.harness.knowledge_pipeline.record_semantics import scan_ledger_facts
+
+    return await scan_ledger_facts(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        collection_id=collection_id,
+        limit=limit,
+    )
+
+
+async def run_record_semantics_suite() -> dict:
+    """CoreFacade：N17 记录级语义套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.record_semantics import (
+        run_record_semantics_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_record_semantics_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N17 记录级语义门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_record_semantics_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.record_semantics import (
+        evaluate_record_semantics_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 

@@ -270,10 +270,12 @@ items:
     title: 记录级语义校验通过
     status: exists
     phase: standard
-    gap_type: 标准包就绪
+    gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase0-standard-pack-baseline.md
-    note: "Core-scoped exists (附录 N.2); 参考策略用例；非实现方运行时权威"
+      - reports/products/knowledge-system/v4.3.1/phase2-record-semantics-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/record_semantics.py
+    note: "Core-scoped exists (附录 N.2); 记录级语义运行时权威 deepen 已接线（validate/transition/ledger scan）；非 reference_policy 替换 / 非 semantic_cases 全量对 Fact Store / 非 certified"
   - id: N18
     level: core
     title: 实现方语义测试通过

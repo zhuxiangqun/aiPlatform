@@ -37,6 +37,7 @@ authority: supporting
 | [phase2-object-type-publish-evidence.md](./phase2-object-type-publish-evidence.md) | N02 deepen：ObjectType 人审发布（角色门；非 certified） |
 | [phase2-wiki-rebuild-evidence.md](./phase2-wiki-rebuild-evidence.md) | N05 deepen：Wiki 有条件重建派生页（非 wiki_engine 全量/非 certified） |
 | [phase2-knowledge-gold-eval-evidence.md](./phase2-knowledge-gold-eval-evidence.md) | N10 deepen：域级 Exact-match gold 流水线（非准确率宣称/非 certified） |
+| [phase2-record-semantics-evidence.md](./phase2-record-semantics-evidence.md) | N17 deepen：记录级语义运行时权威（非 RBAC 真源/非 certified） |
 | [phase2-calibration-pipeline-evidence.md](./phase2-calibration-pipeline-evidence.md) | N13 deepen：Operational 校准流水线（查询路径封顶；非真实 ECE/非 certified） |
 | [phase2-ocs-enterprise-scan-evidence.md](./phase2-ocs-enterprise-scan-evidence.md) | N23 deepen：企业域 OCS 扫描（DomainRouter+词汇预注册；非全域完整/非 certified） |
 | [phase2-confidence-calibration-evidence.md](./phase2-confidence-calibration-evidence.md) | W10 Confidence Calibration（附录 O 门槛 + 失败降级 medium） |
