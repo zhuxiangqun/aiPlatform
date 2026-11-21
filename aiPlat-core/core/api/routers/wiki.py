@@ -1730,11 +1730,17 @@ async def run_golden_tests():
 
 
 @router.get("/query-structured", response_model=Dict[str, Any])
-async def wiki_structured_query(q: str = ""):
+async def wiki_structured_query(
+    q: str = "",
+    tenant_id: str = "",
+    domain_id: str = "",
+):
     """Deterministic structured query — same question, same answer.
 
     Args:
         q: q 参数。
+        tenant_id: 可选租户（N19 审计快照）。
+        domain_id: 可选域；tenant 空时可作为审计租户候选。
     """
     if not q:
         return {"error": "Missing query parameter ?q=", 
@@ -1742,7 +1748,9 @@ async def wiki_structured_query(q: str = ""):
     try:
         from core.api.core_facade import wiki_structured_query_api
 
-        return wiki_structured_query_api(q)
+        return wiki_structured_query_api(
+            q, domain_id=domain_id or "", tenant_id=tenant_id or ""
+        )
     except HTTPException:
         raise
     except Exception as e:

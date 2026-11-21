@@ -2235,19 +2235,50 @@ def get_graph_health_api(domain: str = "") -> Dict[str, Any]:
     return dict(attach_ontology_api(out, from_graph_health(out, domain_id=domain)))
 
 
-def wiki_structured_query_api(query: str, *, domain_id: str = "") -> Dict[str, Any]:
+def wiki_structured_query_api(
+    query: str,
+    *,
+    domain_id: str = "",
+    tenant_id: str = "",
+) -> Dict[str, Any]:
     """Deterministic wiki structured query + ontology.api.v0 envelope.
 
     Args:
         query: 查询。
         domain_id: domain 标识。
+        tenant_id: 非空时落 N19 Query 审计快照（缺省可用 domain_id）。
     """
+    import logging
+
     from core.harness.knowledge.wiki_structured_query import structured_query
     from core.harness.knowledge.ontology_api import attach_ontology_api, from_structured_query
 
     raw = structured_query(query)
     out = dict(raw) if isinstance(raw, dict) else {"result": raw}
-    return attach_ontology_api(out, from_structured_query(out, domain_id=domain_id))
+    out = attach_ontology_api(out, from_structured_query(out, domain_id=domain_id))
+    # 为什么：结构化 Wiki 查询是 HTTP/Facade 旁路，须 best-effort 落 N19；空租户跳过
+    tid = (tenant_id or domain_id or "").strip()
+    if tid:
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_wiki_kb_hotpath,
+            )
+
+            out = maybe_record_wiki_kb_hotpath(
+                tenant_id=tid,
+                response=out if isinstance(out, dict) else {"result": out},
+                channel="wiki_structured",
+                query=query or "",
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 wiki_structured hotpath audit skipped", exc_info=True
+            )
+    if isinstance(out, dict):
+        # 为什么：禁止结构化查询自签 certified
+        out["certified"] = False
+        out["n19_full_conformance"] = False
+    return out
 
 
 def aiplat_healthz_payload(

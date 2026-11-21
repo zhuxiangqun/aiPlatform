@@ -33,6 +33,7 @@ pilot_domain: lock-service
 | KB Q&A / CRAG 旁路 | pass | suite `kb_qa_hotpath_entry` |
 | 统一 knowledge_retrieve 旁路 | pass | suite `knowledge_retrieve_hotpath_entry` |
 | Agent wiki_context 旁路 | pass | suite `wiki_context_hotpath_entry` + `phase2-fact-query-wiki-context-hotpath-evidence.md` |
+| Wiki 结构化查询旁路 | pass | suite `wiki_structured_hotpath_entry` + `phase2-fact-query-wiki-structured-hotpath-evidence.md` |
 | certified 恒 false | pass | suite / gate honesty |
 
 ## 命令
@@ -48,7 +49,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 | 入口 | 路径 |
 |------|------|
 | 核心 | `record_audit_snapshot` / `maybe_record_*_hotpath` / suite/gate |
-| 热路径 | `put_fact` + `unified_query_gateway` + `query_facts_gateway` + `query_facts` list + MaterialsChat `_n21_enforce_*` + GraphRAG `attach_graphrag_n21_envelope` + Wiki/KB `attach_list_retrieve_n21_envelope` / `query_*_with_abstain` + 裸 `sys_wiki_retrieve`/`sys_kb_retrieve` + `sys_crag_retrieve`/`kb_qa_retrieve` + `sys_knowledge_retrieve` + Agent `sys_wiki_context`（信封失败兜底）→ best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`） |
+| 热路径 | `put_fact` + `unified_query_gateway` + `query_facts_gateway` + `query_facts` list + MaterialsChat `_n21_enforce_*` + GraphRAG `attach_graphrag_n21_envelope` + Wiki/KB `attach_list_retrieve_n21_envelope` / `query_*_with_abstain` + 裸 `sys_wiki_retrieve`/`sys_kb_retrieve` + `sys_crag_retrieve`/`kb_qa_retrieve` + `sys_knowledge_retrieve` + Agent `sys_wiki_context`（信封失败兜底）+ `wiki_structured_query_api` → best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`） |
 | Facade / HTTP | 同名 + `/fde/fact-query-audit*` |
 | 配置 | `AIPLAT_FACT_QUERY_AUDIT_DB` / `AIPLAT_FACT_QUERY_AUDIT_HOTPATH` |
 

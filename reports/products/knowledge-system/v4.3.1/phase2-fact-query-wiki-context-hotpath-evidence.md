@@ -40,3 +40,5 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 - 全部 Agent/检索旁路强制落盘
 - N19 / 附录 N 全量认证
+
+> Wiki 结构化查询见 `phase2-fact-query-wiki-structured-hotpath-evidence.md`。

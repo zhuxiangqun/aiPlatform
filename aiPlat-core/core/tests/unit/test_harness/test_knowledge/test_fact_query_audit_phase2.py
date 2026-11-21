@@ -25,6 +25,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "kb_qa_hotpath_entry" in ids
     assert "knowledge_retrieve_hotpath_entry" in ids
     assert "wiki_context_hotpath_entry" in ids
+    assert "wiki_structured_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -342,3 +343,31 @@ def test_wiki_context_n21_fail_falls_back_to_audit(tmp_path, monkeypatch):
     listed = fqa.list_audit_snapshots(tenant_id="t-wc", db_path=db)
     assert listed["count"] == 1
     assert (listed["items"][0].get("meta") or {}).get("channel") == "wiki_context"
+
+
+def test_wiki_structured_query_api_hotpath(tmp_path, monkeypatch):
+    """wiki_structured_query_api：有 tenant 时落 N19；certified 恒 false。"""
+    db = str(tmp_path / "fqa-ws.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+    monkeypatch.setattr(
+        "core.harness.knowledge.wiki_structured_query.structured_query",
+        lambda _q: {
+            "result": "ok",
+            "template_used": "概念查询",
+            "confidence": 0.9,
+        },
+    )
+
+    from core.api.core_facade import wiki_structured_query_api
+
+    out = wiki_structured_query_api("什么是RAG", tenant_id="t-ws")
+    assert out.get("certified") is False
+    assert out.get("n19_full_conformance") is False
+    listed = fqa.list_audit_snapshots(tenant_id="t-ws", db_path=db)
+    assert listed["count"] == 1
+    assert (listed["items"][0].get("meta") or {}).get("channel") == "wiki_structured"
+
+    skip = wiki_structured_query_api("什么是RAG", tenant_id="")
+    assert skip.get("certified") is False
+    assert fqa.list_audit_snapshots(tenant_id="t-ws", db_path=db)["count"] == 1
