@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T19:22:32+08:00",
+  "reviewed_at": "2026-11-21T20:02:10+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "099aa11e39b5b0db61ebc4b42265beb84749ce10fc6522156e26671a24545809",
-  "head_sha": "197c7f5344daa862b2b0a2d3600a12b07b818415",
+  "diff_sha256": "69fa48eb85bd580c76f286d0eb2152856a22812f2e0c17e2fdb4d92d45738ded",
+  "head_sha": "4945bc66b7d2fa61e3216daead8352e550970808",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N19 bare sys_wiki_retrieve/sys_kb_retrieve list hotpath audit; upper envelope disables record_hotpath_audit; certified/n19_full stay false; other Agent/Workbench bypasses still open."
+  "note": "N19 KB Q&A/CRAG hotpath via sys_crag_retrieve; MaterialsChat disables CRAG layer; CRAG disables bare list on kb_retrieve; certified/n19_full stay false; other Workbench/non-CRAG Agent bypasses still open."
 }
