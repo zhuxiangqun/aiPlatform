@@ -4,11 +4,11 @@
   - 统一 Fact 变更与 Query 响应的审计快照 schema（同库同表）
   - 标记 ``runtime_authority`` 与 ActionExecution 快照字段对齐（before/after）
   - put_fact / unified_query_gateway / query_facts_gateway / query_facts list
-    / MaterialsChat 直出热路径 best-effort 落快照（可 env 关闭）
+    / MaterialsChat 直出 / GraphRAG 热路径 best-effort 落快照（可 env 关闭）
   - 套件/门槛门：``certified`` / ``n19_full`` 恒 false
 
 非目标：
-  - 不宣称全部旁路入口（其它 Agent 等）已强制落盘
+  - 不宣称全部旁路入口（其它 Agent / Workbench 等）已强制落盘
   - 不合并 Package+Action 全量审计总线（N24）
   - 不宣称 N19 certified
 """
@@ -39,6 +39,7 @@ _SUITE_CASES = (
     "query_facts_gateway_hotpath_entry",
     "query_facts_list_hotpath_entry",
     "materials_chat_hotpath_entry",
+    "graphrag_hotpath_entry",
 )
 
 _KINDS = frozenset({"fact", "query"})
@@ -462,6 +463,61 @@ def maybe_record_materials_chat_hotpath(
     return out
 
 
+def maybe_record_graphrag_hotpath(
+    *,
+    tenant_id: str,
+    result: Dict[str, Any],
+    query: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """GraphRAG 旁路热路径落 Query 快照；原样返回 result。
+
+    Args:
+        tenant_id: 租户（空则跳过）。
+        result: N21/N06/N20 信封后的 GraphRAG 回执。
+        query: 可选原始问题摘要。
+        db_path: 可选库路径。
+    """
+    out = result if isinstance(result, dict) else {}
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return out
+    n21 = out.get("n21_query") if isinstance(out.get("n21_query"), dict) else {}
+    g1 = out.get("gateway_f1") if isinstance(out.get("gateway_f1"), dict) else {}
+    citations = list(n21.get("citations") or g1.get("citations") or [])[:20]
+    maybe_record_hotpath_audit(
+        tenant_id=tid,
+        kind="query",
+        subject_ref=f"gr:{uuid.uuid4().hex[:12]}",
+        before_snapshot={
+            "query": (query or "")[:500],
+            "route": "graphrag",
+            "mode": str(out.get("mode") or ""),
+        },
+        after_snapshot={
+            "abstained": bool(
+                n21.get("abstained") if "abstained" in n21 else g1.get("abstained")
+            ),
+            "citations": citations,
+            "route_reason": "graphrag",
+            "answer": str(n21.get("answer") or g1.get("answer") or "")[:500],
+            "has_gateway_f1": bool(g1),
+            "n21_graphrag_enforced": bool(out.get("n21_graphrag_enforced")),
+            "chunk_count": len(out.get("chunks") or [])
+            if isinstance(out.get("chunks"), list)
+            else 0,
+        },
+        runtime_authority="graphrag",
+        meta={
+            "hotpath": True,
+            "op": "graphrag_retrieve",
+            "route": "graphrag",
+        },
+        db_path=db_path,
+    )
+    return out
+
+
 def list_audit_snapshots(
     *,
     tenant_id: str,
@@ -554,7 +610,8 @@ def evaluate_fact_query_audit_gate(
         "n19_full_conformance": False,
         "note": (
             "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
-            "MaterialsChat hotpath; not N19 certified / not all bypass paths"
+            "MaterialsChat/GraphRAG hotpath; not N19 certified / "
+            "not all bypass paths"
         ),
     }
 
@@ -741,6 +798,17 @@ def run_fact_query_audit_suite(
             }
         )
 
+        from core.harness.knowledge_pipeline import query_abstain_citations as qac
+
+        gr_src = inspect.getsource(qac.attach_graphrag_n21_envelope)
+        cases.append(
+            {
+                "id": "graphrag_hotpath_entry",
+                "ok": "maybe_record_graphrag_hotpath" in gr_src,
+                "detail": "",
+            }
+        )
+
         passed = sum(1 for c in cases if c.get("ok"))
         return {
             "ok": passed == len(_SUITE_CASES),
@@ -752,7 +820,8 @@ def run_fact_query_audit_suite(
             "n19_full_conformance": False,
             "note": (
                 "Fact/Query audit + put_fact/unified/query_facts(_gateway)/"
-                "MaterialsChat hotpath; not all bypass paths / not certified"
+                "MaterialsChat/GraphRAG hotpath; not all bypass paths / "
+                "not certified"
             ),
         }
     finally:

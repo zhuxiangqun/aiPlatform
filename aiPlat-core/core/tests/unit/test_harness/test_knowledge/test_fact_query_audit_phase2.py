@@ -19,6 +19,7 @@ def test_suite_passes_and_gate_never_certifies():
     assert "query_facts_gateway_hotpath_entry" in ids
     assert "query_facts_list_hotpath_entry" in ids
     assert "materials_chat_hotpath_entry" in ids
+    assert "graphrag_hotpath_entry" in ids
     assert "hotpath_helper_writes" in ids
 
     gate = fqa.evaluate_fact_query_audit_gate(suite)
@@ -92,6 +93,44 @@ def test_materials_chat_hotpath_writes(tmp_path, monkeypatch):
     )
     assert skipped.get("answer") == "x"
     assert fqa.list_audit_snapshots(tenant_id="t-mc", db_path=db)["count"] == 1
+
+
+def test_graphrag_hotpath_writes(tmp_path, monkeypatch):
+    """GraphRAG 旁路热路径落 Query 快照；空 tenant 跳过。"""
+    db = str(tmp_path / "fqa-gr.sqlite3")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_HOTPATH", "1")
+    monkeypatch.setenv("AIPLAT_FACT_QUERY_AUDIT_DB", db)
+    out = fqa.maybe_record_graphrag_hotpath(
+        tenant_id="t-gr",
+        result={
+            "mode": "graphrag",
+            "chunks": [{"title": "c1", "content": "hit", "source": "d1"}],
+            "n21_query": {
+                "abstained": False,
+                "citations": [{"source_id": "d1"}],
+                "answer": "a",
+            },
+            "n21_graphrag_enforced": True,
+            "gateway_f1": {"abstained": False},
+        },
+        query="graph?",
+        db_path=db,
+    )
+    assert out.get("mode") == "graphrag"
+    listed = fqa.list_audit_snapshots(tenant_id="t-gr", db_path=db)
+    assert listed["count"] == 1
+    item = listed["items"][0]
+    assert item["runtime_authority"] == "graphrag"
+    assert (item.get("meta") or {}).get("op") == "graphrag_retrieve"
+    assert (item.get("after_snapshot") or {}).get("n21_graphrag_enforced") is True
+
+    skipped = fqa.maybe_record_graphrag_hotpath(
+        tenant_id="",
+        result={"mode": "vector_only", "chunks": []},
+        db_path=db,
+    )
+    assert skipped.get("mode") == "vector_only"
+    assert fqa.list_audit_snapshots(tenant_id="t-gr", db_path=db)["count"] == 1
 
 
 def test_fact_requires_after_snapshot(tmp_path):

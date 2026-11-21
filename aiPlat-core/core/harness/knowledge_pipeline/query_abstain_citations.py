@@ -605,6 +605,20 @@ def attach_graphrag_n21_envelope(
         logger.warning(
             "N20 graphrag constraint hotpath skipped", exc_info=True
         )
+    if tid:
+        try:
+            # 为什么：N19 — 直出旁路须落 Query 快照；与 unified Gateway 分立
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_graphrag_hotpath,
+            )
+
+            out = maybe_record_graphrag_hotpath(
+                tenant_id=tid, result=out, query=query or ""
+            )
+        except Exception:
+            logger.warning(
+                "N19 graphrag hotpath audit skipped", exc_info=True
+            )
     return out
 
 
