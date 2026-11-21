@@ -1,7 +1,9 @@
-"""Confidence Calibration Report 最小切片（附录 O / W10）— 可复现校准门。
+"""Confidence Calibration Report 最小切片（附录 O / W10 / N13）— 可复现校准门。
 
-职责：登记校准报告；校验必填与门槛；失败时 confidence 上限 medium。
-非目标：不做真实 ECE 训练；不宣称准确率；不替代 OCS；不做迁移双写。
+职责：登记校准报告；校验必填与门槛；失败时 confidence 上限 medium；
+  Operational 查询路径封顶（``apply_calibration_ceiling``）+ 流水线套件。
+非目标：不做真实 ECE 训练；不宣称准确率；不替代 OCS；不做迁移双写；
+  不宣称 N13 certified。
 """
 from __future__ import annotations
 
@@ -463,4 +465,311 @@ def resolve_max_confidence(
                 [v.get("error")] if v.get("error") else []
             ),
         },
+    }
+
+
+def apply_calibration_ceiling(
+    *,
+    tenant_id: str,
+    domain: str,
+    query_type: str,
+    confidence: str,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """将查询路径 confidence 按校准天花板封顶（缺失/失败 → ≤medium）。
+
+    Args:
+        tenant_id: 租户。
+        domain: 域 id；空则不封顶（返回原档）。
+        query_type: 校准 query_type。
+        confidence: 当前档位。
+        db_path: 可选校准库。
+
+    Returns:
+        ``confidence`` / ``capped`` / ``resolve``；``certified`` 不宣称。
+    """
+    dom = (domain or "").strip()
+    req = (confidence or "low").strip().lower()
+    if not dom:
+        return {
+            "confidence": req if req in CONFIDENCE_LEVELS else "low",
+            "capped": False,
+            "resolve": {"status": "skipped", "reason": "domain_required_for_ceiling"},
+        }
+    if req not in CONFIDENCE_LEVELS:
+        req = "low"
+    resolved = resolve_max_confidence(
+        tenant_id=tenant_id,
+        domain=dom,
+        query_type=(query_type or "fact_gateway").strip() or "fact_gateway",
+        requested=req,
+        db_path=db_path,
+    )
+    if resolved.get("status") != "ok":
+        # 为什么：解析失败时诚实封顶 medium，禁止 silent 放行 high
+        allowed = "medium" if req == "high" else req
+        return {
+            "confidence": allowed,
+            "capped": allowed != req,
+            "resolve": resolved,
+        }
+    return {
+        "confidence": resolved["allowed"],
+        "capped": bool(resolved.get("capped")),
+        "resolve": resolved,
+    }
+
+
+_N13_CALIBRATION_PIPELINE_CASES = (
+    "failed_cal_caps_gateway_high",
+    "approved_cal_allows_high",
+    "missing_cal_caps_high",
+    "honesty_certified_false",
+)
+
+
+async def run_calibration_pipeline_suite(
+    *,
+    tenant_id: str = "n13-cal-pipeline-tenant",
+    domain_id: str = "n13-cal-probe",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N13 Operational 校准流水线加深：publish → 查询路径封顶 → 门槛门。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 探针域（调用方传入；非业务硬编码）。
+        db_path: 可选临时校准库。
+
+    Returns:
+        套件汇总；``certified`` / ``n13_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    from core.harness.knowledge_pipeline.fact_ledger import FactLedger
+
+    own_db = not db_path
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own_db:
+        tmp = tempfile.TemporaryDirectory(prefix="n13-cal-pipeline-")
+        root = Path(tmp.name)
+        cal_db = str(root / "cal.sqlite3")
+        ledger_root = root
+    else:
+        cal_db = db_path  # type: ignore[assignment]
+        ledger_root = Path(tempfile.mkdtemp(prefix="n13-cal-ledger-"))
+
+    lg = FactLedger(
+        db_path=str(ledger_root / "fact_ledger.sqlite3"),
+        raw_dir=ledger_root / "raw",
+    )
+    await lg.initialize()
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n13-cal",
+            kind="file",
+            uri="file://n13/cal.txt",
+            content=b"n13-cal",
+            connector="n13",
+            domain_id=domain_id,
+        )
+        await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n13-cal",
+            subject="Probe:n13",
+            predicate="note",
+            object="ok",
+            evidence=[
+                {
+                    "source_id": src["source_id"],
+                    "locator": "1",
+                    "quote": "ok",
+                    "fetched_at": src["fetched_at"],
+                }
+            ],
+            source_policy="n13",
+            extractor_version="n13",
+            review_status="published",
+            confidence=0.9,
+            allow_bootstrap_published=True,
+            domain_id=domain_id,
+        )
+
+        from datetime import timedelta as _td
+
+        future = (datetime.now(timezone.utc) + _td(days=30)).strftime("%Y-%m-%d")
+
+        # 失败校准不得放行 high
+        fail = publish_calibration_report(
+            tenant_id=tenant_id,
+            domain=domain_id,
+            query_type="fact_gateway",
+            dataset_version="gold-v1",
+            sample_size=120,
+            label_protocol="dual",
+            inter_annotator_agreement=0.3,
+            weights={"w": 1},
+            calibration_version="cal-v1",
+            ece=0.2,
+            brier=0.2,
+            high_precision=0.95,
+            coverage=0.7,
+            approved_by="owner",
+            valid_until=future,
+            db_path=cal_db,
+        )
+        gw_fail = await lg.query_facts_gateway(
+            tenant_id=tenant_id,
+            query="ok",
+            domain_id=domain_id,
+            calibration_db_path=cal_db,
+            calibration_query_type="fact_gateway",
+        )
+        fail_ok = (
+            fail.get("status") == "failed"
+            and gw_fail.get("confidence") == "medium"
+            and gw_fail.get("calibration_capped") is True
+            and gw_fail.get("abstained") is False
+        )
+        cases.append(
+            {
+                "id": "failed_cal_caps_gateway_high",
+                "ok": fail_ok,
+                "detail": "" if fail_ok else "failed_cal_did_not_cap",
+            }
+        )
+
+        # 达标校准允许 high
+        ok_pub = publish_calibration_report(
+            tenant_id=tenant_id,
+            domain=domain_id,
+            query_type="fact_gateway",
+            dataset_version="gold-v1",
+            sample_size=120,
+            label_protocol="dual",
+            inter_annotator_agreement=0.3,
+            weights={"w": 1},
+            calibration_version="cal-v2",
+            ece=0.02,
+            brier=0.1,
+            high_precision=0.95,
+            coverage=0.8,
+            approved_by="owner",
+            valid_until=future,
+            db_path=cal_db,
+        )
+        gw_ok = await lg.query_facts_gateway(
+            tenant_id=tenant_id,
+            query="ok",
+            domain_id=domain_id,
+            calibration_db_path=cal_db,
+            calibration_query_type="fact_gateway",
+        )
+        allow_ok = (
+            ok_pub.get("status") == "approved"
+            and gw_ok.get("confidence") == "high"
+            and gw_ok.get("calibration_capped") is False
+        )
+        cases.append(
+            {
+                "id": "approved_cal_allows_high",
+                "ok": allow_ok,
+                "detail": "" if allow_ok else "approved_cal_not_high",
+            }
+        )
+
+        # 缺失校准 → medium
+        gw_miss = await lg.query_facts_gateway(
+            tenant_id=tenant_id,
+            query="ok",
+            domain_id=domain_id,
+            calibration_db_path=cal_db,
+            calibration_query_type="missing_qt",
+        )
+        miss_ok = (
+            gw_miss.get("confidence") == "medium"
+            and gw_miss.get("calibration_capped") is True
+        )
+        cases.append(
+            {
+                "id": "missing_cal_caps_high",
+                "ok": miss_ok,
+                "detail": "" if miss_ok else "missing_cal_not_capped",
+            }
+        )
+
+        honesty = {
+            "suite": "calibration_pipeline",
+            "ok": True,
+            "certified": False,
+            "n13_full_conformance": False,
+        }
+        gate = evaluate_calibration_pipeline_gate(honesty)
+        honesty_ok = gate.get("ok") is True and gate.get("certified") is False
+        forged = dict(honesty)
+        forged["n13_full_conformance"] = True
+        forged_gate = evaluate_calibration_pipeline_gate(forged)
+        honesty_ok = honesty_ok and forged_gate.get("ok") is False
+        cases.append(
+            {
+                "id": "honesty_certified_false",
+                "ok": honesty_ok,
+                "detail": "" if honesty_ok else "honesty_gate_failed",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N13_CALIBRATION_PIPELINE_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "calibration_pipeline",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "certified": False,
+        "n13_full_conformance": False,
+        "note": (
+            "Operational calibration ceiling on fact gateway; "
+            "not real ECE training / not N13 certified"
+        ),
+    }
+
+
+def evaluate_calibration_pipeline_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N13 校准流水线门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_calibration_pipeline_suite`` 回执。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n13_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "calibration_pipeline",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n13_full_conformance": False,
+        "note": "Operational calibration pipeline; not N13 certified",
     }

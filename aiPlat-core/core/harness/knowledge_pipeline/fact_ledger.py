@@ -3325,16 +3325,20 @@ class FactLedger:
         domain_id: Optional[str] = None,
         top_k: int = 8,
         require_citations: bool = True,
+        calibration_db_path: Optional[str] = None,
+        calibration_query_type: str = "fact_gateway",
     ) -> Dict[str, Any]:
-        """附录 M 最小查询入口：租户前置 + 无证据 abstain。
+        """附录 M 最小查询入口：租户前置 + 无证据 abstain + N13 校准封顶。
 
         Args:
             tenant_id: 租户。
             query: 查询串（用于 subject/predicate 子串匹配的简化）。
             collection_id: 集合。
-            domain_id: 业务域过滤（可选）。
+            domain_id: 业务域过滤（可选；有值时启用校准天花板）。
             top_k: 返回条数。
             require_citations: 为 True 时无 citations 则 abstain。
+            calibration_db_path: 可选校准库（测试/探针）。
+            calibration_query_type: 校准 query_type（默认 fact_gateway）。
 
         Returns:
             查询响应（含 abstained / citations）。
@@ -3379,6 +3383,22 @@ class FactLedger:
                 answer = f"{f0['subject']}.{f0['predicate']}={f0['object']}"
             confidence = "high" if citations else "low"
             evidence_coverage = 1.0 if citations else 0.0
+        cal_capped = False
+        # 为什么：有 domain 时走 N13 校准天花板，未达标诚实封顶 medium
+        if (domain_id or "").strip() and confidence != "low":
+            from core.harness.knowledge_pipeline.confidence_calibration import (
+                apply_calibration_ceiling,
+            )
+
+            capped = apply_calibration_ceiling(
+                tenant_id=tenant_id,
+                domain=str(domain_id),
+                query_type=calibration_query_type or "fact_gateway",
+                confidence=confidence,
+                db_path=calibration_db_path,
+            )
+            confidence = str(capped.get("confidence") or confidence)
+            cal_capped = bool(capped.get("capped"))
         resp = {
             "answer": answer,
             "citations": citations,
@@ -3398,6 +3418,7 @@ class FactLedger:
             "conflicts": [],
             "facts": facts,
             "tenant_id": tenant_id,
+            "calibration_capped": cal_capped,
         }
         gate = validate_gateway_response(resp)
         resp["gateway_contract_ok"] = gate["ok"]
@@ -3602,6 +3623,8 @@ async def unified_query_gateway(
     role: str = "",
     ledger: Optional["FactLedger"] = None,
     bindings_path: Optional[Any] = None,
+    calibration_db_path: Optional[str] = None,
+    calibration_query_type: str = "fact_gateway",
 ) -> Dict[str, Any]:
     """N06 deepen：统一 Query Gateway 入口（fact / object_set → F.1）。
 
@@ -3614,6 +3637,7 @@ async def unified_query_gateway(
         permissions / role: object_set L1/ACL。
         ledger: 可选 FactLedger。
         bindings_path: 可选 ObjectType 绑定路径（object_set 探针/测试）。
+        calibration_db_path / calibration_query_type: N13 校准封顶透传。
 
     Returns:
         附录 F.1 信封；``certified`` 不在此回执宣称。
@@ -3635,6 +3659,8 @@ async def unified_query_gateway(
             collection_id=collection_id,
             domain_id=domain_id,
             top_k=top_k,
+            calibration_db_path=calibration_db_path,
+            calibration_query_type=calibration_query_type,
         )
         # 统一入口标记（不改变 F.1 字段）
         plan = list(resp.get("route_plan") or [])

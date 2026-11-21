@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3908
+total_capabilities: 3909
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1300,6 +1300,7 @@ scan_hash: 8f9548ec24f4
 | **全量可认证路径（v4.3.1 Phase F）** | `evaluate_full_ready_gate` / `evaluate_full_certification` + Facade + FDE `/full-ready` `/full-cert` | ✅ | 附录 N.6：24 exists + 三级徽章 + 独立全量批准（朱向群，conditional）→ `certified` / `n24_full_conformance`。证据 `phase2-full-cert-path-evidence.md` + `pilot-full-approval-record.approved.json`。**未宣称** 准确率 / 生产 SLO 遥测。生成物适用：已接线（HTTP） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
 | **统一 Query Gateway（v4.3.1 N06 deepen）** | `unified_query_gateway` / suite/gate + Facade `fact_ledger_unified_query_gateway` | ✅ | fact+object_set → F.1 信封；wiki 拒；certified 恒 false。证据 `phase2-unified-query-gateway-evidence.md`。**未宣称** Wiki/Index 全量统一 / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Confidence 校准流水线（v4.3.1 N13 deepen）** | `apply_calibration_ceiling` / `run_calibration_pipeline_suite` / `evaluate_calibration_pipeline_gate` + fact gateway 封顶 + Facade | ✅ | 查询路径按校准天花板封顶；未达标/缺失 → ≤medium；suite/gate certified 恒 false。证据 `phase2-calibration-pipeline-evidence.md`。**未宣称** 真实 ECE 训练 / 准确率 / N13 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Claim 证据硬门+冲突+状态写（v4.3.1 N03 F2+write）** | `put_claim` / `record_claim_conflict` / `transition_claim_status`→`put_claim` / suite/gate + Facade 同名 + `POST …/claims/{id}/status-transition` | ✅ | published 无证据拒；同键冲突；状态写路径（合法边+审计+持久化）；certified 恒 false。证据 `phase2-claim-status-write-evidence.md`。**未宣称** 全量 Claim 生命周期产品 / N03 certified。生成物适用：已接线（经 Facade/HTTP） | 本批 |
 | **Fact→Graph 投影 + Action L1（v4.3.1 Phase 2 G2）** | `fact_projector.py` + `action_registry` Step 3.25 + `POST …/extractions/facts/rebuild` | ✅ | `project_facts_to_graph`（`exact_replay_from_facts`）；`required_permissions` 缺省 → `policy_denied`；试点合同 `lock_service_accept_order.yaml`。证据 `phase2-g2-evidence.md`。**未宣称** Wiki 只读/ObjectSet/N24 | 已合入 |
 | **重建条件三分类（v4.3.1 N05 partial）** | `classify_rebuild` / `validate_rebuild_receipt` + Facade `validate_fact_rebuild_receipt` | ✅ | `rebuild_mode∈{exact,semantic,non}` + `rebuild_reason`；禁不可重建标 exact；certified 恒 false。证据 `phase2-rebuild-taxonomy-evidence.md`。**未宣称** Wiki 全量/N05 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -4809,7 +4810,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 758 | 1 | 759 |
+| Harness 执行引擎 | 759 | 1 | 760 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 655 | 9 | 664 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -4854,7 +4855,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3897** | **11** | **3908** |
+| **总计** | **3898** | **11** | **3909** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
