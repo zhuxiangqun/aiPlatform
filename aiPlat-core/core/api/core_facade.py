@@ -18549,6 +18549,70 @@ def evaluate_constraint_layers_gate(suite: Optional[dict] = None) -> dict:
 
     return _gate(suite)
 
+
+def validate_query_abstain_citations(
+    *,
+    response: Dict[str, Any],
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：校验查询 abstain+citations（N21；certified 恒 false）。
+
+    Args:
+        response: 查询响应。
+        require_citations_on_hit: 命中是否要求 citations。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        validate_abstain_citations,
+    )
+
+    return validate_abstain_citations(
+        response,
+        require_citations_on_hit=require_citations_on_hit,
+    )
+
+
+def enforce_query_abstain_citations(
+    *,
+    response: Dict[str, Any],
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：归一化查询 abstain+citations（N21；certified 恒 false）。
+
+    Args:
+        response: 查询响应。
+        require_citations_on_hit: 命中是否要求 citations。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_abstain_citations,
+    )
+
+    return enforce_abstain_citations(
+        response,
+        require_citations_on_hit=require_citations_on_hit,
+    )
+
+
+async def run_query_abstain_citations_suite() -> dict:
+    """CoreFacade：N21 abstain+citations 套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        run_query_abstain_citations_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_query_abstain_citations_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N21 abstain+citations 门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_query_abstain_citations_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        evaluate_query_abstain_citations_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
