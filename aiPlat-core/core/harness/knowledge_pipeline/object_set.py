@@ -1,8 +1,10 @@
 """ObjectSet 最小查询（附录 E.1/E.2 / W8）— 租户前置、只读、ABox ACL。
 
 职责：按 object_type + filter 从 FactLedger 组装对象集合视图；
-经 ``role`` 应用实例级拒绝与字段脱敏（附录 H.1）。
-非目标：不实现写路径、Scenario/Package、Wiki/KB 全入口字段 ACL（SDK 见 sdk_generator）。
+经 ``role`` 应用实例级拒绝与字段脱敏（附录 H.1）；
+N07/N22 deepen：嵌套布尔 filter（``$and``/``$or``/``$not`` + 字段算子）。
+非目标：不实现写路径、Scenario/Package、Wiki/KB 全入口字段 ACL（SDK 见 sdk_generator）；
+不宣称完整表达式语言产品 / N07·N22 certified。
 """
 from __future__ import annotations
 
@@ -20,6 +22,15 @@ from core.harness.knowledge_pipeline.fact_ledger import (
 from core.harness.knowledge_pipeline.fact_projector import _parse_subject
 
 logger = logging.getLogger(__name__)
+
+# N07/N22 deepen：嵌套 filter 深度上限（防滥用；非无限表达式引擎）
+_MAX_FILTER_DEPTH = 4
+_FIELD_OPS = frozenset({"$eq", "$ne", "$in", "$exists"})
+_BOOL_OPS = frozenset({"$and", "$or", "$not"})
+
+
+class ObjectSetFilterError(ValueError):
+    """ObjectSet filter 表达式非法或超深。"""
 
 
 def _apply_abox_acl(
@@ -120,12 +131,109 @@ def _resolve_binding(
     return None
 
 
-def _item_matches_filter(item: Dict[str, Any], filt: Dict[str, Any]) -> bool:
-    """简单等值过滤（属性级）。"""
-    for k, v in (filt or {}).items():
-        if item.get(k) != v:
+def _match_field_ops(item: Dict[str, Any], field: str, ops: Dict[str, Any]) -> bool:
+    """字段级算子（``$eq``/``$ne``/``$in``/``$exists``）。
+
+    Args:
+        item: 对象行。
+        field: 字段名。
+        ops: 算子字典。
+    """
+    unknown = set(ops) - _FIELD_OPS
+    if unknown:
+        raise ObjectSetFilterError(f"unknown field op: {sorted(unknown)}")
+    cur = item.get(field)
+    if "$exists" in ops:
+        want = bool(ops["$exists"])
+        present = field in item and cur is not None
+        if present != want:
+            return False
+    if "$eq" in ops and cur != ops["$eq"]:
+        return False
+    if "$ne" in ops and cur == ops["$ne"]:
+        return False
+    if "$in" in ops:
+        allowed = ops["$in"]
+        if not isinstance(allowed, list):
+            raise ObjectSetFilterError("$in requires list")
+        if cur not in allowed:
             return False
     return True
+
+
+def match_filter_expr(
+    item: Dict[str, Any],
+    filt: Any,
+    *,
+    depth: int = 0,
+    max_depth: int = _MAX_FILTER_DEPTH,
+) -> bool:
+    """匹配嵌套布尔 filter（N07/N22 deepen）。
+
+    兼容附录 E 扁平等值 ``{k: v}``（隐式 ``$and``）；支持
+    ``$and`` / ``$or`` / ``$not`` 与字段 ``$eq``/``$ne``/``$in``/``$exists``。
+
+    Args:
+        item: 对象行。
+        filt: filter 表达式。
+        depth: 当前嵌套深度。
+        max_depth: 最大深度（默认 4）。
+
+    Returns:
+        是否匹配。
+
+    Raises:
+        ObjectSetFilterError: 非法算子或超深。
+    """
+    if depth > max_depth:
+        raise ObjectSetFilterError(f"filter depth exceeds max={max_depth}")
+    if filt is None or filt == {}:
+        return True
+    if not isinstance(filt, dict):
+        raise ObjectSetFilterError("filter must be object")
+
+    # 布尔算子优先（不可与字段键混用同一层，除隐式扁平 AND）
+    bool_keys = [k for k in filt if k in _BOOL_OPS]
+    field_keys = [k for k in filt if k not in _BOOL_OPS]
+    if bool_keys and field_keys:
+        raise ObjectSetFilterError(
+            "cannot mix boolean ops with field keys at same level"
+        )
+
+    if "$and" in filt:
+        clauses = filt["$and"]
+        if not isinstance(clauses, list) or not clauses:
+            raise ObjectSetFilterError("$and requires non-empty list")
+        return all(
+            match_filter_expr(item, c, depth=depth + 1, max_depth=max_depth)
+            for c in clauses
+        )
+    if "$or" in filt:
+        clauses = filt["$or"]
+        if not isinstance(clauses, list) or not clauses:
+            raise ObjectSetFilterError("$or requires non-empty list")
+        return any(
+            match_filter_expr(item, c, depth=depth + 1, max_depth=max_depth)
+            for c in clauses
+        )
+    if "$not" in filt:
+        return not match_filter_expr(
+            item, filt["$not"], depth=depth + 1, max_depth=max_depth
+        )
+
+    # 扁平等值 / 字段算子（隐式 AND）
+    for k, v in filt.items():
+        if isinstance(v, dict) and any(str(op).startswith("$") for op in v):
+            if not _match_field_ops(item, k, v):
+                return False
+        elif item.get(k) != v:
+            return False
+    return True
+
+
+def _item_matches_filter(item: Dict[str, Any], filt: Dict[str, Any]) -> bool:
+    """属性级过滤（嵌套布尔 + 扁平等值兼容）。"""
+    return match_filter_expr(item, filt or {})
 
 
 def _sort_items(items: List[Dict[str, Any]], sort_spec: List[Dict[str, str]]) -> None:
@@ -243,7 +351,20 @@ async def query_object_set(
         if pred:
             bucket[pred] = f.get("object")
 
-    items = [v for v in by_subject.values() if _item_matches_filter(v, req.filter)]
+    try:
+        items = [
+            v for v in by_subject.values() if _item_matches_filter(v, req.filter)
+        ]
+    except ObjectSetFilterError as e:
+        return {
+            "status": "error",
+            "reason": f"invalid_filter:{e}",
+            "object_type": req.object_type,
+            "total": 0,
+            "items": [],
+            "aggregates": [],
+            "next_cursor": None,
+        }
     items = _apply_abox_acl(
         items,
         domain_id=domain_id,
@@ -280,4 +401,107 @@ async def query_object_set(
         "domain_id": domain_id,
         "tenant_id": tenant_id,
         "role": role or "",
+    }
+
+
+def run_object_set_filter_suite() -> Dict[str, Any]:
+    """N07/N22 deepen：嵌套 filter 表达式套件（certified 恒 false）。
+
+    Returns:
+        套件回执；``certified`` / ``n07_full_conformance`` / ``n22_full_conformance`` 恒 false。
+    """
+    checks: Dict[str, bool] = {}
+    item = {"status": "open", "priority": "high", "order_id": "O-1"}
+
+    # 1) 扁平等值兼容
+    checks["flat_equality"] = match_filter_expr(
+        item, {"status": "open", "priority": "high"}
+    ) and not match_filter_expr(item, {"status": "closed"})
+
+    # 2) $and / $or / $not 嵌套
+    nested = {
+        "$and": [
+            {"status": {"$eq": "open"}},
+            {
+                "$or": [
+                    {"priority": {"$in": ["high", "urgent"]}},
+                    {"order_id": {"$eq": "missing"}},
+                ]
+            },
+            {"$not": {"status": {"$eq": "closed"}}},
+        ]
+    }
+    checks["nested_boolean"] = match_filter_expr(item, nested)
+
+    # 3) $exists / $ne
+    checks["field_ops"] = match_filter_expr(
+        item, {"assignee": {"$exists": False}, "status": {"$ne": "closed"}}
+    )
+
+    # 4) 深度上限拒绝
+    deep: Dict[str, Any] = {"status": "open"}
+    for _ in range(_MAX_FILTER_DEPTH + 2):
+        deep = {"$and": [deep]}
+    try:
+        match_filter_expr(item, deep)
+        checks["depth_cap"] = False
+    except ObjectSetFilterError:
+        checks["depth_cap"] = True
+
+    # 5) 诚实锁
+    checks["honesty_certified_false"] = True
+
+    passed = sum(1 for v in checks.values() if v)
+    return {
+        "ok": passed == len(checks),
+        "passed": passed,
+        "total": len(checks),
+        "checks": checks,
+        "certified": False,
+        "n07_full_conformance": False,
+        "n22_full_conformance": False,
+        "wiki_kb_full_acl": False,
+        "note": (
+            "ObjectSet nested filter deepen; not Wiki/KB full ACL; "
+            "not N07/N22 certified"
+        ),
+    }
+
+
+def evaluate_object_set_filter_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N07/N22 嵌套 filter 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_object_set_filter_suite`` 回执。
+    """
+    s = suite if isinstance(suite, dict) else run_object_set_filter_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    if s.get("certified") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("n07_full_conformance") is True:
+        issues.append("honesty_n07_full_forbidden")
+    if s.get("n22_full_conformance") is True:
+        issues.append("honesty_n22_full_forbidden")
+    if s.get("wiki_kb_full_acl") is True:
+        issues.append("honesty_wiki_kb_full_acl_forbidden")
+    required = (
+        "flat_equality",
+        "nested_boolean",
+        "field_ops",
+        "depth_cap",
+        "honesty_certified_false",
+    )
+    checks = s.get("checks") if isinstance(s.get("checks"), dict) else {}
+    for k in required:
+        if not checks.get(k):
+            issues.append(f"missing_or_failed:{k}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "note": "ObjectSet nested filter deepen; not N07/N22 certified",
     }

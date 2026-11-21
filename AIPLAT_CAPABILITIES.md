@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3915
+total_capabilities: 3919
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1224,6 +1224,7 @@ scan_hash: 8f9548ec24f4
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户隔离加深（v4.3.1 N09 partial+unified）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | 15 探针含统一 Gateway fact/object_set；门槛门 certified 恒 false。证据 `phase2-cross-tenant-unified-gateway-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户 ObjectSet/UnifiedAudit（v4.3.1 N09 K1）** | 同上套件增 `object_set_no_leak` / `unified_audit_no_leak` | ✅ | 临时 ObjectType + ActionStore→统一审计视图；六探针；certified 恒 false。证据 `phase2-cross-tenant-objectset-audit-evidence.md`。**未宣称** Wiki/KB 全入口 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **ObjectSet 嵌套 filter（v4.3.1 N07/N22 deepen）** | `match_filter_expr` / `run_object_set_filter_suite` / `evaluate_object_set_filter_gate` + Facade | ✅ | `$and`/`$or`/`$not` + `$eq`/`$ne`/`$in`/`$exists`；深度上限 4；certified 恒 false。证据 `phase2-objectset-filter-evidence.md`。**未宣称** Wiki/KB 全入口 ACL / N07/N22 certified。生成物适用：已接线 | 本批 |
 | **跨租户 Wiki/KB（v4.3.1 N09 K2）** | 同上套件增 `kb_retrieve_no_leak` / `wiki_retrieve_no_leak` | ✅ | KB per-tenant sqlite 路径 + Wiki retriever/query tenant mismatch 硬门；八探针；certified 恒 false。证据 `phase2-cross-tenant-wiki-kb-evidence.md`。**未宣称** GraphRAG/Wiki collection ACL / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户 GraphRAG（v4.3.1 N09 K3）** | `GraphRAGRetriever.retrieve/_vector_search(tenant_id=)` + 套件 `graphrag_no_leak` | ✅ | 显式 tenant 只查该租户 KB，禁 default/wiki 回退；九探针；certified 恒 false。证据 `phase2-cross-tenant-graphrag-evidence.md`。**未宣称** GraphIndex 租户/调用方全量透传 / N09 certified。生成物适用：已接线（经 Facade 套件） | 本批 |
 | **跨租户 GraphRAG caller 透传（v4.3.1 N09 K4）** | `sys_crag_retrieve` / `locate_via_ontology_async` / `governance_locate_view` / HTTP locate → `retrieve(tenant_id=)` + 套件 `graphrag_caller_passthrough` | ✅ | CRAG/治理入口透传租户到 GraphRAG 向量层；十探针；certified 恒 false。证据 `phase2-cross-tenant-graphrag-caller-evidence.md`。**未宣称** GraphIndex 图节点租户 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -1440,6 +1441,7 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| ObjectSetFilterError | `core/harness/knowledge_pipeline/object_set.py` | ✅ | 自动同步 | 已合入 |
 | allowed_reviewer_roles | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | 自动同步 | 已合入 |
 | require_unified_query_route | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
 | unified_query_gateway_routes | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
@@ -1451,6 +1453,9 @@ scan_hash: 8f9548ec24f4
 | unified_query_gateway | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 fact/object_set→F.1 | 本批 |
 | evaluate_claim_status_write_gate | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写门槛门；certified 恒 false | 本批 |
 | run_claim_status_write_suite | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写套件；certified 恒 false | 本批 |
+| evaluate_object_set_filter_gate | `core/harness/knowledge_pipeline/object_set.py` | ✅ | N07/N22 嵌套 filter 门槛门；certified 恒 false | 本批 |
+| run_object_set_filter_suite | `core/harness/knowledge_pipeline/object_set.py` | ✅ | N07/N22 嵌套 filter 套件；certified 恒 false | 本批 |
+| match_filter_expr | `core/harness/knowledge_pipeline/object_set.py` | ✅ | N07/N22 ObjectSet 嵌套 filter 匹配 | 本批 |
 | evaluate_reviewer_rbac_gate | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N04/N12 reviewer 角色门槛门；certified 恒 false | 本批 |
 | run_reviewer_rbac_suite | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N04/N12 reviewer 角色门套件；certified 恒 false | 本批 |
 | assert_reviewer_role | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N04/N12 publish 角色校验 | 本批 |
@@ -4816,9 +4821,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 761 | 1 | 762 |
+| Harness 执行引擎 | 762 | 1 | 763 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 659 | 9 | 668 |
+| 知识引擎（本体） | 662 | 9 | 671 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4861,7 +4866,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3904** | **11** | **3915** |
+| **总计** | **3908** | **11** | **3919** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

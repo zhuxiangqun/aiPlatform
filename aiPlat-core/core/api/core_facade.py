@@ -5136,6 +5136,30 @@ async def query_object_set(
     )
 
 
+def run_object_set_filter_suite() -> Dict[str, Any]:
+    """N07/N22 deepen：ObjectSet 嵌套 filter 套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.object_set import (
+        run_object_set_filter_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_object_set_filter_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N07/N22 deepen：ObjectSet 嵌套 filter 门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_object_set_filter_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.object_set import (
+        evaluate_object_set_filter_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def create_knowledge_scenario(
     *,
     tenant_id: str,
