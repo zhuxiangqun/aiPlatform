@@ -1,8 +1,8 @@
 /**
- * UnifiedAuditPanel — N24 Batch J4/J12 统一审计只读管理端薄 UI。
+ * UnifiedAuditPanel — N24 Batch J4/J12/J13 统一审计管理端薄 UI。
  *
- * 经 FDE `/unified-audit*`（J3）→ CoreFacade；J12 暴露 action_store / fact_query_audit 过滤；
- * 不写总线；不宣称 certified。
+ * 经 FDE `/unified-audit*`（J3）→ CoreFacade；J12 流过滤；J13 materialize 进写总线；
+ * 不宣称 certified。
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
@@ -45,6 +45,8 @@ const UnifiedAuditPanel: React.FC = () => {
   const [streams, setStreams] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [gateNote, setGateNote] = useState('');
+  const [materializeNote, setMaterializeNote] = useState('');
+  const [viewMode, setViewMode] = useState<'view' | 'bus'>('view');
 
   const q = (extra: Record<string, string> = {}) => {
     const p = new URLSearchParams({ tenant_id: tenantId.trim(), ...extra });
@@ -55,19 +57,41 @@ const UnifiedAuditPanel: React.FC = () => {
     if (!tenantId.trim()) return;
     setLoading(true);
     try {
-      const extra: Record<string, string> = { limit: '80' };
-      if (streamFilter !== 'all') extra.streams = streamFilter;
-      if (packageId.trim()) extra.package_id = packageId.trim();
-      if (actionPrefix.trim()) extra.action_id_prefix = actionPrefix.trim();
-      const r = await fetch(API(`/unified-audit?${q(extra)}`));
-      const body = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(detailMessage(body.detail));
-      if (body.certified === true || body.n24_full_conformance === true) {
-        // 为什么：UI 侧诚实锁，与 suite/gate 一致
-        toast?.error?.('汇合视图误标 certified — 违反诚实锁');
+      if (viewMode === 'bus') {
+        const extra: Record<string, string> = { limit: '80' };
+        if (streamFilter !== 'all') extra.stream = streamFilter;
+        const r = await fetch(API(`/unified-audit/bus?${q(extra)}`));
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(detailMessage(body.detail));
+        if (body.certified === true || body.n24_full_conformance === true) {
+          // 为什么：UI 侧诚实锁，与 suite/gate 一致
+          toast?.error?.('写总线列表误标 certified — 违反诚实锁');
+        }
+        setEvents(body.events || []);
+        setStreams(
+          Array.from(
+            new Set(
+              ((body.events || []) as UnifiedEvent[])
+                .map((e) => e.stream)
+                .filter((s): s is string => Boolean(s)),
+            ),
+          ),
+        );
+      } else {
+        const extra: Record<string, string> = { limit: '80' };
+        if (streamFilter !== 'all') extra.streams = streamFilter;
+        if (packageId.trim()) extra.package_id = packageId.trim();
+        if (actionPrefix.trim()) extra.action_id_prefix = actionPrefix.trim();
+        const r = await fetch(API(`/unified-audit?${q(extra)}`));
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(detailMessage(body.detail));
+        if (body.certified === true || body.n24_full_conformance === true) {
+          // 为什么：UI 侧诚实锁，与 suite/gate 一致
+          toast?.error?.('汇合视图误标 certified — 违反诚实锁');
+        }
+        setEvents(body.events || []);
+        setStreams(Array.isArray(body.streams) ? body.streams : []);
       }
-      setEvents(body.events || []);
-      setStreams(Array.isArray(body.streams) ? body.streams : []);
     } catch (e: unknown) {
       setEvents([]);
       setStreams([]);
@@ -75,7 +99,7 @@ const UnifiedAuditPanel: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [tenantId, streamFilter, packageId, actionPrefix]);
+  }, [tenantId, streamFilter, packageId, actionPrefix, viewMode]);
 
   useEffect(() => {
     void reload();
@@ -98,7 +122,7 @@ const UnifiedAuditPanel: React.FC = () => {
       const gate = await gateRes.json().catch(() => ({}));
       if (!gateRes.ok) throw new Error(detailMessage(gate.detail));
       const certified = Boolean(gate.certified);
-      setGateNote(`suite ok · gate certified=${certified}（J4/J12 诚实锁：须为 false）`);
+      setGateNote(`suite ok · gate certified=${certified}（J4/J13 诚实锁：须为 false）`);
       if (certified) {
         toast?.error?.('gate.certified 为 true — 违反诚实锁');
       } else {
@@ -111,17 +135,52 @@ const UnifiedAuditPanel: React.FC = () => {
     }
   };
 
+  const runMaterialize = async () => {
+    if (!tenantId.trim()) return;
+    setLoading(true);
+    try {
+      const body: Record<string, string | number> = {
+        tenant_id: tenantId.trim(),
+        limit: 100,
+      };
+      if (streamFilter !== 'all') body.streams = streamFilter;
+      if (packageId.trim()) body.package_id = packageId.trim();
+      if (actionPrefix.trim()) body.action_id_prefix = actionPrefix.trim();
+      const r = await fetch(API('/unified-audit/materialize'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const res = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(res.detail));
+      if (res.certified === true || res.n24_full_conformance === true) {
+        toast?.error?.('materialize 误标 certified — 违反诚实锁');
+      }
+      const written = res.written ?? res.appended ?? res.count ?? '?';
+      const skipped = res.skipped ?? res.idempotent_skips ?? '';
+      setMaterializeNote(
+        `materialize ok · written=${written}${skipped !== '' ? ` · skipped=${skipped}` : ''}（非 certified）`,
+      );
+      toast?.success?.('materialize 完成（非 certified）');
+      setViewMode('bus');
+    } catch (e: unknown) {
+      toast?.error?.((e as Error)?.message || 'materialize 失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Card className="border-gray-700/60 bg-gray-900/40">
       <CardHeader className="flex flex-row items-center justify-between gap-2 py-3 px-4">
         <div className="flex items-center gap-2 text-sm text-gray-200">
           <ListTree className="h-4 w-4 text-sky-300/90" />
-          <span>Unified Audit 视图（N24 J4/J12）</span>
+          <span>Unified Audit（N24 J4/J12/J13）</span>
           <span className="text-[11px] text-gray-500 font-normal">
-            只读汇合 · 非写总线 · 非 certified
+            汇合 + materialize · 非 certified
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           <Button
             type="button"
             variant="ghost"
@@ -135,13 +194,43 @@ const UnifiedAuditPanel: React.FC = () => {
           <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={() => void runGate()}>
             suite/gate
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={loading || !tenantId.trim()}
+            onClick={() => void runMaterialize()}
+          >
+            materialize
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 px-4 pb-4">
         <p className="text-[11px] text-gray-500 leading-relaxed">
-          展示 Package / ActionExecution / revision_audit / action_store / fact_query_audit
-          只读汇合（可按流过滤）。本面板不写总线；不宣称 certified。
+          汇合 Package / ActionExecution / revision_audit / action_store / fact_query_audit；
+          J13 可 materialize 进写总线（经已有 HTTP）。不宣称 certified。
         </p>
+
+        <div className="flex gap-2 text-[11px]">
+          <Button
+            type="button"
+            variant={viewMode === 'view' ? 'primary' : 'ghost'}
+            size="sm"
+            disabled={loading}
+            onClick={() => setViewMode('view')}
+          >
+            汇合视图
+          </Button>
+          <Button
+            type="button"
+            variant={viewMode === 'bus' ? 'primary' : 'ghost'}
+            size="sm"
+            disabled={loading}
+            onClick={() => setViewMode('bus')}
+          >
+            写总线
+          </Button>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <label className="text-[11px] text-gray-400 space-y-1">
@@ -191,9 +280,15 @@ const UnifiedAuditPanel: React.FC = () => {
             {gateNote}
           </div>
         )}
+        {materializeNote && (
+          <div className="text-[11px] text-emerald-200/80 border border-emerald-800/40 rounded px-2 py-1.5">
+            {materializeNote}
+          </div>
+        )}
 
         <div className="text-[11px] text-gray-500">
-          活动流：{streams.length ? streams.join(', ') : '—'} · 事件 {events.length}
+          模式：{viewMode === 'bus' ? '写总线' : '汇合'} · 活动流：
+          {streams.length ? streams.join(', ') : '—'} · 事件 {events.length}
         </div>
 
         {events.length === 0 ? (

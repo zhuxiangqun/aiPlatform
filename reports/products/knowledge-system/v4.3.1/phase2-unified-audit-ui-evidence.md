@@ -12,7 +12,8 @@ pilot_domain: lock-service
 > 实施权威：附录 N N24 partial 加深（知识工厂统一审计只读薄面板；经 J3 HTTP→CoreFacade）。  
 > **未宣称** 写总线表 / N24 certified。
 >
-> 流过滤加深见 Batch J12：`phase2-unified-audit-ui-streams-evidence.md`。
+> 流过滤加深见 Batch J12：`phase2-unified-audit-ui-streams-evidence.md`。  
+> materialize / 写总线列表见 Batch J13：`phase2-unified-audit-ui-materialize-evidence.md`。
 
 ## 检查表
 
