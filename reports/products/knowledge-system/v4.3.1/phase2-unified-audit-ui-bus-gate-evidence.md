@@ -37,5 +37,7 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 ## 明确未做
 
-- 任意 append 表单 / 全量运维台
+- 全量运维台
 - N24 / 附录 N 全量认证
+
+> 薄 append 见 Batch J15：`phase2-unified-audit-ui-append-evidence.md`。
