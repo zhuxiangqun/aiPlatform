@@ -17928,11 +17928,11 @@ async def list_fact_unified_audit_events(
     domain_id: str = "",
     limit: int = 100,
 ) -> dict:
-    """CoreFacade：N24 多源统一审计汇合视图（含 ActionStore；非 certified）。
+    """CoreFacade：N24 多源统一审计汇合视图（含 ActionStore/FactQuery；非 certified）。
 
     Args:
         tenant_id: 租户。
-        streams: 逗号分隔流名；空则默认多流。
+        streams: 逗号分隔流名；空则默认多流（含 fact_query_audit）。
         package_id: Package 流可选过滤。
         action_id_prefix: Action 流可选前缀。
         entity_type: revision 流可选实体类型。
@@ -18063,11 +18063,11 @@ async def materialize_fact_unified_audit_bus(
     entity_id: str = "",
     limit: int = 100,
 ) -> dict:
-    """CoreFacade：将源三流汇合 materialize 进写总线。
+    """CoreFacade：将源流水汇合 materialize 进写总线。
 
     Args:
         tenant_id: 租户。
-        streams: 逗号分隔源流水线；空则三流。
+        streams: 逗号分隔源流水线；空则含 package/action/revision/action_store/fact_query_audit。
         package_id: Package 可选过滤。
         action_id_prefix: Action 可选前缀。
         entity_type: revision 可选实体类型。

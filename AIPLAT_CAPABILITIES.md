@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4064
+total_capabilities: 4065
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1214,10 +1214,11 @@ scan_hash: 8f9548ec24f4
 | **Revision→Action Bridge（v4.3.1 N24 I4）** | `bridge_revision_audit_to_action` / `list_revision_action_bridges` / `run_revision_action_bridge_suite` / `evaluate_revision_action_bridge_gate` + Facade | ✅ | 审批式 restore 决策幂等桥接 ActionExecution；门槛门 certified 恒 false。证据 `phase2-revision-action-bridge-evidence.md`。**未宣称** 回滚 UI/全量总线合并 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Revision Restore HTTP（v4.3.1 N24 J1）** | FDE `/revision-restore/*` 薄路由 → CoreFacade（requests/approve/reject/audit/bridges/suite/gate） | ✅ | 平台 HTTP 暴露审批式 restore 与审计/桥接查询；门槛门 certified 恒 false。证据 `phase2-revision-restore-http-evidence.md`。**未宣称** 管理端回滚 UI / 全量总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Revision Restore UI（v4.3.1 N24 J2）** | 知识工厂 `RevisionRestorePanel` → J1 HTTP（requests/approve/reject/audit/suite/gate） | ✅ | 管理端审批式 restore 薄面板；UI 禁自批；门槛门 certified 恒 false。证据 `phase2-revision-restore-ui-evidence.md`。**未宣称** Package+Action 全量总线 / N24 certified。生成物适用：已接线（管理端展示） | 本批 |
-| **Unified Audit View（v4.3.1 N24 J3）** | `list_unified_audit_events` / suite / gate + Facade + FDE `/unified-audit*` | ✅ | Package+ActionExecution+revision_audit 只读汇合；门槛门 certified 恒 false。证据 `phase2-unified-audit-view-evidence.md`。**未宣称** 写总线表 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Unified Audit View（v4.3.1 N24 J3/J10）** | `list_unified_audit_events` / suite / gate + Facade + FDE `/unified-audit*` | ✅ | Package+ActionExecution+revision_audit+ActionStore+FactQuery 只读汇合；门槛门 certified 恒 false。证据 `phase2-unified-audit-view-evidence.md` + `phase2-unified-audit-fact-query-stream-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Unified Audit UI（v4.3.1 N24 J4）** | 知识工厂 `UnifiedAuditPanel` → J3 HTTP（list/filter/suite/gate） | ✅ | 管理端只读统一审计薄面板；UI 诚实锁；门槛门 certified 恒 false。证据 `phase2-unified-audit-ui-evidence.md`。**未宣称** 写总线表 / N24 certified。生成物适用：已接线（管理端展示） | 本批 |
 | **Unified Audit Bus（v4.3.1 N24 J5）** | `append_unified_audit_event` / materialize / suite / gate + Facade + FDE `/unified-audit/append|bus|materialize` | ✅ | append-only 写总线；revision_audit 热路径；门槛门 certified 恒 false。证据 `phase2-unified-audit-bus-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Unified Audit Hotpath（v4.3.1 N24 J6）** | `publish_package` / `persist_execution` best-effort → bus；suite 增 package/action hotpath | ✅ | Package/Action 热路径写总线；与 materialize 幂等共存；门槛门 certified 恒 false。证据 `phase2-unified-audit-hotpath-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（生产写路径） | 本批 |
+| **Unified Audit FactQuery Stream（v4.3.1 N24 J10）** | `_fact_query_audit_events` + view/materialize 默认流 | ✅ | N19 Fact/Query 快照 fan-in 统一视图并可 materialize；门槛门 certified 恒 false。证据 `phase2-unified-audit-fact-query-stream-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Unified Audit ActionStore（v4.3.1 N24 J7）** | `ActionStore.insert_audit` → bus；view/materialize 含 `action_store` 流 | ✅ | ActionStore.action_audit 汇入统一审计；租户经 params.tenant_id 过滤；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（生产写路径） | 本批 |
 | **ActionStore tenant_id（v4.3.1 N24 J8）** | `action_audit.tenant_id` 物理列 + `list_audit(tenant_id=)` 召回前过滤 | ✅ | CREATE/ALTER 迁移；insert 写列；view 用物理过滤（空列回退 params）；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-tenant-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（生产写/读路径） | 本批 |
 | **ActionStore tenant backfill（v4.3.1 N24 J9）** | `ActionStore.backfill_tenant_id` + `initialize` 幂等接线 | ✅ | 空物理列从 `params.tenant_id` 回填；无 params 租户不猜测；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-tenant-backfill-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（initialize） | 本批 |
@@ -4965,7 +4966,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 775 | 1 | 776 |
+| Harness 执行引擎 | 776 | 1 | 777 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 794 | 9 | 803 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5010,7 +5011,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4053** | **11** | **4064** |
+| **总计** | **4054** | **11** | **4065** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
