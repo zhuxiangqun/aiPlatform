@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T11:40:00+08:00",
+  "reviewed_at": "2026-11-21T12:10:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "528340088210f9459187bd38a628c5a2dda97f339e2b008c959e433cf55cc657",
-  "head_sha": "44f7ed58825eb1ede6523c82c25f9d29b3b4ac7c",
+  "diff_sha256": "bbe99c277091dca6133842ccb88514320b2ef032b9470a72ac1b4f8781282b09",
+  "head_sha": "dec5ddb0e1017d98a859d3015543986868b81724",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N05 Wiki conditional rebuild: Fact→derived pages with rebuild_mode taxonomy; non skips write; HTTP via CoreFacade only; certified/n05_full/wiki_full forced false; does not replace wiki_engine/FTS."
+  "note": "N10 domain gold Exact-match pipeline via DomainRouter/explicit domains; accuracy_claim/certified/n10_full forced false; no LLM judge."
 }
