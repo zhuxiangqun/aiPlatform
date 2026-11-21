@@ -4,13 +4,13 @@
   - 按标准分层评估约束：L1 硬门 / L2 软约束 / L3 审计
   - 强制 ``L1 > L2 > L3``：高风险无 L1 拒绝；L2 不得单独作安全边界
   - unified_query_gateway / put_fact / query_facts_gateway / MaterialsChat /
-    GraphRAG / Wiki-KB / 裸 list syscall 热路径 best-effort 挂 ``n20_constraint``
-    （可 env 关闭；裸 list 仍为 list 主返回）
+    GraphRAG / Wiki-KB / 裸 list syscall / query_facts list 热路径
+    best-effort 挂 ``n20_constraint``（可 env 关闭；list 仍为 list 主返回）
   - 套件/门槛门：``certified`` / ``n20_full`` 恒 false
 
 非目标：
   - 不重写 ActionRegistry / PolicyGate 全路径
-  - 不改写 ``sys_wiki_retrieve`` / ``sys_kb_retrieve`` list 主返回类型为 dict
+  - 不改写 list 主返回类型为 dict
   - 不并入 N08 Lv4 误报门
   - 不宣称 N20 certified
 """
@@ -38,6 +38,7 @@ _SUITE_CASES = (
     "graphrag_hotpath_entry",
     "wiki_kb_hotpath_entry",
     "bare_list_hotpath_entry",
+    "query_facts_list_constraint_hotpath_entry",
 )
 
 _LAYERS = ("L1", "L2", "L3")
@@ -659,8 +660,9 @@ def evaluate_constraint_layers_gate(
         "n20_full_conformance": False,
         "note": (
             "Constraint layers + Gateway/put_fact/query_facts_gateway/"
-            "MaterialsChat/GraphRAG/Wiki-KB/bare-list hotpath deepen; "
-            "not N20 certified / not list→dict rewrite / not Lv4 redesign"
+            "MaterialsChat/GraphRAG/Wiki-KB/bare-list/query_facts-list "
+            "hotpath deepen; not N20 certified / not list→dict rewrite / "
+            "not Lv4 redesign"
         ),
     }
 
@@ -873,6 +875,16 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         }
     )
 
+    qfl_src = inspect.getsource(fl.FactLedger.query_facts)
+    cases.append(
+        {
+            "id": "query_facts_list_constraint_hotpath_entry",
+            "ok": "maybe_stamp_bare_list_constraint_hotpath" in qfl_src
+            and "stamp_constraint_hotpath" in qfl_src,
+            "detail": "",
+        }
+    )
+
     passed = sum(1 for c in cases if c.get("ok"))
     return {
         "ok": passed == len(_SUITE_CASES),
@@ -884,7 +896,7 @@ def run_constraint_layers_suite() -> Dict[str, Any]:
         "measured_at": time.time(),
         "note": (
             "Constraint layers + Gateway/put_fact/query_facts_gateway/"
-            "MaterialsChat/GraphRAG/Wiki-KB/bare-list hotpath deepen; "
-            "not list→dict rewrite / not certified"
+            "MaterialsChat/GraphRAG/Wiki-KB/bare-list/query_facts-list "
+            "hotpath deepen; not list→dict rewrite / not certified"
         ),
     }

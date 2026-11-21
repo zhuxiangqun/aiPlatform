@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-21T18:39:59+08:00",
+  "reviewed_at": "2026-11-21T18:47:49+08:00",
   "base_ref": "origin/main",
   "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "c066cb878e48b2214466d5e853d50f09c36d7d9fbcb51c4a95f8437ff88324aa",
-  "head_sha": "a5850eb93309b62ee9871770119c6f1157831eeb",
+  "diff_sha256": "3d19f4bfcefa770198331dfa3a140b4430f900d1b4834a044fc81ccfe46c9a27",
+  "head_sha": "40fa2da3d9f32dfb97c76edc1ffe4c0b0c05036a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N20 bare list stamp via ConstraintAwareHitList; list main return unchanged; certified/n20_full stay false; list→dict rewrite still open."
+  "note": "N20 query_facts list stamp via ConstraintAwareHitList; gateway disables stamp; list main return unchanged; certified/n20_full stay false."
 }

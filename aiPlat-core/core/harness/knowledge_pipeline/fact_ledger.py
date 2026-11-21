@@ -3294,6 +3294,7 @@ class FactLedger:
         review_status: Optional[str] = None,
         limit: int = 50,
         record_hotpath_audit: bool = True,
+        stamp_constraint_hotpath: bool = True,
     ) -> List[Dict[str, Any]]:
         """查询 Fact；``tenant_id`` 必填且在 SQL WHERE 中过滤。
 
@@ -3305,9 +3306,10 @@ class FactLedger:
             review_status: 可选审核状态。
             limit: 上限。
             record_hotpath_audit: N19 list 旁路热路径；gateway 调用时关以免双写。
+            stamp_constraint_hotpath: N20 list 旁路挂约束观测；gateway 调用时关以免双挂。
 
         Returns:
-            Fact 列表（永不返回其他租户行）。
+            Fact 列表（永不返回其他租户行；可为 ConstraintAwareHitList）。
 
         Raises:
             FactLedgerError: tenant_id 为空。
@@ -3371,6 +3373,21 @@ class FactLedger:
                     "fact_query_audit query_facts list hotpath failed",
                     exc_info=True,
                 )
+        if stamp_constraint_hotpath:
+            # 为什么：N20 — 直调 list 旁路挂观测；主返回仍为 list（子类属性）
+            try:
+                from core.harness.knowledge_pipeline.constraint_layers import (
+                    maybe_stamp_bare_list_constraint_hotpath,
+                )
+
+                hits = maybe_stamp_bare_list_constraint_hotpath(
+                    hits, channel="fact_list"
+                )
+            except Exception:
+                logger.warning(
+                    "constraint_layers query_facts list hotpath failed",
+                    exc_info=True,
+                )
         return hits
 
     async def query_facts_gateway(
@@ -3409,8 +3426,9 @@ class FactLedger:
             collection_id=collection_id,
             domain_id=domain_id,
             limit=top_k * 3,
-            # 为什么：gateway 自有 N19 热路径；关 list 审计防双写
+            # 为什么：gateway 自有 N19/N20；关 list 审计与约束 stamp 防双写/双挂
             record_hotpath_audit=False,
+            stamp_constraint_hotpath=False,
         )
         q = (query or "").strip().lower()
         if q:
