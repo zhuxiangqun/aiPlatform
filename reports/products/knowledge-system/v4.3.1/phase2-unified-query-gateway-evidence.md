@@ -10,9 +10,9 @@ pilot_domain: lock-service
 # Phase 2 / 统一 Query Gateway（N06 deepen）证据
 
 > 实施权威：附录 N N06 partial 加深。  
-> **未宣称** MaterialsChat 全 Agent 出口收敛 / N06 certified；Core
+> **未宣称** 其它应用入口全量收敛 / N06 certified；Core
 > `fact` + `object_set` + `wiki` + `index` + `materials_chat` 路由轴 → 附录 F.1
-> + MaterialsChat RAG 出口挂 `gateway_f1`。
+> + MaterialsChat RAG/trivial/cache_hit 出口挂 `gateway_f1`。
 
 ## 检查表
 
@@ -24,7 +24,9 @@ pilot_domain: lock-service
 | wiki 路由 F.1（N21 abstain 映射） | pass | suite `wiki_route_f1_ok` |
 | index 路由 F.1（KB N21 abstain 映射） | pass | suite `index_route_f1_ok` |
 | materials_chat 路由 F.1（N21 RAG enforce） | pass | suite `materials_chat_route_f1_ok` |
+| materials trivial/cache_hit → F.1 | pass | suite `materials_nonrag_gateway_f1_ok` |
 | materials_chat_route | pass | suite / gate |
+| materials_nonrag_gateway | pass | suite / gate |
 | suite/gate certified 恒 false | pass | `test_suite_and_gate_honesty` |
 
 ## 命令
@@ -39,12 +41,11 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 | 入口 | 路径 |
 |------|------|
-| 核心 | `unified_query_gateway` / `materials_chat_to_f1_envelope` / suite/gate |
+| 核心 | `unified_query_gateway` / `materials_chat_to_f1_envelope(kind=…)` / suite/gate |
 | Facade | `fact_ledger_unified_query_gateway` + `materials_chat_to_f1_envelope` |
-| 生产 | MaterialsChat RAG 出口附加 `gateway_f1` |
+| 生产 | MaterialsChat RAG + trivial + cache_hit 出口附加 `gateway_f1` |
 
 ## 明确未做
 
-- MaterialsChat trivial/cache_hit 等非 RAG 出口全量走统一 Gateway
-- 其它应用入口全量收敛
+- 其它应用入口全量收敛到统一 Gateway
 - N06 / 附录 N 全量认证 / 关闭 ADR 例外
