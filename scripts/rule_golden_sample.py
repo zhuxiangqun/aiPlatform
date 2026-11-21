@@ -15,7 +15,7 @@
   python3 scripts/rule_golden_sample.py --verify  # 检查 1+2+3（慢，黄金样本完整验证，建议独立 CI job 运行）
 
 设计：
-  - 守卫日常（architecture_guard.sh）跑语法级检查（1+2）——防 \| 反模式/编译错误重演，0 成本
+  - 守卫日常（architecture_guard.sh）跑语法级检查（1+2）——防 backslash-pipe 反模式/编译错误重演，0 成本
   - --verify（检查 3）会标记"规则要求但系统未达标"的真问题（如 meta_agent/caller_verify），
     这些是真合规缺口，应由对应 P0 修复（见 docs/archive/aiPlat问题总清单与行动纲领.md）
 """
@@ -40,7 +40,7 @@ def load_rules() -> list[dict]:
 
 
 def check_backslash_pipe(pattern: str) -> bool:
-    """检测 pattern 中的 \| 反模式（grep BRE OR 语法误用于 Python re）。
+    """检测 pattern 中的 backslash-pipe 反模式（grep BRE OR 误用于 Python re）。
 
     Args:
         pattern: pattern 参数。
