@@ -171,13 +171,14 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-bool-depth5-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-bool-depth6-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-bool-depth7-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-bool-depth8-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-not-not-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-not-shallow-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-nin-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-matrix-thin-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-matrix-per-role-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-matrix-config-axes-evidence.md
-    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse + retrieve/KB/CRAG + 裸 Wiki/GraphRAG + OKF/OWL/suggestions/offline 导出字段 ACL + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition 等值/$eq/$ne/$in/$nin/$exists/$gt/$gte/$lt/$lte(数值或 str 字典序)/$regex(+$options:i)/$and|$or|$not(深度≤7;$not可否定字段/$and|$or/$not) + masked_properties + apply/list/get_h1 + 薄表单 + 薄矩阵 + per-role 矩阵（role_actions）+ 配置轴（h1_matrix_axes/crud_matrix.h1_matrix_*）；非 certified/非完整表达式语言/非任意 RBAC 产品"
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse + retrieve/KB/CRAG + 裸 Wiki/GraphRAG + OKF/OWL/suggestions/offline 导出字段 ACL + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition 等值/$eq/$ne/$in/$nin/$exists/$gt/$gte/$lt/$lte(数值或 str 字典序)/$regex(+$options:i)/$and|$or|$not(深度≤8;$not可否定字段/$and|$or/$not) + masked_properties + apply/list/get_h1 + 薄表单 + 薄矩阵 + per-role 矩阵（role_actions）+ 配置轴（h1_matrix_axes/crud_matrix.h1_matrix_*）；非 certified/非完整表达式语言/非任意 RBAC 产品"
   - id: N08
     level: extended
     title: 动作执行走 Policy/Approval/Audit
@@ -418,6 +419,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-bool-depth5-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-bool-depth6-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-bool-depth7-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-bool-depth8-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-not-not-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-not-shallow-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-condition-nin-evidence.md

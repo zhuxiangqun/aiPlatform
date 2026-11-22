@@ -26,30 +26,11 @@ def test_match_condition_not_not():
         )
         is True
     )
-    # 超深 $not 链拒配（深度 ≤7 → 八层 $not 拒配）
-    assert (
-        match_abox_condition(
-            {
-                "$not": {
-                    "$not": {
-                        "$not": {
-                            "$not": {
-                                "$not": {
-                                    "$not": {
-                                        "$not": {
-                                            "$not": {"status": "open"},
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            attrs,
-        )
-        is False
-    )
+    # 超深 $not 链拒配（深度 ≤8 → 九层 $not 拒配）
+    deep = {"status": "open"}
+    for _ in range(9):
+        deep = {"$not": deep}
+    assert match_abox_condition(deep, attrs) is False
 
 
 def test_check_entity_acl_not_not_gates_deny(tmp_path: Path, monkeypatch):
