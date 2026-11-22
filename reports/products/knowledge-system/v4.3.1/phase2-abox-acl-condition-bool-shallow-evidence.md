@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / ABox ACL condition 浅层 $and/$or（N07/N22 deepen）
 
 > 实施权威：附录 H.1 / N07/N22；叠在字符串字典序之上。  
-> **未宣称** N07/N22 certified / 完整表达式语言 / 矩阵编辑器 / 多层嵌套（浅层 `$not` → 见 not-shallow 证据）。
+> **未宣称** N07/N22 certified / 完整表达式语言 / 矩阵编辑器。深度 2 嵌套 → 见 `phase2-abox-acl-condition-bool-depth2-evidence.md`；浅层 `$not` → 见 not-shallow 证据。
 
 ## 检查表
 
