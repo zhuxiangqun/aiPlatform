@@ -27,10 +27,10 @@ _VALID_ACTIONS = frozenset({"read", "update", "state_change", "delete", "admin"}
 # 为什么：H.1 $regex 仅开放短模式 + 有界主语，降低 ReDoS / 任意编译风险（非完整正则引擎产品）
 _REGEX_MAX_PATTERN_LEN = 128
 _REGEX_MAX_SUBJECT_LEN = 4096
-# 为什么：有界 $and/$or/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
+# 为什么：有界 $and/$or/$nor/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
 _BOOL_MAX_CLAUSES = 8
 _BOOL_MAX_DEPTH = 10  # 顶层=1；允许再嵌九层（深度 10）；更深拒配
-_BOOL_OPS = frozenset({"$and", "$or", "$not"})
+_BOOL_OPS = frozenset({"$and", "$or", "$nor", "$not"})
 
 # Identity / PolicyGate role → ABox ACL role (T9 productization)
 _ROLE_ALIASES: Dict[str, str] = {
@@ -353,7 +353,7 @@ def _match_bool_condition(
     *,
     depth: int,
 ) -> Optional[bool]:
-    """有界 ``$and``/``$or``/``$not``（深度 ≤ ``_BOOL_MAX_DEPTH``）。
+    """有界 ``$and``/``$or``/``$nor``/``$not``（深度 ≤ ``_BOOL_MAX_DEPTH``）。
 
     Args:
         condition: 纯布尔算子 dict（单键）。
@@ -367,7 +367,7 @@ def _match_bool_condition(
         return None
     keys = set(condition.keys())
     bool_hit = keys & _BOOL_OPS
-    # 为什么：只允许纯 {$and:[]} / {$or:[]} / {$not:{}}；与字段键混用 / 双算子 → 拒配
+    # 为什么：只允许纯 {$and|$or|$nor:[]} / {$not:{}}；与字段键混用 / 双算子 → 拒配
     if len(keys) != 1 or len(bool_hit) != 1:
         return None
     op = next(iter(bool_hit))
@@ -397,7 +397,7 @@ def _match_bool_condition(
             return None
         nested_hit = set(clause.keys()) & _BOOL_OPS
         if nested_hit:
-            # 为什么：深度内允许 $and/$or/$not 子句再挂一层；超深拒配
+            # 为什么：深度内允许 $and/$or/$nor/$not 子句再挂一层；超深拒配
             if depth >= _BOOL_MAX_DEPTH:
                 return None
             child = _match_bool_condition(clause, attrs, depth=depth + 1)
@@ -408,7 +408,12 @@ def _match_bool_condition(
             matched.append(_match_field_conditions(clause, attrs))
     if op == "$and":
         return all(matched)
-    return any(matched)
+    if op == "$or":
+        return any(matched)
+    if op == "$nor":
+        # 为什么：$nor ≡ ¬(∨)；子句拒配已在上方传播为 None，此处仅对成功求值取反
+        return not any(matched)
+    return None
 
 
 def match_abox_condition(
@@ -419,10 +424,10 @@ def match_abox_condition(
 
     每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
-    顶层可单独使用 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
-    （深度 ≤10：``$and``/``$or``/``$not`` 可再嵌同族；``$not`` 可否定字段、
-    纯字段 ``$and``/``$or`` 或另一 ``$not``（正规求值再取反，禁 fail-open）；
-    每层子句 ≤8；非完整表达式语言）。
+    顶层可单独使用 ``{$and|$or|$nor: [...]}`` / ``{$not: {…}}``
+    （深度 ≤10：``$and``/``$or``/``$nor``/``$not`` 可再嵌同族；``$not`` 可否定字段、
+    纯字段 ``$and``/``$or``/``$nor`` 或另一 ``$not``（正规求值再取反，禁 fail-open）；
+    ``$nor`` ≡ ¬(∨)；每层子句 ≤8；非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。
