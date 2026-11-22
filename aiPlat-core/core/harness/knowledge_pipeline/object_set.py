@@ -58,8 +58,8 @@ def _apply_abox_acl(
         if not eid:
             out.append(it)
             continue
-        # 为什么：召回前过滤——deny 的实例不得进入 items/aggregates
-        if not check_entity_acl(domain_id, eid, role, "read"):
+        # 为什么：召回前过滤——deny 的实例不得进入 items/aggregates；传 attrs 供 H.1 condition
+        if not check_entity_acl(domain_id, eid, role, "read", attrs=it):
             continue
         out.append(redact_entity_fields(domain_id, eid, it, role))
     return out

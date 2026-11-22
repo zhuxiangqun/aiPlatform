@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4069
+total_capabilities: 4087
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1347,6 +1347,7 @@ scan_hash: 8f9548ec24f4
 | **ObjectType 人审发布（v4.3.1 N02 deepen）** | `object_type_publish.py` + CoreFacade + FDE `/object-types*`；Package schema 可选门 | ✅ | draft→in_review→published；publish 角色门；suite/gate certified 恒 false。证据 `phase2-object-type-publish-evidence.md`。**未宣称** 全量发布门户 / 种子替换 / N02 certified。生成物适用：已接线 | 本批 |
 | **Knowledge SDK（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/sdk_generator.py` + CoreFacade + `GET/POST …/fde/sdk/*` | ✅ | 附录 E.3；ObjectType→Client 表面/Python 源码仅经 Facade；`kb:read` L1。证据 `phase2-sdk-evidence.md`。**未宣称** 多语言包发布/字段 ACL/N24 | 本批 |
 | **Knowledge SLO 遥测接线（v4.3.1 F1 deepen）** | `harness/knowledge_pipeline/slo_telemetry.py` + CoreFacade + `GET/POST …/fde/slo/*` | ✅ | 白皮书 §14 三指标采集/快照/接线门；wiring≠attainment。证据 `phase2-slo-telemetry-wiring-evidence.md`。**未宣称** 生产达标/告警/Full unconditional | 本批 |
+| **Wiki/KB 字段 ACL（v4.3.1 N07/N22 deepen）** | `syscalls/retrieval.py` + `knowledge_pipeline/retriever.py` + `knowledge/okf_exporter.py` + `knowledge/knowledge_ontology.py` + `knowledge/evolution_runner.py` + `policy/field_level_security.py` + `graph_abox_acl.py` + `wiki_field_security.py` + FDE `graph/acl` + `FieldAclPanel.tsx` / `AboxAclPanel.tsx` | ✅ | 统一检索/KB/CRAG + 导出字段脱敏 + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition/$eq/$ne/$in/$nin/$exists/$gt/$gte/$lt/$lte(数值或 str 字典序)/$regex(+$options:i)/浅层$and|$or|$not + masked_properties + apply/list/get_h1 + 薄表单 + 薄矩阵（共享 actions）；证据含 `phase2-abox-acl-h1-matrix-thin-evidence.md`。**未宣称** certified / 完整表达式语言 / per-role 差异矩阵。生成物适用：已接线 | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
 | **service-domain 参考实现** | `~/.aiplat/ontologies/service-domain.yaml` + `~/.aiplat/actions/service-domain_actions.yaml` + `custom_handlers/service_handlers.py` + `~/.aiplat/tests/service-domain_tests.yaml` + `scripts/sop_validate.py` + `docs/manuals/fde/06-sop-domain-delivery.md` | ✅ | 生产级参考实现：6类实体+6种关系+4态状态机+inference_rules + 5个动作（assign/start/submit/complete/reopen）+ 5个async handler + 12条测试用例 + SOP验证脚本6/6 PASS + 5天标准交付流程文档 | 已合入 |
@@ -1618,6 +1619,23 @@ scan_hash: 8f9548ec24f4
 | require_datasource_raw_connector | `core/harness/ontology_engine/data_source.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_datasource_raw_gate | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
 | datasource_require_raw_ingest_enabled | `core/harness/ontology_engine/data_source.py` | ✅ | 自动同步 | 已合入 |
+| get_graph_h1_policy | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_graph_h1_policies | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_h1_policies | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| apply_h1_policy | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| apply_graph_h1_policy | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| entity_acl_to_h1 | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| list_masked_properties | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| match_abox_condition | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| preview_graph_abox_acl | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| preview_abox_acl | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| remove_graph_field_acl | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| remove_graph_entity_acl | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| remove_field_acl | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| remove_entity_acl | `core/policy/graph_abox_acl.py` | ✅ | 自动同步 | 已合入 |
+| _redact_suggestion_fields | `core/harness/knowledge/knowledge_ontology.py` | ✅ | 自动同步 | 已合入 |
+| _redact_owl_abox_triples | `core/harness/knowledge/knowledge_ontology.py` | ✅ | 自动同步 | 已合入 |
+| _apply_field_acl_to_results | `core/harness/syscalls/retrieval.py` | ✅ | 自动同步 | 已合入 |
 | slo_snapshot_route | `aiPlat-platform/apps/fde/api/slo_routes.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_full_certification_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_full_ready_gate_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
@@ -4970,9 +4988,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 778 | 1 | 779 |
+| Harness 执行引擎 | 779 | 1 | 780 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 796 | 9 | 805 |
+| 知识引擎（本体） | 813 | 9 | 822 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5015,7 +5033,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4058** | **11** | **4069** |
+| **总计** | **4076** | **11** | **4087** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

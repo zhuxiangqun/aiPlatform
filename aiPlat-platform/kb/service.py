@@ -1242,6 +1242,8 @@ def watch_directory(
     *, tenant_id: str, watch_id: str, directory: str,
     collection_id: str = DomainRouter.default_collection(), recursive: bool = True,
     pattern: str = "*.md", kind: str = "markdown", poll_interval: float = 30.0,
+    actor_role: str = "",
+    actor_scopes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Start background watcher for a directory. On each poll, ingest new/changed files.
 
@@ -1254,6 +1256,8 @@ def watch_directory(
         pattern: pattern 参数。
         kind: kind 参数。
         poll_interval: poll_interval 参数。
+        actor_role: 启动时捕获的调用方角色；轮询 wiki_auto_update 透传 ACL。
+        actor_scopes: 启动时捕获的 scopes；轮询 wiki_auto_update 透传 ACL。
     """
     if watch_id in _WATCH_THREADS:
         unwatch_directory(tenant_id=tenant_id, watch_id=watch_id)
@@ -1269,6 +1273,9 @@ def watch_directory(
     )
 
     _WATCH_STOP_FLAGS[watch_id] = False
+    # 为什么：watch 轮询无 Request；闭包持有启动时身份供 wiki_auto_update→EvolutionRunner ACL
+    _actor_role = actor_role or ""
+    _actor_scopes = list(actor_scopes) if actor_scopes is not None else None
 
     def _poll():
         while not _WATCH_STOP_FLAGS.get(watch_id, True):
@@ -1294,6 +1301,8 @@ def watch_directory(
                             _aio.run(wiki_auto_update(
                                 doc_id=doc_id, file_path=file_path,
                                 collection_id=collection_id,
+                                actor_role=_actor_role,
+                                actor_scopes=_actor_scopes,
                             ))
                         except Exception:
                             logging.getLogger(__name__).debug('_poll failed', exc_info=True)
@@ -1519,7 +1528,9 @@ def vault_read(*, file_path: str) -> Dict[str, Any]:
 
 
 async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str = "",
-                       vault_id: str = "", tenant_id: str = DomainRouter.default_tenant()) -> Dict[str, Any]:
+                       vault_id: str = "", tenant_id: str = DomainRouter.default_tenant(),
+                       actor_role: str = "",
+                       actor_scopes: Optional[List[str]] = None) -> Dict[str, Any]:
     """Convert a vault markdown file to a Wiki page using the full KB pipeline.
 
     Args:
@@ -1528,6 +1539,8 @@ async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str =
         collection_id: collection 标识。
         vault_id: vault 标识。
         tenant_id: 租户 ID。
+        actor_role: 调用方角色；透传到 wiki_auto_update → EvolutionRunner ACL。
+        actor_scopes: 调用方 scopes；透传到 wiki_auto_update → EvolutionRunner ACL。
     """
     from core.api.core_facade import wiki_auto_update
 
@@ -1540,7 +1553,13 @@ async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str =
 
     try:
         # Run the full wiki pipeline (parse→chunk→embed→LLM curate→knowledge atoms)
-        result = await wiki_auto_update(doc_id=doc_id, file_path=str(p), collection_id=collection_id)
+        result = await wiki_auto_update(
+            doc_id=doc_id,
+            file_path=str(p),
+            collection_id=collection_id,
+            actor_role=actor_role or "",
+            actor_scopes=actor_scopes,
+        )
 
         status = result.get("status", "created")
         category = result.get("category", "")
@@ -1601,6 +1620,8 @@ def vault_start_indexer(
     *, tenant_id: str, vault_id: str, vault_path: str,
     collection_id: str = DomainRouter.default_collection(), poll_interval: float = 30.0,
     auto_wiki: bool = False,
+    actor_role: str = "",
+    actor_scopes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Start background indexer for a vault. Optionally auto-wiki new files.
 
@@ -1611,6 +1632,8 @@ def vault_start_indexer(
         collection_id: collection 标识。
         poll_interval: poll_interval 参数。
         auto_wiki: auto_wiki 参数。
+        actor_role: 启动时捕获的角色；auto_wiki 时透传到 vault_to_wiki ACL。
+        actor_scopes: 启动时捕获的 scopes；auto_wiki 时透传到 vault_to_wiki ACL。
     """
     key = f"{tenant_id}:{vault_id}"
     if key in _VAULT_INDEX_THREADS:
@@ -1618,6 +1641,9 @@ def vault_start_indexer(
 
     _VAULT_INDEX_STOP[key] = False
     _VAULT_INDEX_STATE[key] = {"status": "running", "progress": 0, "cleaned": 0, "wikified": 0, "last_error": None}
+    # 为什么：indexer 轮询无 Request；闭包持有启动时身份
+    _actor_role = actor_role or ""
+    _actor_scopes = list(actor_scopes) if actor_scopes is not None else None
 
     def _poll():
         while not _VAULT_INDEX_STOP.get(key, True):
@@ -1645,7 +1671,9 @@ def vault_start_indexer(
                                     vault_to_wiki(file_path=file_path_str,
                                                   collection_id=collection_id,
                                                   vault_id=vault_id,
-                                                  tenant_id=tenant_id)).result(timeout=120)
+                                                  tenant_id=tenant_id,
+                                                  actor_role=_actor_role,
+                                                  actor_scopes=_actor_scopes)).result(timeout=120)
                                 if result.get("status") in ("created", "skipped"):
                                     wikified += 1
                         except Exception as e:

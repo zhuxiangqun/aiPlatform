@@ -57,6 +57,30 @@ def _boost_tables(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 
+
+def _redact_crag_citations(
+    citations: List[Dict[str, Any]],
+    *,
+    actor_role: str,
+    actor_scopes: Optional[List[str]],
+    collection_id: str,
+) -> List[Dict[str, Any]]:
+    """N07/N22：对 CRAG citations 做字段脱敏（经统一 retrieve helper）。"""
+    if not citations or (not actor_role and actor_scopes is None):
+        return citations
+    try:
+        from core.harness.syscalls.retrieval import _apply_field_acl_to_results
+        return _apply_field_acl_to_results(
+            citations,
+            actor_role=actor_role or "",
+            actor_scopes=actor_scopes,
+            collection_id=collection_id,
+        )
+    except Exception:
+        _log.debug("crag field ACL soft-fail", exc_info=True)
+        return citations
+
+
 async def sys_crag_retrieve(
 
     query: str,
@@ -84,6 +108,8 @@ async def sys_crag_retrieve(
     run_id: str = "",
 
     record_hotpath_audit: bool = True,
+    actor_scopes: Optional[List[str]] = None,
+    actor_role: str = "",
 
 ) -> Tuple[str, List[Dict[str, Any]]]:
 
@@ -158,7 +184,16 @@ async def sys_crag_retrieve(
             text = cached.get("text", "") or cached.get("llm_answer", "")
             if text and len(text) > 50:
                 _log.info("Cache HIT for query in %s", cache_id)
-                return _finish(text, [{"source": "semantic_cache", "text": text[:200]}], route="cache")
+            return _finish(
+                text,
+                _redact_crag_citations(
+                    [{"source": "semantic_cache", "text": text[:200]}],
+                    actor_role=actor_role,
+                    actor_scopes=actor_scopes,
+                    collection_id=collection_id,
+                ),
+                route="cache",
+            )
     except Exception:
         _log.debug("Cache lookup unavailable", exc_info=True)
 
@@ -186,11 +221,23 @@ async def sys_crag_retrieve(
                 top_k=_effective_top_k,
                 run_id=run_id,
                 tenant_id=tenant_id or "",
+                actor_role=actor_role or "",
+                actor_scopes=actor_scopes,
             )
             if g_result.get("mode") == "graphrag" and g_result.get("chunks"):
+                # 为什么：GraphRAG L0 早退前须对 chunks 字段 ACL，避免明文拼进 retrieved_docs
+                chunks = g_result["chunks"]
+                if actor_role or actor_scopes is not None:
+                    from core.harness.syscalls.retrieval import _apply_field_acl_to_results
+                    chunks = _apply_field_acl_to_results(
+                        chunks,
+                        actor_role=actor_role or "",
+                        actor_scopes=actor_scopes,
+                        collection_id=collection_id or domain_id,
+                    )
                 chunks_text = "\n\n".join(
                     f"[{c.get('title', '')}] {c.get('content', '')}"
-                    for c in g_result["chunks"] if c.get("content")
+                    for c in chunks if c.get("content")
                 )
                 paths = g_result.get("reasoning_paths", [])
                 if paths:
@@ -200,7 +247,16 @@ async def sys_crag_retrieve(
                     citations = [{"source": f"graphrag:{domain_id}", "text": chunks_text[:200]}]
                     _log.info("GraphRAG: entity routing → %d nodes, %d chars",
                               g_result.get("subgraph_size", 0), len(retrieved_docs))
-                    return _finish(retrieved_docs, citations, route="graphrag")
+            return _finish(
+                retrieved_docs,
+                _redact_crag_citations(
+                    citations,
+                    actor_role=actor_role,
+                    actor_scopes=actor_scopes,
+                    collection_id=collection_id,
+                ),
+                route="graphrag",
+            )
         except Exception:
             _log.debug("GraphRAG unavailable, falling to Level 1", exc_info=True)
 
@@ -274,6 +330,14 @@ async def sys_crag_retrieve(
                 # P0: table priority boost + cells formatting
 
                 results = _boost_tables(results)
+
+                # N07/N22: field ACL before LLM context assembly (same helper as citations)
+                results = _redact_crag_citations(
+                    results,
+                    actor_role=actor_role or "",
+                    actor_scopes=actor_scopes,
+                    collection_id=collection_id,
+                )
 
                 parts = []
 
@@ -413,7 +477,16 @@ async def sys_crag_retrieve(
 
 
 
-    return _finish(retrieved_docs, citations, route="crag")
+    return _finish(
+        retrieved_docs,
+        _redact_crag_citations(
+            citations,
+            actor_role=actor_role,
+            actor_scopes=actor_scopes,
+            collection_id=collection_id,
+        ),
+        route="crag",
+    )
 
 
 

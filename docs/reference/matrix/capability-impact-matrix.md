@@ -8,7 +8,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3191 capabilities (caps_count) | 3191 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3197 capabilities (caps_count) | 3197 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -20,47 +20,39 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 |--------|---------|:---:|--------|
 | infra-infrastructure | §二十二 Infra 基础设施 | 6 | adapters 发现与 CredentialPool 共用 DB 路径 |
 
-### aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | MoA 卡片交互 |
-
 ### aiPlat-management/frontend/src/pages/Core/Memory/Memory.tsx
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | memory-white-boxing | §二十八 记忆系统白盒化 | 5 | 记忆管理页面 |
 
-### aiPlat-platform/apps/diagnosis/api/cases.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| diagnosis-system | §十三-b 诊断系统 | 20 | canonical diagnosis HTTP API |
-
-### aiPlat-platform/apps/fde/api/fde.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| deploy-and-canary | §十八 部署与灰度 | 3 | FDE canary 端点 |
-
 ### aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 722 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | FDE 能力自描述 |
+
+### aiPlat-platform/apps/fde/api/router.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| core-api-unified-entry | §二十三 核心API统一入口 | 2 | FDE 路由挂载 |
 
 ### core/api/core_facade.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 722 | N02 ObjectType publish Facade 入口 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | N02 ObjectType publish Facade 入口 |
+| skill-system | §六 Skill 系统 | 213 | CoreFacade 暴露 skill compat |
+| evaluation-system | §十三 评估系统 | 646 | CoreFacade 暴露 m2 deferred estimate |
+| diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
+| tool-ecosystem | §十六 工具生态 | 76 | CoreFacade 暴露 tool compat |
+| a2a-protocol | §十四附 A2A 协议 | 2 | CoreFacade 再导出 A2A 能力 |
 
 ### core/api/routers/adapters.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | /model-override/moa 端点 |
 | runtime-intervention | §十九 运行时干预 | 66 | /model-override 端点 |
 
 ### core/api/routers/agents.py
@@ -92,14 +84,26 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 722 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
 
 ### core/api/routers/wiki_ontology_engine.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 722 | 本体引擎 REST API |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | 本体引擎 REST API |
+
+### core/api/routers/workspace_tools.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| tool-ecosystem | §十六 工具生态 | 76 | workspace tools 跑 tool compat |
+
+### core/apps/agents/discovery.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| a2a-protocol | §十四附 A2A 协议 | 2 | AgentDiscovery 实现/导出 |
 
 ### core/apps/agents/materials_chat.py
 
@@ -107,11 +111,11 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 |--------|---------|:---:|--------|
 | rag-retrieval | §四 RAG 检索 | 10 | CRAG + HyDE + RRF 自身 |
 
-### core/apps/mcp/adapter.py
+### core/apps/mcp/runtime.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| tool-ecosystem | §十六 工具生态 | 76 | MCPToolAdapter → BaseTool |
+| mcp-protocol | §十四 MCP 协议 | 14 | MCP runtime 消费 finalize_mcp_compat / mark_mcp_connection |
 
 ### core/harness/coordination/swarm_broker.py
 
@@ -126,18 +130,6 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 | deploy-and-operations | §十 部署与运维 | 3 | self-harness cycle |
 | fine-tuning-system | §十七 微调系统 | 2 | nightly LoRA trigger |
 
-### core/harness/execution/loop/command_parser.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | /moa --preset 命令解析 |
-
-### core/harness/execution/loop/compressor.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| hermes-compression | §三十二 Hermes压缩对标 | 3 | 5-stage compression pipeline → micro_compress |
-
 ### core/harness/execution/pipeline_engine.py
 
 | Domain | Section | Caps | Reason |
@@ -151,10 +143,8 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
 | agent-system | §五 Agent 系统 | 333 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
-| skill-system | §六 Skill 系统 | 213 | HITL → PolicyGate + ApprovalGate |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
-| knowledge-infrastructure | §四附 知识基础设施 | 5 | RunContext 运行时上下文 |
 
 ### core/harness/interfaces/loop.py
 
@@ -168,28 +158,26 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 722 | 10层上下文注入 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | 10层上下文注入 |
 
 ### core/harness/knowledge/domain_maturity.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 722 | 域成熟度评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | 域成熟度评分 |
 
 ### core/harness/knowledge/ontology_completeness.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 722 | OCS 本体完整性六维评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | OCS 本体完整性六维评分 |
 
 ### core/harness/memory/manager.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| ai-knowledge-layer | §三十一 AI知识层增强 | 3 | build_context 注入 brand_rules |
 | hermes-compression | §三十二 Hermes压缩对标 | 3 | build_context → normalize_roles + reminder dict injection |
 | memory-runtime-filtering | §二十九 记忆运行时过滤 | 2 | save_interaction 过滤逻辑 |
-| extension-and-learning | §十一 扩展与学习 | 10 | build_context → SharedKnowledgePool 注入 |
 | knowledge-infrastructure | §四附 知识基础设施 | 5 | build_context 注入 ContextBus |
 
 ### core/harness/memory/reminders.py
@@ -197,6 +185,12 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | hermes-compression | §三十二 Hermes压缩对标 | 3 | 结构化返回 dict 而非裸字符串 |
+
+### core/harness/multimodal/integrator.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| document-intelligence | §十五 文档智能 | 3 | 多模态集成消费 VideoParser |
 
 ### core/harness/optimization/goal_executor.py
 
@@ -231,7 +225,6 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | model-infrastructure | §九 模型基础设施 | 7 | sys_llm_generate → best_model_for_purpose |
-| skill-system | §六 Skill 系统 | 213 | _guard_messages → PII masking |
 
 ### core/harness/syscalls/moa_executor.py
 
@@ -243,21 +236,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 722 | GraphIndex 遍历检索 |
 | rag-retrieval | §四 RAG 检索 | 10 | 检索路由 + 多路融合 |
-
-### core/harness/syscalls/skill.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 213 | sys_skill_call → PolicyGate |
-
-### core/harness/syscalls/tool.py
-
-| Domain | Section | Caps | Reason |
-|--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 213 | sys_tool_call → PolicyGate.check_tool |
-| tool-ecosystem | §十六 工具生态 | 76 | sys_tool_call → ToolRegistry |
 
 ### core/harness/utils/model_injection.py
 
@@ -266,11 +245,18 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | is_moa_session/get_moa_preset + override filtering |
 | infra-infrastructure | §二十二 Infra 基础设施 | 6 | ModelManager 缓存 |
 
+### core/management/skill_installer.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| skill-system | §六 Skill 系统 | 213 | skill install 跑 finalize_skill_compat |
+
 ### core/server.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | l6-autonomy | §二十七 L6 自主能力 | 5 | DiscoveryListener 启动 |
+| core-api-unified-entry | §二十三 核心API统一入口 | 2 | Core server 入口挂载 CoreFacade |
 | deploy-and-operations | §十 部署与运维 | 3 | 启动时挂载 cron + WakeScheduler |
 | extension-and-learning | §十一 扩展与学习 | 10 | GoalExecutor + WakeScheduler 启动 |
 | gate-system | §十二 Gate 系统 | 153 | BackpressureMiddleware 挂载 + backpressure_stats 诊断 |
@@ -291,7 +277,8 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 ### §十四附 A2A 协议 (2 caps)
 
-- (no expected consumers)
+- **core/apps/agents/discovery.py** — AgentDiscovery 实现/导出
+- **core/api/core_facade.py** — CoreFacade 再导出 A2A 能力
 
 ### §五 Agent 系统 (333 caps)
 
@@ -301,7 +288,6 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 ### §三十一 AI知识层增强 (3 caps)
 
 - **core/api/routers/wiki.py** — /wiki/index-md + /ingest/url 端点
-- **core/harness/memory/manager.py** — build_context 注入 brand_rules
 
 ### §二十 Arena & 调度 (6 caps)
 
@@ -309,13 +295,13 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 ### §二十三 核心API统一入口 (2 caps)
 
-- (no expected consumers)
+- **aiPlat-platform/apps/fde/api/router.py** — FDE 路由挂载
+- **core/server.py** — Core server 入口挂载 CoreFacade
 
 ### §十八 部署与灰度 (3 caps)
 
 - **core/harness/optimization/goal_executor.py** — tool_gap → DeployEngine.deploy
 - **core/harness/optimization/tool_bootstrap.py** — _trigger_deploy
-- **aiPlat-platform/apps/fde/api/fde.py** — FDE canary 端点
 
 ### §十 部署与运维 (3 caps)
 
@@ -324,15 +310,15 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 ### §十三-b 诊断系统 (20 caps)
 
-- **aiPlat-platform/apps/diagnosis/api/cases.py** — canonical diagnosis HTTP API
+- **core/api/core_facade.py** — CoreFacade 暴露 get_diagnosis_store
 
 ### §十五 文档智能 (3 caps)
 
-- (no expected consumers)
+- **core/harness/multimodal/integrator.py** — 多模态集成消费 VideoParser
 
 ### §十三 评估系统 (646 caps)
 
-- (no expected consumers)
+- **core/api/core_facade.py** — CoreFacade 暴露 m2 deferred estimate
 
 ### §十一 扩展与学习 (10 caps)
 
@@ -340,7 +326,6 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/harness/optimization/tool_bootstrap.py** — ToolBootstrap 自举工具创建
 - **core/harness/execution/pipeline_engine.py** — Pipeline 故障→StrategySearchEngine
 - **core/server.py** — GoalExecutor + WakeScheduler 启动
-- **core/harness/memory/manager.py** — build_context → SharedKnowledgePool 注入
 
 ### §十七 微调系统 (2 caps)
 
@@ -358,7 +343,6 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 ### §三十二 Hermes压缩对标 (3 caps)
 
-- **core/harness/execution/loop/compressor.py** — 5-stage compression pipeline → micro_compress
 - **core/harness/memory/manager.py** — build_context → normalize_roles + reminder dict injection
 - **core/harness/memory/reminders.py** — 结构化返回 dict 而非裸字符串
 
@@ -367,11 +351,10 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/harness/utils/model_injection.py** — ModelManager 缓存
 - **aiPlat-infra/infra/management/model/config_loader.py** — adapters 发现与 CredentialPool 共用 DB 路径
 
-### §三 知识引擎（本体） (722 caps)
+### §三 知识引擎（本体） (728 caps)
 
 - **core/api/routers/wiki.py** — Wiki CRUD + index + ingest 端点
 - **core/api/routers/wiki_ontology_engine.py** — 本体引擎 REST API
-- **core/harness/syscalls/retrieval.py** — GraphIndex 遍历检索
 - **core/harness/knowledge/context_bus.py** — 10层上下文注入
 - **aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py** — FDE 能力自描述
 - **core/harness/knowledge/domain_maturity.py** — 域成熟度评分
@@ -381,7 +364,6 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 ### §四附 知识基础设施 (5 caps)
 
 - **core/harness/memory/manager.py** — build_context 注入 ContextBus
-- **core/harness/execution/pipeline_engine.py** — RunContext 运行时上下文
 
 ### §二十七 L6 自主能力 (5 caps)
 
@@ -396,7 +378,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 ### §十四 MCP 协议 (14 caps)
 
-- (no expected consumers)
+- **core/apps/mcp/runtime.py** — MCP runtime 消费 finalize_mcp_compat / mark_mcp_connection
 
 ### §二十九 记忆运行时过滤 (2 caps)
 
@@ -418,9 +400,6 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/harness/interfaces/loop.py** — ReActLoop MoA interception
 - **core/harness/execution/pipeline_engine.py** — _run_moa 路由模式
 - **core/harness/utils/model_injection.py** — is_moa_session/get_moa_preset + override filtering
-- **core/api/routers/adapters.py** — /model-override/moa 端点
-- **aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx** — MoA 卡片交互
-- **core/harness/execution/loop/command_parser.py** — /moa --preset 命令解析
 
 ### §九 模型基础设施 (7 caps)
 
@@ -459,13 +438,11 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 ### §六 Skill 系统 (213 caps)
 
-- **core/harness/syscalls/tool.py** — sys_tool_call → PolicyGate.check_tool
-- **core/harness/syscalls/skill.py** — sys_skill_call → PolicyGate
-- **core/harness/execution/pipeline_engine.py** — HITL → PolicyGate + ApprovalGate
-- **core/harness/syscalls/llm.py** — _guard_messages → PII masking
+- **core/management/skill_installer.py** — skill install 跑 finalize_skill_compat
+- **core/api/core_facade.py** — CoreFacade 暴露 skill compat
 
 ### §十六 工具生态 (76 caps)
 
-- **core/harness/syscalls/tool.py** — sys_tool_call → ToolRegistry
-- **core/apps/mcp/adapter.py** — MCPToolAdapter → BaseTool
+- **core/api/routers/workspace_tools.py** — workspace tools 跑 tool compat
+- **core/api/core_facade.py** — CoreFacade 暴露 tool compat
 

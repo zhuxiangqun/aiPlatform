@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import FactoryProgressGuide from './FactoryProgressGuide';
 import RevisionRestorePanel from './RevisionRestorePanel';
+import FieldAclPanel from './FieldAclPanel';
+import AboxAclPanel from './AboxAclPanel';
 import UnifiedAuditPanel from './UnifiedAuditPanel';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
@@ -1475,6 +1477,8 @@ const KnowledgeFactoryPage: React.FC = () => {
           />
           <CrossDomainResolutionPanel />
           <RevisionRestorePanel />
+          <FieldAclPanel />
+          <AboxAclPanel />
           <UnifiedAuditPanel />
           <details className="rounded border border-gray-800/80">
             <summary className="cursor-pointer px-3 py-2 text-[12px] text-gray-500 hover:text-gray-300">

@@ -923,6 +923,8 @@ class MaterialsChatAgent(BaseAgent):
                     enable_deep_research=os.getenv("AIPLAT_DEEP_RESEARCH_ENABLED", "false").lower() in ("true", "1", "yes"),
                     # 为什么：本入口已 maybe_record_materials_chat_hotpath，关 CRAG 层防双写
                     record_hotpath_audit=False,
+                    actor_scopes=options.get("actor_scopes") or (run_context or {}).get("actor_scopes"),
+                    actor_role=str(options.get("actor_role") or (run_context or {}).get("actor_role") or ""),
                 )
             except Exception as e:
                 logging.debug(str(e), exc_info=True)

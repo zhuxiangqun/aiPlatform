@@ -1571,13 +1571,22 @@ def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
     return sys_wiki_retrieve(query, wiki_titles, **kwargs)
 
 
-async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "") -> Dict[str, Any]:
+async def wiki_auto_update(
+    doc_id: str,
+    file_path: str,
+    collection_id: str = "",
+    *,
+    actor_role: str = "",
+    actor_scopes: list = None,
+) -> Dict[str, Any]:
     """Convert a newly ingested KB document into Wiki knowledge pages.
 
     Args:
         doc_id: doc 标识。
         file_path: file_path 参数。
         collection_id: collection 标识。
+        actor_role: 调用方角色；透传到 EvolutionRunner suggestions OWL 落盘 ACL。
+        actor_scopes: 调用方 scopes；透传到 EvolutionRunner suggestions OWL 落盘 ACL。
     """
     import os, re
     from core.harness.knowledge.wiki_engine import write_page
@@ -1728,7 +1737,12 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     # ── Evolution: auto-trigger if enough new pages accumulated ──
     try:
         from core.harness.knowledge.evolution_runner import EvolutionRunner
-        runner = EvolutionRunner(collection_id=collection_id or DomainRouter.default_collection(), max_mutations=3)
+        runner = EvolutionRunner(
+            collection_id=collection_id or DomainRouter.default_collection(),
+            max_mutations=3,
+            actor_role=actor_role or "",
+            actor_scopes=actor_scopes,
+        )
         if runner.can_evolve():
             await runner.run_one_generation(force=False)
     except Exception as e:
@@ -4041,6 +4055,8 @@ def check_graph_entity_acl(
     entity_id: str,
     role: str,
     action: str = "read",
+    *,
+    attrs: Any = None,
 ) -> bool:
     """GraphIndex ABox instance ACL (T9). Empty role → allow.
 
@@ -4049,9 +4065,16 @@ def check_graph_entity_acl(
         entity_id: entity 标识。
         role: role 参数。
         action: action 参数。
+        attrs: 可选实例属性（H.1 condition）。
     """
     from core.policy.graph_abox_acl import check_entity_acl
-    return check_entity_acl(domain_id, entity_id, role, action)
+    return check_entity_acl(
+        domain_id,
+        entity_id,
+        role,
+        action,
+        attrs=attrs if isinstance(attrs, dict) else None,
+    )
 
 
 def redact_graph_entity_fields(
@@ -4161,14 +4184,28 @@ def get_ontology_pillars_view(domain_id: str) -> Dict[str, Any]:
     return get_ontology_pillars(domain_id)
 
 
-def review_ontology_owl_offline(domain_id: str) -> Dict[str, Any]:
-    """review_ontology_owl_offline。
+def review_ontology_owl_offline(
+    domain_id: str,
+    *,
+    actor_role: str = "",
+    actor_scopes: Optional[List[str]] = None,
+    collection_id: str = "",
+) -> Dict[str, Any]:
+    """离线 OWL 审稿；透传身份供导出字段 ACL。
 
     Args:
         domain_id: domain 标识。
+        actor_role: 调用方角色。
+        actor_scopes: 调用方 scopes。
+        collection_id: field_permissions collection。
     """
     from core.apps.fde.service.offline_owl_review import review_domain_owl_offline
-    return review_domain_owl_offline(domain_id)
+    return review_domain_owl_offline(
+        domain_id,
+        actor_role=actor_role,
+        actor_scopes=actor_scopes,
+        collection_id=collection_id,
+    )
 
 
 def get_governance_scenario_loop() -> Dict[str, Any]:
@@ -7791,6 +7828,8 @@ def set_graph_entity_acl(
     *,
     deny_roles: Any = None,
     allow_roles: Any = None,
+    condition: Any = None,
+    masked_properties: Any = None,
 ) -> Dict[str, Any]:
     """set_graph_entity_acl。
 
@@ -7799,14 +7838,62 @@ def set_graph_entity_acl(
         entity_id: entity 标识。
         deny_roles: deny_roles 参数。
         allow_roles: allow_roles 参数。
+        condition: 可选 H.1 等值条件 dict；空 dict 清除。
+        masked_properties: 可选 H.1 脱敏字段名列表；空列表清除；None 不改。
     """
     from core.policy.graph_abox_acl import set_entity_acl
+    cond = condition if isinstance(condition, dict) else None
+    masks = masked_properties if isinstance(masked_properties, list) else None
     return set_entity_acl(
         domain_id,
         entity_id,
         deny_roles=deny_roles,
         allow_roles=allow_roles,
+        condition=cond,
+        masked_properties=masks,
     )
+
+
+def apply_graph_h1_policy(
+    domain_id: str,
+    entity_id: str,
+    policy: Any,
+) -> Dict[str, Any]:
+    """Apply appendix H.1 policy shape onto ABox entity ACL（薄导入；certified=false）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        policy: H.1 策略 dict。
+    """
+    from core.policy.graph_abox_acl import apply_h1_policy
+    if not isinstance(policy, dict):
+        raise ValueError("h1_policy_must_be_object")
+    return apply_h1_policy(domain_id, entity_id, policy)
+
+
+def list_graph_h1_policies(domain_id: str) -> List[Dict[str, Any]]:
+    """List domain ABox entity ACLs as appendix H.1 projections（certified=false）。
+
+    Args:
+        domain_id: domain 标识。
+    """
+    from core.policy.graph_abox_acl import list_h1_policies
+    return list_h1_policies(domain_id)
+
+
+def get_graph_h1_policy(domain_id: str, entity_id: str) -> Dict[str, Any]:
+    """Get one entity ABox ACL as appendix H.1 projection（certified=false）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    from core.policy.graph_abox_acl import entity_acl_to_h1, load_abox_acl
+    entities = (load_abox_acl(domain_id).get("entities") or {})
+    if entity_id not in entities:
+        raise KeyError("h1_entity_not_found")
+    return entity_acl_to_h1(domain_id, entity_id)
 
 
 def set_graph_field_acl(
@@ -7836,6 +7923,56 @@ def set_graph_field_acl(
         visibility=visibility,
         redaction=redaction,
         replace_with=replace_with,
+    )
+
+
+def remove_graph_entity_acl(domain_id: str, entity_id: str) -> bool:
+    """Remove ABox per-instance ACL entry（管理端薄 UI 删除）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    from core.policy.graph_abox_acl import remove_entity_acl
+    return remove_entity_acl(domain_id, entity_id)
+
+
+def remove_graph_field_acl(domain_id: str, entity_id: str, field_name: str) -> bool:
+    """Remove ABox field ACL entry（管理端薄 UI 删除）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        field_name: field_name 参数。
+    """
+    from core.policy.graph_abox_acl import remove_field_acl
+    return remove_field_acl(domain_id, entity_id, field_name)
+
+
+def preview_graph_abox_acl(
+    domain_id: str,
+    entity_id: str,
+    payload: Any = None,
+    *,
+    role: str = "",
+    action: str = "read",
+) -> Dict[str, Any]:
+    """Dry-run ABox ACL for a role（薄 UI 预览；certified 恒 false）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        payload: 可选样例载荷 dict。
+        role: 预览角色。
+        action: 预览动作。
+    """
+    from core.policy.graph_abox_acl import preview_abox_acl
+    return preview_abox_acl(
+        domain_id,
+        entity_id,
+        payload if isinstance(payload, dict) else None,
+        role=role or "",
+        action=action or "read",
     )
 
 

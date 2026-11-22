@@ -100,6 +100,9 @@ class OKFExporter:
         incremental: bool = False,
         output_dir: str = "",
         tenant_id: str = "",
+        actor_role: str = "",
+        actor_scopes: Optional[List[str]] = None,
+        collection_id: str = "",
     ) -> Dict[str, Any]:
         """导出域本体为 OKF 格式.
 
@@ -108,6 +111,9 @@ class OKFExporter:
             incremental: 是否增量导出 (仅导出上次导出后变更的实体)
             output_dir: 输出目录 (留空自动生成)
             tenant_id: 租户；空则 resolve（N09 K34）
+            actor_role: 调用方角色；非空时对实体元数据做字段 ACL
+            actor_scopes: 调用方 scopes；与 actor_role 一起触发字段 ACL
+            collection_id: field_permissions collection；默认回退 domain_id
 
         Returns:
             {"exported": int, "skipped": int, "total": int, "dir": str}
@@ -126,8 +132,14 @@ class OKFExporter:
             except Exception:
                 logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
-        # 从 GraphIndex 加载实体
-        entities = await self._load_entities(domain_id, tenant_id=tenant_id)
+        # 从 GraphIndex 加载实体（写盘前按身份脱敏）
+        entities = await self._load_entities(
+            domain_id,
+            tenant_id=tenant_id,
+            actor_role=actor_role,
+            actor_scopes=actor_scopes,
+            collection_id=collection_id or domain_id,
+        )
         if not entities:
             return {"exported": 0, "skipped": 0, "total": 0, "dir": str(out), "error": "No entities found"}
 
@@ -170,12 +182,23 @@ class OKFExporter:
             "dir": str(out),
         }
 
-    async def _load_entities(self, domain_id: str, *, tenant_id: str = "") -> List[OKFEntity]:
+    async def _load_entities(
+        self,
+        domain_id: str,
+        *,
+        tenant_id: str = "",
+        actor_role: str = "",
+        actor_scopes: Optional[List[str]] = None,
+        collection_id: str = "",
+    ) -> List[OKFEntity]:
         """从 GraphIndex 加载实体并转换为 OKF 格式.
 
         Args:
             domain_id: domain 标识。
             tenant_id: 租户；空则 resolve（N09 K34）。
+            actor_role: 调用方角色；非空时对元数据做字段 ACL。
+            actor_scopes: 调用方 scopes。
+            collection_id: field_permissions collection。
         """
         entities = []
 
@@ -210,8 +233,14 @@ class OKFExporter:
                 # 提取标签 (从 class_name)
                 tags = [node.class_name] if node.class_name else []
 
-                # 正文: 从 metadata 或 Wiki 获取
-                body = self._build_body(node, gi)
+                # 正文: 从 metadata 或 Wiki 获取（写盘前字段 ACL）
+                body = self._build_body(
+                    node,
+                    gi,
+                    actor_role=actor_role,
+                    actor_scopes=actor_scopes,
+                    collection_id=collection_id or domain_id,
+                )
 
                 entities.append(OKFEntity(
                     id=nid,
@@ -230,8 +259,24 @@ class OKFExporter:
 
         return entities
 
-    def _build_body(self, node: Any, gi: Any) -> str:
-        """构建实体正文 Markdown."""
+    def _build_body(
+        self,
+        node: Any,
+        gi: Any,
+        *,
+        actor_role: str = "",
+        actor_scopes: Optional[List[str]] = None,
+        collection_id: str = "",
+    ) -> str:
+        """构建实体正文 Markdown.
+
+        Args:
+            node: GraphIndex 节点。
+            gi: GraphIndex 实例。
+            actor_role: 调用方角色；非空时对 metadata 字段 ACL。
+            actor_scopes: 调用方 scopes。
+            collection_id: field_permissions collection。
+        """
         parts = []
 
         # 标题
@@ -242,11 +287,19 @@ class OKFExporter:
         cls = getattr(node, "class_name", "") or "Entity"
         parts.append(f"**类型**: {cls}\n")
 
-        # 元数据
+        # 元数据（为什么：导出写盘是旁路 retrieve，须同口径字段 ACL）
         meta = getattr(node, "metadata", {})
         if isinstance(meta, dict) and meta:
+            safe_meta = self._redact_entity_fields(
+                {"title": str(name), **meta},
+                actor_role=actor_role,
+                actor_scopes=actor_scopes,
+                collection_id=collection_id,
+            )
             parts.append("\n## 元数据\n")
-            for k, v in list(meta.items())[:10]:
+            for k, v in list(safe_meta.items())[:12]:
+                if k == "title":
+                    continue
                 parts.append(f"- **{k}**: {str(v)[:200]}\n")
 
         # 入边摘要
@@ -320,3 +373,37 @@ class OKFExporter:
         """安全文件名 (替换特殊字符)."""
         safe = "".join(c if c.isalnum() or c in "._- " else "_" for c in name)
         return safe.strip().replace(" ", "_")[:100]
+
+    @staticmethod
+    def _redact_entity_fields(
+        entity_data: Dict[str, Any],
+        *,
+        actor_role: str = "",
+        actor_scopes: Optional[List[str]] = None,
+        collection_id: str = "",
+    ) -> Dict[str, Any]:
+        """对导出实体字段做 ACL；无身份时原样返回。
+
+        Args:
+            entity_data: 含 title/元数据键的扁平 dict。
+            actor_role: 调用方角色。
+            actor_scopes: 调用方 scopes。
+            collection_id: field_permissions collection。
+
+        Returns:
+            脱敏后的 dict；无身份或失败时原样返回。
+        """
+        if not entity_data or (not actor_role and actor_scopes is None):
+            return dict(entity_data)
+        try:
+            from core.harness.syscalls.retrieval import _apply_field_acl_to_results
+            out = _apply_field_acl_to_results(
+                [dict(entity_data)],
+                actor_role=actor_role or "",
+                actor_scopes=actor_scopes,
+                collection_id=collection_id or DomainRouter.default_collection(),
+            )
+            return out[0] if out else dict(entity_data)
+        except Exception:
+            logger.debug("OKF export field ACL soft-fail", exc_info=True)
+            return dict(entity_data)

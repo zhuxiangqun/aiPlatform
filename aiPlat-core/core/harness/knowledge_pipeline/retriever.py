@@ -37,6 +37,9 @@ class GraphRAGRetriever:
         top_k: int = 10,
         run_id: str = "",
         tenant_id: str = "",
+        actor_role: str = "",
+        actor_scopes: Optional[List[str]] = None,
+        collection_id: str = "",
     ) -> Dict[str, Any]:
         """Full GraphRAG retrieval pipeline.
 
@@ -46,6 +49,9 @@ class GraphRAGRetriever:
             top_k: top_k 参数。
             run_id: 运行 ID。
             tenant_id: 可选租户；非空时向量层只查该租户且不回退 wiki。
+            actor_role: 调用方角色；非空时对 chunks 做字段 ACL。
+            actor_scopes: 调用方 scopes；与 actor_role 一起触发字段 ACL。
+            collection_id: 字段 ACL 所用 collection；默认回退 domain_id。
         """
         # ── Layer 1: Entity extraction from query ──
         entities = await self._extract_query_entities(
@@ -81,6 +87,12 @@ class GraphRAGRetriever:
         if not entity_nodes:
             chunks = await self._vector_search(
                 query, domain_id, top_k, tenant_id=tenant_id
+            )
+            chunks = self._apply_chunk_field_acl(
+                chunks,
+                actor_role=actor_role,
+                actor_scopes=actor_scopes,
+                collection_id=collection_id or domain_id,
             )
             from core.harness.knowledge_pipeline.query_abstain_citations import (
                 attach_graphrag_n21_envelope,
@@ -118,6 +130,12 @@ class GraphRAGRetriever:
         # ── Layer 4: Reasoning paths ──
         paths = self._extract_reasoning_paths(subgraph, entity_nodes, query)
 
+        chunks = self._apply_chunk_field_acl(
+            chunks,
+            actor_role=actor_role,
+            actor_scopes=actor_scopes,
+            collection_id=collection_id or domain_id,
+        )
         from core.harness.knowledge_pipeline.query_abstain_citations import (
             attach_graphrag_n21_envelope,
         )
@@ -133,6 +151,39 @@ class GraphRAGRetriever:
             query=query,
             tenant_id=tenant_id,
         )
+
+    @staticmethod
+    def _apply_chunk_field_acl(
+        chunks: List[Dict[str, Any]],
+        *,
+        actor_role: str = "",
+        actor_scopes: Optional[List[str]] = None,
+        collection_id: str = "",
+    ) -> List[Dict[str, Any]]:
+        """对 GraphRAG chunks 应用字段 ACL（无身份时原样返回）。
+
+        Args:
+            chunks: 向量/Wiki 命中列表。
+            actor_role: 调用方角色。
+            actor_scopes: 调用方 scopes。
+            collection_id: field_permissions collection。
+
+        Returns:
+            脱敏后的 chunks；无身份或失败时原样返回。
+        """
+        if not chunks or (not actor_role and actor_scopes is None):
+            return chunks
+        try:
+            from core.harness.syscalls.retrieval import _apply_field_acl_to_results
+            return _apply_field_acl_to_results(
+                chunks,
+                actor_role=actor_role or "",
+                actor_scopes=actor_scopes,
+                collection_id=collection_id or DomainRouter.default_collection(),
+            )
+        except Exception:
+            logger.debug("GraphRAG chunk field ACL soft-fail", exc_info=True)
+            return chunks
 
     # ═══════════════════════════════════════════════════════
     # Entity extraction from query (LLM or keyword)

@@ -12,19 +12,33 @@ router = APIRouter(tags=["wiki-ontology-export"])
 # ── OWL/RDF Export (Phase 5) ─────────────────────────────────────
 
 @router.get("/export", response_model=Dict[str, Any])
-async def export_ontology_rdf(format: str = "turtle", collection: str = DomainRouter.default_collection()):
+async def export_ontology_rdf(
+    format: str = "turtle",
+    collection: str = DomainRouter.default_collection(),
+    actor_role: str = "",
+    actor_scopes: str = "",
+):
     """Export T-Box + A-Box as OWL/RDF.
 
     Args:
         format: format 参数。
         collection: collection 参数。
+        actor_role: 调用方角色；透传字段 ACL。
+        actor_scopes: 逗号分隔 scopes；透传字段 ACL。
     """
     try:
         from core.harness.knowledge.knowledge_abox_builder import build_abox
         from core.harness.knowledge.knowledge_ontology import export_to_owl_rdf
 
         build_abox(collection_id=collection)
-        rdf_text = export_to_owl_rdf(format=format)
+        scopes = [s.strip() for s in (actor_scopes or "").split(",") if s.strip()] or None
+        # 为什么：OWL 导出旁路 retrieve，须透传身份做 A-Box 字段 ACL
+        rdf_text = export_to_owl_rdf(
+            format=format,
+            actor_role=actor_role or "",
+            actor_scopes=scopes,
+            collection_id=collection,
+        )
 
         content_types = {
             "turtle": "text/turtle",
@@ -40,18 +54,35 @@ async def export_ontology_rdf(format: str = "turtle", collection: str = DomainRo
 
 
 @router.get("/export/learned", response_model=Dict[str, Any])
-async def export_learned_ontology(format: str = "turtle", collection: str = DomainRouter.default_collection()):
+async def export_learned_ontology(
+    format: str = "turtle",
+    collection: str = DomainRouter.default_collection(),
+    actor_role: str = "",
+    actor_scopes: str = "",
+):
     """Ontology learning output: pending suggestions -> OWL/Turtle.
 
     Args:
         format: format 参数。
         collection: collection 参数。
+        actor_role: 调用方角色；透传字段 ACL。
+        actor_scopes: 逗号分隔 scopes；透传字段 ACL。
     """
     from core.harness.knowledge.knowledge_ontology import (
         export_suggestions_to_owl, write_suggestions_owl_file)
 
-    ttl = export_suggestions_to_owl(collection_id=collection)
-    path = write_suggestions_owl_file(collection_id=collection)
+    scopes = [s.strip() for s in (actor_scopes or "").split(",") if s.strip()] or None
+    # 为什么：learned TTL 写盘旁路 retrieve，须透传身份做字段 ACL
+    ttl = export_suggestions_to_owl(
+        collection_id=collection,
+        actor_role=actor_role or "",
+        actor_scopes=scopes,
+    )
+    path = write_suggestions_owl_file(
+        collection_id=collection,
+        actor_role=actor_role or "",
+        actor_scopes=scopes,
+    )
     return {
         "format": format,
         "collection": collection,

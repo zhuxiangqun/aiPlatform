@@ -46,9 +46,10 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 
 ## 明确未做（后续）
 
-- Wiki / KB / GraphRAG 全入口字段 ACL
+- Wiki / KB / GraphRAG **全入口**字段 ACL（统一检索切片见 `phase2-wiki-kb-field-acl-evidence.md`）
 - Scenario / Package（W9）
 - 权限扩大负向套件以外的全量审计留存策略
 - 附录 N 全量符合
 
-> Batch C：`link.traverse` 已扩 ABox ACL — 见 `phase2-acl-recall-evidence.md`。
+> Batch C：`link.traverse` 已扩 ABox ACL — 见 `phase2-acl-recall-evidence.md`。  
+> N07/N22 deepen：`sys_knowledge_retrieve` / KB / CRAG 字段 ACL — 见 `phase2-wiki-kb-field-acl-evidence.md`。
