@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T07:50:00+08:00",
+  "reviewed_at": "2026-11-23T07:32:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "e84879af2054413c942db07792c203e655d06f9f",
-  "diff_sha256": "4777fa4f42866321baa1fca243eab7565e38e627b79d69ea6655b134b51ac2db",
-  "head_sha": "71c82fa0f3458db17d5d72aa20a3c082d00cd503",
+  "diff_sha256": "5d3c0650aaa9b334dd5e03496e87460c806ccc8dfc4b23ef8b87336b51b3186f",
+  "head_sha": "ac362b06693f4f561ddaadfdc1d27d06bb1edfd4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "$elemMatch is field-level; nested $elemMatch and bool predicates reject. Includes $all from #1013 lineage. Residual: full expr / certified."
+  "note": "$nor only extends _BOOL_OPS; reject-as-None still propagates. Bool depth deepen stopped. Residual: $all/$elemMatch / full expr / certified. Supersedes stale #993."
 }

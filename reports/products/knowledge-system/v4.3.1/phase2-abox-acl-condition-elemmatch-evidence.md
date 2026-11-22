@@ -9,7 +9,7 @@ pilot_domain: lock-service
 
 # Phase 2 / ABox ACL condition $elemMatch（N07/N22 deepen）
 
-> 实施权威：附录 H.1 / N07/N22；叠在 `$all` + 有界 bool depth（停刀）之上。  
+> 实施权威：附录 H.1 / N07/N22；叠在 `$all` + `$nor` + 有界 bool depth（停刀）之上。  
 > **未宣称** N07/N22 certified / 完整表达式语言 / 嵌套 `$elemMatch`。
 
 ## 检查表
