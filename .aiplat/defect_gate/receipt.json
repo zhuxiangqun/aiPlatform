@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-22T11:44:14+08:00",
+  "reviewed_at": "2026-11-22T12:27:21+08:00",
   "base_ref": "origin/main",
-  "merge_base": "209f0a7f3710c9ef650f380eb6133eddcfa68ba3",
-  "diff_sha256": "fc7e1e14d2b861e8fd8d0ab5a4479f21381d8787474f7e2a2be817ad7a8ae9c0",
-  "head_sha": "d934243f58c251203c68521bc9c722cca4dc3f9f",
+  "merge_base": "198dbb7d409c066997ea1464187afddef22e0596",
+  "diff_sha256": "42f93083cb651741722c561d9bc6a50fea3663bf19240c1ce1088f621167eccf",
+  "head_sha": "aa184ecaa1e9044d9f960edb560da9becc69b10e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N07 $not over bool: evaluate child then negate; reject $not→$not and nested bool under $not (no fail-open). Five checks pass. Local lock only."
+  "note": "N07 bool depth-3: _BOOL_MAX_DEPTH=3 + whitepaper sync. Local lock only."
 }

@@ -17,7 +17,7 @@ pilot_domain: lock-service
 | Gate 条件 | 状态 | 证据 |
 |-----------|:----:|------|
 | $and 内嵌 $or / $or 内嵌 $and | pass | `test_match_condition_bool_depth2` |
-| 深度 3 拒配 | pass | 同上（`$not` 嵌套 → not-bool-depth2） |
+| 深度 2 嵌套放行 | pass | 同上（深度 3 → bool-depth3；`$not` → not-bool-depth2） |
 | deny 门控 | pass | `test_check_entity_acl_bool_depth2_gates_deny` |
 | 薄 UI 文案 | pass | `test_panel_documents_bool_depth2` |
 
@@ -41,4 +41,5 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 
 - N07/N22 certified 或关闭 ADR 例外
 - `$not` 否定 `$and`/`$or` / `$and` 内嵌 `$not` → 见 `phase2-abox-acl-condition-not-bool-depth2-evidence.md`
-- 深度 ≥3 / 完整表达式语言
+- 深度 3 → 见 `phase2-abox-acl-condition-bool-depth3-evidence.md`
+- 深度 ≥4 / 完整表达式语言
