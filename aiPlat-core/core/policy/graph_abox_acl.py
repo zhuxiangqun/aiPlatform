@@ -29,7 +29,7 @@ _REGEX_MAX_PATTERN_LEN = 128
 _REGEX_MAX_SUBJECT_LEN = 4096
 # 为什么：有界 $and/$or/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
 _BOOL_MAX_CLAUSES = 8
-_BOOL_MAX_DEPTH = 3  # 顶层=1；允许再嵌两层（深度 3）；更深拒配
+_BOOL_MAX_DEPTH = 4  # 顶层=1；允许再嵌三层（深度 4）；更深拒配
 _BOOL_OPS = frozenset({"$and", "$or", "$not"})
 
 # Identity / PolicyGate role → ABox ACL role (T9 productization)
@@ -352,51 +352,58 @@ def _match_bool_condition(
     attrs: Dict[str, Any],
     *,
     depth: int,
-) -> bool:
+) -> Optional[bool]:
     """有界 ``$and``/``$or``/``$not``（深度 ≤ ``_BOOL_MAX_DEPTH``）。
 
     Args:
         condition: 纯布尔算子 dict（单键）。
         attrs: 实例属性。
         depth: 当前深度（顶层调用传 1）。
+
+    Returns:
+        True/False 为求值结果；``None`` 为形态/深度拒配（不可被外层 ``$not`` 取反成 True）。
     """
     if depth < 1 or depth > _BOOL_MAX_DEPTH:
-        return False
+        return None
     keys = set(condition.keys())
     bool_hit = keys & _BOOL_OPS
     # 为什么：只允许纯 {$and:[]} / {$or:[]} / {$not:{}}；与字段键混用 / 双算子 → 拒配
     if len(keys) != 1 or len(bool_hit) != 1:
-        return False
+        return None
     op = next(iter(bool_hit))
     arg = condition.get(op)
     if op == "$not":
-        # 为什么：先正规求值再取反；禁止把布尔子句当字段匹配失败后取反（fail-open）
+        # 为什么：先正规求值再取反；拒配（None）向上传播，禁止 fail-open
         if not isinstance(arg, dict) or not arg:
-            return False
+            return None
         inner_hit = set(arg.keys()) & _BOOL_OPS
         if not inner_hit:
             return not _match_field_conditions(arg, attrs)
         # 为什么：纯单键布尔子树才可取反；混键/双算子拒配
         if len(arg) != 1 or len(inner_hit) != 1:
-            return False
+            return None
         if depth >= _BOOL_MAX_DEPTH:
-            return False
-        # 为什么：$not→$not / $not→$and|$or 均递归正规求值，再取反（深度计入）
-        return not _match_bool_condition(arg, attrs, depth=depth + 1)
+            return None
+        child = _match_bool_condition(arg, attrs, depth=depth + 1)
+        # 为什么：子树拒配不可取反（否则超深 $not 链会 fail-open 成 True）
+        if child is None:
+            return None
+        return not child
     if not isinstance(arg, list) or not arg or len(arg) > _BOOL_MAX_CLAUSES:
-        return False
+        return None
     matched: List[bool] = []
     for clause in arg:
         if not isinstance(clause, dict) or not clause:
-            return False
+            return None
         nested_hit = set(clause.keys()) & _BOOL_OPS
         if nested_hit:
             # 为什么：深度内允许 $and/$or/$not 子句再挂一层；超深拒配
             if depth >= _BOOL_MAX_DEPTH:
-                return False
-            matched.append(
-                _match_bool_condition(clause, attrs, depth=depth + 1)
-            )
+                return None
+            child = _match_bool_condition(clause, attrs, depth=depth + 1)
+            if child is None:
+                return None
+            matched.append(child)
         else:
             matched.append(_match_field_conditions(clause, attrs))
     if op == "$and":
@@ -413,7 +420,7 @@ def match_abox_condition(
     每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
     顶层可单独使用 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
-    （深度 ≤3：``$and``/``$or``/``$not`` 可再嵌同族；``$not`` 可否定字段、
+    （深度 ≤4：``$and``/``$or``/``$not`` 可再嵌同族；``$not`` 可否定字段、
     纯字段 ``$and``/``$or`` 或另一 ``$not``（正规求值再取反，禁 fail-open）；
     每层子句 ≤8；非完整表达式语言）。
 
@@ -431,7 +438,9 @@ def match_abox_condition(
     keys = set(condition.keys())
     bool_hit = keys & _BOOL_OPS
     if bool_hit:
-        return _match_bool_condition(condition, attrs, depth=1)
+        # 为什么：拒配（None）对外恒 False（规则不生效），且不会被嵌套 $not 再翻成 True
+        got = _match_bool_condition(condition, attrs, depth=1)
+        return False if got is None else got
     return _match_field_conditions(condition, attrs)
 
 
