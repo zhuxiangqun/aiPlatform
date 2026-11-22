@@ -16,7 +16,7 @@ pilot_domain: lock-service
 
 | Gate 条件 | 状态 | 证据 |
 |-----------|:----:|------|
-| `$not→$not(字段)` / `$not→$not→$or` | pass | `test_match_condition_not_not` |
+| `$not→$not` 字段 / `$not→$not→$or` | pass | `test_match_condition_not_not` |
 | 超深 `$not` 链拒配 | pass | 同上 |
 | deny 门控 | pass | `test_check_entity_acl_not_not_gates_deny` |
 | 薄 UI 文案 | pass | `test_panel_documents_not_not` |
@@ -34,8 +34,8 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 
 | 入口 | 路径 |
 |------|------|
-| Policy | `_match_bool_condition`：`$not` 对布尔子树递归求值再取反 |
-| UI | `AboxAclPanel`：允许 `$not→$not`（深度计入） |
+| Policy | `_match_bool_condition`：`$not` 对布尔子树递归求值再取反（禁 fail-open） |
+| UI | `AboxAclPanel` condition：`$not` 可否定 `$not` |
 
 ## 明确未做
 
