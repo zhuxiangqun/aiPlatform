@@ -1,6 +1,6 @@
 ---
-total_capabilities: 4087
-last_updated: 2026-11-14
+total_capabilities: 4121
+last_updated: 2026-11-22
 version: "30.14"
 auto_sync: true
 core_guarantees:
@@ -550,7 +550,7 @@ scan_hash: 8f9548ec24f4
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 3457✅）
+> 评分：98/100（2026-07-20 — 4137✅）
 
 ---
 
@@ -2986,6 +2986,40 @@ scan_hash: 8f9548ec24f4
 | 发布习惯门：ops harness ready | `scripts/ops_harness_ready_check.sh` + `.github/workflows/aiplat-contracts-guard.yml`（Ops harness ready）+ Governance「Gold match-only」CTA | ✅ | CI 强制：gold `--match-only` + ontology offline YAML + IDE capture hooks；与 Governance 值班板 `release_habit` / 一键 CTA 同门；install-seeds 最佳努力；生成物不适用（平台横切发布门禁） | 已合入 |
 | WorkflowsPage | `aiPlat-management/frontend/src/pages/Core/Workflows/WorkflowsPage.tsx` | ✅ | 自动同步 | 已合入 |
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
+| AnimationFSM | `aiPlat-management/frontend/src/components/digital-human/AnimationFSM.ts` | ✅ | 自动同步 | 已合入 |
+| Rollouts | `aiPlat-management/frontend/src/pages/Core/Learning/Rollouts/Rollouts.tsx` | ✅ | 自动同步 | 已合入 |
+| Resources | `aiPlat-management/frontend/src/pages/Core/Resources/Resources.tsx` | ✅ | 自动同步 | 已合入 |
+| SkillPacks | `aiPlat-management/frontend/src/pages/Core/SkillPacks/SkillPacks.tsx` | ✅ | 自动同步 | 已合入 |
+| Variables | `aiPlat-management/frontend/src/pages/Core/Variables/Variables.tsx` | ✅ | 自动同步 | 已合入 |
+| BrowserTestPanel | `aiPlat-management/frontend/src/pages/Diagnostics/BrowserTest/BrowserTestPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| CapabilityGraph | `aiPlat-management/frontend/src/pages/Diagnostics/CapabilityGraph/CapabilityGraph.tsx` | ✅ | 自动同步 | 已合入 |
+| CapabilityPolicy | `aiPlat-management/frontend/src/pages/Diagnostics/CapabilityPolicy/CapabilityPolicy.tsx` | ✅ | 自动同步 | 已合入 |
+| ChangeControl | `aiPlat-management/frontend/src/pages/Diagnostics/ChangeControl/ChangeControl.tsx` | ✅ | 自动同步 | 已合入 |
+| CodeIntel | `aiPlat-management/frontend/src/pages/Diagnostics/CodeIntel/CodeIntel.tsx` | ✅ | 自动同步 | 已合入 |
+| ExecBackends | `aiPlat-management/frontend/src/pages/Diagnostics/ExecBackends/ExecBackends.tsx` | ✅ | 自动同步 | 已合入 |
+| PolicyDebug | `aiPlat-management/frontend/src/pages/Diagnostics/PolicyDebug/PolicyDebug.tsx` | ✅ | 自动同步 | 已合入 |
+| RoutingDashboard | `aiPlat-management/frontend/src/pages/Diagnostics/RoutingReplay/RoutingDashboard.tsx` | ✅ | 自动同步 | 已合入 |
+| RoutingReplayDetail | `aiPlat-management/frontend/src/pages/Diagnostics/RoutingReplay/RoutingReplayDetail.tsx` | ✅ | 自动同步 | 已合入 |
+| RoutingReplayList | `aiPlat-management/frontend/src/pages/Diagnostics/RoutingReplay/RoutingReplayList.tsx` | ✅ | 自动同步 | 已合入 |
+| ArchitectureView | `aiPlat-management/frontend/src/pages/SystemGraph/ArchitectureView.tsx` | ✅ | 自动同步 | 已合入 |
+| GraphCanvas | `aiPlat-management/frontend/src/pages/SystemGraph/GraphCanvas.tsx` | ✅ | 自动同步 | 已合入 |
+| GraphChat | `aiPlat-management/frontend/src/pages/SystemGraph/GraphChat.tsx` | ✅ | 自动同步 | 已合入 |
+| LayerLegend | `aiPlat-management/frontend/src/pages/SystemGraph/LayerLegend.tsx` | ✅ | 自动同步 | 已合入 |
+| NodeDetailPanel | `aiPlat-management/frontend/src/pages/SystemGraph/NodeDetailPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| RulesPanel | `aiPlat-management/frontend/src/pages/SystemGraph/RulesPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| SearchBar | `aiPlat-management/frontend/src/pages/SystemGraph/SearchBar.tsx` | ✅ | 自动同步 | 已合入 |
+| SkillMarketplace | `aiPlat-management/frontend/src/pages/Workspace/SkillMarketplace/SkillMarketplace.tsx` | ✅ | 自动同步 | 已合入 |
+| agentStore | `aiPlat-management/frontend/src/stores/agentStore.ts` | ✅ | 自动同步 | 已合入 |
+| kbStore | `aiPlat-management/frontend/src/stores/kbStore.ts` | ✅ | 自动同步 | 已合入 |
+| mcpStore | `aiPlat-management/frontend/src/stores/mcpStore.ts` | ✅ | 自动同步 | 已合入 |
+| memoryStore | `aiPlat-management/frontend/src/stores/memoryStore.ts` | ✅ | 自动同步 | 已合入 |
+| skillStore | `aiPlat-management/frontend/src/stores/skillStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceAgentStore | `aiPlat-management/frontend/src/stores/workspaceAgentStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceMcpStore | `aiPlat-management/frontend/src/stores/workspaceMcpStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceSkillStore | `aiPlat-management/frontend/src/stores/workspaceSkillStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceToolStore | `aiPlat-management/frontend/src/stores/workspaceToolStore.ts` | ✅ | 自动同步 | 已合入 |
+| animations | `aiPlat-management/frontend/src/styles/animations.ts` | ✅ | 自动同步 | 已合入 |
+| theme | `aiPlat-management/frontend/src/styles/theme.ts` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | harness/infrastructure/gates/policy_gate.py | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
 | resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级 open/ask/closed；**P0-2**：profile 默认（prod/staging→closed，dev→ask，未设→open）；prod open 须 `AIPLAT_POLICY_FAIL_OPEN_UNTIL`；非关键固定 open+审计；生成物不适用（平台横切） | 已合入 |
@@ -4995,7 +5029,7 @@ scan_hash: 8f9548ec24f4
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
 | Skill 系统 | 210 | 0 | 210 |
-| 安全与治理 | 92 | 0 | 92 |
+| 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
@@ -5033,7 +5067,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4076** | **11** | **4087** |
+| **总计** | **4110** | **11** | **4121** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

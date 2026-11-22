@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[6]
 
 def test_apply_h1_role_actions_per_role(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    # 为什么：本用例验实例 deny 的 per-role 动作集；关掉全局角色×动作轴以免 viewer 无 update 能力干扰
+    monkeypatch.setenv("AIPLAT_ABOX_ROLE_ACTION_MATRIX_ENABLED", "0")
     domain = "lock-service-acl-h1-per-role"
     eid = "Ticket-per-role"
     apply_h1_policy(
