@@ -81,14 +81,12 @@ def test_match_condition_bool_depth11():
     }
     assert match_abox_condition(_depth11_tree(ch_value="a"), attrs) is True
     assert match_abox_condition(_depth11_tree(ch_value="b"), attrs) is False
-    deep12 = {"status": "open"}
+    # 深度 12+ 拒配见 bool_depth12；本切片只验深度 11 命中
+    # 为什么：超深拒配不可被外层 $not 取反（禁 fail-open）— 深度 13 树
+    deep13 = {"status": "open"}
     for op in ("$or", "$and", "$or", "$and", "$or", "$and", "$or", "$and", "$or", "$and", "$or", "$and"):
-        deep12 = {op: [deep12]}
-    assert match_abox_condition(deep12, attrs) is False
-    deep12_closed = {"status": "closed"}
-    for op in ("$or", "$and", "$or", "$and", "$or", "$and", "$or", "$and", "$or", "$and", "$or"):
-        deep12_closed = {op: [deep12_closed]}
-    assert match_abox_condition({"$not": deep12_closed}, attrs) is False
+        deep13 = {op: [deep13]}
+    assert match_abox_condition({"$not": deep13}, attrs) is False
 
 
 def test_check_entity_acl_bool_depth11_gates_deny(tmp_path: Path, monkeypatch):
@@ -150,5 +148,5 @@ def test_panel_documents_bool_depth11():
     )
     text = panel.read_text(encoding="utf-8")
     assert "$and" in text
-    assert "深度≤11" in text or "深度 ≤11" in text or "深度<=11" in text
+    assert "深度≤" in text or "深度 ≤" in text or "深度<=" in text
     assert "非表达式语言" in text

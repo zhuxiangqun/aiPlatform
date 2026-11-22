@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-22T17:37:59+08:00",
+  "reviewed_at": "2026-11-22T17:58:08+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ccd9f9724628c9ee91d849e9b4a24dae87423e66",
-  "diff_sha256": "2eb0fad88144f5d883ebe5c67bdf0452b044674fda2a7e2a4846c380af57fbe5",
-  "head_sha": "66ac282e930ddf86c226b9c002f4b218bf43e17f",
+  "merge_base": "63958210c43f72a1bc14fba320326c20229171d9",
+  "diff_sha256": "b235e879f3a0e898f7d15db9dfa8000198265a61f0dfde6146ac7396ac90079f",
+  "head_sha": "9c49d46919995602171eb86f7e5e90dc7e6e9bcf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Depth-11 only raises _BOOL_MAX_DEPTH; reject-as-None still propagates so outer $not cannot fail-open. Residual: depth≥12 / full expr language still out of scope."
+  "note": "Depth-12 only raises _BOOL_MAX_DEPTH; reject-as-None still propagates so outer $not cannot fail-open. Residual: depth≥13 / full expr language still out of scope."
 }
