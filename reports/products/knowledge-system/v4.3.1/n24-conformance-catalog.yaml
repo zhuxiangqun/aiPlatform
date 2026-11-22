@@ -6,7 +6,7 @@
 standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md
 standard_section: N
 pilot_domain: lock-service
-measured_at: "2026-11-19"
+measured_at: "2026-11-21"
 core_minimum_ids:
   - N01
   - N02
@@ -50,11 +50,17 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-raw-integrity-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-datasource-raw-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-datasource-process-raw-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-datasource-process-raw-default-force-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-datasource-connector-matrix-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/harness/ontology_engine/data_source.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_raw_integrity_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_raw_phase2.py
-    note: "Core-scoped exists (附录 N.2); 读时验+DataSourceConfig content_hash→FactLedger ingest；非全连接器矩阵/非 N01 certified"
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_process_raw_phase2.py
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_process_raw_default_force_phase2.py
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_connector_matrix_phase2.py
+    note: "Core-scoped exists (附录 N.2); 读时验+DataSourceConfig content_hash→FactLedger ingest+process Raw 默认强制（可 opt-out）+ Core file/sql/api 连接器矩阵；非 vendor 驱动矩阵/非 N01 certified"
   - id: N02
     level: core
     title: 语义模型版本化
@@ -64,7 +70,10 @@ items:
     evidence:
       - aiPlat-core/workspace_seeds/ontologies/lock-service.yaml
       - reports/products/knowledge-system/v4.3.1/phase2-ontology-package-evidence.md
-    note: "Core-scoped exists (附录 N.2); 域 YAML version + Package 最小切片；缺全量 ObjectType 人审发布流水线"
+      - reports/products/knowledge-system/v4.3.1/phase2-object-type-publish-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/object_type_publish.py
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_object_type_publish_phase2.py
+    note: "Core-scoped exists (附录 N.2); 域 YAML version + Package + ObjectType draft→人审发布（角色门；Package schema 门可选）；非全量发布门户/非种子替换/非 N02 certified"
   - id: N03
     level: core
     title: Fact/Claim 有 evidence
@@ -74,8 +83,10 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase1-g1-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-claim-evidence-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-claim-status-write-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_claim_evidence_phase2.py
-    note: "Core-scoped exists (附录 N.2); Claim 证据硬门+冲突记录+门槛门；非全量 Claim 状态机/非认证"
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_claim_status_write_phase2.py
+    note: "Core-scoped exists (附录 N.2); Claim 证据硬门+冲突+状态写路径；非全量 Claim 生命周期产品/非认证"
   - id: N04
     level: core
     title: 来源策略与冲突裁决
@@ -86,7 +97,8 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-source-policy-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/source_policy.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_fact_write_gates_phase2.py
-    note: "Core-scoped exists (附录 N.2); 写入硬门+冲突门+transition 发布；非 N04 全量认证"
+      - reports/products/knowledge-system/v4.3.1/phase2-reviewer-rbac-evidence.md
+    note: "Core-scoped exists (附录 N.2); 写入硬门+冲突门+transition 发布 + 配置驱动 publish 角色门；非部署 RBAC 真源/非 N04 全量认证"
   - id: N05
     level: extended
     title: Wiki/索引有条件重建
@@ -98,7 +110,10 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-wiki-readonly-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-rebuild-taxonomy-evidence.md
-    note: "Extended-scoped exists (附录 N.3); 三分类 rebuild_mode+reason+门槛门；非 Wiki 全量/certified"
+      - reports/products/knowledge-system/v4.3.1/phase2-wiki-rebuild-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/wiki_rebuild.py
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_wiki_rebuild_phase2.py
+    note: "Extended-scoped exists (附录 N.3); 三分类 + Fact→Wiki 派生页有条件重建；非 wiki_engine/FTS 全量/非 certified"
   - id: N06
     level: core
     title: Gateway 查询契约
@@ -110,7 +125,9 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-gateway-contract-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_gateway_contract_phase2.py
-    note: "Core-scoped exists (附录 N.2); FactLedger F.1 契约+confidence_factors+门槛门；非统一 Query Gateway/非 certified"
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-query-gateway-evidence.md
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_unified_query_gateway_phase2.py
+    note: "Core-scoped exists (附录 N.2); F.1 契约 + fact/object_set/wiki/index/materials_chat/graphrag 统一入口（Materials/GraphRAG 挂 gateway_f1）；非全部其它应用/非认证"
   - id: N07
     level: extended
     title: 权限召回前过滤
@@ -121,7 +138,9 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-acl-recall-evidence.md
-    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse 召回前 ACL；非 Wiki/KB 全入口"
+      - reports/products/knowledge-system/v4.3.1/phase2-objectset-filter-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-role-action-matrix-evidence.md
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse 召回前 ACL + 嵌套 filter；非 Wiki/KB 全入口/非 certified"
   - id: N08
     level: extended
     title: 动作执行走 Policy/Approval/Audit
@@ -132,7 +151,10 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-action-execute-tool-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
-    note: "Extended-scoped exists (附录 N.3); Registry 裸 bypass 拒绝；仅 approve 重入；非全量认证"
+      - reports/products/knowledge-system/v4.3.1/phase2-action-policy-audit-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-lv4-false-positive-gate-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/lv4_false_positive_gate.py
+    note: "Extended-scoped exists (附录 N.3); Registry 裸 bypass 拒绝；require_approval 强制入队；kill switch；Lv4 误报门 v2 deepen（禁 0 样本假绿）；非全量 Action Lv4 / 非 certified"
   - id: N09
     level: core
     title: 跨租户 0 泄漏
@@ -143,6 +165,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-objectset-acl-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-scenario-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-unified-gateway-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-objectset-audit-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-wiki-kb-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-graphrag-evidence.md
@@ -158,7 +181,9 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-auto-ontology-pipeline-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-staleness-diagnostics-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-competition-domain-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-cross-tenant-triplestore-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_cross_tenant_phase2.py
+      - aiPlat-core/core/tests/unit/test_harness/test_ontology_engine/test_triple_store_tenant.py
       - aiPlat-platform/tests/test_ontology_editor_tenant_k8.py
       - aiPlat-platform/tests/test_ontology_editor_tenant_k9.py
       - aiPlat-platform/tests/test_ontology_editor_tenant_k10.py
@@ -168,7 +193,7 @@ items:
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_auto_ontology_pipeline_tenant_k13.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_staleness_tenant_k14.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_process_monitor_tenant_k11.py
-    note: "Core-scoped exists (附录 N.2); FactLedger + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ caller（K4）+ GraphIndex（K5）+ 图写入（K6）+ 跨域/snapshot（K7）+ ontology_editor HTTP（K8）+ class/rollback（K9）+ view/meta（K10）+ process_monitor（K11）+ process_instances/engine（K12）+ auto_ontology_pipeline（K13）+ staleness/diagnostics（K14）+ staleness cron/health（K15）+ garden/file/self_heal（K16）+ diagnostics drift 身份（K17）+ metric/scoring CRUD（K18）+ governance/maturity（K19）+ ontology quality（K20）+ context_bus/health（K21）+ evolver/SECI/retrieval（K22）+ diagnostician/convergence/case/recon（K23）+ wiki/graph syscall（K24）+ wiki_ontology_engine（K25）+ ontology_engine（K26）+ builtin_handlers（K27）+ FDE service（K28）+ facade/system/eval/infra（K29）+ skills/pipeline/router（K30）+ platform FDE API wave1（K31）+ wave2（K32）+ handlers/scripts（K33）+ GraphIndex ctor/branch（K34）+ scripts ctor（K35）+ branch registry（K36）+ branch YAML（K37）+ FDE tracking domain（K38）+ FDE terms/atom/kb（K39）+ harness atom/kb/terms（K40）+ competition domain（K41）+ GraphIndex ctor domain（K42）+ KB/tracking fallbacks（K43）+ KB domain signature defaults（K44）+ default graph domain signature defaults（K45）+ it-ops/data-gov signature defaults（K46）+ aiplat-system signature defaults（K47）+ icebreaker config（K48）+ default tenant SSOT（K49）+ outer tenant signature defaults（K50）+ tenant SQL/assign literals（K51）+ collection/profile SSOT（K52）+ default session SSOT（K53）+ tenant runtime fallbacks（K54）+门槛门；未宣称全域 0 泄漏/非 certified"
+    note: "Core-scoped exists (附录 N.2); FactLedger + 统一 Gateway fact/object_set 跨租户探针 + ObjectSet/UnifiedAudit（K1）+ Wiki/KB（K2）+ GraphRAG（K3）+ caller（K4）+ GraphIndex（K5）+ 图写入（K6）+ 跨域/snapshot（K7）+ ontology_editor HTTP（K8）+ class/rollback（K9）+ view/meta（K10）+ process_monitor（K11）+ process_instances/engine（K12）+ auto_ontology_pipeline（K13）+ staleness/diagnostics（K14）+ staleness cron/health（K15）+ garden/file/self_heal（K16）+ diagnostics drift 身份（K17）+ metric/scoring CRUD（K18）+ governance/maturity（K19）+ ontology quality（K20）+ context_bus/health（K21）+ evolver/SECI/retrieval（K22）+ diagnostician/convergence/case/recon（K23）+ wiki/graph syscall（K24）+ wiki_ontology_engine（K25）+ ontology_engine（K26）+ builtin_handlers（K27）+ FDE service（K28）+ facade/system/eval/infra（K29）+ skills/pipeline/router（K30）+ platform FDE API wave1（K31）+ wave2（K32）+ handlers/scripts（K33）+ GraphIndex ctor/branch（K34）+ scripts ctor（K35）+ branch registry（K36）+ branch YAML（K37）+ FDE tracking domain（K38）+ FDE terms/atom/kb（K39）+ harness atom/kb/terms（K40）+ competition domain（K41）+ GraphIndex ctor domain（K42）+ KB/tracking fallbacks（K43）+ KB domain signature defaults（K44）+ default graph domain signature defaults（K45）+ it-ops/data-gov signature defaults（K46）+ aiplat-system signature defaults（K47）+ icebreaker config（K48）+ default tenant SSOT（K49）+ outer tenant signature defaults（K50）+ tenant SQL/assign literals（K51）+ collection/profile SSOT（K52）+ default session SSOT（K53）+ tenant runtime fallbacks（K54）+门槛门；TripleStore SECURITY V2 读路径过滤 + 未宣称全域 0 泄漏/非 certified"
   - id: N10
     level: operational
     title: 评测有定义/数据集/门槛
@@ -177,8 +202,12 @@ items:
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-calibration-pipeline-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-knowledge-gold-eval-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/confidence_calibration.py
-    note: "Operational-scoped exists (附录 N.4); 附录 O 校准报告门槛已接线；非全知识域 gold 流水线"
+      - aiPlat-core/core/harness/knowledge_pipeline/knowledge_gold_eval.py
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_knowledge_gold_eval_phase2.py
+    note: "Operational-scoped exists (附录 N.4); 附录 O 校准门槛 + 域级 Exact-match gold 流水线；非 LLM judge/非准确率宣称/非 N10 certified"
   - id: N11
     level: operational
     title: 迁移/回滚方案
@@ -188,7 +217,8 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/knowledge_migration.py
-    note: "Operational-scoped exists (附录 N.4); 双写/对账/回滚演练最小切片；切写未授权"
+      - reports/products/knowledge-system/v4.3.1/phase2-migration-cutover-auth-evidence.md
+    note: "Operational-scoped exists (附录 N.4); 双写/对账/回滚演练 + 作业级切写授权（token）；非生产切写认证/非 certified"
   - id: N12
     level: core
     title: Fact 状态机
@@ -198,7 +228,8 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-fact-state-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_state_machine.py
-    note: "Core-scoped exists (附录 N.2); 边表+审计+put_fact 禁改状态/直发；非 reviewer RBAC/非 N12 全量认证"
+      - reports/products/knowledge-system/v4.3.1/phase2-reviewer-rbac-evidence.md
+    note: "Core-scoped exists (附录 N.2); 边表+审计+put_fact 禁改状态/直发 + 配置驱动 publish 角色门；非部署 RBAC 真源/非 N12 全量认证"
   - id: N13
     level: operational
     title: confidence 校准规则
@@ -207,6 +238,7 @@ items:
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-calibration-pipeline-evidence.md
     note: "Operational-scoped exists (附录 N.4); 失败/缺失/过期 → 最高 medium；未宣称准确率"
   - id: N14
     level: operational
@@ -216,7 +248,10 @@ items:
     gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
-    note: "Operational-scoped exists (附录 N.4); 迁移 job 本地 store 对账；非生产 Raw↔Fact↔Index 全链路"
+      - reports/products/knowledge-system/v4.3.1/phase2-migration-cutover-auth-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-raw-fact-index-reconcile-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/raw_fact_index_reconcile.py
+    note: "Operational-scoped exists (附录 N.4); 迁移 job 对账 + 切写授权 + Raw↔Fact↔Index 全链路 deepen；非生产切写认证/非 certified"
   - id: N15
     level: core
     title: JSON Schema 与附录一致
@@ -241,10 +276,12 @@ items:
     title: 记录级语义校验通过
     status: exists
     phase: standard
-    gap_type: 标准包就绪
+    gap_type: 有实现无证据
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase0-standard-pack-baseline.md
-    note: "Core-scoped exists (附录 N.2); 参考策略用例；非实现方运行时权威"
+      - reports/products/knowledge-system/v4.3.1/phase2-record-semantics-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/record_semantics.py
+    note: "Core-scoped exists (附录 N.2); 记录级语义运行时权威 deepen 已接线（validate/transition/ledger scan）；非 reference_policy 替换 / 非 semantic_cases 全量对 Fact Store / 非 certified"
   - id: N18
     level: core
     title: 实现方语义测试通过
@@ -254,7 +291,9 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-implementer-semantics-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/implementer_semantics.py
-    note: "Core-scoped exists (附录 N.2); 最小 5 探针（Raw/evidence/citation/跨租户/customer_action）；非生产 RBAC 源替换；非 N18 全量认证"
+      - reports/products/knowledge-system/v4.3.1/phase2-deployed-rbac-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/deployed_rbac_policy.py
+    note: "Core-scoped exists (附录 N.2); 最小 5 探针 + 部署侧 RBAC 真源 deepen（禁 reference_policy 作权威）；非召回/聚合/导出/缓存全路径 / 非 certified"
   - id: N19
     level: extended
     title: 运行时权威与审计快照
@@ -264,7 +303,19 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - aiPlat-core/core/harness/infrastructure/action_execution.py
-    note: "Extended-scoped exists (附录 N.3); customer_action before/after；审批重入有 lock 权威；Fact/Query 快照未统一"
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-audit-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-wiki-context-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-wiki-structured-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-ontology-context-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-ontology-urn-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-wiki-pages-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-graph-neighbors-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-graph-query-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-wiki-search-pages-bare-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-fde-clarify-tenant-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-fact-query-wiki-engine-search-pages-hotpath-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/fact_query_audit.py
+    note: "Extended-scoped exists (附录 N.3); customer_action before/after + Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve/sys_wiki_context/wiki_structured/wiki_search_pages_api/sys_ontology_context(域)/URN syscall+HTTP/sys_graph_neighbors/sys_graph_query/裸 wiki_search_pages/FDE clarify tenant/wiki_engine.search_pages(opt-in) 热路径 best-effort deepen；非全部旁路强制 / 非 N24 总线全量 / 非 certified"
   - id: N20
     level: extended
     title: L1/L2/L3 约束分层
@@ -275,7 +326,9 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-function-contract-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
-    note: "Extended-scoped exists (附录 N.3); L1+审批门加深（裸 bypass 拒）；知识面未按标准完整分层"
+      - reports/products/knowledge-system/v4.3.1/phase2-constraint-layers-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/constraint_layers.py
+    note: "Extended-scoped exists (附录 N.3); L1+审批 + 知识面 L1>L2>L3 栈 + Gateway/put_fact/query_facts_gateway/MaterialsChat/GraphRAG/Wiki-KB/裸 list/query_facts list 热路径 n20_constraint deepen；非 list→dict 改写 / 非 Lv4 / 非 certified"
   - id: N21
     level: core
     title: 防假绿
@@ -285,7 +338,9 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-ocs-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
-    note: "Core-scoped exists (附录 N.2); OCS/校准诚实锁；查询统一 abstain+citations 未全覆盖"
+      - reports/products/knowledge-system/v4.3.1/phase2-query-abstain-citations-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/query_abstain_citations.py
+    note: "Core-scoped exists (附录 N.2); OCS/校准诚实锁 + Fact/object_set + Wiki/KB 查询形 + MaterialsChat RAG/trivial/cache_hit + GraphRAG + list 挂 n21_query；非改写 list 主返回类型 / 非 certified"
   - id: N22
     level: extended
     title: 实例/字段级 ACL
@@ -297,7 +352,9 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-acl-recall-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/object_set.py
       - aiPlat-core/core/harness/knowledge_pipeline/link_traverse.py
-    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse ABox ACL；非 Wiki/KB 全入口"
+      - reports/products/knowledge-system/v4.3.1/phase2-objectset-filter-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-role-action-matrix-evidence.md
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse ABox ACL + 嵌套 filter；非 Wiki/KB 全入口/非 certified"
   - id: N23
     level: operational
     title: OCS 完整度
@@ -307,6 +364,8 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-ocs-evidence.md
       - aiPlat-core/core/harness/knowledge/ontology_completeness.py
+      - reports/products/knowledge-system/v4.3.1/phase2-ocs-enterprise-scan-evidence.md
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ocs_enterprise_scan_phase2.py
     note: "Operational-scoped exists (附录 N.4); §13.4 覆盖计分 + 门槛门；未宣称企业全域完整"
   - id: N24
     level: operational
@@ -332,6 +391,14 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-action-store-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-action-store-tenant-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-action-store-tenant-backfill-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-fact-query-stream-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-streams-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-materialize-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-bus-gate-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-append-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-append-payload-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-event-detail-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-fact-query-bus-hotpath-evidence.md
       - docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/harness/knowledge_pipeline/unified_audit_view.py
@@ -354,7 +421,7 @@ items:
       - aiPlat-platform/apps/fde/api/unified_audit_routes.py
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/RevisionRestorePanel.tsx
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/UnifiedAuditPanel.tsx
-    note: "Operational-scoped exists (附录 N.4); Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填；非 N24 certified"
+    note: "Operational-scoped exists (附录 N.4); Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填 + Fact/Query 源流 fan-in + 总线热路径 + UI 流过滤 + UI materialize + UI bus suite/gate + UI 薄 append + UI append refs/payload + UI 事件详情/bus event_type 过滤；非 N24 certified"
 
 # §9.4 认证证据包槽位（路径或 explicit missing）
 certification_slots:

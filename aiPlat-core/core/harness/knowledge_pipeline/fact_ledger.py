@@ -21,7 +21,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from core.harness.knowledge.domain_router import DomainRouter
 logger = logging.getLogger(__name__)
@@ -1078,6 +1078,36 @@ class FactLedger:
                 ),
             )
             await db.commit()
+        # 为什么：N19 — put_fact 热路径 best-effort 落统一审计快照（失败不阻断写入）
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_put_fact_hotpath,
+            )
+
+            maybe_record_put_fact_hotpath(
+                tenant_id=tenant_id,
+                before=existing,
+                after=record,
+            )
+        except Exception:
+            logger.warning(
+                "fact_query_audit put_fact hotpath failed for %s",
+                fid,
+                exc_info=True,
+            )
+        # 为什么：N20 — put_fact 热路径挂约束栈观测信封（不回滚写入）
+        try:
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_put_fact_constraint_hotpath,
+            )
+
+            record = maybe_attach_put_fact_constraint_hotpath(record)
+        except Exception:
+            logger.warning(
+                "constraint_layers put_fact hotpath failed for %s",
+                fid,
+                exc_info=True,
+            )
         return record
 
     async def _enforce_put_fact_write_gates(
@@ -3263,6 +3293,8 @@ class FactLedger:
         predicate: Optional[str] = None,
         review_status: Optional[str] = None,
         limit: int = 50,
+        record_hotpath_audit: bool = True,
+        stamp_constraint_hotpath: bool = True,
     ) -> List[Dict[str, Any]]:
         """查询 Fact；``tenant_id`` 必填且在 SQL WHERE 中过滤。
 
@@ -3273,9 +3305,11 @@ class FactLedger:
             subject / predicate: 可选三元组过滤。
             review_status: 可选审核状态。
             limit: 上限。
+            record_hotpath_audit: N19 list 旁路热路径；gateway 调用时关以免双写。
+            stamp_constraint_hotpath: N20 list 旁路挂约束观测；gateway 调用时关以免双挂。
 
         Returns:
-            Fact 列表（永不返回其他租户行）。
+            Fact 列表（永不返回其他租户行；可为 ConstraintAwareHitList）。
 
         Raises:
             FactLedgerError: tenant_id 为空。
@@ -3314,7 +3348,47 @@ class FactLedger:
             db.row_factory = aiosqlite.Row
             cur = await db.execute(sql, params)
             rows = await cur.fetchall()
-        return [self._row_to_fact(row) for row in rows]
+        hits = [self._row_to_fact(row) for row in rows]
+        if record_hotpath_audit:
+            # 为什么：N19 — 直调 query_facts list 旁路也落审计（gateway 已关此开关）
+            try:
+                from core.harness.knowledge_pipeline.fact_query_audit import (
+                    maybe_record_query_facts_list_hotpath,
+                )
+
+                maybe_record_query_facts_list_hotpath(
+                    tenant_id=tenant_id,
+                    hits=hits,
+                    filters={
+                        "collection_id": collection_id or "",
+                        "domain_id": domain_id or "",
+                        "subject": subject or "",
+                        "predicate": predicate or "",
+                        "review_status": review_status or "",
+                        "limit": int(limit),
+                    },
+                )
+            except Exception:
+                logger.warning(
+                    "fact_query_audit query_facts list hotpath failed",
+                    exc_info=True,
+                )
+        if stamp_constraint_hotpath:
+            # 为什么：N20 — 直调 list 旁路挂观测；主返回仍为 list（子类属性）
+            try:
+                from core.harness.knowledge_pipeline.constraint_layers import (
+                    maybe_stamp_bare_list_constraint_hotpath,
+                )
+
+                hits = maybe_stamp_bare_list_constraint_hotpath(
+                    hits, channel="fact_list"
+                )
+            except Exception:
+                logger.warning(
+                    "constraint_layers query_facts list hotpath failed",
+                    exc_info=True,
+                )
+        return hits
 
     async def query_facts_gateway(
         self,
@@ -3325,16 +3399,24 @@ class FactLedger:
         domain_id: Optional[str] = None,
         top_k: int = 8,
         require_citations: bool = True,
+        calibration_db_path: Optional[str] = None,
+        calibration_query_type: str = "fact_gateway",
+        record_hotpath_audit: bool = True,
+        attach_constraint_hotpath: bool = True,
     ) -> Dict[str, Any]:
-        """附录 M 最小查询入口：租户前置 + 无证据 abstain。
+        """附录 M 最小查询入口：租户前置 + 无证据 abstain + N13 校准封顶。
 
         Args:
             tenant_id: 租户。
             query: 查询串（用于 subject/predicate 子串匹配的简化）。
             collection_id: 集合。
-            domain_id: 业务域过滤（可选）。
+            domain_id: 业务域过滤（可选；有值时启用校准天花板）。
             top_k: 返回条数。
             require_citations: 为 True 时无 citations 则 abstain。
+            calibration_db_path: 可选校准库（测试/探针）。
+            calibration_query_type: 校准 query_type（默认 fact_gateway）。
+            record_hotpath_audit: N19 旁路热路径落快照；统一 Gateway 调用时关以免双写。
+            attach_constraint_hotpath: N20 旁路挂约束信封；统一 Gateway 调用时关以免双挂。
 
         Returns:
             查询响应（含 abstained / citations）。
@@ -3344,6 +3426,9 @@ class FactLedger:
             collection_id=collection_id,
             domain_id=domain_id,
             limit=top_k * 3,
+            # 为什么：gateway 自有 N19/N20；关 list 审计与约束 stamp 防双写/双挂
+            record_hotpath_audit=False,
+            stamp_constraint_hotpath=False,
         )
         q = (query or "").strip().lower()
         if q:
@@ -3379,6 +3464,22 @@ class FactLedger:
                 answer = f"{f0['subject']}.{f0['predicate']}={f0['object']}"
             confidence = "high" if citations else "low"
             evidence_coverage = 1.0 if citations else 0.0
+        cal_capped = False
+        # 为什么：有 domain 时走 N13 校准天花板，未达标诚实封顶 medium
+        if (domain_id or "").strip() and confidence != "low":
+            from core.harness.knowledge_pipeline.confidence_calibration import (
+                apply_calibration_ceiling,
+            )
+
+            capped = apply_calibration_ceiling(
+                tenant_id=tenant_id,
+                domain=str(domain_id),
+                query_type=calibration_query_type or "fact_gateway",
+                confidence=confidence,
+                db_path=calibration_db_path,
+            )
+            confidence = str(capped.get("confidence") or confidence)
+            cal_capped = bool(capped.get("capped"))
         resp = {
             "answer": answer,
             "citations": citations,
@@ -3398,9 +3499,40 @@ class FactLedger:
             "conflicts": [],
             "facts": facts,
             "tenant_id": tenant_id,
+            "calibration_capped": cal_capped,
         }
         gate = validate_gateway_response(resp)
         resp["gateway_contract_ok"] = gate["ok"]
+        if record_hotpath_audit:
+            # 为什么：N19 — 直调 query_facts_gateway 旁路也落审计（统一入口已关此开关）
+            try:
+                from core.harness.knowledge_pipeline.fact_query_audit import (
+                    maybe_record_query_facts_gateway_hotpath,
+                )
+
+                maybe_record_query_facts_gateway_hotpath(
+                    tenant_id=tenant_id,
+                    query=query or "",
+                    response=resp,
+                )
+            except Exception:
+                logger.warning(
+                    "fact_query_audit query_facts_gateway hotpath failed",
+                    exc_info=True,
+                )
+        if attach_constraint_hotpath:
+            # 为什么：N20 — 直调旁路挂约束观测信封（统一入口由 _finish 挂，关此开关）
+            try:
+                from core.harness.knowledge_pipeline.constraint_layers import (
+                    maybe_attach_query_facts_gateway_constraint_hotpath,
+                )
+
+                resp = maybe_attach_query_facts_gateway_constraint_hotpath(resp)
+            except Exception:
+                logger.warning(
+                    "constraint_layers query_facts_gateway hotpath failed",
+                    exc_info=True,
+                )
         return resp
 
 
@@ -3506,6 +3638,847 @@ def evaluate_gateway_contract_gate(
         "certified": False,
         "n06_full_conformance": False,
         "note": "FactLedger query gateway F.1 slice; not unified Appendix-F Gateway",
+    }
+
+
+# 为什么：N06 统一入口含 wiki/index/materials_chat/graphrag；其它 Agent 全出口仍可并行
+UNIFIED_QUERY_GATEWAY_ROUTES: Tuple[str, ...] = (
+    "fact",
+    "object_set",
+    "wiki",
+    "index",
+    "materials_chat",
+    "graphrag",
+)
+
+
+def unified_query_gateway_routes() -> Dict[str, Any]:
+    """返回 N06 统一 Query Gateway 当前支持的路由轴。
+
+    Returns:
+        routes；``certified`` 恒 false。
+    """
+    return {
+        "routes": list(UNIFIED_QUERY_GATEWAY_ROUTES),
+        "certified": False,
+        "n06_full_conformance": False,
+        "wiki_index_routes": True,
+        "materials_chat_route": True,
+        "materials_nonrag_gateway": True,
+        "graphrag_route": True,
+        "note": (
+            "Core unified entry for fact+object_set+wiki+index+materials_chat"
+            "+graphrag F.1; not all other apps / not N06 certified"
+        ),
+    }
+
+
+def require_unified_query_route(route: str) -> str:
+    """校验统一 Gateway 路由名。
+
+    Args:
+        route: ``fact`` / ``object_set`` / ``wiki`` / ``index`` /
+            ``materials_chat`` / ``graphrag``。
+
+    Returns:
+        规范化小写路由名。
+
+    Raises:
+        FactLedgerError: 不在矩阵内。
+    """
+    r = (route or "").strip().lower()
+    if r not in UNIFIED_QUERY_GATEWAY_ROUTES:
+        raise FactLedgerError(
+            f"unified_query_gateway unsupported route={route!r}; "
+            f"routes={list(UNIFIED_QUERY_GATEWAY_ROUTES)}"
+        )
+    return r
+
+
+def graphrag_to_f1_envelope(
+    *,
+    tenant_id: str,
+    result: Optional[Dict[str, Any]],
+    query: str = "",
+) -> Dict[str, Any]:
+    """GraphRAG retrieve 结果经 N21 信封后映射为附录 F.1。
+
+    Args:
+        tenant_id: 租户。
+        result: GraphRAGRetriever.retrieve 回执（可已含 ``n21_query``）。
+        query: 原始查询。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        attach_graphrag_n21_envelope,
+    )
+
+    raw = result if isinstance(result, dict) else {}
+    n21 = raw.get("n21_query") if isinstance(raw.get("n21_query"), dict) else None
+    if n21 is None:
+        wrapped = attach_graphrag_n21_envelope(raw, query=query)
+        n21 = wrapped.get("n21_query") if isinstance(wrapped, dict) else {}
+    return _n21_to_f1_envelope(
+        tenant_id=tenant_id,
+        route="graphrag",
+        n21=n21 if isinstance(n21, dict) else {},
+    )
+
+
+def materials_chat_to_f1_envelope(
+    *,
+    tenant_id: str,
+    output: Optional[Dict[str, Any]],
+    kind: str = "auto",
+) -> Dict[str, Any]:
+    """MaterialsChat 输出经 N21 enforce 后映射为附录 F.1 信封。
+
+    Args:
+        tenant_id: 租户。
+        output: MaterialsChat Agent 输出 dict。
+        kind: ``auto`` / ``rag`` / ``shortcut`` / ``cache_hit``；已 enforce 则直映。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_cache_hit_output,
+        enforce_materials_chat_output,
+        enforce_materials_chat_shortcut_output,
+        is_materials_cache_hit,
+        is_materials_trivial_bypass,
+    )
+
+    raw = output if isinstance(output, dict) else {}
+    k = (kind or "auto").strip().lower()
+    # 为什么：已过 N21 门的输出勿二次 RAG enforce（trivial 会被误 abstain）
+    if raw.get("n21_enforced") is True and str(raw.get("n21_channel") or "").strip():
+        n21 = raw
+    elif k == "shortcut" or (
+        k == "auto" and is_materials_trivial_bypass(raw)
+    ):
+        n21 = enforce_materials_chat_shortcut_output(raw)
+    elif k == "cache_hit" or (k == "auto" and is_materials_cache_hit(raw)):
+        n21 = enforce_materials_chat_cache_hit_output(raw)
+    else:
+        n21 = enforce_materials_chat_output(raw)
+    # 为什么：trivial 捷径允许无 citations 的确定性答案进 F.1
+    allow_empty = n21.get("n21_shortcut") is True
+    return _n21_to_f1_envelope(
+        tenant_id=tenant_id,
+        route="materials_chat",
+        n21=n21,
+        allow_empty_citations=allow_empty,
+    )
+
+
+def _n21_to_f1_envelope(
+    *,
+    tenant_id: str,
+    route: str,
+    n21: Dict[str, Any],
+    allow_empty_citations: bool = False,
+) -> Dict[str, Any]:
+    """将 N21 查询形响应映射为附录 F.1 信封。
+
+    Args:
+        tenant_id: 租户。
+        route: ``wiki`` / ``index`` / ``materials_chat`` / ``graphrag``。
+        n21: N21 查询形 / MaterialsChat enforce 回执。
+        allow_empty_citations: trivial 捷径允许无引用命中。
+    """
+    abstained = n21.get("abstained") is True
+    cites_raw = n21.get("citations") or []
+    citations: List[Dict[str, str]] = []
+    if isinstance(cites_raw, list) and not abstained:
+        for c in cites_raw:
+            if not isinstance(c, dict):
+                continue
+            sid = str(c.get("source_id") or c.get("source") or "").strip()
+            if not sid:
+                continue
+            citations.append(
+                {
+                    "fact_id": "",
+                    "source_id": sid,
+                    "locator": str(c.get("locator") or ""),
+                }
+            )
+    answer = str(n21.get("answer") or "").strip()
+    if abstained or (not citations and not (allow_empty_citations and answer)):
+        return _empty_f1_envelope(
+            tenant_id=tenant_id,
+            route_reason=f"unified:{route}:abstain",
+            abstained=True,
+        )
+    hit_tag = "trivial" if allow_empty_citations and not citations else "hit"
+    env = _empty_f1_envelope(
+        tenant_id=tenant_id,
+        route_reason=f"unified:{route}:{hit_tag}",
+        abstained=False,
+        answer=answer or f"{route}_hit",
+        citations=citations,
+        confidence="low" if allow_empty_citations and not citations else "medium",
+    )
+    plan = list(env.get("route_plan") or [])
+    if "unified" not in plan:
+        env["route_plan"] = ["unified", *plan]
+    env["n21_enforced"] = n21.get("n21_enforced") is True
+    env["n21_channel"] = str(n21.get("n21_channel") or "")
+    env["certified"] = False
+    env["n06_full_conformance"] = False
+    return env
+
+
+def _empty_f1_envelope(
+    *,
+    tenant_id: str,
+    route_reason: str,
+    abstained: bool = True,
+    answer: str = "",
+    citations: Optional[List[Dict[str, str]]] = None,
+    facts: Optional[List[Dict[str, Any]]] = None,
+    confidence: str = "low",
+) -> Dict[str, Any]:
+    """构造附录 F.1 最小信封（统一 Gateway 共用）。"""
+    cites = list(citations or [])
+    cov = 1.0 if cites and not abstained else 0.0
+    resp = {
+        "answer": answer if not abstained else "",
+        "citations": [] if abstained else cites,
+        "route_plan": [route_reason.split(":", 1)[0] if ":" in route_reason else route_reason],
+        "route_reason": route_reason,
+        "confidence": confidence if not abstained else "low",
+        "confidence_factors": {
+            "evidence_coverage": cov,
+            "source_authority": "high" if cites and not abstained else "low",
+            "conflict": False,
+            "coverage": cov,
+            "freshness": "valid" if cites and not abstained else "unknown",
+        },
+        "partial": False,
+        "degraded": False,
+        "abstained": abstained,
+        "conflicts": [],
+        "facts": list(facts or []),
+        "tenant_id": tenant_id,
+    }
+    gate = validate_gateway_response(resp)
+    resp["gateway_contract_ok"] = gate["ok"]
+    return resp
+
+
+async def unified_query_gateway(
+    *,
+    tenant_id: str,
+    query: str = "",
+    route: str = "fact",
+    collection_id: Optional[str] = None,
+    domain_id: Optional[str] = None,
+    top_k: int = 8,
+    object_set_request: Optional[Dict[str, Any]] = None,
+    permissions: Optional[List[str]] = None,
+    role: str = "",
+    ledger: Optional["FactLedger"] = None,
+    bindings_path: Optional[Any] = None,
+    calibration_db_path: Optional[str] = None,
+    calibration_query_type: str = "fact_gateway",
+    materials_output: Optional[Dict[str, Any]] = None,
+    graphrag_result: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N06 deepen：统一 Query Gateway（含 materials_chat/graphrag → F.1）。
+
+    Args:
+        tenant_id: 租户。
+        query: 查询串（fact/wiki/index 路由使用）。
+        route: ``fact`` / ``object_set`` / ``wiki`` / ``index`` /
+            ``materials_chat`` / ``graphrag``。
+        collection_id / domain_id / top_k: fact/wiki/index 路由参数。
+        object_set_request: object_set 路由请求 dict。
+        permissions / role: object_set L1/ACL。
+        ledger: 可选 FactLedger。
+        bindings_path: 可选 ObjectType 绑定路径（object_set 探针/测试）。
+        calibration_db_path / calibration_query_type: N13 校准封顶透传。
+        materials_output: materials_chat 路由的 Agent 输出（缺省则 abstain）。
+        graphrag_result: graphrag 路由的 retrieve 回执（缺省则 abstain）。
+
+    Returns:
+        附录 F.1 信封；``certified`` 不在此回执宣称。
+
+    Raises:
+        FactLedgerError: 路由不在矩阵内。
+    """
+    r = require_unified_query_route(route)
+    tid = (tenant_id or "").strip()
+    if not tid:
+        raise FactLedgerError("tenant_id required")
+
+    def _finish(resp: Dict[str, Any]) -> Dict[str, Any]:
+        # 为什么：N19 — Gateway 热路径 best-effort 落 Query 快照（失败不改 F.1）
+        out = resp
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_query_gateway_hotpath,
+            )
+
+            out = maybe_record_query_gateway_hotpath(
+                tenant_id=tid,
+                route=r,
+                query=query or "",
+                response=out,
+            )
+        except Exception:
+            logger.warning(
+                "fact_query_audit query_gateway hotpath failed route=%s",
+                r,
+                exc_info=True,
+            )
+        # 为什么：N20 — Gateway 热路径挂约束栈观测信封（不阻断 F.1）
+        try:
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_constraint_stack_hotpath,
+            )
+
+            out = maybe_attach_constraint_stack_hotpath(
+                out,
+                route=r,
+                actor_permissions=permissions,
+            )
+        except Exception:
+            logger.warning(
+                "constraint_layers gateway hotpath failed route=%s",
+                r,
+                exc_info=True,
+            )
+        return out
+
+    if r == "fact":
+        lg = ledger or get_fact_ledger()
+        await lg.initialize()
+        resp = await lg.query_facts_gateway(
+            tenant_id=tid,
+            query=query,
+            collection_id=collection_id,
+            domain_id=domain_id,
+            top_k=top_k,
+            calibration_db_path=calibration_db_path,
+            calibration_query_type=calibration_query_type,
+            # 为什么：统一入口由 _finish 落 N19/N20，避免旁路+统一双写
+            record_hotpath_audit=False,
+            attach_constraint_hotpath=False,
+        )
+        # 统一入口标记（不改变 F.1 字段）
+        plan = list(resp.get("route_plan") or [])
+        if "unified" not in plan:
+            resp["route_plan"] = ["unified", *plan]
+        resp["route_reason"] = f"unified:fact:{resp.get('route_reason') or 'fact_ledger'}"
+        gate = validate_gateway_response(resp)
+        resp["gateway_contract_ok"] = gate["ok"]
+        return _finish(resp)
+
+    if r == "wiki":
+        from core.harness.knowledge_pipeline.query_abstain_citations import (
+            query_wiki_with_abstain,
+        )
+
+        cids = [collection_id] if (collection_id or "").strip() else ["default"]
+        n21 = query_wiki_with_abstain(
+            query or "",
+            tenant_id=tid,
+            collection_ids=cids,
+            top_k=int(top_k),
+        )
+        return _finish(_n21_to_f1_envelope(tenant_id=tid, route="wiki", n21=n21))
+
+    if r == "index":
+        # 为什么：Index 路由映射 KB 查询形
+        from core.harness.knowledge_pipeline.query_abstain_citations import (
+            query_kb_with_abstain,
+        )
+
+        n21 = query_kb_with_abstain(
+            query or "",
+            tenant_id=tid,
+            collection_id=(collection_id or "").strip(),
+            top_k=int(top_k),
+        )
+        return _finish(_n21_to_f1_envelope(tenant_id=tid, route="index", n21=n21))
+
+    if r == "materials_chat":
+        # 为什么：MaterialsChat 经 N21 RAG enforce → F.1；无输出则 abstain（非跑全 Agent）
+        return _finish(
+            materials_chat_to_f1_envelope(
+                tenant_id=tid,
+                output=materials_output
+                if isinstance(materials_output, dict)
+                else {
+                    "answer": "",
+                    "citations": [],
+                    "strategy": "direct_retrieve",
+                    "query": query or "",
+                },
+            )
+        )
+
+    if r == "graphrag":
+        # 为什么：GraphRAG 经 N21 信封 → F.1；无结果则 abstain（非跑全检索）
+        return _finish(
+            graphrag_to_f1_envelope(
+                tenant_id=tid,
+                result=graphrag_result if isinstance(graphrag_result, dict) else {},
+                query=query or "",
+            )
+        )
+
+    # object_set → F.1 信封（无命中则 abstain）
+    from core.harness.knowledge_pipeline.object_set import (
+        query_object_set as _query_os,
+    )
+
+    req = dict(object_set_request or {})
+    if not req.get("object_type") and (query or "").strip():
+        req.setdefault("object_type", (query or "").strip())
+    if "limit" not in req:
+        req["limit"] = int(top_k)
+    os_kwargs: Dict[str, Any] = {}
+    if ledger is not None:
+        os_kwargs["ledger"] = ledger
+    if bindings_path is not None:
+        os_kwargs["bindings_path"] = bindings_path
+    out = await _query_os(
+        req,
+        tenant_id=tid,
+        permissions=permissions,
+        role=role or "",
+        **os_kwargs,
+    )
+    objects = list(out.get("objects") or out.get("items") or [])
+    if out.get("status") in ("policy_denied", "not_found") or not objects:
+        return _finish(
+            _empty_f1_envelope(
+                tenant_id=tid,
+                route_reason="unified:object_set:abstain",
+                abstained=True,
+            )
+        )
+    citations = [
+        {
+            "fact_id": "",
+            "source_id": str(obj.get("id") or obj.get("object_id") or ""),
+            "locator": "object_set",
+        }
+        for obj in objects[: int(top_k)]
+    ]
+    first = objects[0]
+    answer = str(
+        first.get("name")
+        or first.get("id")
+        or first.get("object_id")
+        or "object_set_hit"
+    )
+    return _finish(
+        _empty_f1_envelope(
+            tenant_id=tid,
+            route_reason="unified:object_set:hit",
+            abstained=False,
+            answer=answer,
+            citations=citations,
+            confidence="medium",
+        )
+    )
+
+
+_N06_UNIFIED_GATEWAY_CASES = (
+    "routes_declare_fact_object_set_wiki_index",
+    "fact_route_f1_ok",
+    "object_set_route_f1_ok",
+    "wiki_route_f1_ok",
+    "index_route_f1_ok",
+    "materials_chat_route_f1_ok",
+    "materials_nonrag_gateway_f1_ok",
+    "graphrag_route_f1_ok",
+    "honesty_certified_false",
+)
+
+
+async def run_unified_query_gateway_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n06-unified-gw-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N06 统一 Gateway 加深套件（含 materials/graphrag；非其它全应用/非 certified）。
+
+    Args:
+        ledger: 可选账本。
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+
+    Returns:
+        套件汇总；``certified`` / ``n06_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n06-unified-gw-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        meta = unified_query_gateway_routes()
+        routes_ok = (
+            list(meta.get("routes") or []) == list(UNIFIED_QUERY_GATEWAY_ROUTES)
+            and meta.get("wiki_index_routes") is True
+            and meta.get("materials_chat_route") is True
+            and meta.get("materials_nonrag_gateway") is True
+            and meta.get("graphrag_route") is True
+            and meta.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "routes_declare_fact_object_set_wiki_index",
+                "ok": routes_ok,
+                "detail": "" if routes_ok else "routes_mismatch",
+            }
+        )
+
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n06-unified",
+            kind="file",
+            uri="file://n06/unified.txt",
+            content=b"n06-unified",
+            connector="n06",
+            domain_id=domain_id,
+        )
+        await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n06-unified",
+            subject="door",
+            predicate="state",
+            object="locked",
+            evidence=[
+                {
+                    "source_id": src["source_id"],
+                    "locator": "x",
+                    "quote": "locked",
+                    "fetched_at": src["fetched_at"],
+                }
+            ],
+            source_policy="n06",
+            extractor_version="n06",
+            review_status="published",
+            confidence=0.9,
+            domain_id=domain_id,
+            allow_bootstrap_published=True,
+        )
+        fact_resp = await unified_query_gateway(
+            tenant_id=tenant_id,
+            query="door",
+            route="fact",
+            collection_id="n06-unified",
+            domain_id=domain_id,
+            ledger=lg,
+        )
+        fact_ok = (
+            validate_gateway_response(fact_resp).get("ok") is True
+            and fact_resp.get("abstained") is False
+            and "unified" in (fact_resp.get("route_plan") or [])
+        )
+        cases.append(
+            {
+                "id": "fact_route_f1_ok",
+                "ok": fact_ok,
+                "detail": "" if fact_ok else "fact_route_failed",
+            }
+        )
+
+        os_resp = await unified_query_gateway(
+            tenant_id=tenant_id,
+            query="NonexistentTypeXYZ",
+            route="object_set",
+            object_set_request={"object_type": "NonexistentTypeXYZ", "limit": 3},
+            permissions=["kb:read", "*"],
+            ledger=lg,
+        )
+        os_ok = validate_gateway_response(os_resp).get("ok") is True
+        cases.append(
+            {
+                "id": "object_set_route_f1_ok",
+                "ok": os_ok,
+                "detail": "" if os_ok else "object_set_route_failed",
+            }
+        )
+
+        wiki_resp = await unified_query_gateway(
+            tenant_id=tenant_id,
+            query="n06-wiki-no-such-page-xyz",
+            route="wiki",
+            collection_id=DomainRouter.default_collection(),
+            ledger=lg,
+        )
+        wiki_ok = (
+            validate_gateway_response(wiki_resp).get("ok") is True
+            and require_unified_query_route("wiki") == "wiki"
+            and wiki_resp.get("abstained") is True
+            and str(wiki_resp.get("route_reason") or "").startswith("unified:wiki:")
+        )
+        cases.append(
+            {
+                "id": "wiki_route_f1_ok",
+                "ok": wiki_ok,
+                "detail": "" if wiki_ok else "wiki_route_failed",
+            }
+        )
+
+        index_resp = await unified_query_gateway(
+            tenant_id=tenant_id,
+            query="n06-index-no-such-doc-xyz",
+            route="index",
+            ledger=lg,
+        )
+        index_ok = (
+            validate_gateway_response(index_resp).get("ok") is True
+            and require_unified_query_route("index") == "index"
+            and index_resp.get("abstained") is True
+            and str(index_resp.get("route_reason") or "").startswith("unified:index:")
+        )
+        cases.append(
+            {
+                "id": "index_route_f1_ok",
+                "ok": index_ok,
+                "detail": "" if index_ok else "index_route_failed",
+            }
+        )
+
+        mat_hit = await unified_query_gateway(
+            tenant_id=tenant_id,
+            route="materials_chat",
+            materials_output={
+                "answer": "grounded materials",
+                "citations": [{"source": "wiki:M", "text": "grounded"}],
+                "strategy": "direct_retrieve",
+            },
+            ledger=lg,
+        )
+        mat_empty = await unified_query_gateway(
+            tenant_id=tenant_id,
+            route="materials_chat",
+            materials_output={
+                "answer": "fake materials",
+                "citations": [],
+                "strategy": "direct_retrieve",
+            },
+            ledger=lg,
+        )
+        mat_ok = (
+            validate_gateway_response(mat_hit).get("ok") is True
+            and mat_hit.get("abstained") is False
+            and bool(mat_hit.get("citations"))
+            and str(mat_hit.get("route_reason") or "").startswith(
+                "unified:materials_chat:"
+            )
+            and mat_empty.get("abstained") is True
+            and require_unified_query_route("materials_chat") == "materials_chat"
+        )
+        cases.append(
+            {
+                "id": "materials_chat_route_f1_ok",
+                "ok": mat_ok,
+                "detail": "" if mat_ok else "materials_chat_route_failed",
+            }
+        )
+
+        # trivial 捷径：无 citations 仍可 F.1 hit；cache_hit 无引用 abstain
+        sc_f1 = materials_chat_to_f1_envelope(
+            tenant_id=tenant_id,
+            output={
+                "answer": "14:30",
+                "citations": [],
+                "strategy": "trivial_bypass",
+                "intent": "trivial",
+                "quality": "trivial",
+            },
+            kind="shortcut",
+        )
+        ch_f1 = materials_chat_to_f1_envelope(
+            tenant_id=tenant_id,
+            output={
+                "answer": "cached grounded",
+                "citations": [{"source": "wiki:C", "text": "cached"}],
+                "strategy": "cache_hit",
+                "quality": "cached",
+                "mode": "cache",
+            },
+            kind="cache_hit",
+        )
+        ch_empty_f1 = materials_chat_to_f1_envelope(
+            tenant_id=tenant_id,
+            output={
+                "answer": "cached fake",
+                "citations": [],
+                "strategy": "cache_hit",
+                "quality": "cached",
+                "mode": "cache",
+            },
+            kind="cache_hit",
+        )
+        nonrag_ok = (
+            validate_gateway_response(sc_f1).get("ok") is True
+            and sc_f1.get("abstained") is False
+            and sc_f1.get("answer") == "14:30"
+            and sc_f1.get("citations") == []
+            and str(sc_f1.get("route_reason") or "").endswith(":trivial")
+            and validate_gateway_response(ch_f1).get("ok") is True
+            and ch_f1.get("abstained") is False
+            and bool(ch_f1.get("citations"))
+            and ch_empty_f1.get("abstained") is True
+            and meta.get("materials_nonrag_gateway") is True
+        )
+        cases.append(
+            {
+                "id": "materials_nonrag_gateway_f1_ok",
+                "ok": nonrag_ok,
+                "detail": "" if nonrag_ok else "materials_nonrag_gateway_failed",
+            }
+        )
+
+        gr_hit = await unified_query_gateway(
+            tenant_id=tenant_id,
+            route="graphrag",
+            query="graphrag grounded",
+            graphrag_result={
+                "mode": "graphrag",
+                "chunks": [
+                    {
+                        "title": "G1",
+                        "content": "grounded graph chunk",
+                        "source": "wiki:G1",
+                    }
+                ],
+            },
+            ledger=lg,
+        )
+        gr_empty = await unified_query_gateway(
+            tenant_id=tenant_id,
+            route="graphrag",
+            query="graphrag empty",
+            graphrag_result={"mode": "vector_only", "chunks": []},
+            ledger=lg,
+        )
+        gr_ok = (
+            validate_gateway_response(gr_hit).get("ok") is True
+            and gr_hit.get("abstained") is False
+            and bool(gr_hit.get("citations"))
+            and str(gr_hit.get("route_reason") or "").startswith("unified:graphrag:")
+            and gr_empty.get("abstained") is True
+            and require_unified_query_route("graphrag") == "graphrag"
+            and meta.get("graphrag_route") is True
+        )
+        cases.append(
+            {
+                "id": "graphrag_route_f1_ok",
+                "ok": gr_ok,
+                "detail": "" if gr_ok else "graphrag_route_failed",
+            }
+        )
+
+        honesty_ok = (
+            meta.get("certified") is False
+            and meta.get("n06_full_conformance") is False
+            and fact_resp.get("certified") is not True
+            and wiki_resp.get("n06_full_conformance") is not True
+            and mat_hit.get("n06_full_conformance") is not True
+            and sc_f1.get("n06_full_conformance") is not True
+            and gr_hit.get("n06_full_conformance") is not True
+        )
+        cases.append(
+            {
+                "id": "honesty_certified_false",
+                "ok": honesty_ok,
+                "detail": "" if honesty_ok else "honesty_broken",
+            }
+        )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N06_UNIFIED_GATEWAY_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "unified_query_gateway",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "routes": unified_query_gateway_routes(),
+        "certified": False,
+        "n06_full_conformance": False,
+        "wiki_index_routes": True,
+        "materials_chat_route": True,
+        "materials_nonrag_gateway": True,
+        "graphrag_route": True,
+        "note": (
+            "Unified fact+object_set+wiki+index+materials_chat+graphrag F.1; "
+            "not all other apps / not N06 certified"
+        ),
+    }
+
+
+def evaluate_unified_query_gateway_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N06 统一 Gateway 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_unified_query_gateway_suite`` 回执。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n06_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    # 为什么：本 deepen 须声明 wiki/index + materials RAG/nonrag 已接线
+    if s.get("wiki_index_routes") is not True:
+        issues.append("wiki_index_routes_required")
+    if s.get("materials_chat_route") is not True:
+        issues.append("materials_chat_route_required")
+    if s.get("materials_nonrag_gateway") is not True:
+        issues.append("materials_nonrag_gateway_required")
+    if s.get("graphrag_route") is not True:
+        issues.append("graphrag_route_required")
+    return {
+        "gate": "unified_query_gateway",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n06_full_conformance": False,
+        "wiki_index_routes": True,
+        "materials_chat_route": True,
+        "materials_nonrag_gateway": True,
+        "graphrag_route": True,
+        "note": (
+            "fact+object_set+wiki+index+materials_chat+graphrag unify; "
+            "not all other apps / N06 certified"
+        ),
     }
 
 
@@ -3850,10 +4823,237 @@ def evaluate_datasource_raw_gate(
     }
 
 
+_N01_CONNECTOR_MATRIX_CASES = (
+    "matrix_declares_file_sql_api",
+    "file_hash_snapshot_ok",
+    "sql_hash_snapshot_ok",
+    "api_hash_snapshot_ok",
+    "sql_hash_mismatch_rejected",
+    "api_hash_mismatch_rejected",
+)
+
+
+async def run_datasource_connector_matrix_suite(
+    *,
+    ledger: Optional["FactLedger"] = None,
+    tenant_id: str = "n01-matrix-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N01 Core 连接器矩阵：file/sql/api 均走 hash 强制快照 → Raw。
+
+    Args:
+        ledger: 可选账本；默认临时目录。
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+
+    Returns:
+        套件汇总；``certified`` / ``n01_full_conformance`` 恒 false。
+    """
+    import tempfile
+
+    from core.harness.ontology_engine.data_source import (
+        DataSourceConfig,
+        DataSourceIntegrityError,
+        DATASOURCE_RAW_CONNECTOR_MATRIX,
+        datasource_raw_connector_matrix,
+        sha256_bytes,
+        snapshot_datasource_bytes,
+        validate_datasource_content_hash,
+    )
+
+    matrix_meta = datasource_raw_connector_matrix()
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n01-connector-matrix-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+        work = root
+    else:
+        lg = ledger  # type: ignore[assignment]
+        await lg.initialize()
+        work = Path(tempfile.mkdtemp(prefix="n01-matrix-files-"))
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        meta = matrix_meta
+        matrix_ok = (
+            list(meta.get("connectors") or []) == list(DATASOURCE_RAW_CONNECTOR_MATRIX)
+            and meta.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "matrix_declares_file_sql_api",
+                "ok": matrix_ok,
+                "detail": "" if matrix_ok else "matrix_mismatch",
+            }
+        )
+
+        # file
+        fpath = work / "matrix-file.json"
+        fpath.write_bytes(b'[{"id":1}]')
+        fcfg = DataSourceConfig(
+            name="matrix-file",
+            source_type="file",
+            connection={"file_path": str(fpath), "format": "json"},
+            content_hash="",
+            locator=str(fpath),
+        )
+        fblob = snapshot_datasource_bytes(fcfg)
+        fcfg.content_hash = sha256_bytes(fblob)
+        freceipt = await ingest_datasource_raw(
+            tenant_id=tenant_id,
+            collection_id="n01-matrix",
+            content=fblob,
+            content_hash=fcfg.content_hash,
+            name=fcfg.name,
+            locator=fcfg.locator,
+            connector="datasource:file",
+            require_hash=True,
+            ledger=lg,
+            domain_id=domain_id,
+        )
+        file_ok = (
+            freceipt.get("integrity", {}).get("ok") is True
+            and freceipt.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "file_hash_snapshot_ok",
+                "ok": file_ok,
+                "detail": "" if file_ok else "file_ingest_failed",
+            }
+        )
+
+        # sql / api：稳定 JSON 快照 + hash 强制
+        records = [{"b": 2, "a": 1}]
+        for st, case_ok, case_bad in (
+            ("sql", "sql_hash_snapshot_ok", "sql_hash_mismatch_rejected"),
+            ("api", "api_hash_snapshot_ok", "api_hash_mismatch_rejected"),
+        ):
+            cfg = DataSourceConfig(
+                name=f"matrix-{st}",
+                source_type=st,
+                connection={},
+                mapping={},
+                content_hash="",
+                locator=f"{st}://matrix",
+            )
+            blob = snapshot_datasource_bytes(cfg, records=records)
+            cfg.content_hash = sha256_bytes(blob)
+            receipt = await ingest_datasource_raw(
+                tenant_id=tenant_id,
+                collection_id="n01-matrix",
+                content=blob,
+                content_hash=cfg.content_hash,
+                name=cfg.name,
+                locator=cfg.locator,
+                connector=f"datasource:{st}",
+                require_hash=True,
+                ledger=lg,
+                domain_id=domain_id,
+            )
+            ok_ingest = (
+                receipt.get("integrity", {}).get("ok") is True
+                and receipt.get("certified") is False
+            )
+            cases.append(
+                {
+                    "id": case_ok,
+                    "ok": ok_ingest,
+                    "detail": "" if ok_ingest else f"{st}_ingest_failed",
+                }
+            )
+
+            bad = DataSourceConfig(
+                name=f"matrix-{st}-bad",
+                source_type=st,
+                connection={},
+                content_hash="0" * 64,
+            )
+            mismatch_ok = False
+            try:
+                validate_datasource_content_hash(
+                    bad,
+                    snapshot_datasource_bytes(bad, records=records),
+                    require_hash=True,
+                )
+            except DataSourceIntegrityError:
+                mismatch_ok = True
+            cases.append(
+                {
+                    "id": case_bad,
+                    "ok": mismatch_ok,
+                    "detail": "" if mismatch_ok else f"{st}_mismatch_accepted",
+                }
+            )
+    finally:
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N01_CONNECTOR_MATRIX_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "datasource_connector_matrix",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "matrix": matrix_meta,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": (
+            "Core file/sql/api hash-forced snapshots; "
+            "not vendor-driver matrix / not N01 certified"
+        ),
+    }
+
+
+def evaluate_datasource_connector_matrix_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N01 连接器矩阵门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_datasource_connector_matrix_suite`` 回执。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n01_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "datasource_connector_matrix",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": "Core source_type matrix; not vendor / N01 certified",
+    }
+
+
 _N09_CASES = (
     "query_facts_no_leak",
     "get_source_no_leak",
     "gateway_no_leak",
+    "unified_gateway_fact_no_leak",
+    "unified_gateway_object_set_no_leak",
     "verify_raw_no_leak",
     "object_set_no_leak",
     "unified_audit_no_leak",
@@ -4002,6 +5202,62 @@ async def run_cross_tenant_isolation_suite(
                 "id": "gateway_no_leak",
                 "ok": g_ok,
                 "detail": "" if g_ok else "gateway_leak",
+            }
+        )
+
+        # N09 deepen：统一 Gateway fact/object_set 路由同样不得跨租户泄漏
+        ug_fact_b = await unified_query_gateway(
+            tenant_id=tenant_b,
+            query="secret",
+            route="fact",
+            ledger=lg,
+        )
+        ug_fact_ok = (
+            ug_fact_b.get("abstained") is True
+            and not ug_fact_b.get("citations")
+            and not ug_fact_b.get("facts")
+        )
+        cases.append(
+            {
+                "id": "unified_gateway_fact_no_leak",
+                "ok": ug_fact_ok,
+                "detail": "" if ug_fact_ok else "unified_gateway_fact_leak",
+            }
+        )
+
+        ug_os_a = await unified_query_gateway(
+            tenant_id=tenant_a,
+            route="object_set",
+            object_set_request={
+                "object_type": probe_type,
+                "domain_id": probe_domain,
+            },
+            permissions=["kb:read"],
+            ledger=lg,
+            bindings_path=bindings_path,
+        )
+        ug_os_b = await unified_query_gateway(
+            tenant_id=tenant_b,
+            route="object_set",
+            object_set_request={
+                "object_type": probe_type,
+                "domain_id": probe_domain,
+            },
+            permissions=["kb:read"],
+            ledger=lg,
+            bindings_path=bindings_path,
+        )
+        ug_os_ok = (
+            ug_os_a.get("abstained") is False
+            and bool(ug_os_a.get("citations"))
+            and ug_os_b.get("abstained") is True
+            and not ug_os_b.get("citations")
+        )
+        cases.append(
+            {
+                "id": "unified_gateway_object_set_no_leak",
+                "ok": ug_os_ok,
+                "detail": "" if ug_os_ok else "unified_gateway_object_set_leak",
             }
         )
 
@@ -4506,9 +5762,9 @@ async def run_cross_tenant_isolation_suite(
         "certified": False,
         "n09_full_conformance": False,
         "note": (
-            "FactLedger+ObjectSet+UnifiedAudit+Wiki/KB+GraphRAG+caller+"
-            "GraphIndex+graph_write+cross_domain/snapshot probes; "
-            "not global zero-leak certification"
+            "FactLedger+unified Gateway fact/object_set+ObjectSet+UnifiedAudit+"
+            "Wiki/KB+GraphRAG+caller+GraphIndex+graph_write+cross_domain/snapshot; "
+            "not global zero-leak / not N09 certified"
         ),
     }
 
@@ -6505,6 +7761,7 @@ async def record_extraction_as_claim(
         to_status="reviewed",
         actor="extraction_confirm",
         reason="confirm extraction",
+        role="reviewer",
     )
     published = await transition_fact_review(
         ledger,
@@ -6513,5 +7770,6 @@ async def record_extraction_as_claim(
         to_status="published",
         actor="extraction_confirm",
         reason="confirm extraction",
+        role="reviewer",
     )
     return {"source": src, "claim": claim, "fact": published["fact"]}

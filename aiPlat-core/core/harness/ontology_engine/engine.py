@@ -121,6 +121,9 @@ class ProcessResult:
 
         self.errors: List[str] = []
 
+        # 为什么：N01 Raw ingest 回执；默认强制启用时填充，opt-out 时为 None
+        self.raw_ingest: Optional[Dict[str, Any]] = None
+
         self.stats: Dict[str, Any] = {"total_chunks": 0, "mapped_entities": 0, "extracted_instances": 0, "valid_instances": 0, "state_transitions": 0}
 
 
@@ -148,6 +151,8 @@ class ProcessResult:
             "errors": self.errors,
 
             "stats": self.stats,
+
+            "raw_ingest": self.raw_ingest,
 
         }
 
@@ -1432,6 +1437,12 @@ class OntologyEngine:
 
         model_name: str = "",
 
+        require_raw_ingest: Optional[bool] = None,
+
+        collection_id: str = "",
+
+        tenant_id: str = "",
+
     ) -> ProcessResult:
 
         """Palantir-style: process data from an external data source.
@@ -1440,9 +1451,30 @@ class OntologyEngine:
             source_id: source 标识。
             doc_id: doc 标识。
             model_name: model_name 参数。
+            require_raw_ingest: N01 Raw ingest 开关；None 时读环境（默认强制；可 opt-out）。
+            collection_id: FactLedger collection；空则用 domain id。
+            tenant_id: 租户覆盖；空则用引擎构造 tenant。
         """
 
-        from core.harness.ontology_engine.data_source import DataSourceRegistry
+        from core.harness.ontology_engine.data_source import (
+
+            DataSourceIntegrityError,
+
+            DataSourceRegistry,
+
+            datasource_require_raw_ingest_enabled,
+
+            snapshot_datasource_bytes,
+
+        )
+
+        from core.harness.knowledge_pipeline.fact_ledger import (
+
+            FactLedgerError,
+
+            ingest_datasource_raw,
+
+        )
 
 
 
@@ -1470,9 +1502,77 @@ class OntologyEngine:
 
 
 
-        # Map raw records to chunks
-
         config = DataSourceRegistry._configs.get(source_id)
+
+        raw_receipt = None
+
+        # 为什么：默认强制 N01 Raw；显式 False / env=0 才跳过
+        if datasource_require_raw_ingest_enabled(explicit=require_raw_ingest):
+
+            if config is None:
+
+                result = ProcessResult()
+
+                result.errors.append(
+
+                    f"Data source '{source_id}' missing registry config for raw ingest"
+
+                )
+
+                return result
+
+            try:
+
+                st = (config.source_type or "").strip().lower()
+
+                blob = snapshot_datasource_bytes(
+
+                    config,
+
+                    records=None if st == "file" else list(raw_data),
+
+                )
+
+                tid = (tenant_id or "").strip() or self._tenant_id
+
+                cid = (collection_id or "").strip() or (self._domain.id if self._domain else "datasource")
+
+                raw_receipt = await ingest_datasource_raw(
+
+                    tenant_id=tid,
+
+                    collection_id=cid,
+
+                    content=blob,
+
+                    content_hash=str(config.content_hash or "").strip().lower(),
+
+                    name=config.name or source_id,
+
+                    locator=str(config.locator or (config.connection or {}).get("file_path") or ""),
+
+                    connector=f"datasource:{st or 'unknown'}",
+
+                    domain_id=self._domain.id if self._domain else "",
+
+                    require_hash=True,
+
+                    source_id=f"ds-raw:{source_id}",
+
+                )
+
+            except (DataSourceIntegrityError, FactLedgerError) as exc:
+
+                # 为什么：启用 Raw 时失败必须硬停，禁止继续 process 冒充完整
+                result = ProcessResult()
+
+                result.errors.append(f"N01 raw ingest failed for '{source_id}': {exc}")
+
+                return result
+
+
+
+        # Map raw records to chunks
 
         chunks = []
 
@@ -1504,8 +1604,13 @@ class OntologyEngine:
 
 
 
-        return await self.process_chunks(chunks, doc_id=doc_id or f"ds:{source_id}", model_name=model_name)
+        result = await self.process_chunks(chunks, doc_id=doc_id or f"ds:{source_id}", model_name=model_name)
 
+        if raw_receipt is not None:
+
+            result.raw_ingest = raw_receipt
+
+        return result
 
 
 

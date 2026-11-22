@@ -203,6 +203,7 @@ async def test_adjudicate_and_publish_gate(sp_db: str, tmp_path: Path):
         fact_id="fact-open",
         actor="reviewer-1",
         reason="adjudicated publish",
+        role="reviewer",
     )
     assert published["review_status"] == "published"
     assert published["fact_id"] == "fact-open"

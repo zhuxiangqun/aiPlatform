@@ -96,6 +96,8 @@ def sys_kb_retrieve(
 
     actor_scopes: List[str] = None,
 
+    record_hotpath_audit: bool = True,
+
 ) -> List[Dict[str, Any]]:
 
     """Retrieve relevant text from KB documents via unified KnowledgeRetriever.
@@ -108,6 +110,7 @@ def sys_kb_retrieve(
         tenant_id: 租户 ID。
         top_k: top_k 参数。
         actor_scopes: actor_scopes 参数。
+        record_hotpath_audit: N19 裸 list 热路径；上层信封审计时关以免双写。
     """
 
     if not query:
@@ -340,7 +343,36 @@ def sys_kb_retrieve(
 
 
 
-    return results
+    # 为什么：N19 — 裸 kb list 旁路落 Query 快照；上层信封路径关开关防双写
+    if record_hotpath_audit:
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_bare_list_hotpath,
+            )
+
+            maybe_record_bare_list_hotpath(
+                tenant_id=tenant_id or "",
+                hits=results,
+                channel="kb",
+                query=query or "",
+            )
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "N19 bare kb list hotpath audit skipped", exc_info=True
+            )
+
+    # 为什么：N20 — 裸 list 主返回保持 list；观测挂 list.n20_constraint
+    try:
+        from core.harness.knowledge_pipeline.constraint_layers import (
+            maybe_stamp_bare_list_constraint_hotpath,
+        )
+
+        return maybe_stamp_bare_list_constraint_hotpath(results, channel="kb")
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "N20 bare kb list constraint hotpath skipped", exc_info=True
+        )
+        return results
 
 
 
@@ -813,6 +845,8 @@ def sys_wiki_retrieve(
 
     inference_expand: bool = True,
 
+    record_hotpath_audit: bool = True,
+
 ) -> List[Dict[str, Any]]:
 
     u"""Retrieve relevant text from wiki knowledge pages via semantic embedding.
@@ -836,6 +870,8 @@ def sys_wiki_retrieve(
         relation_filter: Only return pages related to target via relation_type.
 
         relation_boost: Boost scores for pages with specific relation types.
+
+        record_hotpath_audit: N19 裸 list 热路径；上层信封审计时关以免双写.
 
 
 
@@ -911,7 +947,7 @@ def sys_wiki_retrieve(
 
                     class_uri, expand_subclasses, relation_filter, relation_boost, inference_expand,
 
-                    tenant_id
+                    tenant_id, record_hotpath_audit
 
                 )
 
@@ -923,7 +959,7 @@ def sys_wiki_retrieve(
 
                                        class_uri, expand_subclasses, relation_filter, relation_boost,
 
-                                       inference_expand, tenant_id)
+                                       inference_expand, tenant_id, record_hotpath_audit)
 
     except RuntimeError:
 
@@ -931,7 +967,7 @@ def sys_wiki_retrieve(
 
                                    class_uri, expand_subclasses, relation_filter, relation_boost,
 
-                                   inference_expand, tenant_id)
+                                   inference_expand, tenant_id, record_hotpath_audit)
 
 
 
@@ -953,7 +989,9 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
 
                         inference_expand: bool = False,
 
-                        tenant_id: str = "") -> List[Dict[str, Any]]:
+                        tenant_id: str = "",
+
+                        record_hotpath_audit: bool = True) -> List[Dict[str, Any]]:
 
     from core.harness.knowledge.wiki_retriever import WikiPageRetriever
 
@@ -989,7 +1027,7 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
 
 
 
-    return [
+    hits = [
 
         {
 
@@ -1010,6 +1048,36 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
         for r in results
 
     ]
+    # 为什么：N19 — 裸 wiki list 旁路落 Query 快照；上层信封路径关开关防双写
+    if record_hotpath_audit:
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_bare_list_hotpath,
+            )
+
+            maybe_record_bare_list_hotpath(
+                tenant_id=tenant_id or "",
+                hits=hits,
+                channel="wiki",
+                query=query or "",
+            )
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "N19 bare wiki list hotpath audit skipped", exc_info=True
+            )
+
+    # 为什么：N20 — 裸 wiki list 主返回保持 list；观测挂 list.n20_constraint
+    try:
+        from core.harness.knowledge_pipeline.constraint_layers import (
+            maybe_stamp_bare_list_constraint_hotpath,
+        )
+
+        return maybe_stamp_bare_list_constraint_hotpath(hits, channel="wiki")
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "N20 bare wiki list constraint hotpath skipped", exc_info=True
+        )
+        return hits
 
 
 
@@ -1163,6 +1231,8 @@ def sys_knowledge_retrieve(
 
     actor_scopes: List[str] = None,
 
+    record_hotpath_audit: bool = True,
+
 ) -> List[Dict[str, Any]]:
 
     """Unified knowledge retrieval — parallel Wiki + KB via RRF fusion.
@@ -1183,6 +1253,8 @@ def sys_knowledge_retrieve(
 
                      If False, use KB directly (backward compat).
 
+        record_hotpath_audit: N19 统一检索热路径；HyDE/CRAG 上层关以免双写。
+
 
 
     Returns:
@@ -1199,6 +1271,28 @@ def sys_knowledge_retrieve(
 
     results: List[Dict[str, Any]] = []
 
+    def _finish(hits: List[Dict[str, Any]], *, route: str = "rrf"):
+        # 为什么：N19 — 统一 knowledge_retrieve 旁路落快照；HyDE/CRAG 关开关防双写
+        out = hits if isinstance(hits, list) else []
+        if record_hotpath_audit:
+            try:
+                from core.harness.knowledge_pipeline.fact_query_audit import (
+                    maybe_record_knowledge_retrieve_hotpath,
+                )
+
+                maybe_record_knowledge_retrieve_hotpath(
+                    tenant_id=tenant_id or "",
+                    hits=out,
+                    query=query or "",
+                    route=route,
+                )
+            except Exception:
+                logging.getLogger(__name__).warning(
+                    "N19 knowledge_retrieve hotpath audit skipped",
+                    exc_info=True,
+                )
+        return out
+
 
 
     if not wiki_first:
@@ -1214,6 +1308,9 @@ def sys_knowledge_retrieve(
                 collection_id=collection_id, domain_id=domain_id,
 
                 tenant_id=tenant_id, top_k=top_k,
+
+                # 为什么：本入口落 knowledge_retrieve 审计；关裸 list 防双写
+                record_hotpath_audit=False,
 
             )
 
@@ -1239,7 +1336,7 @@ def sys_knowledge_retrieve(
 
             f"sys_knowledge_retrieve: total={_total:.3f}s kb-only results={len(results)}")
 
-        return results
+        return _finish(results, route="kb_only")
 
 
 
@@ -1275,6 +1372,9 @@ def sys_knowledge_retrieve(
                 class_uri=target_class, expand_subclasses=expand_subclasses,
 
                 inference_expand=inference_expand,
+
+                # 为什么：本入口落 knowledge_retrieve 审计；关裸 list 防双写
+                record_hotpath_audit=False,
 
             )
 
@@ -1313,6 +1413,9 @@ def sys_knowledge_retrieve(
                 collection_id=collection_id, domain_id=domain_id,
 
                 tenant_id=tenant_id, top_k=max(top_k, 10),
+
+                # 为什么：本入口落 knowledge_retrieve 审计；关裸 list 防双写
+                record_hotpath_audit=False,
 
             )
 
@@ -1416,7 +1519,7 @@ def sys_knowledge_retrieve(
 
             f"sys_knowledge_retrieve: total={_total:.3f}s graph-early-exit results={len(results)}")
 
-        return results
+        return _finish(results, route="graph_early")
 
 
 
@@ -1678,7 +1781,7 @@ def sys_knowledge_retrieve(
     except Exception:
         logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
-    return results[:top_k]
+    return _finish(results[:top_k], route="rrf")
 
 
 

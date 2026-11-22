@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3887
+total_capabilities: 4069
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -1204,7 +1204,7 @@ scan_hash: 8f9548ec24f4
 | **Knowledge Pipeline v3** | `harness/knowledge_pipeline/extractor.py` + `resolver.py` + `retriever.py` | ✅ | 知识生命周期三层管线：`DocumentIngestor`（文档分块）→ `EntityExtractor`（LLM驱动9实体+10关系自动抽取，置信度三级路由≥0.85自动/0.60-0.85待审/<0.60丢弃）→ `DraftYamlWriter`（YAML草稿输出）→ `CrossDomainResolver`（三级匹配：精确键0.6+Jaro-Winkler名称0.25+向量余弦0.15）→ `GraphRAGRetriever`（实体路由→BFS 2跳子图→定向向量检索→推理路径注入） | 已合入 |
 | **Fact Ledger（v4.3.1 Phase 1）** | `harness/knowledge_pipeline/fact_ledger.py` + CoreFacade `fact_ledger_query_gateway` + FDE confirm / `GET .../extractions/facts` | ✅ | 附录 A/D 最小账本：不可变 Raw（sha256+快照）、Fact/Claim（published 必须 evidence）、查询 SQL 层 `tenant_id` 前置过滤；有 `{domain}-object-types.json` 种子的域在确认时写账本；跨租户测试见 `test_fact_ledger_phase1.py`。**未宣称**附录 N 全量符合 | 已合入 |
 | **Raw 读时完整性（v4.3.1 N01 partial）** | `verify_raw_integrity` / `read_raw_bytes` / `evaluate_raw_integrity_gate` + Facade `fact_ledger_verify_raw_integrity` / `evaluate_fact_raw_integrity_gate` | ✅ | 读时复算 sha256；篡改/缺失拒绝；门槛门 certified 恒 false。证据 `phase2-raw-integrity-evidence.md`。**未宣称** 全连接器矩阵 / N01 certified。生成物适用：已接线（经 Facade） | 已合入 |
-| **DataSource→Raw 完整性（v4.3.1 N01 G1）** | `validate_datasource_content_hash` / `ingest_datasource_raw` / `run_datasource_raw_suite` / `evaluate_datasource_raw_gate` + Facade ingest/suite/gate | ✅ | DataSourceConfig.content_hash 强制/校验后登记 FactLedger Raw；门槛门 certified 恒 false。证据 `phase2-datasource-raw-evidence.md`。**未宣称** SQL/API 全路径 / N01 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **DataSource→Raw 完整性（v4.3.1 N01 G1+process+matrix）** | `validate_datasource_content_hash` / `snapshot_datasource_bytes` / `ingest_datasource_raw` / `process_from_datasource`(默认强制/可 opt-out) / `datasource_raw_connector_matrix` + Facade ingest/suite/matrix suite/gate | ✅ | content_hash→Raw；process Raw 默认强制（可 opt-out）；Core `file/sql/api` 连接器矩阵 + hash 强制快照套件；certified 恒 false。证据 `phase2-datasource-connector-matrix-evidence.md`。**未宣称** vendor 驱动矩阵 / N01 certified。生成物适用：已接线 | 本批 |
 | **Fact Revision 账本（v4.3.1 N24 G2）** | `list_fact_revisions` / `get_fact_at_revision` / `diff_fact_revisions` / `run_fact_revision_suite` / `evaluate_fact_revision_gate` + Facade list/get/diff/suite/gate | ✅ | put_fact 内容变更强制 revision bump + 归档旧快照；门槛门 certified 恒 false。证据 `phase2-fact-revision-evidence.md`。**未宣称** Claim/回滚 UI/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Claim Revision 账本（v4.3.1 N24 H1）** | `list_claim_revisions` / `get_claim_at_revision` / `diff_claim_revisions` / `run_claim_revision_suite` / `evaluate_claim_revision_gate` + Facade list/get/diff/suite/gate | ✅ | put_claim 内容变更强制 revision bump + 归档；门槛门 certified 恒 false。证据 `phase2-claim-revision-evidence.md`。**未宣称** Source/回滚 UI/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Source Revision 账本（v4.3.1 N24 H2）** | `list_source_revisions` / `get_source_at_revision` / `diff_source_revisions` / `run_source_revision_suite` / `evaluate_source_revision_gate` + Facade list/get/diff/suite/gate | ✅ | register_source 内容变更强制 revision bump + 归档；旧 Raw 保留；门槛门 certified 恒 false。证据 `phase2-source-revision-evidence.md`。**未宣称** 回滚 UI/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -1214,16 +1214,23 @@ scan_hash: 8f9548ec24f4
 | **Revision→Action Bridge（v4.3.1 N24 I4）** | `bridge_revision_audit_to_action` / `list_revision_action_bridges` / `run_revision_action_bridge_suite` / `evaluate_revision_action_bridge_gate` + Facade | ✅ | 审批式 restore 决策幂等桥接 ActionExecution；门槛门 certified 恒 false。证据 `phase2-revision-action-bridge-evidence.md`。**未宣称** 回滚 UI/全量总线合并 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Revision Restore HTTP（v4.3.1 N24 J1）** | FDE `/revision-restore/*` 薄路由 → CoreFacade（requests/approve/reject/audit/bridges/suite/gate） | ✅ | 平台 HTTP 暴露审批式 restore 与审计/桥接查询；门槛门 certified 恒 false。证据 `phase2-revision-restore-http-evidence.md`。**未宣称** 管理端回滚 UI / 全量总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Revision Restore UI（v4.3.1 N24 J2）** | 知识工厂 `RevisionRestorePanel` → J1 HTTP（requests/approve/reject/audit/suite/gate） | ✅ | 管理端审批式 restore 薄面板；UI 禁自批；门槛门 certified 恒 false。证据 `phase2-revision-restore-ui-evidence.md`。**未宣称** Package+Action 全量总线 / N24 certified。生成物适用：已接线（管理端展示） | 本批 |
-| **Unified Audit View（v4.3.1 N24 J3）** | `list_unified_audit_events` / suite / gate + Facade + FDE `/unified-audit*` | ✅ | Package+ActionExecution+revision_audit 只读汇合；门槛门 certified 恒 false。证据 `phase2-unified-audit-view-evidence.md`。**未宣称** 写总线表 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
-| **Unified Audit UI（v4.3.1 N24 J4）** | 知识工厂 `UnifiedAuditPanel` → J3 HTTP（list/filter/suite/gate） | ✅ | 管理端只读统一审计薄面板；UI 诚实锁；门槛门 certified 恒 false。证据 `phase2-unified-audit-ui-evidence.md`。**未宣称** 写总线表 / N24 certified。生成物适用：已接线（管理端展示） | 本批 |
+| **Unified Audit View（v4.3.1 N24 J3/J10）** | `list_unified_audit_events` / suite / gate + Facade + FDE `/unified-audit*` | ✅ | Package+ActionExecution+revision_audit+ActionStore+FactQuery 只读汇合；门槛门 certified 恒 false。证据 `phase2-unified-audit-view-evidence.md` + `phase2-unified-audit-fact-query-stream-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Unified Audit UI（v4.3.1 N24 J4/J12–J17）** | 知识工厂 `UnifiedAuditPanel` → J3/J5 HTTP（list/filter/suite/gate/materialize/bus/append + bus suite/gate） | ✅ | 统一审计薄面板；J12–J16 既有加深；J17 事件详情展开（refs/payload）+ bus event_type 过滤；UI 诚实锁；certified 恒 false。证据 `phase2-unified-audit-ui-evidence.md` + `phase2-unified-audit-ui-streams-evidence.md` + `phase2-unified-audit-ui-materialize-evidence.md` + `phase2-unified-audit-ui-bus-gate-evidence.md` + `phase2-unified-audit-ui-append-evidence.md` + `phase2-unified-audit-ui-append-payload-evidence.md` + `phase2-unified-audit-ui-event-detail-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（管理端展示） | 本批 |
 | **Unified Audit Bus（v4.3.1 N24 J5）** | `append_unified_audit_event` / materialize / suite / gate + Facade + FDE `/unified-audit/append|bus|materialize` | ✅ | append-only 写总线；revision_audit 热路径；门槛门 certified 恒 false。证据 `phase2-unified-audit-bus-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Unified Audit Hotpath（v4.3.1 N24 J6）** | `publish_package` / `persist_execution` best-effort → bus；suite 增 package/action hotpath | ✅ | Package/Action 热路径写总线；与 materialize 幂等共存；门槛门 certified 恒 false。证据 `phase2-unified-audit-hotpath-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（生产写路径） | 本批 |
+| **Unified Audit FactQuery Bus Hotpath（v4.3.1 N24 J11）** | `_maybe_append_fact_query_to_bus` / `record_audit_snapshot` → bus | ✅ | Fact/Query 快照写入后 best-effort 入统一总线；与 J10 materialize 幂等；门槛门 certified 恒 false。证据 `phase2-unified-audit-fact-query-bus-hotpath-evidence.md`。**未宣称** N24 certified。生成物适用：已接线 | 本批 |
+| **Unified Audit FactQuery Stream（v4.3.1 N24 J10）** | `_fact_query_audit_events` + view/materialize 默认流 | ✅ | N19 Fact/Query 快照 fan-in 统一视图并可 materialize；门槛门 certified 恒 false。证据 `phase2-unified-audit-fact-query-stream-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Unified Audit ActionStore（v4.3.1 N24 J7）** | `ActionStore.insert_audit` → bus；view/materialize 含 `action_store` 流 | ✅ | ActionStore.action_audit 汇入统一审计；租户经 params.tenant_id 过滤；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（生产写路径） | 本批 |
 | **ActionStore tenant_id（v4.3.1 N24 J8）** | `action_audit.tenant_id` 物理列 + `list_audit(tenant_id=)` 召回前过滤 | ✅ | CREATE/ALTER 迁移；insert 写列；view 用物理过滤（空列回退 params）；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-tenant-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（生产写/读路径） | 本批 |
 | **ActionStore tenant backfill（v4.3.1 N24 J9）** | `ActionStore.backfill_tenant_id` + `initialize` 幂等接线 | ✅ | 空物理列从 `params.tenant_id` 回填；无 params 租户不猜测；门槛门 certified 恒 false。证据 `phase2-unified-audit-action-store-tenant-backfill-evidence.md`。**未宣称** N24 certified。生成物适用：已接线（initialize） | 本批 |
 | **Gateway 查询契约（v4.3.1 N06 partial）** | `validate_gateway_response` / `evaluate_gateway_contract_gate` + Facade `validate_fact_gateway_response` | ✅ | 附录 F.1 必填字段 + confidence_factors；abstain 无 answer/citations；门槛门 certified 恒 false。证据 `phase2-gateway-contract-evidence.md`。**未宣称** 统一 Gateway / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
-| **跨租户隔离加深（v4.3.1 N09 partial）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | query/get_source/gateway/verify 四探针；门槛门 certified 恒 false。证据 `phase2-cross-tenant-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **跨租户隔离加深（v4.3.1 N09 partial+unified）** | `run_cross_tenant_isolation_suite` / `evaluate_cross_tenant_gate` + Facade `fact_ledger_run_cross_tenant_suite` | ✅ | 15 探针含统一 Gateway fact/object_set；门槛门 certified 恒 false。证据 `phase2-cross-tenant-unified-gateway-evidence.md`。**未宣称** 全域 0 泄漏 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户 ObjectSet/UnifiedAudit（v4.3.1 N09 K1）** | 同上套件增 `object_set_no_leak` / `unified_audit_no_leak` | ✅ | 临时 ObjectType + ActionStore→统一审计视图；六探针；certified 恒 false。证据 `phase2-cross-tenant-objectset-audit-evidence.md`。**未宣称** Wiki/KB 全入口 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Action Policy/Approval/Audit（v4.3.1 N08 deepen）** | `action_kill_switch_active` + require_approval 无 threshold 强制入队 + suite/gate + Facade | ✅ | kill switch；Policy 拒审计；审批入队；certified 恒 false。证据 `phase2-action-policy-audit-evidence.md`。**未宣称** 全量 Action Lv4 / N08 certified。生成物适用：已接线 | 本批 |
+| **Lv4 误报门 v2（v4.3.1 N08 deepen）** | `lv4_false_positive_gate.py` + Registry 委托 + Facade + FDE `/lv4-false-positive*` | ✅ | 禁 0 样本假绿；要求 rollback；suite/gate certified 恒 false；`lv4_gate_redesigned=true`。证据 `phase2-lv4-false-positive-gate-evidence.md`。**未宣称** 全量 Action Lv4 / N08 certified。生成物适用：已接线 | 本批 |
+| **迁移切写授权（v4.3.1 N11/N14 deepen）** | `authorize_migration_cutover` / `request_write_cutover` / suite/gate + Facade | ✅ | token+actor+reason+对账；作业级授权≠生产认证；certified 恒 false。证据 `phase2-migration-cutover-auth-evidence.md`。**未宣称** 生产切写 / N11/N14 certified。生成物适用：已接线 | 本批 |
+| **ABox 角色×动作轴（v4.3.1 N07/N22 deepen）** | `load_role_action_matrix` / `role_action_allowed` / suite/gate + Facade；`check_entity_acl` 接线 | ✅ | 配置驱动任意角色×动作；未知角色拒绝；certified 恒 false。证据 `phase2-role-action-matrix-evidence.md`。**未宣称** 部署 RBAC 真源 / Wiki·KB 全入口 / N07/N22 certified。生成物适用：已接线 | 本批 |
+| **ObjectSet 嵌套 filter（v4.3.1 N07/N22 deepen）** | `match_filter_expr` / `run_object_set_filter_suite` / `evaluate_object_set_filter_gate` + Facade | ✅ | `$and`/`$or`/`$not` + `$eq`/`$ne`/`$in`/`$exists`；深度上限 4；certified 恒 false。证据 `phase2-objectset-filter-evidence.md`。**未宣称** Wiki/KB 全入口 ACL / N07/N22 certified。生成物适用：已接线 | 本批 |
 | **跨租户 Wiki/KB（v4.3.1 N09 K2）** | 同上套件增 `kb_retrieve_no_leak` / `wiki_retrieve_no_leak` | ✅ | KB per-tenant sqlite 路径 + Wiki retriever/query tenant mismatch 硬门；八探针；certified 恒 false。证据 `phase2-cross-tenant-wiki-kb-evidence.md`。**未宣称** GraphRAG/Wiki collection ACL / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户 GraphRAG（v4.3.1 N09 K3）** | `GraphRAGRetriever.retrieve/_vector_search(tenant_id=)` + 套件 `graphrag_no_leak` | ✅ | 显式 tenant 只查该租户 KB，禁 default/wiki 回退；九探针；certified 恒 false。证据 `phase2-cross-tenant-graphrag-evidence.md`。**未宣称** GraphIndex 租户/调用方全量透传 / N09 certified。生成物适用：已接线（经 Facade 套件） | 本批 |
 | **跨租户 GraphRAG caller 透传（v4.3.1 N09 K4）** | `sys_crag_retrieve` / `locate_via_ontology_async` / `governance_locate_view` / HTTP locate → `retrieve(tenant_id=)` + 套件 `graphrag_caller_passthrough` | ✅ | CRAG/治理入口透传租户到 GraphRAG 向量层；十探针；certified 恒 false。证据 `phase2-cross-tenant-graphrag-caller-evidence.md`。**未宣称** GraphIndex 图节点租户 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -1293,15 +1300,26 @@ scan_hash: 8f9548ec24f4
 | **跨租户 builder module_id 默认（v4.3.1 N09 K68）** | builder L2–L5 / project_service / schema_migration → `default_module_id()` | ✅ | 证据 `phase2-cross-tenant-builder-module-defaults-evidence.md`。**未宣称** N09 certified；misc label 见 K69。生成物适用：已接线（builder module SSOT） | 本批 |
 | **跨租户杂项 label 默认（v4.3.1 N09 K69）** | gateway channel / agent_type / benchmark / output_style → `default_label()` | ✅ | 证据 `phase2-cross-tenant-misc-label-defaults-evidence.md`。**未宣称** N09 certified；漏网清扫见 K70；`purpose="default"`（选模）刻意保留。生成物适用：已接线（misc label SSOT） | 本批 |
 | **跨租户运行时 default 漏网清扫（v4.3.1 N09 K70）** | wiki_* collection / builder module_id / gateway channel / tenant·domain 回退 → 既有 `default_*()` | ✅ | 证据 `phase2-cross-tenant-runtime-default-mop-evidence.md`。**未宣称** N09 certified；`purpose="default"` 刻意保留。生成物适用：已接线（runtime default mop SSOT） | 本批 |
+| **跨租户 TripleStore 读路径（v4.3.1 N09 SECURITY V2）** | `triple_store.tenant_id` 列 + `get_downstream/upstream/stats(..., tenant_id=)` + URN syscall/HTTP 透传 | ✅ | 显式 tenant 只见本租户+共享 `''`；空 tenant 兼容全量。证据 `phase2-cross-tenant-triplestore-evidence.md`。**未宣称** 空 tenant 强制拒绝 / platform 旁路强制 / N09 certified。生成物适用：已接线（ontology syscall/HTTP） | 本批 |
 | **试点认证就绪包（v4.3.1 E4）** | `build_pilot_cert_readiness_pack` / `evaluate_pilot_cert_readiness_gate` + Facade 同名 | ✅ | 汇总 N01/N06/N09 门槛+catalog 证据；`pilot_certified`/`certified` 恒 false。证据 `phase2-pilot-cert-readiness-evidence.md`。**未宣称** 试点/Core 认证。生成物适用：已接线（经 Facade） | 本批 |
 | **Core 可认证路径（v4.3.1 Phase S/C/H）** | `evaluate_core_ready_gate` / `evaluate_pilot_core_certification` + Facade + FDE `/conformance-pack/core-ready` `/pilot-core-cert` | ✅ | 附录 N Core 12 项 + `core_ready`；非作者批准（朱鸿林）→ `pilot_certified`；N09 探针冻结。证据 `phase2-core-cert-path-evidence.md` + `pilot-core-approval-record.approved.json`。**未宣称** 24/24。生成物适用：已接线（HTTP） | 本批 |
 | **Extended 可认证路径（v4.3.1 Phase E）** | `evaluate_extended_ready_gate` / `evaluate_pilot_extended_certification` + Facade + FDE `/extended-ready` `/pilot-extended-cert` | ✅ | 附录 N.3 六项 + `extended_ready`；非作者批准（朱莹）→ `pilot_extended_certified`。证据 `phase2-extended-cert-path-evidence.md` + `pilot-extended-approval-record.approved.json`。**未宣称** 全量 certified。生成物适用：已接线（HTTP） | 本批 |
 | **Operational 可认证路径（v4.3.1 Phase O）** | `evaluate_operational_ready_gate` / `evaluate_pilot_operational_certification` + Facade + FDE `/operational-ready` `/pilot-operational-cert` | ✅ | 附录 N.4 六项 + `operational_ready`；非作者批准（朱莹）→ `pilot_operational_certified`。证据 `phase2-operational-cert-path-evidence.md` + `pilot-operational-approval-record.approved.json`。**未宣称** 全量 certified / 24/24。生成物适用：已接线（HTTP） | 本批 |
 | **全量可认证路径（v4.3.1 Phase F）** | `evaluate_full_ready_gate` / `evaluate_full_certification` + Facade + FDE `/full-ready` `/full-cert` | ✅ | 附录 N.6：24 exists + 三级徽章 + 独立全量批准（朱向群，conditional）→ `certified` / `n24_full_conformance`。证据 `phase2-full-cert-path-evidence.md` + `pilot-full-approval-record.approved.json`。**未宣称** 准确率 / 生产 SLO 遥测。生成物适用：已接线（HTTP） | 本批 |
 | **认证槽位 SLO/例外 ADR（v4.3.1 F1）** | catalog `certification_slots.slo` / `exception_adr` → `phase2-slo-target-evidence.md` / `phase2-exception-adr.md` | ✅ | 目标登记+partial 例外集中包；结构门不再发 explicit-missing warning；`certified` 恒 false。**未宣称** 生产遥测达标 / Core 认证。生成物适用：不适用（平台横切证据槽位） | 本批 |
-| **Claim 证据硬门+冲突（v4.3.1 N03 F2）** | `put_claim` / `record_claim_conflict` / `run_claim_evidence_suite` / `evaluate_claim_evidence_gate` + Facade `fact_ledger_run_claim_evidence_suite` | ✅ | published 无证据拒；同 conflict_key 不同主张记 open 冲突；门槛门 certified 恒 false。证据 `phase2-claim-evidence-evidence.md`。**未宣称** Claim 全量状态机 / N03 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **统一 Query Gateway（v4.3.1 N06 deepen）** | `unified_query_gateway` / `materials_chat_to_f1_envelope` / `graphrag_to_f1_envelope` / suite/gate + Facade | ✅ | fact+object_set+wiki+index+materials_chat+graphrag → F.1；Materials/GraphRAG 挂 `gateway_f1`；certified 恒 false。证据 `phase2-unified-query-gateway-evidence.md`。**未宣称** 全部其它应用入口 / N06 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Confidence 校准流水线（v4.3.1 N13 deepen）** | `apply_calibration_ceiling` / `run_calibration_pipeline_suite` / `evaluate_calibration_pipeline_gate` + fact gateway 封顶 + Facade | ✅ | 查询路径按校准天花板封顶；未达标/缺失 → ≤medium；suite/gate certified 恒 false。证据 `phase2-calibration-pipeline-evidence.md`。**未宣称** 真实 ECE 训练 / 准确率 / N13 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Claim 证据硬门+冲突+状态写（v4.3.1 N03 F2+write）** | `put_claim` / `record_claim_conflict` / `transition_claim_status`→`put_claim` / suite/gate + Facade 同名 + `POST …/claims/{id}/status-transition` | ✅ | published 无证据拒；同键冲突；状态写路径（合法边+审计+持久化）；certified 恒 false。证据 `phase2-claim-status-write-evidence.md`。**未宣称** 全量 Claim 生命周期产品 / N03 certified。生成物适用：已接线（经 Facade/HTTP） | 本批 |
 | **Fact→Graph 投影 + Action L1（v4.3.1 Phase 2 G2）** | `fact_projector.py` + `action_registry` Step 3.25 + `POST …/extractions/facts/rebuild` | ✅ | `project_facts_to_graph`（`exact_replay_from_facts`）；`required_permissions` 缺省 → `policy_denied`；试点合同 `lock_service_accept_order.yaml`。证据 `phase2-g2-evidence.md`。**未宣称** Wiki 只读/ObjectSet/N24 | 已合入 |
 | **重建条件三分类（v4.3.1 N05 partial）** | `classify_rebuild` / `validate_rebuild_receipt` + Facade `validate_fact_rebuild_receipt` | ✅ | `rebuild_mode∈{exact,semantic,non}` + `rebuild_reason`；禁不可重建标 exact；certified 恒 false。证据 `phase2-rebuild-taxonomy-evidence.md`。**未宣称** Wiki 全量/N05 certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Wiki 有条件重建（v4.3.1 N05 deepen）** | `wiki_rebuild.py` + Facade `fact_ledger_project_to_wiki` + FDE `/wiki-rebuild*` | ✅ | Fact→Wiki 派生页；复用三分类；non 不写；suite/gate certified 恒 false。证据 `phase2-wiki-rebuild-evidence.md`。**未宣称** wiki_engine/FTS 全量 / N05 certified。生成物适用：已接线 | 本批 |
+| **知识域 Gold 评测（v4.3.1 N10 deepen）** | `knowledge_gold_eval.py` + Facade + FDE `/knowledge-gold*` | ✅ | 域级 Exact-match gold 登记/评测/跨域扫描；accuracy_claim/certified 恒 false。证据 `phase2-knowledge-gold-eval-evidence.md`。**未宣称** LLM judge / 准确率达标 / N10 certified。生成物适用：已接线 | 本批 |
+| **记录级语义校验（v4.3.1 N17 deepen）** | `record_semantics.py` + Facade + FDE `/record-semantics*` | ✅ | validate/transition/FactLedger scan；suite/gate certified 恒 false；runtime_authority。证据 `phase2-record-semantics-evidence.md`。**未宣称** reference_policy 替换 / semantic_cases 全量 / N17 certified。生成物适用：已接线 | 本批 |
+| **部署侧 RBAC 真源（v4.3.1 N18 deepen）** | `deployed_rbac_policy.py` + Facade + FDE `/deployed-rbac*` | ✅ | env/AIPLAT_HOME 加载；禁 reference_policy 作权威；permission+suite/gate certified 恒 false。证据 `phase2-deployed-rbac-evidence.md`。**未宣称** 召回/聚合/导出全路径 / N18 certified。生成物适用：已接线 | 本批 |
+| **Fact/Query 统一审计快照（v4.3.1 N19 deepen）** | `fact_query_audit.py` + Facade + FDE `/fact-query-audit*` | ✅ | 同表 before/after + runtime_authority；`put_fact`/`unified_query_gateway`/`query_facts_gateway`/`query_facts` list/`MaterialsChat`/GraphRAG/Wiki-KB/裸 list/`sys_crag_retrieve`·`kb_qa_retrieve`/`sys_knowledge_retrieve`/`sys_wiki_context`/`wiki_structured_query_api`/`wiki_search_pages_api`/`sys_ontology_context`（域版+URN syscall）/`ontology_routes`/`sys_graph_neighbors`/`sys_graph_query`/裸 `wiki_search_pages`/FDE clarify tenant/wiki_engine.search_pages(opt-in) 热路径 best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`；上层关下层防双写）；suite/gate certified 恒 false。证据 `phase2-fact-query-audit-evidence.md` + `phase2-fact-query-wiki-context-hotpath-evidence.md` + `phase2-fact-query-wiki-structured-hotpath-evidence.md` + `phase2-fact-query-ontology-context-hotpath-evidence.md` + `phase2-fact-query-ontology-urn-hotpath-evidence.md` + `phase2-fact-query-wiki-pages-hotpath-evidence.md` + `phase2-fact-query-graph-neighbors-hotpath-evidence.md` + `phase2-fact-query-graph-query-hotpath-evidence.md` + `phase2-fact-query-wiki-search-pages-bare-hotpath-evidence.md` + `phase2-fact-query-fde-clarify-tenant-hotpath-evidence.md` + `phase2-fact-query-wiki-engine-search-pages-hotpath-evidence.md`。**未宣称** 全部旁路强制落盘 / N24 总线全量 / N19 certified。生成物适用：已接线 | 本批 |
+| **知识面约束分层（v4.3.1 N20 deepen）** | `constraint_layers.py` + Facade + FDE `/constraint-layers*` | ✅ | L1>L2>L3 栈；高风险无 L1 拒；L2 非安全边界；`unified_query_gateway`/`put_fact`/`query_facts_gateway`/MaterialsChat/GraphRAG/Wiki-KB/裸 list/`query_facts` list 热路径挂 `n20_constraint`（`AIPLAT_CONSTRAINT_LAYERS_HOTPATH`；list 仍为 list 主返回）；suite/gate certified 恒 false。证据 `phase2-constraint-layers-evidence.md`。**未宣称** list→dict 改写 / Lv4 / N20 certified。生成物适用：已接线 | 本批 |
+| **查询 abstain+citations（v4.3.1 N21 deepen）** | `query_abstain_citations.py` + Facade + FDE `/query-abstain-citations*` | ✅ | 拒答清引用；Fact/object_set + Wiki/KB + Materials RAG/trivial/cache_hit + GraphRAG + list 挂 `n21_query`；suite/gate certified 恒 false。证据 `phase2-query-abstain-citations-evidence.md`。**未宣称** 改写 list 主返回类型 / N21 certified。生成物适用：已接线 | 本批 |
+| **Raw↔Fact↔Index 对账（v4.3.1 N14 deepen）** | `raw_fact_index_reconcile.py` + Facade + FDE `/raw-fact-index-reconcile*` | ✅ | missing/orphan/stale 报告；cutover/certified 恒 false。证据 `phase2-raw-fact-index-reconcile-evidence.md`。**未宣称** 生产切写认证 / N14 certified。生成物适用：已接线 | 本批 |
 | **抽取 confirm→ActionRegistry（G2 收口）** | `platform_action:knowledge:confirm_extraction` + `CoreFacade.run_confirm_extraction` + `POST …/extractions/{id}/confirm` | ✅ | confirm 经 L1（`kb:write`/`admin`/`*`）；HTTP scopes→permissions；证据 `phase2-g2-evidence.md`。**未宣称** ObjectSet/N24 | 已合入 |
 | **Wiki 读模型硬门（v4.3.1 试点）** | `harness/knowledge/wiki_read_model.py` + `POST/DELETE /wiki/pages` | ✅ | `AIPLAT_WIKI_READ_MODEL_COLLECTIONS` 配置名单内人工写 → 403 `wiki_is_read_model`（默认空=不拦）；`AIPLAT_WIKI_ALLOW_MANUAL_WRITE` 破窗记 WARNING；编译器 `write_page` 不经门。证据 `phase2-wiki-readonly-evidence.md`。**未宣称** N5 全量/全局禁写/ObjectSet | 本批 |
 | **FunctionContract（v4.3.1 W5 最小切片）** | `harness/infrastructure/function_contract.py` + `function_registry.py` + `builtin_functions.py` + `POST …/fde/functions/{id}/invoke` | ✅ | 附录 C.3 合同；`side_effects=true`→`side_effects_forbidden`；`required_permissions` L1（对齐 Action）；YAML seed `workspace_seeds/functions` + `AIPLAT_HOME/functions`；CoreFacade `invoke_function`。证据 `phase2-function-contract-evidence.md`。**未宣称** ObjectSet/Interface/副作用分级/N24 | 本批 |
@@ -1319,11 +1337,14 @@ scan_hash: 8f9548ec24f4
 | **Ontology Package（v4.3.1 W9 最小切片）** | `harness/knowledge_pipeline/ontology_package.py` + CoreFacade publish/validate/compat/deps/rollback + FDE `/ontology-packages/*` | ✅ | 附录 H.3；semver 发布；content_hash 可验证；依赖锁定；兼容矩阵；发布/回滚。证据 `phase2-ontology-package-evidence.md`。**未宣称** PKI 签名密钥管理 / 自动执行 migrations / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **Confidence Calibration（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/confidence_calibration.py` + CoreFacade publish/validate/resolve + FDE `/confidence-calibrations*` | ✅ | 附录 O / §9.6.7；dataset/version/门槛；ECE≤0.05、high≥0.90；失败/缺失/过期 → 最高 medium。证据 `phase2-confidence-calibration-evidence.md`。**未宣称** 准确率 / OCS 全量 / 迁移双写 / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **OCS Completeness（v4.3.1 W10 最小切片）** | `harness/knowledge/ontology_completeness.py` + `evaluate_ocs_gate` + FDE `/ocs/{domain}` `/gate` | ✅ | §13.4 六维权重；C5=logic 类实例/边覆盖（禁节点数档位）；域 `ocs_threshold`（默认≥80）；诚实锁非准确率/忠实度/审计。证据 `phase2-ocs-evidence.md`。**未宣称** 全域完整 / N24 / 迁移切写。生成物适用：已接线（经 Facade） | 本批 |
+| **企业域 OCS 扫描（v4.3.1 N23 deepen）** | `run_ocs_enterprise_scan_suite` / `evaluate_ocs_enterprise_scan_gate` + Facade | ✅ | DomainRouter 扫域 + 词汇预注册 + 门槛地板；certified/enterprise_complete 恒 false。证据 `phase2-ocs-enterprise-scan-evidence.md`。**未宣称** 企业全域完整 / N23 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Knowledge Migration（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/knowledge_migration.py` + CoreFacade start/dual-write/reconcile/read-pointer/rollback-drill + FDE `/knowledge-migrations*` | ✅ | §15 / 计划 §8；双写 source 权威；missing/stale/orphan 对账+修复；影子读需对账干净；回滚演练回 source；`process_cutover_authorized=false`。证据 `phase2-knowledge-migration-evidence.md`。**未宣称** 生产回填/切写 / OCS / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **Conformance Pack（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/conformance_pack.py` + CoreFacade build/gate + FDE `/conformance-pack*` | ✅ | 附录 N 机读目录 `n24-conformance-catalog.yaml`；§9.4 认证槽位；证据路径校验；结构门槛门；`certified`/`n24_full_conformance` 恒 false。证据 `phase2-conformance-pack-evidence.md`。**未宣称** 24/24 / Core / SLO。生成物适用：已接线（经 Facade） | 本批 |
 | **Implementer Semantics（v4.3.1 W10 / N18 最小切片）** | `harness/knowledge_pipeline/implementer_semantics.py` + CoreFacade run/gate + FDE `/implementer-semantics*` | ✅ | conformance README 真实实现探针：Raw 不可变 / published 拒空 evidence / citation 解析 / 跨租户隔离 / customer_action 审计+幂等；门槛门；`certified` 恒 false。证据 `phase2-implementer-semantics-evidence.md`。**未宣称** 生产 RBAC 源替换 / N18 全量 / 24/24。生成物适用：已接线（经 Facade） | 本批 |
 | **Source Policy / Conflict（v4.3.1 W3 / N04）** | `harness/knowledge_pipeline/source_policy.py` + CoreFacade register/scan/adjudicate/put_fact_with_source_policy/gate + FDE `/source-policies*` `/conflicts*` | ✅ | 附录 K + 写入硬门：策略登记；冲突不自动选边；人审；published 经 transition（actor/reason）；`certified` 恒 false。证据 `phase2-source-policy-evidence.md`。**未宣称** N04 全量 / N24。生成物适用：已接线（经 Facade） | 本批 |
-| **Fact State Machine（v4.3.1 W3 / N12）** | `harness/knowledge_pipeline/fact_state_machine.py` + FactLedger `put_fact` 硬门/`get_fact` + CoreFacade review/lifecycle/claim/gate + FDE `/fact-state*` | ✅ | §7.5 + 写入硬门：禁直发 published；禁裸改状态；transition 审计；retracted 不删。证据 `phase2-fact-state-evidence.md` / `test_fact_write_gates_phase2.py`。**未宣称** reviewer RBAC / N12 全量。生成物适用：已接线（经 Facade） | 本批 |
+| **Fact State Machine（v4.3.1 W3 / N12）** | `harness/knowledge_pipeline/fact_state_machine.py` + FactLedger `put_fact` 硬门/`get_fact` + CoreFacade review/lifecycle/claim/gate + FDE `/fact-state*` | ✅ | §7.5 + 写入硬门：禁直发 published；禁裸改状态；transition 审计；retracted 不删。证据 `phase2-fact-state-evidence.md` / `test_fact_write_gates_phase2.py`。**未宣称** 部署 RBAC 真源 / N12 全量。生成物适用：已接线（经 Facade） | 本批 |
+| **Fact publish reviewer 角色门（v4.3.1 N04/N12 deepen）** | `assert_reviewer_role` / `run_reviewer_rbac_suite` / `evaluate_reviewer_rbac_gate` + Facade + HTTP `role` | ✅ | publish transition 须配置角色；env 可 opt-out；certified 恒 false。证据 `phase2-reviewer-rbac-evidence.md`。**未宣称** 部署 RBAC 真源 / N04/N12 certified。生成物适用：已接线 | 本批 |
+| **ObjectType 人审发布（v4.3.1 N02 deepen）** | `object_type_publish.py` + CoreFacade + FDE `/object-types*`；Package schema 可选门 | ✅ | draft→in_review→published；publish 角色门；suite/gate certified 恒 false。证据 `phase2-object-type-publish-evidence.md`。**未宣称** 全量发布门户 / 种子替换 / N02 certified。生成物适用：已接线 | 本批 |
 | **Knowledge SDK（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/sdk_generator.py` + CoreFacade + `GET/POST …/fde/sdk/*` | ✅ | 附录 E.3；ObjectType→Client 表面/Python 源码仅经 Facade；`kb:read` L1。证据 `phase2-sdk-evidence.md`。**未宣称** 多语言包发布/字段 ACL/N24 | 本批 |
 | **Knowledge SLO 遥测接线（v4.3.1 F1 deepen）** | `harness/knowledge_pipeline/slo_telemetry.py` + CoreFacade + `GET/POST …/fde/slo/*` | ✅ | 白皮书 §14 三指标采集/快照/接线门；wiring≠attainment。证据 `phase2-slo-telemetry-wiring-evidence.md`。**未宣称** 生产达标/告警/Full unconditional | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
@@ -1436,6 +1457,167 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| maybe_record_wiki_kb_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_bare_list_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_kb_qa_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| bus_hotpath_enabled | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| _maybe_append_fact_query_to_bus | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_knowledge_retrieve_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_graphrag_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_stamp_bare_list_constraint_hotpath | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| ConstraintAwareHitList | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| maybe_attach_wiki_kb_constraint_hotpath | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| maybe_attach_graphrag_constraint_hotpath | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| maybe_attach_materials_chat_constraint_hotpath | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| maybe_attach_query_facts_gateway_constraint_hotpath | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| maybe_attach_put_fact_constraint_hotpath | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_materials_chat_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_query_facts_list_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_attach_constraint_stack_hotpath | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| hotpath_constraint_enabled | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_query_facts_gateway_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_query_gateway_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_put_fact_hotpath | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| maybe_record_hotpath_audit | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| hotpath_audit_enabled | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| attach_graphrag_n21_envelope_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | 自动同步 | 已合入 |
+| attach_list_retrieve_n21_envelope_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | N21 list 挂 n21_query HTTP | 本批 |
+| attach_list_retrieve_n21_envelope | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | N21 list 挂 n21_query（不改主返回） | 本批 |
+| enforce_materials_chat_output_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | 自动同步 | 已合入 |
+| enforce_materials_chat_shortcut_output_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | N21 MaterialsChat trivial 捷径 HTTP | 本批 |
+| enforce_materials_chat_cache_hit_output_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | N21 MaterialsChat cache_hit HTTP | 本批 |
+| attach_graphrag_n21_envelope | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| pack_graphrag_result_as_query_response | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| enforce_materials_chat_output | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| enforce_materials_chat_shortcut_output | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | N21 MaterialsChat trivial 捷径 enforce | 本批 |
+| is_materials_trivial_bypass | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | N21 trivial 捷径判定 | 本批 |
+| enforce_materials_chat_cache_hit_output | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | N21 MaterialsChat cache_hit enforce | 本批 |
+| is_materials_cache_hit | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | N21 cache_hit 判定 | 本批 |
+| normalize_materials_citations | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| query_kb_with_abstain_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | 自动同步 | 已合入 |
+| query_wiki_with_abstain_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | 自动同步 | 已合入 |
+| query_kb_with_abstain | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| query_wiki_with_abstain | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| pack_retrieve_hits_as_query_response | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_lv4_fp_gate_route | `aiPlat-platform/apps/fde/api/lv4_false_positive_routes.py` | ✅ | 自动同步 | 已合入 |
+| lv4_min_samples | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_lv4_false_positive | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| Lv4FalsePositiveGateError | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_lv4_false_positive_gate | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
+| run_lv4_false_positive_gate_suite | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_lv4_fp_gate | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
+| run_raw_fact_index_reconcile_suite_route | `aiPlat-platform/apps/fde/api/raw_fact_index_reconcile_routes.py` | ✅ | 自动同步 | 已合入 |
+| reconcile_raw_fact_index_route | `aiPlat-platform/apps/fde/api/raw_fact_index_reconcile_routes.py` | ✅ | 自动同步 | 已合入 |
+| reconcile_raw_fact_index_chain | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| RawFactIndexReconcileError | `core/harness/knowledge_pipeline/raw_fact_index_reconcile.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_raw_fact_index_reconcile_gate | `core/harness/knowledge_pipeline/raw_fact_index_reconcile.py` | ✅ | 自动同步 | 已合入 |
+| run_raw_fact_index_reconcile_suite | `core/harness/knowledge_pipeline/raw_fact_index_reconcile.py` | ✅ | 自动同步 | 已合入 |
+| reconcile_raw_fact_index | `core/harness/knowledge_pipeline/raw_fact_index_reconcile.py` | ✅ | 自动同步 | 已合入 |
+| validate_query_abstain_citations_route | `aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py` | ✅ | 自动同步 | 已合入 |
+| enforce_query_abstain_citations | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| validate_query_abstain_citations | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| QueryAbstainCitationsError | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_query_abstain_citations_gate | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| run_query_abstain_citations_suite | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| enforce_abstain_citations | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| validate_abstain_citations | `core/harness/knowledge_pipeline/query_abstain_citations.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_constraint_stack_route | `aiPlat-platform/apps/fde/api/constraint_layers_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_knowledge_constraint_stack | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| ConstraintLayersError | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_constraint_layers_gate | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| run_constraint_layers_suite | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_constraint_stack | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| classify_layer | `core/harness/knowledge_pipeline/constraint_layers.py` | ✅ | 自动同步 | 已合入 |
+| record_fact_query_audit_route | `aiPlat-platform/apps/fde/api/fact_query_audit_routes.py` | ✅ | 自动同步 | 已合入 |
+| list_fact_query_audit_snapshots | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| record_fact_query_audit_snapshot | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| FactQueryAuditError | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_fact_query_audit_gate | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| run_fact_query_audit_suite | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| list_audit_snapshots | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| record_audit_snapshot | `core/harness/knowledge_pipeline/fact_query_audit.py` | ✅ | 自动同步 | 已合入 |
+| run_deployed_rbac_suite_route | `aiPlat-platform/apps/fde/api/deployed_rbac_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_deployed_rbac_permission_route | `aiPlat-platform/apps/fde/api/deployed_rbac_routes.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_deployed_rbac_permission | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| load_deployed_rbac_policy | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| DeployedRbacError | `core/harness/knowledge_pipeline/deployed_rbac_policy.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_deployed_rbac_gate | `core/harness/knowledge_pipeline/deployed_rbac_policy.py` | ✅ | 自动同步 | 已合入 |
+| run_deployed_rbac_suite | `core/harness/knowledge_pipeline/deployed_rbac_policy.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_permission | `core/harness/knowledge_pipeline/deployed_rbac_policy.py` | ✅ | 自动同步 | 已合入 |
+| load_deployed_policy | `core/harness/knowledge_pipeline/deployed_rbac_policy.py` | ✅ | 自动同步 | 已合入 |
+| run_record_semantics_suite_route | `aiPlat-platform/apps/fde/api/record_semantics_routes.py` | ✅ | 自动同步 | 已合入 |
+| validate_record_semantics_route | `aiPlat-platform/apps/fde/api/record_semantics_routes.py` | ✅ | 自动同步 | 已合入 |
+| scan_record_semantics_facts | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| validate_record_transition | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| validate_record_semantics | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| RecordSemanticsError | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_record_semantics_gate | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| run_record_semantics_suite | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| scan_ledger_facts | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| validate_transition | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| validate_record | `core/harness/knowledge_pipeline/record_semantics.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_domain_gold | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
+| get_gold_dataset | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
+| KnowledgeGoldEvalError | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_knowledge_gold_eval_gate | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
+| run_knowledge_gold_eval_suite | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
+| run_knowledge_gold_eval_pipeline | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
+| register_gold_dataset | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | 自动同步 | 已合入 |
+| WikiRebuildError | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| assert_schema_object_types_published | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| list_object_type_versions | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| assert_object_type_publish_role | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_wiki_rebuild_gate | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| run_wiki_rebuild_suite | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| list_wiki_rebuild_pages | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| project_facts_to_wiki | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_object_type_publish_gate | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| run_object_type_publish_suite | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| get_published_object_type | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| transition_object_type | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| submit_object_type_draft | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| ObjectSetFilterError | `core/harness/knowledge_pipeline/object_set.py` | ✅ | 自动同步 | 已合入 |
+| allowed_reviewer_roles | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | 自动同步 | 已合入 |
+| require_unified_query_route | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
+| unified_query_gateway_routes | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_fact_unified_query_gateway_gate | `core/api/core_facade.py` | ✅ | N06 统一 Gateway 门槛门 Facade | 本批 |
+| materials_chat_to_f1_envelope | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 MaterialsChat→F.1 映射 | 本批 |
+| graphrag_to_f1_envelope | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 GraphRAG→F.1 映射 | 本批 |
+| fact_ledger_run_unified_query_gateway_suite | `core/api/core_facade.py` | ✅ | N06 统一 Gateway 套件 Facade | 本批 |
+| fact_ledger_unified_query_gateway | `core/api/core_facade.py` | ✅ | N06 统一 Gateway Facade | 本批 |
+| evaluate_unified_query_gateway_gate | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 统一 Gateway 门槛门 | 本批 |
+| run_unified_query_gateway_suite | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 统一 Gateway 套件 | 本批 |
+| unified_query_gateway | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | N06 fact/object_set→F.1 | 本批 |
+| evaluate_claim_status_write_gate | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写门槛门；certified 恒 false | 本批 |
+| run_claim_status_write_suite | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写套件；certified 恒 false | 本批 |
+| evaluate_action_policy_audit_gate | `core/harness/ontology_engine/action_registry.py` | ✅ | N08 Policy/Audit 门槛门；certified 恒 false | 本批 |
+| run_action_policy_audit_suite | `core/harness/ontology_engine/action_registry.py` | ✅ | N08 Policy/Approval/Audit 套件；certified 恒 false | 本批 |
+| action_kill_switch_active | `core/harness/ontology_engine/action_registry.py` | ✅ | N08 全局动作急停 | 本批 |
+| evaluate_migration_cutover_auth_gate | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 切写授权门槛门；certified 恒 false | 本批 |
+| run_migration_cutover_auth_suite | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 切写授权套件；certified 恒 false | 本批 |
+| authorize_migration_cutover | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 作业级切写授权 | 本批 |
+| request_write_cutover | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 请求切写阶段（须已授权） | 本批 |
+| revoke_migration_cutover | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 撤销切写授权 | 本批 |
+| evaluate_role_action_matrix_gate | `core/policy/graph_abox_acl.py` | ✅ | N07/N22 角色×动作轴门槛门；certified 恒 false | 本批 |
+| run_role_action_matrix_suite | `core/policy/graph_abox_acl.py` | ✅ | N07/N22 角色×动作轴套件；certified 恒 false | 本批 |
+| role_action_allowed | `core/policy/graph_abox_acl.py` | ✅ | N07/N22 角色×动作允许检查 | 本批 |
+| load_role_action_matrix | `core/policy/graph_abox_acl.py` | ✅ | N07/N22 角色×动作矩阵加载 | 本批 |
+| evaluate_object_set_filter_gate | `core/harness/knowledge_pipeline/object_set.py` | ✅ | N07/N22 嵌套 filter 门槛门；certified 恒 false | 本批 |
+| run_object_set_filter_suite | `core/harness/knowledge_pipeline/object_set.py` | ✅ | N07/N22 嵌套 filter 套件；certified 恒 false | 本批 |
+| match_filter_expr | `core/harness/knowledge_pipeline/object_set.py` | ✅ | N07/N22 ObjectSet 嵌套 filter 匹配 | 本批 |
+| evaluate_reviewer_rbac_gate | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N04/N12 reviewer 角色门槛门；certified 恒 false | 本批 |
+| run_reviewer_rbac_suite | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N04/N12 reviewer 角色门套件；certified 恒 false | 本批 |
+| assert_reviewer_role | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N04/N12 publish 角色校验 | 本批 |
+| transition_claim_status | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | N03 Claim 状态写路径；certified 恒 false | 本批 |
+| evaluate_fact_datasource_connector_matrix_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| fact_ledger_run_datasource_connector_matrix_suite | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| ensure_datasource_raw_connector | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| get_datasource_raw_connector_matrix | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_datasource_connector_matrix_gate | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
+| run_datasource_connector_matrix_suite | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
+| require_datasource_raw_connector | `core/harness/ontology_engine/data_source.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_datasource_raw_gate | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
+| datasource_require_raw_ingest_enabled | `core/harness/ontology_engine/data_source.py` | ✅ | 自动同步 | 已合入 |
 | slo_snapshot_route | `aiPlat-platform/apps/fde/api/slo_routes.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_full_certification_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_full_ready_gate_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
@@ -4788,9 +4970,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 757 | 1 | 758 |
+| Harness 执行引擎 | 778 | 1 | 779 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 635 | 9 | 644 |
+| 知识引擎（本体） | 796 | 9 | 805 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -4833,7 +5015,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3876** | **11** | **3887** |
+| **总计** | **4058** | **11** | **4069** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

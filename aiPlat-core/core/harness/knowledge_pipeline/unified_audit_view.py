@@ -1,4 +1,4 @@
-"""N24 Unified Audit View（Batch J3/J5/J7）— Package + Action + revision + bus + ActionStore。
+"""N24 Unified Audit View（Batch J3/J5/J7/J10）— Package + Action + revision + bus + ActionStore + Fact/Query。
 
 职责：按租户 fan-in 多源审计为统一列表；suite/gate 诚实锁。
 非目标：不宣称 N24 certified；不改写 ActionStore 历史。
@@ -16,6 +16,7 @@ _DEFAULT_STREAMS = (
     "action_execution",
     "revision_audit",
     "action_store",
+    "fact_query_audit",
     "bus",
 )
 _N24_UNIFIED_AUDIT_CASES = (
@@ -23,12 +24,13 @@ _N24_UNIFIED_AUDIT_CASES = (
     "action_stream_present",
     "revision_stream_present",
     "action_store_stream_present",
+    "fact_query_audit_stream_present",
     "cross_tenant_empty",
 )
 
 
 def _resolve_streams(streams: Optional[Sequence[str]]) -> List[str]:
-    """解析流集合（参数 > 环境变量 > 默认五流含 action_store/bus）。
+    """解析流集合（参数 > 环境变量 > 默认六流含 fact_query_audit/bus）。
 
     Args:
         streams: 显式流名；空则读 env / 默认。
@@ -295,6 +297,53 @@ async def _action_store_events(
     return events
 
 
+def _fact_query_audit_events(
+    *,
+    tenant_id: str,
+    limit: int,
+    db_path: Optional[str],
+) -> List[Dict[str, Any]]:
+    """N19 Fact/Query 审计快照 → 统一事件（stream=fact_query_audit）。
+
+    Args:
+        tenant_id: 租户。
+        limit: 上限。
+        db_path: Fact/Query 审计库路径。
+    """
+    from core.harness.knowledge_pipeline.fact_query_audit import list_audit_snapshots
+
+    listed = list_audit_snapshots(
+        tenant_id=tenant_id,
+        limit=limit,
+        db_path=db_path,
+    )
+    events: List[Dict[str, Any]] = []
+    for row in listed.get("items") or []:
+        if not isinstance(row, dict):
+            continue
+        sid = str(row.get("snapshot_id") or "").strip()
+        if not sid:
+            continue
+        kind = str(row.get("kind") or "query")
+        events.append(
+            {
+                "stream": "fact_query_audit",
+                "tenant_id": tenant_id,
+                "event_id": f"fqa:{sid}",
+                "event_type": kind,
+                "occurred_at": _norm_ts(row.get("recorded_at")),
+                "actor": str((row.get("meta") or {}).get("actor") or ""),
+                "subject": str(row.get("subject_ref") or ""),
+                "refs": {
+                    "runtime_authority": row.get("runtime_authority") or "",
+                    "kind": kind,
+                },
+                "payload": row,
+            }
+        )
+    return events
+
+
 async def list_unified_audit_events(
     *,
     tenant_id: str,
@@ -309,13 +358,14 @@ async def list_unified_audit_events(
     action_execution_db_path: Optional[str] = None,
     action_store_db_path: Optional[str] = None,
     bus_db_path: Optional[str] = None,
+    fact_query_audit_db_path: Optional[str] = None,
     fact_ledger: Any = None,
 ) -> Dict[str, Any]:
-    """汇合 Package / ActionExecution / revision_audit / ActionStore / bus。
+    """汇合 Package / ActionExecution / revision / ActionStore / FactQuery / bus。
 
     Args:
         tenant_id: 租户（必填）。
-        streams: 可选流过滤；默认五流或 ``AIPLAT_UNIFIED_AUDIT_STREAMS``。
+        streams: 可选流过滤；默认六流或 ``AIPLAT_UNIFIED_AUDIT_STREAMS``。
         package_id: Package 流可选过滤。
         action_id_prefix: Action 流可选前缀。
         entity_type: revision 流可选实体类型。
@@ -326,6 +376,7 @@ async def list_unified_audit_events(
         action_execution_db_path: 可选 ActionExecution DB。
         action_store_db_path: 可选 ActionStore DB。
         bus_db_path: 可选统一审计总线 DB。
+        fact_query_audit_db_path: 可选 N19 Fact/Query 审计 DB。
         fact_ledger: 可选 FactLedger；默认单例。
 
     Returns:
@@ -384,6 +435,14 @@ async def list_unified_audit_events(
                 db_path=action_store_db_path,
             )
         )
+    if "fact_query_audit" in active:
+        events.extend(
+            _fact_query_audit_events(
+                tenant_id=tid,
+                limit=per,
+                db_path=fact_query_audit_db_path,
+            )
+        )
     if "bus" in active:
         events.extend(
             _bus_events(tenant_id=tid, limit=per, db_path=bus_db_path)
@@ -398,7 +457,10 @@ async def list_unified_audit_events(
         "tenant_id": tid,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "Package+Action+revision+ActionStore+bus merge; not N24 certified",
+        "note": (
+            "Package+Action+revision+ActionStore+FactQuery+bus merge; "
+            "not N24 certified"
+        ),
     }
 
 
@@ -429,7 +491,9 @@ async def run_unified_audit_view_suite(
         act_db = str(root / "action_execution.sqlite3")
         store_db = str(root / "action_store.sqlite3")
         bus_db = str(root / "unified_audit_bus.sqlite3")
+        fqa_db = str(root / "fact_query_audit.sqlite3")
         os.environ["AIPLAT_UNIFIED_AUDIT_BUS_DB"] = bus_db
+        os.environ["AIPLAT_FACT_QUERY_AUDIT_DB"] = fqa_db
         lg = FactLedger(
             db_path=str(root / "fact_ledger.sqlite3"),
             raw_dir=root / "raw",
@@ -520,6 +584,20 @@ async def run_unified_audit_view_suite(
             revision_actor="n24-suite",
             revision_reason="mutate",
         )
+        from core.harness.knowledge_pipeline.fact_query_audit import (
+            record_audit_snapshot,
+        )
+
+        # 为什么：J10 — 视图须能 fan-in N19 Fact/Query 快照流
+        record_audit_snapshot(
+            tenant_id=tenant_id,
+            kind="query",
+            subject_ref="n24-fqa-suite",
+            after_snapshot={"abstained": True, "citations": []},
+            runtime_authority="query_gateway",
+            meta={"hotpath": True, "op": "suite"},
+            db_path=fqa_db,
+        )
 
         view = await list_unified_audit_events(
             tenant_id=tenant_id,
@@ -527,6 +605,7 @@ async def run_unified_audit_view_suite(
             action_execution_db_path=act_db,
             action_store_db_path=store_db,
             bus_db_path=bus_db,
+            fact_query_audit_db_path=fqa_db,
             fact_ledger=lg,
             limit=200,
         )
@@ -563,6 +642,14 @@ async def run_unified_audit_view_suite(
                 "detail": "" if store_ok else "action_store_missing",
             }
         )
+        fqa_ok = "fact_query_audit" in tags
+        cases.append(
+            {
+                "id": "fact_query_audit_stream_present",
+                "ok": fqa_ok,
+                "detail": "" if fqa_ok else "fact_query_audit_missing",
+            }
+        )
 
         other = await list_unified_audit_events(
             tenant_id="other-tenant",
@@ -570,6 +657,7 @@ async def run_unified_audit_view_suite(
             action_execution_db_path=act_db,
             action_store_db_path=store_db,
             bus_db_path=bus_db,
+            fact_query_audit_db_path=fqa_db,
             fact_ledger=lg,
             limit=50,
         )
@@ -583,6 +671,7 @@ async def run_unified_audit_view_suite(
         )
     finally:
         os.environ.pop("AIPLAT_UNIFIED_AUDIT_BUS_DB", None)
+        os.environ.pop("AIPLAT_FACT_QUERY_AUDIT_DB", None)
         tmp.cleanup()
 
     passed = sum(1 for c in cases if c.get("ok") is True)
@@ -599,7 +688,10 @@ async def run_unified_audit_view_suite(
         "cases": cases,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "Package+Action+revision+ActionStore+bus merge; not N24 certified",
+        "note": (
+            "Package+Action+revision+ActionStore+FactQuery+bus merge; "
+            "not N24 certified"
+        ),
     }
 
 

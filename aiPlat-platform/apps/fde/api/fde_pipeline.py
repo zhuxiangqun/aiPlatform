@@ -44,7 +44,15 @@ async def fde_pipeline_status():
 
         # Wiki/historical cases
         try:
-            h = wiki_search_pages("诊断报告", collection_id=DomainRouter.default_collection(), limit=1)
+            from apps.fde.api.graph_tenant import fde_graph_tenant
+
+            # 为什么：自检路径也透传 tenant，激活 N19 裸 wiki_search_pages 审计
+            h = wiki_search_pages(
+                "诊断报告",
+                collection_id=DomainRouter.default_collection(),
+                limit=1,
+                tenant_id=fde_graph_tenant(),
+            )
             data_status["historical_cases"] = f"{len(h)} available" if h else "empty"
         except Exception:
             data_status["historical_cases"] = "error"

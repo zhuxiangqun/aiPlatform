@@ -2162,8 +2162,16 @@ def wiki_pages_by_source(source_key: str) -> List[Dict[str, Any]]:
     return pages_by_source(source_key)
 
 
-def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
-                       limit: int = 20, collection_id: str = DomainRouter.default_collection()) -> List[Dict[str, Any]]:
+def wiki_search_pages(
+    query: str = "",
+    *,
+    tags: List[str] = None,
+    category: str = "",
+    limit: int = 20,
+    collection_id: str = DomainRouter.default_collection(),
+    tenant_id: str = "",
+    record_hotpath_audit: bool = True,
+) -> List[Dict[str, Any]]:
     """Search wiki pages — Phase 45: CoreFacade wrapper for platform layer.
 
     Args:
@@ -2172,14 +2180,50 @@ def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str 
         category: category 参数。
         limit: 返回条数上限。
         collection_id: collection 标识。
+        tenant_id: 非空且 ``record_hotpath_audit`` 时落 N19 裸 list 审计。
+        record_hotpath_audit: 上层信封（如 ``wiki_search_pages_api``）应关防双写。
     """
+    import logging
+
     from core.harness.knowledge.wiki_engine import search_pages
-    return search_pages(query=query, tags=tags, category=category,
-                         limit=limit, collection_id=collection_id)
+
+    pages = search_pages(
+        query=query,
+        tags=tags,
+        category=category,
+        limit=limit,
+        collection_id=collection_id,
+    ) or []
+    tid = (tenant_id or "").strip()
+    if tid and record_hotpath_audit:
+        # 为什么：平台/FDE 直调 list 旁路须可审计；不改 list 主返回类型
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_bare_list_hotpath,
+            )
+
+            maybe_record_bare_list_hotpath(
+                tenant_id=tid,
+                hits=pages if isinstance(pages, list) else [],
+                channel="wiki_search_pages",
+                query=query or "",
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 wiki_search_pages bare audit skipped", exc_info=True
+            )
+    return pages
 
 
-def wiki_search_pages_api(query: str = "", *, tags: List[str] = None, category: str = "",
-                          limit: int = 20, collection_id: str = DomainRouter.default_collection()) -> Dict[str, Any]:
+def wiki_search_pages_api(
+    query: str = "",
+    *,
+    tags: List[str] = None,
+    category: str = "",
+    limit: int = 20,
+    collection_id: str = DomainRouter.default_collection(),
+    tenant_id: str = "",
+) -> Dict[str, Any]:
     """Wiki search with ontology.api.v0 envelope (A1 contract).
 
     Args:
@@ -2188,19 +2232,52 @@ def wiki_search_pages_api(query: str = "", *, tags: List[str] = None, category: 
         category: category 参数。
         limit: 返回条数上限。
         collection_id: collection 标识。
+        tenant_id: 非空时落 N19 Query 审计快照。
     """
+    import logging
+
     from core.harness.knowledge.ontology_api import attach_ontology_api, from_wiki_pages
 
+    # 为什么：信封路径关下层裸 list 审计，防与 wiki_pages 双写
     pages = wiki_search_pages(
-        query, tags=tags, category=category, limit=limit, collection_id=collection_id
+        query,
+        tags=tags,
+        category=category,
+        limit=limit,
+        collection_id=collection_id,
+        tenant_id=tenant_id or "",
+        record_hotpath_audit=False,
     ) or []
     out: Dict[str, Any] = {"items": pages, "total": len(pages)}
-    return dict(
+    out = dict(
         attach_ontology_api(
             out,
             from_wiki_pages(pages, query=query, collection_id=collection_id),
         )
     )
+    # 为什么：Wiki pages 搜索是 Facade/HTTP 旁路，须 best-effort 落 N19；空租户跳过
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_wiki_kb_hotpath,
+            )
+
+            out = maybe_record_wiki_kb_hotpath(
+                tenant_id=tid,
+                response=out if isinstance(out, dict) else {"result": out},
+                channel="wiki_pages",
+                query=query or "",
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 wiki_pages hotpath audit skipped", exc_info=True
+            )
+    if isinstance(out, dict):
+        # 为什么：禁止 Wiki pages 查询自签 certified
+        out["certified"] = False
+        out["n19_full_conformance"] = False
+    return out
 
 
 def get_graph_health(domain: str = "") -> Dict[str, Any]:
@@ -2235,19 +2312,50 @@ def get_graph_health_api(domain: str = "") -> Dict[str, Any]:
     return dict(attach_ontology_api(out, from_graph_health(out, domain_id=domain)))
 
 
-def wiki_structured_query_api(query: str, *, domain_id: str = "") -> Dict[str, Any]:
+def wiki_structured_query_api(
+    query: str,
+    *,
+    domain_id: str = "",
+    tenant_id: str = "",
+) -> Dict[str, Any]:
     """Deterministic wiki structured query + ontology.api.v0 envelope.
 
     Args:
         query: 查询。
         domain_id: domain 标识。
+        tenant_id: 非空时落 N19 Query 审计快照（缺省可用 domain_id）。
     """
+    import logging
+
     from core.harness.knowledge.wiki_structured_query import structured_query
     from core.harness.knowledge.ontology_api import attach_ontology_api, from_structured_query
 
     raw = structured_query(query)
     out = dict(raw) if isinstance(raw, dict) else {"result": raw}
-    return attach_ontology_api(out, from_structured_query(out, domain_id=domain_id))
+    out = attach_ontology_api(out, from_structured_query(out, domain_id=domain_id))
+    # 为什么：结构化 Wiki 查询是 HTTP/Facade 旁路，须 best-effort 落 N19；空租户跳过
+    tid = (tenant_id or domain_id or "").strip()
+    if tid:
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_wiki_kb_hotpath,
+            )
+
+            out = maybe_record_wiki_kb_hotpath(
+                tenant_id=tid,
+                response=out if isinstance(out, dict) else {"result": out},
+                channel="wiki_structured",
+                query=query or "",
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 wiki_structured hotpath audit skipped", exc_info=True
+            )
+    if isinstance(out, dict):
+        # 为什么：禁止结构化查询自签 certified
+        out["certified"] = False
+        out["n19_full_conformance"] = False
+    return out
 
 
 def aiplat_healthz_payload(
@@ -5136,6 +5244,30 @@ async def query_object_set(
     )
 
 
+def run_object_set_filter_suite() -> Dict[str, Any]:
+    """N07/N22 deepen：ObjectSet 嵌套 filter 套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.object_set import (
+        run_object_set_filter_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_object_set_filter_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N07/N22 deepen：ObjectSet 嵌套 filter 门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_object_set_filter_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.object_set import (
+        evaluate_object_set_filter_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def create_knowledge_scenario(
     *,
     tenant_id: str,
@@ -5310,6 +5442,150 @@ def publish_ontology_package(
         compatibility=compatibility,
         migrations=migrations,
     )
+
+
+def submit_object_type_draft(
+    *,
+    tenant_id: str,
+    object_type_id: str,
+    version: str,
+    definition: Dict[str, Any],
+    actor: str,
+    reason: str,
+) -> Dict[str, Any]:
+    """N02 deepen：提交 ObjectType 草稿（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 类型 id。
+        version: 版本。
+        definition: 类型定义。
+        actor: 提交人。
+        reason: 理由。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        submit_object_type_draft as _submit,
+    )
+
+    return _submit(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        version=version,
+        definition=definition,
+        actor=actor,
+        reason=reason,
+    )
+
+
+def transition_object_type(
+    *,
+    tenant_id: str,
+    object_type_id: str,
+    version: str,
+    to_status: str,
+    actor: str,
+    reason: str,
+    role: str = "",
+) -> Dict[str, Any]:
+    """N02 deepen：ObjectType 状态转换（publish 须角色门）。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 类型 id。
+        version: 版本。
+        to_status: 目标态。
+        actor: 操作人。
+        reason: 理由。
+        role: 上游角色。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        transition_object_type as _transition,
+    )
+
+    return _transition(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        version=version,
+        to_status=to_status,
+        actor=actor,
+        reason=reason,
+        role=role,
+    )
+
+
+def get_published_object_type(
+    *,
+    tenant_id: str,
+    object_type_id: str,
+    version: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """N02 deepen：读取已发布 ObjectType。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 类型 id。
+        version: 可选版本。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        get_published_object_type as _get,
+    )
+
+    return _get(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        version=version,
+    )
+
+
+def list_object_type_versions(
+    *,
+    tenant_id: str,
+    object_type_id: str = "",
+    status: str = "",
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    """N02 deepen：列出 ObjectType 版本行。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 可选类型过滤。
+        status: 可选状态过滤。
+        limit: 条数上限。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        list_object_type_versions as _list,
+    )
+
+    return _list(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        status=status,
+        limit=limit,
+    )
+
+
+def run_object_type_publish_suite() -> Dict[str, Any]:
+    """N02 deepen：ObjectType 人审发布套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        run_object_type_publish_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_object_type_publish_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N02 deepen：ObjectType 人审发布门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_object_type_publish_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        evaluate_object_type_publish_gate as _gate,
+    )
+
+    return _gate(suite)
 
 
 def get_ontology_package(
@@ -5873,10 +6149,11 @@ async def put_fact_with_source_policy(
     db_path: Optional[str] = None,
     actor: str = "",
     reason: str = "",
+    role: str = "",
     ledger: Any = None,
     **kwargs: Any,
 ) -> Dict[str, Any]:
-    """W3 N04：经来源策略/冲突门写入 Fact；published 须 actor/reason。
+    """W3 N04：经来源策略/冲突门写入 Fact；published 须 actor/reason/role。
 
     Args:
         tenant_id / collection_id / subject / predicate / object: Fact 键值。
@@ -5887,6 +6164,7 @@ async def put_fact_with_source_policy(
         confidence: 置信度。
         db_path: 策略库路径。
         actor / reason: published 时必填。
+        role: 调用方角色（N04/N12；published 时校验）。
         ledger: 可选 FactLedger。
         **kwargs: 透传 put_fact。
     """
@@ -5914,6 +6192,7 @@ async def put_fact_with_source_policy(
         db_path=db_path,
         actor=actor,
         reason=reason,
+        role=role,
         **kwargs,
     )
 
@@ -5994,8 +6273,9 @@ async def transition_fact_review(
     db_path: Optional[str] = None,
     source_policy_db_path: Optional[str] = None,
     ledger: Any = None,
+    role: str = "",
 ) -> Dict[str, Any]:
-    """W3 N12：Fact 审核态转换。
+    """W3 N12 / N04：Fact 审核态转换（publish 须配置角色）。
 
     Args:
         fact_id: Fact ID。
@@ -6006,6 +6286,7 @@ async def transition_fact_review(
         db_path: 审计库。
         source_policy_db_path: 来源策略库。
         ledger: 可选 FactLedger。
+        role: 调用方角色（上游注入；publish 时校验）。
     """
     from core.harness.knowledge_pipeline.fact_state_machine import (
         transition_fact_review as _tr,
@@ -6025,7 +6306,41 @@ async def transition_fact_review(
         reason=reason,
         db_path=db_path,
         source_policy_db_path=source_policy_db_path,
+        role=role,
     )
+
+
+async def run_reviewer_rbac_suite(
+    *,
+    tenant_id: str = "n04-reviewer-rbac-tenant",
+    domain_id: str = "",
+) -> Dict[str, Any]:
+    """N04/N12 deepen：reviewer 角色门套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        run_reviewer_rbac_suite as _run,
+    )
+
+    return await _run(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_reviewer_rbac_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N04/N12 deepen：reviewer 角色门门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_reviewer_rbac_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        evaluate_reviewer_rbac_gate as _gate,
+    )
+
+    return _gate(suite)
 
 
 async def transition_fact_lifecycle(
@@ -6069,7 +6384,7 @@ async def transition_fact_lifecycle(
     )
 
 
-def transition_claim_status(
+def transition_claim_status_pure(
     *,
     claim_id: str,
     tenant_id: str,
@@ -6080,7 +6395,7 @@ def transition_claim_status(
     revision: int = 1,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """W3 N12：Claim 状态边校验 + 审计。
+    """W3 N12 / N03：Claim 状态边校验 + 审计（不写 Claim 表；诊断用）。
 
     Args:
         claim_id: Claim ID。
@@ -6104,6 +6419,82 @@ def transition_claim_status(
         revision=revision,
         db_path=db_path,
     )
+
+
+async def transition_claim_status(
+    *,
+    claim_id: str,
+    tenant_id: str,
+    to_status: str,
+    actor: str,
+    reason: str,
+    db_path: Optional[str] = None,
+    ledger: Any = None,
+) -> Dict[str, Any]:
+    """N03 deepen：Claim 状态写路径（读当前态 → 合法边 → 审计 → put_claim）。
+
+    Args:
+        claim_id: Claim ID。
+        tenant_id: 租户。
+        to_status: 目标 Claim ``status``。
+        actor: 操作人。
+        reason: 理由。
+        db_path: 审计库。
+        ledger: 可选 FactLedger。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        transition_claim_status as _tr,
+    )
+
+    lg = ledger
+    if lg is None:
+        from core.harness.knowledge_pipeline.fact_ledger import get_fact_ledger
+
+        lg = get_fact_ledger()
+    return await _tr(
+        lg,
+        claim_id=claim_id,
+        tenant_id=tenant_id,
+        to_status=to_status,
+        actor=actor,
+        reason=reason,
+        db_path=db_path,
+    )
+
+
+async def run_claim_status_write_suite(
+    *,
+    tenant_id: str = "n03-claim-status-tenant",
+    domain_id: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N03 deepen：Claim 状态写路径套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+        db_path: 可选审计库。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        run_claim_status_write_suite as _run,
+    )
+
+    return await _run(tenant_id=tenant_id, domain_id=domain_id, db_path=db_path)
+
+
+def evaluate_claim_status_write_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N03 deepen：Claim 状态写路径门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_claim_status_write_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.fact_state_machine import (
+        evaluate_claim_status_write_gate as _gate,
+    )
+
+    return _gate(suite)
 
 
 def evaluate_fact_state_gate(
@@ -6272,6 +6663,39 @@ def resolve_confidence_ceiling(
         query_type=query_type,
         requested=requested,
     )
+
+
+async def run_calibration_pipeline_suite(
+    *,
+    tenant_id: str = "n13-cal-pipeline-tenant",
+    domain_id: str = "n13-cal-probe",
+) -> Dict[str, Any]:
+    """N13 deepen：Operational 校准流水线套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 探针域（调用方传入）。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        run_calibration_pipeline_suite as _run,
+    )
+
+    return await _run(tenant_id=tenant_id, domain_id=domain_id)
+
+
+def evaluate_calibration_pipeline_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N13 deepen：校准流水线门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_calibration_pipeline_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        evaluate_calibration_pipeline_gate as _gate,
+    )
+
+    return _gate(suite)
 
 
 def start_knowledge_migration(
@@ -6470,6 +6894,84 @@ def list_knowledge_migration_events(
     )
 
 
+def authorize_knowledge_migration_cutover(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    token: str,
+) -> Dict[str, Any]:
+    """N11/N14 deepen：作业级切写授权（certified 恒 false）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 授权人。
+        reason: 理由。
+        token: ``AIPLAT_KNOWLEDGE_CUTOVER_TOKEN``。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        authorize_migration_cutover,
+    )
+
+    return authorize_migration_cutover(
+        job_id,
+        tenant_id=tenant_id,
+        actor=actor,
+        reason=reason,
+        token=token,
+    )
+
+
+def request_knowledge_migration_write_cutover(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+) -> Dict[str, Any]:
+    """N11/N14 deepen：请求切写阶段（须已授权；非生产认证）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 操作人。
+        reason: 理由。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        request_write_cutover,
+    )
+
+    return request_write_cutover(
+        job_id, tenant_id=tenant_id, actor=actor, reason=reason
+    )
+
+
+def run_migration_cutover_auth_suite() -> Dict[str, Any]:
+    """N11/N14 deepen：切写授权套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        run_migration_cutover_auth_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_migration_cutover_auth_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N11/N14 deepen：切写授权门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_migration_cutover_auth_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        evaluate_migration_cutover_auth_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 async def traverse_object_links(
     request: Dict[str, Any],
     *,
@@ -6592,6 +7094,30 @@ async def execute_action(
             "execute_action slo sample soft-fail", exc_info=True
         )
     return out
+
+
+async def run_action_policy_audit_suite() -> Dict[str, Any]:
+    """N08 deepen：Policy/Approval/Audit + kill switch 套件（certified 恒 false）。"""
+    from core.harness.ontology_engine.action_registry import (
+        run_action_policy_audit_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_action_policy_audit_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N08 deepen：Policy/Approval/Audit 门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_action_policy_audit_suite`` 回执。
+    """
+    from core.harness.ontology_engine.action_registry import (
+        evaluate_action_policy_audit_gate as _gate,
+    )
+
+    return _gate(suite)
 
 
 def lookup_action_execution(
@@ -7237,6 +7763,26 @@ def get_abox_crud_matrix() -> Dict[str, Any]:
     """
     from core.policy.graph_abox_acl import crud_matrix_doc
     return crud_matrix_doc()
+
+
+def run_role_action_matrix_suite() -> Dict[str, Any]:
+    """N07/N22 deepen：角色×动作轴套件（certified 恒 false）。"""
+    from core.policy.graph_abox_acl import run_role_action_matrix_suite as _run
+
+    return _run()
+
+
+def evaluate_role_action_matrix_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N07/N22 deepen：角色×动作轴门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_role_action_matrix_suite`` 回执。
+    """
+    from core.policy.graph_abox_acl import evaluate_role_action_matrix_gate as _gate
+
+    return _gate(suite)
 
 
 def set_graph_entity_acl(
@@ -16259,7 +16805,9 @@ from core.harness.knowledge.domain_maturity import compare_domains, compute_doma
 from core.harness.knowledge.ontology_completeness import (  # noqa: boundary
     compute_all_ocs,
     compute_domain_ocs,
+    evaluate_ocs_enterprise_scan_gate,
     evaluate_ocs_gate,
+    run_ocs_enterprise_scan_suite,
 )
 from core.harness.evaluation.evidence_diff import compute_evidence_diff  # noqa: boundary
 from core.harness.utils.model_injection import create_selected_adapter  # noqa: boundary
@@ -16334,14 +16882,17 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     evaluate_restore_approval_gate,
     evaluate_revision_action_bridge_gate,
     evaluate_cross_tenant_gate,
+    evaluate_datasource_connector_matrix_gate,
     evaluate_datasource_raw_gate,
     evaluate_fact_revision_gate,
     evaluate_gateway_contract_gate,
     evaluate_raw_integrity_gate,
+    evaluate_unified_query_gateway_gate,
     get_fact_ledger,
     ingest_datasource_raw,
     load_object_type_bindings,
     record_extraction_as_claim,
+    require_unified_query_route,
     run_claim_evidence_suite,
     run_claim_revision_suite,
     run_source_revision_suite,
@@ -16350,9 +16901,17 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_restore_approval_suite,
     run_revision_action_bridge_suite,
     run_cross_tenant_isolation_suite,
+    run_datasource_connector_matrix_suite,
     run_datasource_raw_suite,
     run_fact_revision_suite,
+    run_unified_query_gateway_suite,
+    unified_query_gateway,
+    unified_query_gateway_routes,
     validate_gateway_response,
+)
+from core.harness.ontology_engine.data_source import (  # noqa: boundary
+    datasource_raw_connector_matrix,
+    require_datasource_raw_connector,
 )
 from core.harness.knowledge_pipeline.unified_audit_view import (  # noqa: boundary
     evaluate_unified_audit_view_gate,
@@ -16490,6 +17049,52 @@ def evaluate_fact_datasource_raw_gate(suite: dict | None = None) -> dict:
     return evaluate_datasource_raw_gate(suite)
 
 
+def get_datasource_raw_connector_matrix() -> dict:
+    """CoreFacade：N01 Raw 连接器矩阵声明（Core source_type 轴；certified 恒 false）。
+
+    Returns:
+        connectors / snapshot_modes；非 vendor 全量矩阵。
+    """
+    return datasource_raw_connector_matrix()
+
+
+def ensure_datasource_raw_connector(source_type: str) -> str:
+    """CoreFacade：校验 source_type 属于 Raw 连接器矩阵。
+
+    Args:
+        source_type: file/sql/api。
+
+    Returns:
+        规范化小写类型名。
+    """
+    return require_datasource_raw_connector(source_type)
+
+
+async def fact_ledger_run_datasource_connector_matrix_suite(
+    *,
+    tenant_id: str = "n01-matrix-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N01 Core file/sql/api 连接器矩阵套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域（调用方传入）。
+    """
+    return await run_datasource_connector_matrix_suite(
+        tenant_id=tenant_id, domain_id=domain_id
+    )
+
+
+def evaluate_fact_datasource_connector_matrix_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N01 连接器矩阵门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+    """
+    return evaluate_datasource_connector_matrix_gate(suite)
+
+
 async def fact_ledger_query_gateway(
     *,
     tenant_id: str,
@@ -16546,6 +17151,126 @@ def evaluate_fact_gateway_contract_gate(responses: list | None = None) -> dict:
         gate 结果。
     """
     return evaluate_gateway_contract_gate(responses)
+
+
+def get_unified_query_gateway_routes() -> dict:
+    """CoreFacade：N06 统一 Gateway 路由轴声明（certified 恒 false）。"""
+    return unified_query_gateway_routes()
+
+
+def ensure_unified_query_route(route: str) -> str:
+    """CoreFacade：校验统一 Gateway 路由名。
+
+    Args:
+        route: fact / object_set。
+    """
+    return require_unified_query_route(route)
+
+
+async def fact_ledger_unified_query_gateway(
+    *,
+    tenant_id: str,
+    query: str = "",
+    route: str = "fact",
+    collection_id: str | None = None,
+    domain_id: str | None = None,
+    top_k: int = 8,
+    object_set_request: dict | None = None,
+    permissions: list | None = None,
+    role: str = "",
+    materials_output: dict | None = None,
+    graphrag_result: dict | None = None,
+) -> dict:
+    """CoreFacade：N06 统一 Query Gateway（含 materials/graphrag → F.1）。
+
+    Args:
+        tenant_id: 租户。
+        query: 查询串。
+        route: fact / object_set / wiki / index / materials_chat / graphrag。
+        collection_id / domain_id / top_k: fact/wiki/index 参数。
+        object_set_request: object_set 请求。
+        permissions / role: object_set L1/ACL。
+        materials_output: materials_chat 路由 Agent 输出。
+        graphrag_result: graphrag 路由 retrieve 回执。
+    """
+    return await unified_query_gateway(
+        tenant_id=tenant_id,
+        query=query,
+        route=route,
+        collection_id=collection_id,
+        domain_id=domain_id,
+        top_k=top_k,
+        object_set_request=object_set_request,
+        permissions=permissions,
+        role=role,
+        materials_output=materials_output,
+        graphrag_result=graphrag_result,
+    )
+
+
+def materials_chat_to_f1_envelope(
+    *,
+    tenant_id: str,
+    output: dict | None,
+    kind: str = "auto",
+) -> dict:
+    """CoreFacade：MaterialsChat 输出 → N06 F.1 信封（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        output: MaterialsChat Agent 输出。
+        kind: ``auto`` / ``rag`` / ``shortcut`` / ``cache_hit``。
+    """
+    from core.harness.knowledge_pipeline.fact_ledger import (
+        materials_chat_to_f1_envelope as _m,
+    )
+
+    return _m(tenant_id=tenant_id, output=output, kind=kind)
+
+
+def graphrag_to_f1_envelope(
+    *,
+    tenant_id: str,
+    result: dict | None,
+    query: str = "",
+) -> dict:
+    """CoreFacade：GraphRAG 结果 → N06 F.1 信封（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        result: GraphRAG retrieve 回执。
+        query: 原始查询。
+    """
+    from core.harness.knowledge_pipeline.fact_ledger import (
+        graphrag_to_f1_envelope as _g,
+    )
+
+    return _g(tenant_id=tenant_id, result=result, query=query)
+
+
+async def fact_ledger_run_unified_query_gateway_suite(
+    *,
+    tenant_id: str = "n06-unified-gw-tenant",
+    domain_id: str = "",
+) -> dict:
+    """CoreFacade：N06 统一 Gateway 套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 写入租户。
+        domain_id: 可选域。
+    """
+    return await run_unified_query_gateway_suite(
+        tenant_id=tenant_id, domain_id=domain_id
+    )
+
+
+def evaluate_fact_unified_query_gateway_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N06 统一 Gateway 门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+    """
+    return evaluate_unified_query_gateway_gate(suite)
 
 
 async def fact_ledger_run_cross_tenant_suite(
@@ -17311,11 +18036,11 @@ async def list_fact_unified_audit_events(
     domain_id: str = "",
     limit: int = 100,
 ) -> dict:
-    """CoreFacade：N24 多源统一审计汇合视图（含 ActionStore；非 certified）。
+    """CoreFacade：N24 多源统一审计汇合视图（含 ActionStore/FactQuery；非 certified）。
 
     Args:
         tenant_id: 租户。
-        streams: 逗号分隔流名；空则默认多流。
+        streams: 逗号分隔流名；空则默认多流（含 fact_query_audit）。
         package_id: Package 流可选过滤。
         action_id_prefix: Action 流可选前缀。
         entity_type: revision 流可选实体类型。
@@ -17446,11 +18171,11 @@ async def materialize_fact_unified_audit_bus(
     entity_id: str = "",
     limit: int = 100,
 ) -> dict:
-    """CoreFacade：将源三流汇合 materialize 进写总线。
+    """CoreFacade：将源流水汇合 materialize 进写总线。
 
     Args:
         tenant_id: 租户。
-        streams: 逗号分隔源流水线；空则三流。
+        streams: 逗号分隔源流水线；空则含 package/action/revision/action_store/fact_query_audit。
         package_id: Package 可选过滤。
         action_id_prefix: Action 可选前缀。
         entity_type: revision 可选实体类型。
@@ -17548,6 +18273,827 @@ def validate_fact_rebuild_receipt(receipt: dict) -> dict:
     )
 
     return _gate(receipt or {})
+
+
+async def fact_ledger_project_to_wiki(
+    *,
+    tenant_id: str,
+    domain_id: str,
+    clear_projected: bool = False,
+    rebuild_mode: str = "",
+    rebuild_reason: str = "",
+    exact_capable: bool = True,
+) -> dict:
+    """CoreFacade：Fact → Wiki 派生页重建（N05 deepen；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 域。
+        clear_projected: 是否先清除该域派生页。
+        rebuild_mode: 可选三分类 mode。
+        rebuild_reason: 分类理由。
+        exact_capable: 是否可精确重放。
+    """
+    from core.harness.knowledge_pipeline.wiki_rebuild import project_facts_to_wiki
+
+    return await project_facts_to_wiki(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        clear_projected=clear_projected,
+        rebuild_mode=rebuild_mode or None,
+        rebuild_reason=rebuild_reason or "",
+        exact_capable=exact_capable,
+    )
+
+
+def list_wiki_rebuild_pages(
+    *,
+    tenant_id: str,
+    domain_id: str = "",
+    limit: int = 200,
+) -> list:
+    """CoreFacade：列出 Wiki 重建派生页（租户前置）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        limit: 最大条数。
+    """
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        list_wiki_rebuild_pages as _list,
+    )
+
+    return _list(tenant_id=tenant_id, domain_id=domain_id, limit=limit)
+
+
+async def run_wiki_rebuild_suite() -> dict:
+    """CoreFacade：N05 Wiki 有条件重建套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        run_wiki_rebuild_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_wiki_rebuild_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N05 Wiki 重建门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_wiki_rebuild_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        evaluate_wiki_rebuild_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
+def register_knowledge_gold_dataset(
+    *,
+    tenant_id: str,
+    domain_id: str,
+    version: str,
+    cases: List[Dict[str, Any]],
+    threshold: float = 0.8,
+) -> dict:
+    """CoreFacade：登记域级 gold 数据集（N10；accuracy/certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 域。
+        version: 数据集版本。
+        cases: Exact-match 用例。
+        threshold: 通过率门槛。
+    """
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        register_gold_dataset,
+    )
+
+    return register_gold_dataset(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        version=version,
+        cases=cases,
+        threshold=threshold,
+    )
+
+
+async def run_knowledge_gold_eval_pipeline(
+    *,
+    tenant_id: str,
+    domain_ids: Optional[List[str]] = None,
+) -> dict:
+    """CoreFacade：跨域 gold 评测流水线（N10；accuracy/certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_ids: 可选域列表；默认 DomainRouter。
+    """
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        run_knowledge_gold_eval_pipeline as _run,
+    )
+
+    return await _run(tenant_id=tenant_id, domain_ids=domain_ids)
+
+
+async def run_knowledge_gold_eval_suite() -> dict:
+    """CoreFacade：N10 gold 评测套件（certified/accuracy 恒 false）。"""
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        run_knowledge_gold_eval_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_knowledge_gold_eval_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N10 gold 评测门槛门（certified/accuracy 恒 false）。
+
+    Args:
+        suite: ``run_knowledge_gold_eval_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        evaluate_knowledge_gold_eval_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
+def validate_record_semantics(
+    *,
+    kind: str,
+    data: Dict[str, Any],
+) -> dict:
+    """CoreFacade：单条记录级语义校验（N17；certified 恒 false）。
+
+    Args:
+        kind: 记录类型。
+        data: 记录载荷。
+    """
+    from core.harness.knowledge_pipeline.record_semantics import validate_record
+
+    return validate_record(kind, data)
+
+
+def validate_record_transition(
+    *,
+    machine: str,
+    from_state: str,
+    to_state: str,
+) -> dict:
+    """CoreFacade：状态机单步转换校验（N17；certified 恒 false）。
+
+    Args:
+        machine: 状态机名。
+        from_state: 源状态。
+        to_state: 目标状态。
+    """
+    from core.harness.knowledge_pipeline.record_semantics import validate_transition
+
+    return validate_transition(machine, from_state, to_state)
+
+
+async def scan_record_semantics_facts(
+    *,
+    tenant_id: str,
+    domain_id: Optional[str] = None,
+    collection_id: Optional[str] = None,
+    limit: int = 100,
+) -> dict:
+    """CoreFacade：扫描 FactLedger 记录级语义违规（N17；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        collection_id: 可选集合。
+        limit: 扫描上限。
+    """
+    from core.harness.knowledge_pipeline.record_semantics import scan_ledger_facts
+
+    return await scan_ledger_facts(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        collection_id=collection_id,
+        limit=limit,
+    )
+
+
+async def run_record_semantics_suite() -> dict:
+    """CoreFacade：N17 记录级语义套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.record_semantics import (
+        run_record_semantics_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_record_semantics_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N17 记录级语义门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_record_semantics_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.record_semantics import (
+        evaluate_record_semantics_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
+def load_deployed_rbac_policy(
+    *,
+    policy_json: Optional[str] = None,
+    policy_path: Optional[str] = None,
+) -> dict:
+    """CoreFacade：加载部署侧 RBAC 策略（N18；禁 reference_policy）。
+
+    Args:
+        policy_json: 可选 JSON。
+        policy_path: 可选路径。
+    """
+    from core.harness.knowledge_pipeline.deployed_rbac_policy import (
+        load_deployed_policy,
+    )
+
+    return load_deployed_policy(policy_json=policy_json, policy_path=policy_path)
+
+
+def evaluate_deployed_rbac_permission(
+    *,
+    role: str,
+    action: str,
+    actor_tenant: str,
+    target_tenant: str,
+    policy_json: Optional[str] = None,
+) -> dict:
+    """CoreFacade：部署侧权限评估（N18；certified 恒 false）。
+
+    Args:
+        role: 角色。
+        action: 动作。
+        actor_tenant: 调用方租户。
+        target_tenant: 目标租户。
+        policy_json: 可选策略 JSON。
+    """
+    from core.harness.knowledge_pipeline.deployed_rbac_policy import (
+        evaluate_permission,
+        load_deployed_policy,
+    )
+
+    pol = load_deployed_policy(policy_json=policy_json) if policy_json else None
+    return evaluate_permission(
+        role=role,
+        action=action,
+        actor_tenant=actor_tenant,
+        target_tenant=target_tenant,
+        policy=pol,
+    )
+
+
+def run_deployed_rbac_suite() -> dict:
+    """CoreFacade：N18 部署侧 RBAC 套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.deployed_rbac_policy import (
+        run_deployed_rbac_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_deployed_rbac_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N18 部署侧 RBAC 门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_deployed_rbac_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.deployed_rbac_policy import (
+        evaluate_deployed_rbac_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
+def record_fact_query_audit_snapshot(
+    *,
+    tenant_id: str,
+    kind: str,
+    subject_ref: str,
+    before_snapshot: Optional[Dict[str, Any]] = None,
+    after_snapshot: Optional[Dict[str, Any]] = None,
+    runtime_authority: str = "fact_ledger",
+    meta: Optional[Dict[str, Any]] = None,
+) -> dict:
+    """CoreFacade：写入 Fact/Query 统一审计快照（N19；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        kind: fact/query。
+        subject_ref: 主体引用。
+        before_snapshot: 前快照。
+        after_snapshot: 后快照。
+        runtime_authority: 运行时权威。
+        meta: 可选元数据。
+    """
+    from core.harness.knowledge_pipeline.fact_query_audit import (
+        record_audit_snapshot,
+    )
+
+    return record_audit_snapshot(
+        tenant_id=tenant_id,
+        kind=kind,
+        subject_ref=subject_ref,
+        before_snapshot=before_snapshot,
+        after_snapshot=after_snapshot,
+        runtime_authority=runtime_authority,
+        meta=meta,
+    )
+
+
+def list_fact_query_audit_snapshots(
+    *,
+    tenant_id: str,
+    kind: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """CoreFacade：列出 Fact/Query 统一审计快照（N19；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        kind: 可选 fact/query。
+        limit: 上限。
+    """
+    from core.harness.knowledge_pipeline.fact_query_audit import (
+        list_audit_snapshots,
+    )
+
+    return list_audit_snapshots(tenant_id=tenant_id, kind=kind, limit=limit)
+
+
+def run_fact_query_audit_suite() -> dict:
+    """CoreFacade：N19 Fact/Query 统一审计套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.fact_query_audit import (
+        run_fact_query_audit_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_fact_query_audit_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N19 Fact/Query 统一审计门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_fact_query_audit_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.fact_query_audit import (
+        evaluate_fact_query_audit_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
+def evaluate_knowledge_constraint_stack(
+    *,
+    risk_level: str = "medium",
+    required_permissions: Optional[List[str]] = None,
+    actor_permissions: Optional[List[str]] = None,
+    soft_constraints: Optional[List[Dict[str, Any]]] = None,
+    require_audit: bool = True,
+    l1_present: bool = True,
+) -> dict:
+    """CoreFacade：知识面 L1/L2/L3 约束栈（N20；certified 恒 false）。
+
+    Args:
+        risk_level: 风险等级。
+        required_permissions: L1 所需权限。
+        actor_permissions: 调用方权限。
+        soft_constraints: L2 软约束。
+        require_audit: 是否要求 L3 审计。
+        l1_present: 是否声明 L1 门。
+    """
+    from core.harness.knowledge_pipeline.constraint_layers import (
+        evaluate_constraint_stack,
+    )
+
+    return evaluate_constraint_stack(
+        risk_level=risk_level,
+        required_permissions=required_permissions,
+        actor_permissions=actor_permissions,
+        soft_constraints=soft_constraints,
+        require_audit=require_audit,
+        l1_present=l1_present,
+    )
+
+
+def run_constraint_layers_suite() -> dict:
+    """CoreFacade：N20 约束分层套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.constraint_layers import (
+        run_constraint_layers_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_constraint_layers_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N20 约束分层门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_constraint_layers_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.constraint_layers import (
+        evaluate_constraint_layers_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
+def validate_query_abstain_citations(
+    *,
+    response: Dict[str, Any],
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：校验查询 abstain+citations（N21；certified 恒 false）。
+
+    Args:
+        response: 查询响应。
+        require_citations_on_hit: 命中是否要求 citations。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        validate_abstain_citations,
+    )
+
+    return validate_abstain_citations(
+        response,
+        require_citations_on_hit=require_citations_on_hit,
+    )
+
+
+def enforce_query_abstain_citations(
+    *,
+    response: Dict[str, Any],
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：归一化查询 abstain+citations（N21；certified 恒 false）。
+
+    Args:
+        response: 查询响应。
+        require_citations_on_hit: 命中是否要求 citations。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_abstain_citations,
+    )
+
+    return enforce_abstain_citations(
+        response,
+        require_citations_on_hit=require_citations_on_hit,
+    )
+
+
+async def run_query_abstain_citations_suite() -> dict:
+    """CoreFacade：N21 abstain+citations 套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        run_query_abstain_citations_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_query_abstain_citations_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N21 abstain+citations 门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_query_abstain_citations_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        evaluate_query_abstain_citations_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
+def pack_retrieve_hits_as_query_response(
+    hits: Optional[List[Dict[str, Any]]] = None,
+    *,
+    channel: str = "retrieve",
+    query: str = "",
+) -> dict:
+    """CoreFacade：Wiki/KB 命中打包为查询形响应（N21；certified 恒 false）。
+
+    Args:
+        hits: 命中列表。
+        channel: ``wiki`` / ``kb``。
+        query: 原始查询。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        pack_retrieve_hits_as_query_response as _pack,
+    )
+
+    return _pack(hits, channel=channel, query=query)
+
+
+def query_wiki_with_abstain(
+    query: str,
+    *,
+    tenant_id: str = "",
+    collection_ids: Optional[List[str]] = None,
+    top_k: int = 8,
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：Wiki 查询形 + abstain 强制（N21；certified 恒 false）。
+
+    Args:
+        query: 查询。
+        tenant_id: 租户。
+        collection_ids: Wiki collections。
+        top_k: 召回上限。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        query_wiki_with_abstain as _q,
+    )
+
+    return _q(
+        query,
+        tenant_id=tenant_id,
+        collection_ids=collection_ids,
+        top_k=top_k,
+        require_citations_on_hit=require_citations_on_hit,
+    )
+
+
+def query_kb_with_abstain(
+    query: str,
+    *,
+    tenant_id: str = "",
+    doc_ids: Optional[List[str]] = None,
+    collection_id: str = "",
+    top_k: int = 8,
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：KB 查询形 + abstain 强制（N21；certified 恒 false）。
+
+    Args:
+        query: 查询。
+        tenant_id: 租户。
+        doc_ids: 可选文档过滤。
+        collection_id: collection。
+        top_k: 召回上限。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        query_kb_with_abstain as _q,
+    )
+
+    return _q(
+        query,
+        tenant_id=tenant_id,
+        doc_ids=doc_ids,
+        collection_id=collection_id,
+        top_k=top_k,
+        require_citations_on_hit=require_citations_on_hit,
+    )
+
+
+def enforce_materials_chat_output(
+    *,
+    output: Dict[str, Any],
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：MaterialsChat RAG 出口 abstain 强制（N21；certified 恒 false）。
+
+    Args:
+        output: Agent 输出。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_output as _e,
+    )
+
+    return _e(output, require_citations_on_hit=require_citations_on_hit)
+
+
+def enforce_materials_chat_shortcut_output(
+    *,
+    output: Dict[str, Any],
+) -> dict:
+    """CoreFacade：MaterialsChat 非 RAG 捷径出口强制（N21；certified 恒 false）。
+
+    Args:
+        output: trivial_bypass 输出。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_shortcut_output as _e,
+    )
+
+    return _e(output)
+
+
+def is_materials_trivial_bypass(*, output: Dict[str, Any]) -> bool:
+    """CoreFacade：判定 MaterialsChat 是否 trivial 捷径（N21）。
+
+    Args:
+        output: Agent 输出。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        is_materials_trivial_bypass as _i,
+    )
+
+    return _i(output)
+
+
+def enforce_materials_chat_cache_hit_output(
+    *,
+    output: Dict[str, Any],
+    require_citations_on_hit: bool = True,
+) -> dict:
+    """CoreFacade：MaterialsChat cache_hit 出口强制（N21；certified 恒 false）。
+
+    Args:
+        output: cache_hit 输出。
+        require_citations_on_hit: 无引用则 abstain。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_cache_hit_output as _e,
+    )
+
+    return _e(output, require_citations_on_hit=require_citations_on_hit)
+
+
+def is_materials_cache_hit(*, output: Dict[str, Any]) -> bool:
+    """CoreFacade：判定 MaterialsChat 是否 cache_hit（N21）。
+
+    Args:
+        output: Agent 输出。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        is_materials_cache_hit as _i,
+    )
+
+    return _i(output)
+
+
+def attach_graphrag_n21_envelope(
+    *,
+    result: Dict[str, Any],
+    query: str = "",
+    require_citations_on_hit: bool = True,
+    tenant_id: str = "",
+) -> dict:
+    """CoreFacade：GraphRAG 附加 n21_query；租户非空时挂 gateway_f1。
+
+    Args:
+        result: GraphRAG retrieve 回执。
+        query: 原始查询。
+        require_citations_on_hit: 无引用则 abstain。
+        tenant_id: 非空时附加 N06 ``gateway_f1``。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        attach_graphrag_n21_envelope as _a,
+    )
+
+    return _a(
+        result,
+        query=query,
+        require_citations_on_hit=require_citations_on_hit,
+        tenant_id=tenant_id,
+    )
+
+
+def attach_list_retrieve_n21_envelope(
+    *,
+    hits: Any,
+    channel: str,
+    query: str = "",
+    require_citations_on_hit: bool = True,
+    tenant_id: str = "",
+) -> dict:
+    """CoreFacade：Wiki/KB list 命中挂 n21_query（N21；不改 list 主结构）。
+
+    Args:
+        hits: list 命中或含 results 的上下文 dict。
+        channel: wiki / kb / wiki_context。
+        query: 原始查询。
+        require_citations_on_hit: 无引用则 abstain。
+        tenant_id: 非空时透传 N19 Wiki/KB 热路径审计。
+    """
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        attach_list_retrieve_n21_envelope as _a,
+    )
+
+    return _a(
+        hits,
+        channel=channel,
+        query=query,
+        require_citations_on_hit=require_citations_on_hit,
+        tenant_id=tenant_id,
+    )
+
+
+async def reconcile_raw_fact_index_chain(
+    *,
+    tenant_id: str,
+    domain_id: Optional[str] = None,
+    collection_id: Optional[str] = None,
+    index_fact_ids: Optional[List[str]] = None,
+    extra_raw_ids: Optional[List[str]] = None,
+    limit: int = 500,
+) -> dict:
+    """CoreFacade：Raw↔Fact↔Index 对账（N14；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        collection_id: 可选集合。
+        index_fact_ids: Index 层 fact_id。
+        extra_raw_ids: 额外 Raw source_id。
+        limit: 扫描上限。
+    """
+    from core.harness.knowledge_pipeline.raw_fact_index_reconcile import (
+        reconcile_raw_fact_index,
+    )
+
+    return await reconcile_raw_fact_index(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        collection_id=collection_id,
+        index_fact_ids=index_fact_ids,
+        extra_raw_ids=extra_raw_ids,
+        limit=limit,
+    )
+
+
+async def run_raw_fact_index_reconcile_suite() -> dict:
+    """CoreFacade：N14 Raw↔Fact↔Index 对账套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.raw_fact_index_reconcile import (
+        run_raw_fact_index_reconcile_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_raw_fact_index_reconcile_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N14 Raw↔Fact↔Index 对账门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_raw_fact_index_reconcile_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.raw_fact_index_reconcile import (
+        evaluate_raw_fact_index_reconcile_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
+def evaluate_lv4_false_positive(
+    *,
+    action_id: str,
+    total: int,
+    false_positives: int,
+    rollback_action_id: Optional[str] = None,
+    fp_rate_max: float = 0.005,
+    min_samples: Optional[int] = None,
+) -> dict:
+    """CoreFacade：Lv4 误报门评估（N08；certified 恒 false）。
+
+    Args:
+        action_id: 动作 id。
+        total: 历史执行条数。
+        false_positives: 误报条数。
+        rollback_action_id: 回滚动作。
+        fp_rate_max: 误报率上限。
+        min_samples: 最小样本。
+    """
+    from core.harness.knowledge_pipeline.lv4_false_positive_gate import (
+        evaluate_lv4_fp_gate,
+    )
+
+    return evaluate_lv4_fp_gate(
+        action_id=action_id,
+        total=total,
+        false_positives=false_positives,
+        rollback_action_id=rollback_action_id,
+        fp_rate_max=fp_rate_max,
+        min_samples=min_samples,
+    )
+
+
+def run_lv4_false_positive_gate_suite() -> dict:
+    """CoreFacade：N08 Lv4 误报门套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.lv4_false_positive_gate import (
+        run_lv4_false_positive_gate_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_lv4_false_positive_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N08 Lv4 误报门门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_lv4_false_positive_gate_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.lv4_false_positive_gate import (
+        evaluate_lv4_false_positive_gate as _gate,
+    )
+
+    return _gate(suite)
 
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary

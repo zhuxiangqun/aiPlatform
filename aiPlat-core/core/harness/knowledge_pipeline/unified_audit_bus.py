@@ -1,4 +1,4 @@
-"""N24 Unified Audit Bus（Batch J5–J7）— append-only 写总线。
+"""N24 Unified Audit Bus（Batch J5–J7/J11）— append-only 写总线。
 
 职责：租户隔离的统一审计事件落盘；幂等 append；从只读汇合 materialize；suite/gate 诚实锁。
 非目标：不宣称 N24 certified；不改写 ActionStore 历史行。
@@ -19,6 +19,7 @@ _N24_UNIFIED_AUDIT_BUS_CASES = (
     "package_hotpath_to_bus",
     "action_hotpath_to_bus",
     "action_store_hotpath_to_bus",
+    "fact_query_hotpath_to_bus",
     "materialize_source_streams",
     "cross_tenant_empty",
 )
@@ -265,13 +266,14 @@ async def materialize_unified_audit_from_view(
     action_execution_db_path: Optional[str] = None,
     action_store_db_path: Optional[str] = None,
     bus_db_path: Optional[str] = None,
+    fact_query_audit_db_path: Optional[str] = None,
     fact_ledger: Any = None,
 ) -> Dict[str, Any]:
     """将只读源流水合写入总线（certified 恒 false）。
 
     Args:
         tenant_id: 租户。
-        streams: 源流水线；默认含 package/action/revision/action_store（不含 bus）。
+        streams: 源流水线；默认含 package/action/revision/action_store/fact_query_audit（不含 bus）。
         package_id: Package 可选过滤。
         action_id_prefix: Action 可选前缀。
         entity_type: revision 可选实体类型。
@@ -282,6 +284,7 @@ async def materialize_unified_audit_from_view(
         action_execution_db_path: ActionExecution DB。
         action_store_db_path: ActionStore DB。
         bus_db_path: 总线 DB。
+        fact_query_audit_db_path: N19 Fact/Query 审计 DB。
         fact_ledger: 可选 FactLedger。
 
     Returns:
@@ -299,6 +302,7 @@ async def materialize_unified_audit_from_view(
             "action_execution",
             "revision_audit",
             "action_store",
+            "fact_query_audit",
         ]
     src_streams = [s for s in src_streams if s != "bus"]
     if not src_streams:
@@ -316,6 +320,7 @@ async def materialize_unified_audit_from_view(
         package_db_path=package_db_path,
         action_execution_db_path=action_execution_db_path,
         action_store_db_path=action_store_db_path,
+        fact_query_audit_db_path=fact_query_audit_db_path,
         fact_ledger=fact_ledger,
     )
     written = 0
@@ -381,7 +386,9 @@ async def run_unified_audit_bus_suite(
         bus_db = str(root / "unified_audit_bus.sqlite3")
         pkg_db = str(root / "ontology_package.sqlite3")
         act_db = str(root / "action_execution.sqlite3")
+        fqa_db = str(root / "fact_query_audit.sqlite3")
         os.environ["AIPLAT_UNIFIED_AUDIT_BUS_DB"] = bus_db
+        os.environ["AIPLAT_FACT_QUERY_AUDIT_DB"] = fqa_db
         lg = FactLedger(
             db_path=str(root / "fact_ledger.sqlite3"),
             raw_dir=root / "raw",
@@ -559,12 +566,40 @@ async def run_unified_audit_bus_suite(
             }
         )
 
+        from core.harness.knowledge_pipeline.fact_query_audit import (
+            record_audit_snapshot,
+        )
+
+        # 为什么：J11 — Fact/Query 写入后热路径直写总线；J10 materialize 幂等共存
+        fqa_row = record_audit_snapshot(
+            tenant_id=tenant_id,
+            kind="query",
+            subject_ref="n24-uab-fqa",
+            after_snapshot={"abstained": True, "citations": []},
+            runtime_authority="query_gateway",
+            meta={"hotpath": True, "op": "suite"},
+            db_path=fqa_db,
+        )
+        fqa_bus = list_unified_audit_bus_events(
+            tenant_id=tenant_id, stream="fact_query_audit", limit=50, db_path=bus_db
+        )
+        fqa_eid = f"fqa:{fqa_row.get('snapshot_id')}"
+        fqa_ok = any(e.get("event_id") == fqa_eid for e in fqa_bus)
+        cases.append(
+            {
+                "id": "fact_query_hotpath_to_bus",
+                "ok": fqa_ok,
+                "detail": "" if fqa_ok else "fact_query_hotpath_missing",
+            }
+        )
+
         mat = await materialize_unified_audit_from_view(
             tenant_id=tenant_id,
             package_db_path=pkg_db,
             action_execution_db_path=act_db,
             action_store_db_path=store_db,
             bus_db_path=bus_db,
+            fact_query_audit_db_path=fqa_db,
             fact_ledger=lg,
             limit=200,
         )
@@ -579,6 +614,7 @@ async def run_unified_audit_bus_suite(
             and "action_execution" in tags
             and "revision_audit" in tags
             and "action_store" in tags
+            and "fact_query_audit" in tags
         )
         cases.append(
             {
@@ -601,6 +637,7 @@ async def run_unified_audit_bus_suite(
         )
     finally:
         os.environ.pop("AIPLAT_UNIFIED_AUDIT_BUS_DB", None)
+        os.environ.pop("AIPLAT_FACT_QUERY_AUDIT_DB", None)
         tmp.cleanup()
 
     passed = sum(1 for c in cases if c.get("ok") is True)
@@ -617,7 +654,10 @@ async def run_unified_audit_bus_suite(
         "cases": cases,
         "certified": False,
         "n24_full_conformance": False,
-        "note": "append-only bus + Package/Action/revision/ActionStore hot-path; not N24 certified",
+        "note": (
+            "append-only bus + Package/Action/revision/ActionStore/"
+            "FactQuery(J10 view+J11 hotpath); not N24 certified"
+        ),
     }
 
 

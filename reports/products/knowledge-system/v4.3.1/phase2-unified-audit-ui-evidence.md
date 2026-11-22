@@ -10,7 +10,14 @@ pilot_domain: lock-service
 # Phase 2 / Unified Audit UI（Batch J4）证据
 
 > 实施权威：附录 N N24 partial 加深（知识工厂统一审计只读薄面板；经 J3 HTTP→CoreFacade）。  
-> **未宣称** 写总线表 / ActionStore 合并 / N24 certified。
+> **未宣称** 写总线表 / N24 certified。
+>
+> 流过滤加深见 Batch J12：`phase2-unified-audit-ui-streams-evidence.md`。  
+> materialize / 写总线列表见 Batch J13：`phase2-unified-audit-ui-materialize-evidence.md`。  
+> bus suite/gate 见 Batch J14：`phase2-unified-audit-ui-bus-gate-evidence.md`。  
+> 薄 append 见 Batch J15：`phase2-unified-audit-ui-append-evidence.md`。  
+> append refs/payload 见 Batch J16：`phase2-unified-audit-ui-append-payload-evidence.md`。  
+> 事件详情 / bus event_type 过滤见 Batch J17：`phase2-unified-audit-ui-event-detail-evidence.md`。
 
 ## 检查表
 
@@ -40,7 +47,6 @@ cd aiPlat-management/frontend && npx tsc --noEmit && npm run build
 ## 明确未做
 
 - 强制全量事件进 ActionExecution / Package·Action 热路径全量写 bus
-- 合并 ActionStore `action_audit` 为同一流
 - N24 / 附录 N 全量认证
 
 > 写总线见 Batch J5：`phase2-unified-audit-bus-evidence.md`。

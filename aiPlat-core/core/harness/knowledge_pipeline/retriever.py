@@ -52,8 +52,22 @@ class GraphRAGRetriever:
             query, domain_id, tenant_id=tenant_id
         )
         if not entities:
-            return {"mode": "vector_only", "chunks": [], "reasoning_paths": [],
-                    "entities": [], "note": "No entities extracted from query"}
+            # 为什么：N21 GraphRAG 信封 — 空实体也附 n21_query（防假绿）
+            from core.harness.knowledge_pipeline.query_abstain_citations import (
+                attach_graphrag_n21_envelope,
+            )
+
+            return attach_graphrag_n21_envelope(
+                {
+                    "mode": "vector_only",
+                    "chunks": [],
+                    "reasoning_paths": [],
+                    "entities": [],
+                    "note": "No entities extracted from query",
+                },
+                query=query,
+                tenant_id=tenant_id,
+            )
 
         # Locate entities in graph
         entity_nodes = []
@@ -68,8 +82,21 @@ class GraphRAGRetriever:
             chunks = await self._vector_search(
                 query, domain_id, top_k, tenant_id=tenant_id
             )
-            return {"mode": "vector_only", "chunks": chunks, "reasoning_paths": [],
-                    "entities": entities, "note": "Entities found in query but not in graph"}
+            from core.harness.knowledge_pipeline.query_abstain_citations import (
+                attach_graphrag_n21_envelope,
+            )
+
+            return attach_graphrag_n21_envelope(
+                {
+                    "mode": "vector_only",
+                    "chunks": chunks,
+                    "reasoning_paths": [],
+                    "entities": entities,
+                    "note": "Entities found in query but not in graph",
+                },
+                query=query,
+                tenant_id=tenant_id,
+            )
 
         # ── Layer 2: Subgraph extraction (2-hop) ──
         subgraph = self._extract_subgraph(
@@ -91,13 +118,21 @@ class GraphRAGRetriever:
         # ── Layer 4: Reasoning paths ──
         paths = self._extract_reasoning_paths(subgraph, entity_nodes, query)
 
-        return {
-            "mode": "graphrag",
-            "entities": entity_nodes,
-            "subgraph_size": len(subgraph.get("nodes", [])),
-            "chunks": chunks,
-            "reasoning_paths": paths,
-        }
+        from core.harness.knowledge_pipeline.query_abstain_citations import (
+            attach_graphrag_n21_envelope,
+        )
+
+        return attach_graphrag_n21_envelope(
+            {
+                "mode": "graphrag",
+                "entities": entity_nodes,
+                "subgraph_size": len(subgraph.get("nodes", [])),
+                "chunks": chunks,
+                "reasoning_paths": paths,
+            },
+            query=query,
+            tenant_id=tenant_id,
+        )
 
     # ═══════════════════════════════════════════════════════
     # Entity extraction from query (LLM or keyword)

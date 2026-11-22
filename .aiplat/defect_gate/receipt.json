@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-19T17:23:46+08:00",
+  "reviewed_at": "2026-11-22T06:50:21+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4d5c584aae1a8c63adbffce637bbc80e18d2dfed",
-  "diff_sha256": "882d9bd5968363009c0188e3b42b6bf13cec78b54e1f503ac6330049e3e3ff49",
-  "head_sha": "20e18a9a5508c082607b771dbd467980a58e46e7",
+  "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
+  "diff_sha256": "d925c3525d759882939192e66595c67061f0fcc0e544da6c87c91457812229be",
+  "head_sha": "a74c5f3e698dde1afbaa53f6fe9ff075b211fe37",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "F1 deepen SLO telemetry wiring; Facade+FDE; wiring\u2260attainment; Full remains conditional; clause-sync \u00a7151. Local lock only."
+  "note": "Land tip CI: N19/N20 suites read materials_chat.py via Path (no harness→apps); DOCUMENT_SYSTEM ontology LOC 14345. Residual: tip→main needs CI green + non-author Approve."
 }

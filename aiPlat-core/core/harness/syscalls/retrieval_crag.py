@@ -83,6 +83,8 @@ async def sys_crag_retrieve(
 
     run_id: str = "",
 
+    record_hotpath_audit: bool = True,
+
 ) -> Tuple[str, List[Dict[str, Any]]]:
 
     """sys_crag_retrieve。
@@ -99,6 +101,7 @@ async def sys_crag_retrieve(
         enable_deep_research: enable_deep_research 参数。
         time_filters: time_filters 参数。
         run_id: 运行 ID。
+        record_hotpath_audit: N19 KB Q&A 热路径；MaterialsChat 等上层关以免双写。
     """
     from ._trace import trace_syscall_entry
 
@@ -126,6 +129,25 @@ async def sys_crag_retrieve(
 
     citations: List[Dict[str, Any]] = []
 
+    def _finish(text: str, cites: List[Dict[str, Any]], *, route: str = "crag"):
+        # 为什么：N19 — KB Q&A/CRAG 旁路落 Query 快照；上层 MaterialsChat 关开关防双写
+        if record_hotpath_audit:
+            try:
+                from core.harness.knowledge_pipeline.fact_query_audit import (
+                    maybe_record_kb_qa_hotpath,
+                )
+
+                maybe_record_kb_qa_hotpath(
+                    tenant_id=tenant_id or "",
+                    retrieved_text=text or "",
+                    citations=cites or [],
+                    query=query or "",
+                    route=route,
+                )
+            except Exception:
+                _log.warning("N19 kb_qa hotpath audit skipped", exc_info=True)
+        return text, cites
+
 
     # ── Cache lookup (transparent at syscall level, v3.1) ──
     try:
@@ -136,7 +158,7 @@ async def sys_crag_retrieve(
             text = cached.get("text", "") or cached.get("llm_answer", "")
             if text and len(text) > 50:
                 _log.info("Cache HIT for query in %s", cache_id)
-                return text, [{"source": "semantic_cache", "text": text[:200]}]
+                return _finish(text, [{"source": "semantic_cache", "text": text[:200]}], route="cache")
     except Exception:
         _log.debug("Cache lookup unavailable", exc_info=True)
 
@@ -178,7 +200,7 @@ async def sys_crag_retrieve(
                     citations = [{"source": f"graphrag:{domain_id}", "text": chunks_text[:200]}]
                     _log.info("GraphRAG: entity routing → %d nodes, %d chars",
                               g_result.get("subgraph_size", 0), len(retrieved_docs))
-                    return retrieved_docs, citations
+                    return _finish(retrieved_docs, citations, route="graphrag")
         except Exception:
             _log.debug("GraphRAG unavailable, falling to Level 1", exc_info=True)
 
@@ -239,6 +261,9 @@ async def sys_crag_retrieve(
                 tenant_id=tenant_id,
 
                 top_k=top_k,
+
+                # 为什么：本入口已落 kb_qa 审计（或上层 MaterialsChat）；关裸 list 防双写
+                record_hotpath_audit=False,
 
                 **kwargs,
 
@@ -388,7 +413,7 @@ async def sys_crag_retrieve(
 
 
 
-    return retrieved_docs, citations
+    return _finish(retrieved_docs, citations, route="crag")
 
 
 

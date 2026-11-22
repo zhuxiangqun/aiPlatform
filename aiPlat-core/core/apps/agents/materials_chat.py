@@ -48,6 +48,185 @@ def _build_turn_summary(question: str, answer: str) -> str:
     return build_turn_summary(question, answer)
 
 
+def _n21_enforce_rag_output(
+    output: Dict[str, Any],
+    *,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    """N21：MaterialsChat RAG 出口 abstain+citations 强制；可选挂 N06 F.1。
+
+    Args:
+        output: Agent 输出 dict。
+        tenant_id: 非空时附加 ``gateway_f1``（N06 materials_chat 路由）。
+    """
+    # 为什么：RAG 假命中不得带空 citations 绿通
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_output,
+    )
+
+    out = enforce_materials_chat_output(output)
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            # 为什么：RAG 出口收敛到统一 Gateway F.1；非 certified
+            from core.harness.knowledge_pipeline.fact_ledger import (
+                materials_chat_to_f1_envelope,
+            )
+
+            out["gateway_f1"] = materials_chat_to_f1_envelope(
+                tenant_id=tid, output=out
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N06 materials_chat F.1 attach skipped", exc_info=True
+            )
+        try:
+            # 为什么：直出旁路须落 N19 Query 快照；与 Gateway 热路径分立，不经 ug 防双写
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_materials_chat_hotpath,
+            )
+
+            out = maybe_record_materials_chat_hotpath(
+                tenant_id=tid, output=out, exit_kind="rag"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 materials_chat hotpath audit skipped", exc_info=True
+            )
+        try:
+            # 为什么：N20 — 直出挂约束观测信封；与 unified Gateway _finish 分立
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_materials_chat_constraint_hotpath,
+            )
+
+            out = maybe_attach_materials_chat_constraint_hotpath(
+                out, exit_kind="rag"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N20 materials_chat constraint hotpath skipped", exc_info=True
+            )
+    return out
+
+
+def _n21_enforce_shortcut_output(
+    output: Dict[str, Any],
+    *,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    """N21：MaterialsChat time/math/greeting 捷径出口强制；可选挂 N06 F.1。
+
+    Args:
+        output: trivial_bypass 输出 dict。
+        tenant_id: 非空时附加 ``gateway_f1``。
+    """
+    # 为什么：捷径允许无 citations，但须走门禁打标，防假 trivial 绿通
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_shortcut_output,
+    )
+
+    out = enforce_materials_chat_shortcut_output(output)
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            from core.harness.knowledge_pipeline.fact_ledger import (
+                materials_chat_to_f1_envelope,
+            )
+
+            out["gateway_f1"] = materials_chat_to_f1_envelope(
+                tenant_id=tid, output=out, kind="shortcut"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N06 materials shortcut F.1 attach skipped", exc_info=True
+            )
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_materials_chat_hotpath,
+            )
+
+            out = maybe_record_materials_chat_hotpath(
+                tenant_id=tid, output=out, exit_kind="shortcut"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 materials shortcut hotpath audit skipped", exc_info=True
+            )
+        try:
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_materials_chat_constraint_hotpath,
+            )
+
+            out = maybe_attach_materials_chat_constraint_hotpath(
+                out, exit_kind="shortcut"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N20 materials shortcut constraint hotpath skipped",
+                exc_info=True,
+            )
+    return out
+
+
+def _n21_enforce_cache_hit_output(
+    output: Dict[str, Any],
+    *,
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    """N21：MaterialsChat 语义缓存命中出口强制；可选挂 N06 F.1。
+
+    Args:
+        output: cache_hit 输出 dict。
+        tenant_id: 非空时附加 ``gateway_f1``。
+    """
+    # 为什么：缓存答案仍是知识命中，无 citations 不得绿通
+    from core.harness.knowledge_pipeline.query_abstain_citations import (
+        enforce_materials_chat_cache_hit_output,
+    )
+
+    out = enforce_materials_chat_cache_hit_output(output)
+    tid = (tenant_id or "").strip()
+    if tid:
+        try:
+            from core.harness.knowledge_pipeline.fact_ledger import (
+                materials_chat_to_f1_envelope,
+            )
+
+            out["gateway_f1"] = materials_chat_to_f1_envelope(
+                tenant_id=tid, output=out, kind="cache_hit"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N06 materials cache_hit F.1 attach skipped", exc_info=True
+            )
+        try:
+            from core.harness.knowledge_pipeline.fact_query_audit import (
+                maybe_record_materials_chat_hotpath,
+            )
+
+            out = maybe_record_materials_chat_hotpath(
+                tenant_id=tid, output=out, exit_kind="cache_hit"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N19 materials cache_hit hotpath audit skipped", exc_info=True
+            )
+        try:
+            from core.harness.knowledge_pipeline.constraint_layers import (
+                maybe_attach_materials_chat_constraint_hotpath,
+            )
+
+            out = maybe_attach_materials_chat_constraint_hotpath(
+                out, exit_kind="cache_hit"
+            )
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "N20 materials cache_hit constraint hotpath skipped",
+                exc_info=True,
+            )
+    return out
+
+
 def _is_delivery_mode(vars0: Dict[str, Any]) -> bool:
     """Q&A vs Delivery: delivery/task/governed require outcome gates, not answer-complete."""
     mode = str(vars0.get("mode") or vars0.get("delivery_mode") or "").strip().lower()
@@ -221,14 +400,30 @@ def _parse_time_to_filters(time_range: str) -> dict:
     return {}
 
 
-async def _get_related_recommendations(domain_id: str, entity_name: str,
-                                   max_items: int = 3) -> List[str]:
-    """Proactive recommendations based on GraphIndex neighbors."""
+async def _get_related_recommendations(
+    domain_id: str,
+    entity_name: str,
+    max_items: int = 3,
+    *,
+    tenant_id: str = "",
+) -> List[str]:
+    """Proactive recommendations based on GraphIndex neighbors.
+
+    Args:
+        domain_id: 域标识。
+        entity_name: 实体名。
+        max_items: 返回邻居上限。
+        tenant_id: 非空时透传 N19 图邻居审计。
+    """
     if not domain_id or not entity_name:
         return []
     try:
         from core.harness.syscalls.graph import sys_graph_neighbors
-        result = await sys_graph_neighbors(entity_name, domain_id=domain_id)
+        result = await sys_graph_neighbors(
+            entity_name,
+            domain_id=domain_id,
+            tenant_id=tenant_id or "",
+        )
         return result.get("neighbors", [])[:max_items]
     except Exception:
         return []
@@ -373,9 +568,19 @@ class MaterialsChatAgent(BaseAgent):
                     cached = await try_cache_hit(question, collection_id_pre)
                     if cached:
                         _trace("缓存命中", f"语义缓存L1/L2", cached=True)
+                        _ans = cached.get("answer")
+                        _out = {
+                            "answer": _ans if isinstance(_ans, str) else str(_ans or ""),
+                            "citations": cached.get("citations") or [],
+                            "items": [],
+                            "strategy": "cache_hit",
+                            "quality": "cached",
+                            "mode": "cache",
+                            "pipeline_trace": pipeline_trace,
+                        }
                         return AgentResult(
                             success=True,
-                            output=cached["answer"],
+                            output=_n21_enforce_cache_hit_output(_out, tenant_id=str(tenant_id or "")),
                             metadata={"source": "semantic_cache", "pipeline_trace": pipeline_trace},
                         )
                 except Exception:
@@ -419,51 +624,66 @@ class MaterialsChatAgent(BaseAgent):
                 time_result = handle_time_query(question)
                 if time_result:
                     return AgentResult(success=True,
-                        output={"answer": time_result, "citations": [], "items": [], "scope_applied": scope,
-                                "strategy": "trivial_bypass", "skills_used": [],
-                                "turn_summary": "time query", "intent": "trivial",
-                                "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                                "quality": "trivial"},
+                        output=_n21_enforce_shortcut_output(
+                            {"answer": time_result, "citations": [], "items": [], "scope_applied": scope,
+                             "strategy": "trivial_bypass", "skills_used": [],
+                             "turn_summary": "time query", "intent": "trivial",
+                             "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                             "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
                 math_result = handle_math_expression(question)
                 if math_result:
                     return AgentResult(success=True,
-                        output={"answer": math_result, "citations": [], "items": [], "scope_applied": scope,
-                                "strategy": "trivial_bypass", "skills_used": [],
-                                "turn_summary": "math query", "intent": "trivial",
-                                "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                                "quality": "trivial"},
+                        output=_n21_enforce_shortcut_output(
+                            {"answer": math_result, "citations": [], "items": [], "scope_applied": scope,
+                             "strategy": "trivial_bypass", "skills_used": [],
+                             "turn_summary": "math query", "intent": "trivial",
+                             "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                             "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
             except ImportError:
                 pass  # noqa: optional-dependency
             if _t_check in ("你好", "hello", "hi", "hey", "在吗", "在不在"):
                 return AgentResult(success=True,
-                    output={"answer": "你好！我是知识库助手，有什么可以帮助你的？",
-                            "citations": [], "items": [], "scope_applied": scope,
-                            "strategy": "trivial_bypass", "skills_used": [],
-                            "turn_summary": "greeting", "intent": "trivial",
-                            "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                            "quality": "trivial"},
+                    output=_n21_enforce_shortcut_output(
+                        {"answer": "你好！我是知识库助手，有什么可以帮助你的？",
+                         "citations": [], "items": [], "scope_applied": scope,
+                         "strategy": "trivial_bypass", "skills_used": [],
+                         "turn_summary": "greeting", "intent": "trivial",
+                         "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                         "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                     metadata={"intent": "trivial", "strategy": "trivial_bypass"})
             if _t_check in ("谢谢", "多谢", "thank", "thanks", "thank you"):
                 return AgentResult(success=True,
-                    output={"answer": "不客气！如果还有其他问题，随时可以问我。",
-                            "citations": [], "items": [], "scope_applied": scope,
-                            "strategy": "trivial_bypass", "skills_used": [],
-                            "turn_summary": "thanks", "intent": "trivial",
-                            "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                            "quality": "trivial"},
+                    output=_n21_enforce_shortcut_output(
+                        {"answer": "不客气！如果还有其他问题，随时可以问我。",
+                         "citations": [], "items": [], "scope_applied": scope,
+                         "strategy": "trivial_bypass", "skills_used": [],
+                         "turn_summary": "thanks", "intent": "trivial",
+                         "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                         "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                     metadata={"intent": "trivial", "strategy": "trivial_bypass"})
             if _t_re.match(r'^[+\-]?\d+(\.\d+)?\s*[\+\-\*\/\^]\s*[+\-]?\d+(\.\d+)?$', question.strip()):
                 try:
                     _result = eval(question.strip().replace("^", "**"))
                     return AgentResult(success=True,
-                        output={"answer": f"{question.strip()} = {_result}",
-                                "citations": [], "items": [], "scope_applied": scope,
-                                "strategy": "trivial_bypass", "skills_used": [],
-                                "turn_summary": "math", "intent": "trivial",
-                                "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                                "quality": "trivial"},
+                        output=_n21_enforce_shortcut_output(
+                            {"answer": f"{question.strip()} = {_result}",
+                             "citations": [], "items": [], "scope_applied": scope,
+                             "strategy": "trivial_bypass", "skills_used": [],
+                             "turn_summary": "math", "intent": "trivial",
+                             "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                             "quality": "trivial"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
@@ -666,15 +886,18 @@ class MaterialsChatAgent(BaseAgent):
                            cache_level=cached.get("level", ""))
                     return AgentResult(
                         success=True,
-                        output={"answer": cached["answer"],
-                                "citations": cached.get("citations", []), "items": [],
-                                "scope_applied": scope, "strategy": "cache_hit",
-                                "skills_used": [], "turn_summary": "",
-                                "intent": intent, "mode": "cache", "analysis": analysis,
-                                "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
-                                "reasoning_path": reasoning_path,
-                                "pipeline_trace": pipeline_trace,
-                                "quality": "cached"},
+                        output=_n21_enforce_cache_hit_output(
+                            {"answer": cached["answer"],
+                             "citations": cached.get("citations", []), "items": [],
+                             "scope_applied": scope, "strategy": "cache_hit",
+                             "skills_used": [], "turn_summary": "",
+                             "intent": intent, "mode": "cache", "analysis": analysis,
+                             "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
+                             "reasoning_path": reasoning_path,
+                             "pipeline_trace": pipeline_trace,
+                             "quality": "cached"},
+                        tenant_id=str(tenant_id or ""),
+                    ),
                         metadata={"intent": intent, "strategy": "cache_hit", "cache_level": cached.get("level", ""),
                                    "doc_count": len(doc_ids)},
                     )
@@ -698,6 +921,8 @@ class MaterialsChatAgent(BaseAgent):
                     top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
                     time_filters=time_filters or None,
                     enable_deep_research=os.getenv("AIPLAT_DEEP_RESEARCH_ENABLED", "false").lower() in ("true", "1", "yes"),
+                    # 为什么：本入口已 maybe_record_materials_chat_hotpath，关 CRAG 层防双写
+                    record_hotpath_audit=False,
                 )
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
@@ -733,11 +958,23 @@ class MaterialsChatAgent(BaseAgent):
             graph_context = ""
             try:
                 from core.harness.syscalls.graph import sys_graph_query
-                gq = await sys_graph_query("", operation="stats", domain_id=domain_id)
+                # 为什么：透传 tenant，激活 N19 graph_query 审计（空则跳过）
+                _gq_tid = str(tenant_id or "")
+                gq = await sys_graph_query(
+                    "",
+                    operation="stats",
+                    domain_id=domain_id,
+                    tenant_id=_gq_tid,
+                )
                 if gq.get("success") and gq.get("data", {}).get("nodes", 0) > 0:
                     graph_context = f"\n[知识图谱摘要] {gq['result']}\n"
                     # Also get top classes
-                    gq2 = await sys_graph_query("", operation="classes", domain_id=domain_id)
+                    gq2 = await sys_graph_query(
+                        "",
+                        operation="classes",
+                        domain_id=domain_id,
+                        tenant_id=_gq_tid,
+                    )
                     if gq2.get("success"):
                         graph_context += f"{gq2['result']}\n"
             except Exception:
@@ -806,18 +1043,32 @@ class MaterialsChatAgent(BaseAgent):
                                 # PR: Proactive recommendations from GraphIndex neighbors
                                 related = await _get_related_recommendations(
                                     domain_id or "",
-                                    run_context.get("entity", "") if run_context else ""
+                                    run_context.get("entity", "") if run_context else "",
+                                    tenant_id=str(tenant_id or ""),
                                 )
-                                _out = {"answer": answer, "citations": citations, "items": [],
+                                _out = _n21_enforce_rag_output(
+                                    {
+                                        "answer": answer,
+                                        "citations": citations,
+                                        "items": [],
                                         "related": related,
-                                        "scope_applied": scope, "strategy": "domain_skill",
-                                        "skills_used": [skill_name], "turn_summary": turn_summary,
-                                        "intent": intent, "mode": str(vars0.get("mode") or ""),
+                                        "scope_applied": scope,
+                                        "strategy": "domain_skill",
+                                        "skills_used": [skill_name],
+                                        "turn_summary": turn_summary,
+                                        "intent": intent,
+                                        "mode": str(vars0.get("mode") or ""),
                                         "analysis": analysis,
-                                        "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
-                                        "reasoning_path": reasoning_path, "pipeline_trace": pipeline_trace,
-                                        "quality": quality, "hallucination": hallucination_meta,
-                                        "rag_diagnosis": rag_diagnosis}
+                                        "retrieval_policy": retrieval_policy,
+                                        "answer_strategy": answer_strategy,
+                                        "reasoning_path": reasoning_path,
+                                        "pipeline_trace": pipeline_trace,
+                                        "quality": quality,
+                                        "hallucination": hallucination_meta,
+                                        "rag_diagnosis": rag_diagnosis,
+                                    },
+                                    tenant_id=str(tenant_id or ""),
+                                )
                                 _meta = {"intent": intent, "strategy": "domain_skill", "domain": domain_id,
                                          "skill": skill_name, "doc_count": len(doc_ids)}
                                 blocked = _delivery_gate_block(
@@ -870,6 +1121,8 @@ class MaterialsChatAgent(BaseAgent):
                                     top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
                                     enable_hyde=True,
                                     enable_deep_research=os.getenv("AIPLAT_DEEP_RESEARCH_ENABLED", "false").lower() in ("true", "1", "yes"),
+                                    # 为什么：本入口已 maybe_record_materials_chat_hotpath，关 CRAG 层防双写
+                                    record_hotpath_audit=False,
                                 )
                                 if hyde_docs:
                                     retrieved_docs = hyde_docs
@@ -892,17 +1145,28 @@ class MaterialsChatAgent(BaseAgent):
                             retrieved_count=len(citations),
                         )
 
-                        _out = {"answer": answer, "citations": citations, "items": [],
-                                "scope_applied": scope, "strategy": "direct_retrieve",
-                                "skills_used": ["sys_crag_retrieve"], "turn_summary": _build_turn_summary(question, answer),
-                                "intent": intent, "mode": str(vars0.get("mode") or ""),
+                        _out = _n21_enforce_rag_output(
+                            {
+                                "answer": answer,
+                                "citations": citations,
+                                "items": [],
+                                "scope_applied": scope,
+                                "strategy": "direct_retrieve",
+                                "skills_used": ["sys_crag_retrieve"],
+                                "turn_summary": _build_turn_summary(question, answer),
+                                "intent": intent,
+                                "mode": str(vars0.get("mode") or ""),
                                 "analysis": analysis,
-                                "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
+                                "retrieval_policy": retrieval_policy,
+                                "answer_strategy": answer_strategy,
                                 "reasoning_path": reasoning_path,
                                 "pipeline_trace": pipeline_trace,
                                 "quality": quality,
                                 "hallucination": hallucination_meta,
-                                "rag_diagnosis": rag_diagnosis}
+                                "rag_diagnosis": rag_diagnosis,
+                            },
+                            tenant_id=str(tenant_id or ""),
+                        )
                         _meta = {"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
                                  "grill_suggested": bool(onto_mapping and onto_mapping.get("matched_classes") and onto_mapping["matched_classes"][0].get("score", 0) < 0.5),
                                  "domain_id": domain_id, "collection_id": collection_id}
@@ -957,25 +1221,28 @@ class MaterialsChatAgent(BaseAgent):
                 retrieved_count=len(citations),
             )
 
-            _out = {
-                "answer": answer,
-                "citations": citations,
-                "items": out.get("items") or [],
-                "scope_applied": scope,
-                "strategy": strategy,
-                "skills_used": skills_used,
-                "turn_summary": turn_summary,
-                "intent": intent,
-                "mode": mode or str(vars0.get("mode") or ""),
-                "analysis": analysis,
-                "retrieval_policy": retrieval_policy,
-                "answer_strategy": answer_strategy,
-                "reasoning_path": reasoning_path,
-                "pipeline_trace": pipeline_trace,
-                "quality": quality,
-                "hallucination": hallucination_meta,
-                "rag_diagnosis": rag_diagnosis,
-            }
+            _out = _n21_enforce_rag_output(
+                {
+                    "answer": answer,
+                    "citations": citations,
+                    "items": out.get("items") or [],
+                    "scope_applied": scope,
+                    "strategy": strategy,
+                    "skills_used": skills_used,
+                    "turn_summary": turn_summary,
+                    "intent": intent,
+                    "mode": mode or str(vars0.get("mode") or ""),
+                    "analysis": analysis,
+                    "retrieval_policy": retrieval_policy,
+                    "answer_strategy": answer_strategy,
+                    "reasoning_path": reasoning_path,
+                    "pipeline_trace": pipeline_trace,
+                    "quality": quality,
+                    "hallucination": hallucination_meta,
+                    "rag_diagnosis": rag_diagnosis,
+                },
+                tenant_id=str(tenant_id or ""),
+            )
             _meta = {
                 "intent": intent,
                 "skill_name": skill_name,

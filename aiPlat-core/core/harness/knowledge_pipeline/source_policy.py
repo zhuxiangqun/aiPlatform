@@ -611,6 +611,7 @@ async def put_fact_with_source_policy(
     db_path: Optional[str] = None,
     actor: str = "",
     reason: str = "",
+    role: str = "",
     **kwargs: Any,
 ) -> Dict[str, Any]:
     """生产写入包装：非 published 走 put_fact 硬门；published 经 transition。
@@ -625,6 +626,7 @@ async def put_fact_with_source_policy(
         confidence: 置信度。
         db_path: 来源策略库路径。
         actor / reason: ``published`` 时必填（走状态机审计）。
+        role: 调用方角色（N04/N12；``published`` 时由状态机校验）。
         **kwargs: 透传 ``put_fact`` 其余参数（含 ``fact_id``）。
 
     Returns:
@@ -710,6 +712,7 @@ async def put_fact_with_source_policy(
                 actor=act,
                 reason=rsn,
                 source_policy_db_path=db_path,
+                role=role,
             )
         elif cur_rs not in {"reviewed", "published"}:
             raise SourcePolicyError(
@@ -723,6 +726,7 @@ async def put_fact_with_source_policy(
             actor=act,
             reason=rsn,
             source_policy_db_path=db_path,
+            role=role,
         )
         return out["fact"]
 

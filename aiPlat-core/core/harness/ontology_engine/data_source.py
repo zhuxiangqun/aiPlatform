@@ -24,13 +24,59 @@ import os as _os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path as _Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# 为什么：N01 Raw 强制快照按 Core source_type 轴声明矩阵；非 PG/MySQL 等 vendor 全量认证
+DATASOURCE_RAW_CONNECTOR_MATRIX: Tuple[str, ...] = ("file", "sql", "api")
 
 
 class DataSourceIntegrityError(ValueError):
     """DataSource 内容 hash / 快照契约错误（N01 加深）。"""
+
+
+def datasource_raw_connector_matrix() -> Dict[str, Any]:
+    """返回 N01 Raw 强制快照支持的连接器矩阵（Core ``source_type`` 轴）。
+
+    Returns:
+        connectors / snapshot_modes；``certified`` 恒 false。
+    """
+    return {
+        "connectors": list(DATASOURCE_RAW_CONNECTOR_MATRIX),
+        "snapshot_modes": {
+            "file": "raw_file_bytes",
+            "sql": "stable_json_records",
+            "api": "stable_json_records",
+        },
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": (
+            "Core source_type matrix (file/sql/api) with hash-forced snapshots; "
+            "not vendor-driver matrix / not N01 certified"
+        ),
+    }
+
+
+def require_datasource_raw_connector(source_type: str) -> str:
+    """校验 ``source_type`` 属于 Raw 连接器矩阵。
+
+    Args:
+        source_type: 数据源类型（file/sql/api）。
+
+    Returns:
+        规范化小写类型名。
+
+    Raises:
+        DataSourceIntegrityError: 不在矩阵内。
+    """
+    st = (source_type or "").strip().lower()
+    if st not in DATASOURCE_RAW_CONNECTOR_MATRIX:
+        raise DataSourceIntegrityError(
+            f"snapshot_datasource_bytes unsupported source_type={source_type!r}; "
+            f"matrix={list(DATASOURCE_RAW_CONNECTOR_MATRIX)}"
+        )
+    return st
 
 
 @dataclass
@@ -152,6 +198,62 @@ def validate_datasource_content_hash(
         "actual": actual,
         "hash_declared": True,
     }
+
+
+def snapshot_datasource_bytes(
+    config: DataSourceConfig,
+    *,
+    records: Optional[List[Dict[str, Any]]] = None,
+) -> bytes:
+    """生成 DataSource Raw 快照字节（N01 process 接线）。
+
+    file：原始文件字节；sql/api：抓取 records 的稳定 JSON 快照。
+
+    Args:
+        config: 数据源配置。
+        records: sql/api 必填的抓取结果；file 可省略。
+
+    Returns:
+        用于 content_hash 校验与 FactLedger 登记的字节。
+
+    Raises:
+        DataSourceIntegrityError: 类型不在矩阵或缺 records。
+    """
+    st = require_datasource_raw_connector(config.source_type)
+    if st == "file":
+        return read_file_datasource_bytes(config)
+    if records is None:
+        raise DataSourceIntegrityError(
+            f"datasource {config.name or '(unnamed)'!r} sql/api snapshot requires records"
+        )
+    # 为什么：稳定序列化，避免键序漂移导致同内容不同 hash
+    payload = {
+        "name": config.name or "",
+        "records": records,
+        "source_type": st,
+    }
+    return _json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def datasource_require_raw_ingest_enabled(
+    *,
+    explicit: Optional[bool] = None,
+) -> bool:
+    """是否启用 process_from_datasource → Raw ingest（默认强制；可显式/环境 opt-out）。
+
+    Args:
+        explicit: 调用方显式开关；None 时读 ``AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST``
+            （缺省 ``1``=强制；``0``/false/off 关闭）。
+    """
+    if explicit is not None:
+        return bool(explicit)
+    # 为什么：N01 加深默认强制；无 env 时视为 on，避免静默跳过 Raw
+    raw = str(_os.getenv("AIPLAT_DATASOURCE_REQUIRE_RAW_INGEST", "1")).strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        return False
+    return True
 
 
 class DataSource(ABC):

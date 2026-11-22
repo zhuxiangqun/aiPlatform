@@ -17,6 +17,7 @@ aiPlat-core/core/harness/syscalls/file.py:sys_file_edit
 aiPlat-core/core/harness/syscalls/file.py:sys_file_read
 aiPlat-core/core/harness/syscalls/file.py:sys_file_write
 aiPlat-core/core/harness/syscalls/graph.py:sys_graph_neighbors
+aiPlat-core/core/harness/syscalls/graph.py:sys_graph_query
 aiPlat-core/core/harness/syscalls/graph_extract.py:sys_graph_extract
 aiPlat-core/core/harness/syscalls/graph_validate.py:sys_graph_validate
 aiPlat-core/core/harness/syscalls/llm.py:sys_llm_generate

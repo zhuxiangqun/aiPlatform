@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3020
+total_capabilities: 3191
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2549,14 +2549,10 @@ domains:
         module: aiPlat-core/core/harness/maintenance/asset_secure_scan.py
     breaks: []
     consumers_expected:
-      - module: "core/api/routers/builder_project_service.py"
-        reason: "PipelineEngine 调度入口"
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "自身消费 PipelineStageConfig + StageRunner"
       - module: "core/harness/interfaces/loop.py"
         reason: "ReActLoop 运行时"
-      - module: "aiPlat-platform/apps/fde/api/fde_pipeline.py"
-        reason: "FDE Pipeline 状态查询"
 
   # ══════════════════════════════════════════════════════════════
   # 二、记忆子系统 (59 caps)
@@ -2812,10 +2808,6 @@ domains:
         reason: "_crystallize_skill → save_task_skill"
       - module: "core/api/routers/memory.py"
         reason: "全量 REST 端点"
-      - module: "core/harness/syscalls/retrieval.py"
-        reason: "语义记忆检索"
-      - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
-        reason: "L6 记忆指标展示"
 
   # ══════════════════════════════════════════════════════════════
   # 三、知识引擎（本体）(284 caps)
@@ -2823,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 554
+    caps_count: 722
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3130,6 +3122,54 @@ domains:
         module: core/harness/knowledge_pipeline/fact_ledger.py
         type: function
         signature: "evaluate_gateway_contract_gate(responses)→gate (certified=false)"
+      - symbol: "unified_query_gateway"
+        type: "function"
+        signature: "N06: unified fact/object_set/wiki/index/materials_chat/graphrag→F.1 (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_ledger.py"
+      - symbol: "materials_chat_to_f1_envelope"
+        type: "function"
+        signature: "N06: MaterialsChat output→F.1 via N21 (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_ledger.py"
+      - symbol: "graphrag_to_f1_envelope"
+        type: "function"
+        signature: "N06: GraphRAG result→F.1 via N21 (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_ledger.py"
+      - symbol: "unified_query_gateway_routes"
+        type: "function"
+        signature: "N06: declare unified gateway routes incl materials/graphrag (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_ledger.py"
+      - symbol: "require_unified_query_route"
+        type: "function"
+        signature: "N06: validate unified gateway route"
+        module: "core/harness/knowledge_pipeline/fact_ledger.py"
+      - symbol: "run_unified_query_gateway_suite"
+        type: "function"
+        signature: "N06: unified gateway suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_ledger.py"
+      - symbol: "evaluate_unified_query_gateway_gate"
+        type: "function"
+        signature: "N06: unified gateway gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_ledger.py"
+      - symbol: "fact_ledger_unified_query_gateway"
+        type: "function"
+        signature: "CoreFacade unified_query_gateway"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "materials_chat_to_f1_envelope"
+        type: "function"
+        signature: "CoreFacade materials_chat_to_f1_envelope"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "graphrag_to_f1_envelope"
+        type: "function"
+        signature: "CoreFacade graphrag_to_f1_envelope"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "fact_ledger_run_unified_query_gateway_suite"
+        type: "function"
+        signature: "CoreFacade run_unified_query_gateway_suite"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "evaluate_fact_unified_query_gateway_gate"
+        type: "function"
+        signature: "CoreFacade evaluate_unified_query_gateway_gate"
+        module: "aiPlat-core/core/api/core_facade.py"
       - symbol: "validate_fact_gateway_response"
         module: core/api/core_facade.py
         type: function
@@ -3174,6 +3214,22 @@ domains:
         module: core/harness/ontology_engine/data_source.py
         type: function
         signature: "validate_datasource_content_hash(config,content,require_hash=True)→receipt"
+      - symbol: "snapshot_datasource_bytes"
+        module: core/harness/ontology_engine/data_source.py
+        type: function
+        signature: "snapshot_datasource_bytes(config,*,records=None)→bytes"
+      - symbol: "datasource_require_raw_ingest_enabled"
+        module: core/harness/ontology_engine/data_source.py
+        type: function
+        signature: "datasource_require_raw_ingest_enabled(*,explicit=None)→bool"
+      - symbol: "datasource_raw_connector_matrix"
+        module: core/harness/ontology_engine/data_source.py
+        type: function
+        signature: "datasource_raw_connector_matrix()→matrix (certified=false)"
+      - symbol: "require_datasource_raw_connector"
+        module: core/harness/ontology_engine/data_source.py
+        type: function
+        signature: "require_datasource_raw_connector(source_type)→str"
       - symbol: "ingest_datasource_raw"
         module: core/harness/knowledge_pipeline/fact_ledger.py
         type: function
@@ -3186,6 +3242,14 @@ domains:
         module: core/harness/knowledge_pipeline/fact_ledger.py
         type: function
         signature: "evaluate_datasource_raw_gate(suite)→gate (certified=false)"
+      - symbol: "run_datasource_connector_matrix_suite"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "run_datasource_connector_matrix_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_datasource_connector_matrix_gate"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "evaluate_datasource_connector_matrix_gate(suite)→gate (certified=false)"
       - symbol: "fact_ledger_ingest_datasource_raw"
         module: core/api/core_facade.py
         type: function
@@ -3198,6 +3262,22 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "evaluate_fact_datasource_raw_gate(suite)→gate (certified=false)"
+      - symbol: "get_datasource_raw_connector_matrix"
+        module: core/api/core_facade.py
+        type: function
+        signature: "get_datasource_raw_connector_matrix()→matrix (certified=false)"
+      - symbol: "ensure_datasource_raw_connector"
+        module: core/api/core_facade.py
+        type: function
+        signature: "ensure_datasource_raw_connector(source_type)→str"
+      - symbol: "fact_ledger_run_datasource_connector_matrix_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_run_datasource_connector_matrix_suite(...)→suite (certified=false)"
+      - symbol: "evaluate_fact_datasource_connector_matrix_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_datasource_connector_matrix_gate(suite)→gate (certified=false)"
       - symbol: "run_fact_revision_suite"
         module: core/harness/knowledge_pipeline/fact_ledger.py
         type: function
@@ -3430,6 +3510,10 @@ domains:
         module: core/harness/infrastructure/action_execution.py
         type: function
         signature: "list_action_executions(tenant_id,...)→execution rows"
+      - symbol: "_fact_query_audit_events"
+        module: core/harness/knowledge_pipeline/unified_audit_view.py
+        type: function
+        signature: "N24 J10: Fact/Query audit → unified event stream (certified=false)"
       - symbol: "list_unified_audit_events"
         module: core/harness/knowledge_pipeline/unified_audit_view.py
         type: function
@@ -3550,6 +3634,454 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "validate_fact_rebuild_receipt(receipt)→gate (certified=false)"
+      - symbol: "WikiRebuildError"
+        type: "class"
+        signature: "N05: Wiki rebuild contract error"
+        module: "core/harness/knowledge_pipeline/wiki_rebuild.py"
+      - symbol: "get_gold_dataset"
+        type: "function"
+        signature: "N10: read domain gold dataset"
+        module: "core/harness/knowledge_pipeline/knowledge_gold_eval.py"
+      - symbol: "evaluate_domain_gold"
+        type: "function"
+        signature: "N10: Exact-match gold eval for one domain"
+        module: "core/harness/knowledge_pipeline/knowledge_gold_eval.py"
+      - symbol: "register_gold_dataset"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: function
+        signature: "N10: register domain gold dataset (accuracy=false)"
+      - symbol: "run_knowledge_gold_eval_pipeline"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: function
+        signature: "N10: multi-domain gold eval pipeline (certified=false)"
+      - symbol: "run_knowledge_gold_eval_suite"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: function
+        signature: "N10: gold eval suite (certified=false)"
+      - symbol: "evaluate_knowledge_gold_eval_gate"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: function
+        signature: "N10: gold eval gate (certified=false)"
+      - symbol: "KnowledgeGoldEvalError"
+        module: core/harness/knowledge_pipeline/knowledge_gold_eval.py
+        type: class
+        signature: "N10: knowledge gold eval contract error"
+      - symbol: "validate_record"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: record-level semantic validate (certified=false)"
+      - symbol: "validate_transition"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: state-machine transition validate (certified=false)"
+      - symbol: "scan_ledger_facts"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: FactLedger record-level scan (certified=false)"
+      - symbol: "run_record_semantics_suite"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: record semantics suite (certified=false)"
+      - symbol: "evaluate_record_semantics_gate"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: function
+        signature: "N17: record semantics gate (certified=false)"
+      - symbol: "RecordSemanticsError"
+        module: core/harness/knowledge_pipeline/record_semantics.py
+        type: class
+        signature: "N17: record semantics contract error"
+      - symbol: "validate_record_semantics"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N17: Facade record validate (certified=false)"
+      - symbol: "validate_record_transition"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N17: Facade transition validate (certified=false)"
+      - symbol: "scan_record_semantics_facts"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N17: Facade FactLedger scan (certified=false)"
+      - symbol: "validate_record_semantics_route"
+        module: aiPlat-platform/apps/fde/api/record_semantics_routes.py
+        type: function
+        signature: "POST /fde/record-semantics/validate via Facade"
+      - symbol: "run_record_semantics_suite_route"
+        module: aiPlat-platform/apps/fde/api/record_semantics_routes.py
+        type: function
+        signature: "POST /fde/record-semantics/suite via Facade"
+      - symbol: "load_deployed_policy"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: function
+        signature: "N18: load deployed RBAC (no reference_policy)"
+      - symbol: "evaluate_permission"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: function
+        signature: "N18: deployed permission eval (certified=false)"
+      - symbol: "run_deployed_rbac_suite"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: function
+        signature: "N18: deployed RBAC suite (certified=false)"
+      - symbol: "evaluate_deployed_rbac_gate"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: function
+        signature: "N18: deployed RBAC gate (certified=false)"
+      - symbol: "DeployedRbacError"
+        module: core/harness/knowledge_pipeline/deployed_rbac_policy.py
+        type: class
+        signature: "N18: deployed RBAC contract error"
+      - symbol: "load_deployed_rbac_policy"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N18: Facade load deployed RBAC"
+      - symbol: "evaluate_deployed_rbac_permission"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N18: Facade permission eval (certified=false)"
+      - symbol: "evaluate_deployed_rbac_permission_route"
+        module: aiPlat-platform/apps/fde/api/deployed_rbac_routes.py
+        type: function
+        signature: "POST /fde/deployed-rbac/permission via Facade"
+      - symbol: "run_deployed_rbac_suite_route"
+        module: aiPlat-platform/apps/fde/api/deployed_rbac_routes.py
+        type: function
+        signature: "POST /fde/deployed-rbac/suite via Facade"
+      - symbol: "record_audit_snapshot"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: unified Fact/Query audit snapshot (certified=false)"
+      - symbol: "list_audit_snapshots"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: list Fact/Query audit snapshots (tenant-scoped)"
+      - symbol: "hotpath_audit_enabled"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: AIPLAT_FACT_QUERY_AUDIT_HOTPATH switch (default on)"
+      - symbol: "maybe_record_hotpath_audit"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: best-effort hotpath audit snapshot (certified=false)"
+      - symbol: "maybe_record_put_fact_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: put_fact hotpath Fact snapshot"
+      - symbol: "maybe_record_query_gateway_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: unified_query_gateway hotpath Query snapshot"
+      - symbol: "maybe_record_query_facts_gateway_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: query_facts_gateway bypass hotpath Query snapshot"
+      - symbol: "maybe_record_query_facts_list_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: query_facts list bypass hotpath Query snapshot"
+      - symbol: "maybe_record_materials_chat_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: MaterialsChat direct-exit hotpath Query snapshot"
+      - symbol: "maybe_record_graphrag_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: GraphRAG hotpath Query snapshot (certified=false)"
+      - symbol: "maybe_record_wiki_kb_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: Wiki/KB hotpath Query snapshot (certified=false)"
+      - symbol: "maybe_record_bare_list_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: bare wiki/kb list hotpath Query snapshot (certified=false)"
+      - symbol: "maybe_record_kb_qa_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: KB Q&A/CRAG hotpath Query snapshot (certified=false)"
+      - symbol: "bus_hotpath_enabled"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N24 J11: Fact/Query→bus hotpath env gate"
+      - symbol: "_maybe_append_fact_query_to_bus"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N24 J11: append Fact/Query snapshot to unified bus (certified=false)"
+      - symbol: "maybe_record_knowledge_retrieve_hotpath"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: sys_knowledge_retrieve hotpath Query snapshot (certified=false)"
+      - symbol: "run_fact_query_audit_suite"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: Fact/Query audit suite (certified=false)"
+      - symbol: "evaluate_fact_query_audit_gate"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: function
+        signature: "N19: Fact/Query audit gate (certified=false)"
+      - symbol: "FactQueryAuditError"
+        module: core/harness/knowledge_pipeline/fact_query_audit.py
+        type: class
+        signature: "N19: Fact/Query audit contract error"
+      - symbol: "record_fact_query_audit_snapshot"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N19: Facade record unified audit snapshot"
+      - symbol: "list_fact_query_audit_snapshots"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N19: Facade list unified audit snapshots"
+      - symbol: "record_fact_query_audit_route"
+        module: aiPlat-platform/apps/fde/api/fact_query_audit_routes.py
+        type: function
+        signature: "POST /fde/fact-query-audit/snapshots via Facade"
+      - symbol: "classify_layer"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: classify L1/L2/L3 layer metadata"
+      - symbol: "evaluate_constraint_stack"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: evaluate L1>L2>L3 stack (certified=false)"
+      - symbol: "hotpath_constraint_enabled"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: AIPLAT_CONSTRAINT_LAYERS_HOTPATH switch (default on)"
+      - symbol: "maybe_attach_constraint_stack_hotpath"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: Gateway hotpath attach n20_constraint (certified=false)"
+      - symbol: "maybe_attach_put_fact_constraint_hotpath"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: put_fact hotpath attach n20_constraint (certified=false)"
+      - symbol: "maybe_attach_query_facts_gateway_constraint_hotpath"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: query_facts_gateway hotpath attach n20_constraint (certified=false)"
+      - symbol: "maybe_attach_materials_chat_constraint_hotpath"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: MaterialsChat hotpath attach n20_constraint (certified=false)"
+      - symbol: "maybe_attach_graphrag_constraint_hotpath"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: GraphRAG hotpath attach n20_constraint (certified=false)"
+      - symbol: "maybe_attach_wiki_kb_constraint_hotpath"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: Wiki/KB hotpath attach n20_constraint (certified=false)"
+      - symbol: "ConstraintAwareHitList"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: class
+        signature: "N20: list subclass with n20_constraint attr (list main return)"
+      - symbol: "maybe_stamp_bare_list_constraint_hotpath"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: bare wiki/kb list stamp n20_constraint (certified=false)"
+      - symbol: "run_constraint_layers_suite"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: constraint layers suite (certified=false)"
+      - symbol: "evaluate_constraint_layers_gate"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: function
+        signature: "N20: constraint layers gate (certified=false)"
+      - symbol: "ConstraintLayersError"
+        module: core/harness/knowledge_pipeline/constraint_layers.py
+        type: class
+        signature: "N20: constraint layers contract error"
+      - symbol: "evaluate_knowledge_constraint_stack"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N20: Facade constraint stack (certified=false)"
+      - symbol: "evaluate_constraint_stack_route"
+        module: aiPlat-platform/apps/fde/api/constraint_layers_routes.py
+        type: function
+        signature: "POST /fde/constraint-layers/evaluate via Facade"
+      - symbol: "validate_abstain_citations"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: validate query abstain+citations (certified=false)"
+      - symbol: "enforce_abstain_citations"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: enforce query abstain+citations (certified=false)"
+      - symbol: "run_query_abstain_citations_suite"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: abstain+citations suite (certified=false)"
+      - symbol: "evaluate_query_abstain_citations_gate"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: abstain+citations gate (certified=false)"
+      - symbol: "QueryAbstainCitationsError"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: class
+        signature: "N21: abstain+citations contract error"
+      - symbol: "validate_query_abstain_citations"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N21: Facade validate abstain+citations"
+      - symbol: "enforce_query_abstain_citations"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N21: Facade enforce abstain+citations"
+      - symbol: "validate_query_abstain_citations_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/validate via Facade"
+      - symbol: "pack_retrieve_hits_as_query_response"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: pack Wiki/KB hits as query response (certified=false)"
+      - symbol: "query_wiki_with_abstain"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: Wiki query entry + abstain enforce (certified=false)"
+      - symbol: "query_kb_with_abstain"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: KB query entry + abstain enforce (certified=false)"
+      - symbol: "query_wiki_with_abstain_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/wiki via Facade"
+      - symbol: "query_kb_with_abstain_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/kb via Facade"
+      - symbol: "normalize_materials_citations"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: normalize MaterialsChat citations (certified=false)"
+      - symbol: "enforce_materials_chat_output"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: MaterialsChat RAG output abstain enforce (certified=false)"
+      - symbol: "is_materials_trivial_bypass"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: detect MaterialsChat trivial shortcut (certified=false)"
+      - symbol: "enforce_materials_chat_shortcut_output"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: MaterialsChat trivial shortcut enforce (certified=false)"
+      - symbol: "is_materials_cache_hit"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: detect MaterialsChat cache_hit (certified=false)"
+      - symbol: "enforce_materials_chat_cache_hit_output"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: MaterialsChat cache_hit enforce (certified=false)"
+      - symbol: "pack_graphrag_result_as_query_response"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: pack GraphRAG result as query response (certified=false)"
+      - symbol: "attach_graphrag_n21_envelope"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: attach GraphRAG n21_query envelope (certified=false)"
+      - symbol: "enforce_materials_chat_output_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/materials via Facade"
+      - symbol: "enforce_materials_chat_shortcut_output_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/materials-shortcut via Facade"
+      - symbol: "enforce_materials_chat_cache_hit_output_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/materials-cache-hit via Facade"
+      - symbol: "attach_graphrag_n21_envelope_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/graphrag via Facade"
+      - symbol: "attach_list_retrieve_n21_envelope"
+        module: core/harness/knowledge_pipeline/query_abstain_citations.py
+        type: function
+        signature: "N21: attach n21_query envelope to list retrieve (no primary rewrite)"
+      - symbol: "attach_list_retrieve_n21_envelope_route"
+        module: aiPlat-platform/apps/fde/api/query_abstain_citations_routes.py
+        type: function
+        signature: "POST /fde/query-abstain-citations/list-shape via Facade"
+      - symbol: "reconcile_raw_fact_index"
+        module: core/harness/knowledge_pipeline/raw_fact_index_reconcile.py
+        type: function
+        signature: "N14: Raw↔Fact↔Index reconcile (certified=false)"
+      - symbol: "run_raw_fact_index_reconcile_suite"
+        module: core/harness/knowledge_pipeline/raw_fact_index_reconcile.py
+        type: function
+        signature: "N14: Raw↔Fact↔Index suite (certified=false)"
+      - symbol: "evaluate_raw_fact_index_reconcile_gate"
+        module: core/harness/knowledge_pipeline/raw_fact_index_reconcile.py
+        type: function
+        signature: "N14: Raw↔Fact↔Index gate (certified=false)"
+      - symbol: "RawFactIndexReconcileError"
+        module: core/harness/knowledge_pipeline/raw_fact_index_reconcile.py
+        type: class
+        signature: "N14: Raw↔Fact↔Index contract error"
+      - symbol: "reconcile_raw_fact_index_chain"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N14: Facade Raw↔Fact↔Index reconcile"
+      - symbol: "reconcile_raw_fact_index_route"
+        module: aiPlat-platform/apps/fde/api/raw_fact_index_reconcile_routes.py
+        type: function
+        signature: "POST /fde/raw-fact-index-reconcile/run via Facade"
+      - symbol: "run_raw_fact_index_reconcile_suite_route"
+        module: aiPlat-platform/apps/fde/api/raw_fact_index_reconcile_routes.py
+        type: function
+        signature: "POST /fde/raw-fact-index-reconcile/suite via Facade"
+      - symbol: "evaluate_lv4_fp_gate"
+        module: core/harness/knowledge_pipeline/lv4_false_positive_gate.py
+        type: function
+        signature: "N08: Lv4 FP gate v2 (no zero-sample green)"
+      - symbol: "run_lv4_false_positive_gate_suite"
+        module: core/harness/knowledge_pipeline/lv4_false_positive_gate.py
+        type: function
+        signature: "N08: Lv4 FP suite (certified=false)"
+      - symbol: "evaluate_lv4_false_positive_gate"
+        module: core/harness/knowledge_pipeline/lv4_false_positive_gate.py
+        type: function
+        signature: "N08: Lv4 FP gate (certified=false)"
+      - symbol: "Lv4FalsePositiveGateError"
+        module: core/harness/knowledge_pipeline/lv4_false_positive_gate.py
+        type: class
+        signature: "N08: Lv4 FP gate contract error"
+      - symbol: "evaluate_lv4_false_positive"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N08: Facade Lv4 FP evaluate (certified=false)"
+      - symbol: "lv4_min_samples"
+        module: core/harness/knowledge_pipeline/lv4_false_positive_gate.py
+        type: function
+        signature: "N08: Lv4 min samples config"
+      - symbol: "evaluate_lv4_fp_gate_route"
+        module: aiPlat-platform/apps/fde/api/lv4_false_positive_routes.py
+        type: function
+        signature: "POST /fde/lv4-false-positive/evaluate via Facade"
+      - symbol: "project_facts_to_wiki"
+        module: core/harness/knowledge_pipeline/wiki_rebuild.py
+        type: function
+        signature: "N05: Fact→Wiki derived pages (certified=false)"
+      - symbol: "list_wiki_rebuild_pages"
+        module: core/harness/knowledge_pipeline/wiki_rebuild.py
+        type: function
+        signature: "N05: list Wiki rebuild derived pages (tenant-scoped)"
+      - symbol: "run_wiki_rebuild_suite"
+        module: core/harness/knowledge_pipeline/wiki_rebuild.py
+        type: function
+        signature: "N05: Wiki rebuild suite (certified=false)"
+      - symbol: "evaluate_wiki_rebuild_gate"
+        module: core/harness/knowledge_pipeline/wiki_rebuild.py
+        type: function
+        signature: "N05: Wiki rebuild gate (certified=false)"
+      - symbol: "fact_ledger_project_to_wiki"
+        module: core/api/core_facade.py
+        type: function
+        signature: "N05: Facade Fact→Wiki rebuild (certified=false)"
       - symbol: "confirm_extraction_k1"
         module: core/apps/fde/service/k_wave_signal.py
         type: function
@@ -3618,6 +4150,22 @@ domains:
         module: core/harness/knowledge_pipeline/object_set.py
         type: function
         signature: "Read-only ObjectSet; tenant_id + kb:read L1; optional ABox role ACL"
+      - symbol: "match_filter_expr"
+        type: "function"
+        signature: "N07/N22: nested ObjectSet filter match"
+        module: "core/harness/knowledge_pipeline/object_set.py"
+      - symbol: "run_object_set_filter_suite"
+        type: "function"
+        signature: "N07/N22: nested filter suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_set.py"
+      - symbol: "evaluate_object_set_filter_gate"
+        type: "function"
+        signature: "N07/N22: nested filter gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_set.py"
+      - symbol: "ObjectSetFilterError"
+        type: "class"
+        signature: "N07/N22: invalid nested filter"
+        module: "core/harness/knowledge_pipeline/object_set.py"
       - symbol: "query_object_set"
         module: core/api/core_facade.py
         type: function
@@ -3814,6 +4362,18 @@ domains:
         module: core/harness/knowledge_pipeline/confidence_calibration.py
         type: function
         signature: "W10: cap confidence to medium when calibration fails"
+      - symbol: "apply_calibration_ceiling"
+        type: "function"
+        signature: "N13: apply confidence ceiling on query path (certified=false)"
+        module: "core/harness/knowledge_pipeline/confidence_calibration.py"
+      - symbol: "run_calibration_pipeline_suite"
+        type: "function"
+        signature: "N13: operational calibration pipeline suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/confidence_calibration.py"
+      - symbol: "evaluate_calibration_pipeline_gate"
+        type: "function"
+        signature: "N13: calibration pipeline gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/confidence_calibration.py"
       - symbol: "publish_confidence_calibration"
         module: core/api/core_facade.py
         type: function
@@ -3838,6 +4398,26 @@ domains:
         module: core/harness/knowledge_pipeline/knowledge_migration.py
         type: function
         signature: "W10: start knowledge migration job (dual-write window)"
+      - symbol: "authorize_migration_cutover"
+        type: "function"
+        signature: "N11/N14: job-level cutover authorize (token)"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "request_write_cutover"
+        type: "function"
+        signature: "N11/N14: request cutover phase if authorized"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "revoke_migration_cutover"
+        type: "function"
+        signature: "N11/N14: revoke job-level cutover auth"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "run_migration_cutover_auth_suite"
+        type: "function"
+        signature: "N11/N14: cutover auth suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "evaluate_migration_cutover_auth_gate"
+        type: "function"
+        signature: "N11/N14: cutover auth gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
       - symbol: "get_migration_job"
         module: core/harness/knowledge_pipeline/knowledge_migration.py
         type: function
@@ -4203,6 +4783,22 @@ domains:
         module: core/policy/graph_abox_acl.py
         type: function
         signature: "domain entity role action → bool (GraphIndex ABox ACL)"
+      - symbol: "load_role_action_matrix"
+        type: "function"
+        signature: "N07/N22: config role×action matrix"
+        module: "core/policy/graph_abox_acl.py"
+      - symbol: "role_action_allowed"
+        type: "function"
+        signature: "N07/N22: role×action allow check"
+        module: "core/policy/graph_abox_acl.py"
+      - symbol: "run_role_action_matrix_suite"
+        type: "function"
+        signature: "N07/N22: role×action suite (certified=false)"
+        module: "core/policy/graph_abox_acl.py"
+      - symbol: "evaluate_role_action_matrix_gate"
+        type: "function"
+        signature: "N07/N22: role×action gate (certified=false)"
+        module: "core/policy/graph_abox_acl.py"
       - symbol: "resolve_abox_actor_role"
         module: core/policy/graph_abox_acl.py
         type: function
@@ -4709,7 +5305,7 @@ domains:
         type: function
         signature: "CoreFacade: Phase B plan→trace→critique→report dry-run; optional Phase C evidence"
       - symbol: "security_coworker"
-        module: core/workspace_seeds/agents/security_coworker/AGENT.md
+        module: aiPlat-core/core/workspace_seeds/agents/security_coworker/AGENT.md
         type: agent
         signature: "workspace_seeds specialist coworker → security_review team (OpenWorker-inspired)"
       - symbol: "security_evidence.execute"
@@ -4760,6 +5356,14 @@ domains:
         module: aiPlat-core/core/harness/knowledge/ontology_completeness.py
         type: function
         signature: "compute_all_ocs()"
+      - symbol: "run_ocs_enterprise_scan_suite"
+        type: "function"
+        signature: "N23: enterprise OCS scan suite (certified=false)"
+        module: "core/harness/knowledge/ontology_completeness.py"
+      - symbol: "evaluate_ocs_enterprise_scan_gate"
+        type: "function"
+        signature: "N23: enterprise OCS scan gate (certified=false)"
+        module: "core/harness/knowledge/ontology_completeness.py"
       - symbol: "OntologyCase"
         module: aiPlat-core/core/harness/knowledge/ontology_case_learning.py
         type: dataclass
@@ -4980,13 +5584,73 @@ domains:
         type: "function"
         signature: "W3 N12: fact review_status transition with audit"
         module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "submit_object_type_draft"
+        type: "function"
+        signature: "N02: submit ObjectType draft (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "transition_object_type"
+        type: "function"
+        signature: "N02: ObjectType status transition with publish role gate"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "get_published_object_type"
+        type: "function"
+        signature: "N02: read published ObjectType definition"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "run_object_type_publish_suite"
+        type: "function"
+        signature: "N02: ObjectType publish suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "evaluate_object_type_publish_gate"
+        type: "function"
+        signature: "N02: ObjectType publish gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "assert_object_type_publish_role"
+        type: "function"
+        signature: "N02: assert configured role for ObjectType publish"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "list_object_type_versions"
+        type: "function"
+        signature: "N02: list ObjectType versions (tenant-scoped)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "assert_schema_object_types_published"
+        type: "function"
+        signature: "N02: optional Package schema ObjectType publish gate"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "assert_reviewer_role"
+        type: "function"
+        signature: "N04/N12: assert configured reviewer role for publish"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "allowed_reviewer_roles"
+        type: "function"
+        signature: "N04/N12: configured reviewer roles tuple"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "run_reviewer_rbac_suite"
+        type: "function"
+        signature: "N04/N12: reviewer rbac suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "evaluate_reviewer_rbac_gate"
+        type: "function"
+        signature: "N04/N12: reviewer rbac gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
       - symbol: "transition_fact_lifecycle"
         type: "function"
         signature: "W3 N12: fact lifecycle transition with audit"
         module: "core/harness/knowledge_pipeline/fact_state_machine.py"
       - symbol: "transition_claim_status_pure"
         type: "function"
-        signature: "W3 N12: claim status edge + audit"
+        signature: "W3 N12/N03: claim status edge + audit (no write)"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "transition_claim_status"
+        type: "function"
+        signature: "N03: claim status write path (put_claim + audit; certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "run_claim_status_write_suite"
+        type: "function"
+        signature: "N03: claim status write suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/fact_state_machine.py"
+      - symbol: "evaluate_claim_status_write_gate"
+        type: "function"
+        signature: "N03: claim status write gate (certified=false)"
         module: "core/harness/knowledge_pipeline/fact_state_machine.py"
       - symbol: "evaluate_fact_state_gate"
         type: "function"
@@ -5038,14 +5702,14 @@ domains:
         reason: "GraphIndex 遍历检索"
       - module: "core/harness/knowledge/context_bus.py"
         reason: "10层上下文注入"
-      - module: "core/harness/knowledge/knowledge_synthesis.py"
-        reason: "KnowledgeSynthesizer 合成 Wiki 页"
       - module: "aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py"
         reason: "FDE 能力自描述"
       - module: "core/harness/knowledge/domain_maturity.py"
         reason: "域成熟度评分"
       - module: "core/harness/knowledge/ontology_completeness.py"
         reason: "OCS 本体完整性六维评分"
+      - module: "core/api/core_facade.py"
+        reason: "N02 ObjectType publish Facade 入口"
 
   # ══════════════════════════════════════════════════════════════
   # 四、RAG 检索 (10 caps)
@@ -5101,10 +5765,6 @@ domains:
         reason: "CRAG + HyDE + RRF 自身"
       - module: "core/harness/syscalls/retrieval.py"
         reason: "检索路由 + 多路融合"
-      - module: "core/harness/knowledge/domain_router.py"
-        reason: "域分类 → 检索范围确定"
-      - module: "aiPlat-platform/apps/fde/api/fde_ask.py"
-        reason: "FDE 追问 → 检索增强"
 
   # ══════════════════════════════════════════════════════════════
   # 四附、知识基础设施 (5 caps)
@@ -5137,8 +5797,6 @@ domains:
         signature: "nodes → {stale, reason}; capability graph cache fingerprint"
     breaks: []
     consumers_expected:
-      - module: "core/harness/knowledge/seci_engine.py"
-        reason: "SECI 消费 KnowledgeSynthesizer"
       - module: "core/harness/memory/manager.py"
         reason: "build_context 注入 ContextBus"
       - module: "core/harness/execution/pipeline_engine.py"
@@ -6277,11 +6935,11 @@ domains:
       - symbol: load_prompt_set_json
         type: function
         signature: 'load_prompt_set_json(set_id)→Dict engine prompt/* JSON'
-        module: aiPlat-core/core/apps/eval/service/prompt_plan_ops.py
+        module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
       - symbol: score_prompt_output
         type: function
         signature: 'score_prompt_output(output,criteria)→Dict status/summary'
-        module: aiPlat-core/core/apps/eval/service/prompt_plan_ops.py
+        module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
       - symbol: NoRedirectHandler
         type: class
         signature: 'redirect_request'
@@ -6478,8 +7136,6 @@ domains:
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline 调度 Agent"
-      - module: "core/apps/builder/builder_project_service.py"
-        reason: "Builder 创建 Agent"
       - module: "core/api/routers/agents.py"
         reason: "Agent REST 端点"
 
@@ -7234,7 +7890,7 @@ domains:
         notes: "conceptual or non-export; retained for domain map"
       - symbol: "arch_guard_b84"
         module: scripts/architecture_guard.sh
-        type: check
+        type: script
         signature: "§94b BOUNDARY.yaml 目录覆盖检查（harness 一级子目录必须声明 layer/rationale/known_debt，roadmap §0.3，2026-08-25）"
       - symbol: "check_pipeline_llm_bypass"
         module: scripts/check_pipeline_llm_bypass.py
@@ -7509,10 +8165,6 @@ domains:
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline trace 事件"
-      - module: "core/harness/syscalls/tool.py"
-        reason: "工具调用审计"
-      - module: "aiPlat-management/frontend/src/pages/Diagnostics"
-        reason: "诊断仪表盘"
 
   # ══════════════════════════════════════════════════════════════
   # 九、模型基础设施 (7 caps)
@@ -7561,8 +8213,6 @@ domains:
         reason: "MoA 引擎多模型路由"
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline 阶段模型选择"
-      - module: "aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx"
-        reason: "T1-T5 前端展示"
 
   # ══════════════════════════════════════════════════════════════
   # 十、部署与运维 (3 caps)
@@ -8279,8 +8929,6 @@ domains:
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline 阶段 Gate 检查"
-      - module: "core/harness/infrastructure/integration.py"
-        reason: "8 Gate 统一出口"
       - module: "core/server.py"
         reason: "BackpressureMiddleware 挂载 + backpressure_stats 诊断"
 
@@ -10971,10 +11619,6 @@ domains:
         module: "core/harness/utils/task_model_lock.py"
     breaks: []
     consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline 质量评分"
-      - module: "aiPlat-platform/apps/fde/api/fde_quality_summary.py"
-        reason: "FDE 质量摘要"
 
   # ══════════════════════════════════════════════════════════════
   # 十四、MCP 协议 (3 caps)
@@ -11042,10 +11686,6 @@ domains:
         module: "core/apps/mcp/adapter.py"
     breaks: []
     consumers_expected:
-      - module: "core/apps/mcp/server.py"
-        reason: "MCP server lifecycle"
-      - module: "core/api/routers/mcp.py"
-        reason: "MCP REST 端点"
 
   # ══════════════════════════════════════════════════════════════
   # 十四附、A2A 协议 (2 caps)
@@ -11065,10 +11705,6 @@ domains:
         signature: "TASK_ASSIGN/PROGRESS_UPDATE/RESULT/ERROR/CANCEL"
     breaks: []
     consumers_expected:
-      - module: "core/apps/agents/multi_agent.py"
-        reason: "MultiAgent 通信"
-      - module: "core/harness/coordination/swarm_broker.py"
-        reason: "SwarmBroker agent discovery"
 
   # ══════════════════════════════════════════════════════════════
   # 十五、文档智能 (3 caps)
@@ -11094,10 +11730,6 @@ domains:
         notes: "conceptual or non-export; retained for domain map"
     breaks: []
     consumers_expected:
-      - module: "core/harness/ontology_engine/engine.py"
-        reason: "OntologyEngine 文档输入"
-      - module: "core/api/routers/wiki.py"
-        reason: "Upload/ingest 端点"
 
   # ══════════════════════════════════════════════════════════════
   # 十六、工具生态 (61 caps)
@@ -11105,7 +11737,7 @@ domains:
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 73
+    caps_count: 76
     provides:
       - symbol: "finalize_tool_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -11185,6 +11817,18 @@ domains:
         type: doc
         signature: "AsyncActionRegistry.resolve_action_id(legacy_or_canonical) → canonical action_id"
         notes: "conceptual or non-export; retained for domain map"
+      - symbol: "action_kill_switch_active"
+        type: "function"
+        signature: "N08: global action kill switch"
+        module: "core/harness/ontology_engine/action_registry.py"
+      - symbol: "run_action_policy_audit_suite"
+        type: "function"
+        signature: "N08: policy/approval/audit suite (certified=false)"
+        module: "core/harness/ontology_engine/action_registry.py"
+      - symbol: "evaluate_action_policy_audit_gate"
+        type: "function"
+        signature: "N08: policy/audit gate (certified=false)"
+        module: "core/harness/ontology_engine/action_registry.py"
       - symbol: "update_entity_property"
         module: aiPlat-core/core/harness/ontology_engine/graph_index.py
         type: doc
@@ -11436,8 +12080,6 @@ domains:
     consumers_expected:
       - module: "core/harness/evolution_engine.py"
         reason: "nightly LoRA trigger"
-      - module: "core/harness/optimization/goal_generator.py"
-        reason: "微调缺口扫描"
 
   # ══════════════════════════════════════════════════════════════
   # 十八、部署与灰度 (3 caps)
@@ -11744,8 +12386,6 @@ domains:
     consumers_expected:
       - module: "core/api/routers/adapters.py"
         reason: "/model-override 端点"
-      - module: "core/harness/syscalls/llm.py"
-        reason: "最佳模型选择"
       - module: "core/api/routers/diagnostics.py"
         reason: "adoption-metrics 附带 Howl 干预次数"
 
@@ -11785,10 +12425,6 @@ domains:
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline routing_mode dispatch"
-      - module: "core/harness/coordination/swarm_broker.py"
-        reason: "SwarmBroker 蜂群协作"
-      - module: "aiPlat-platform/apps/eval/api/arena_wiring.py"
-        reason: "P0-B3 arena/wake-agent REST 端点"
 
   # ══════════════════════════════════════════════════════════════
   # 二十一、平台治理 (14 caps)
@@ -11861,20 +12497,10 @@ domains:
         signature: "run_smoke(live=False)→dict; critical-path static/live behavior smoke (Phase D)"
     breaks: []
     consumers_expected:
-      - module: "core/server.py"
-        reason: "Governance cron 定时任务"
-      - module: "core/harness/ontology_engine/engine.py"
-        reason: "本体引擎治理"
-      - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
-        reason: "仪表盘治理指标"
       - module: "scripts/verify_capability_truth.py"
         reason: "统一门禁调用 audit_registry / run_smoke"
-      - module: "scripts/verify_doc_sync.sh"
-        reason: "doc sync / pre-commit / contracts-guard 向下传 --ci"
       - module: "scripts/generate_capability_stats.py"
         reason: "Phase C 统计表生成入口"
-      - module: ".github/workflows/aiplat-contracts-guard.yml"
-        reason: "Phase D critical-path static smoke in CI"
 
   # ══════════════════════════════════════════════════════════════
   # 二十二、Infra 基础设施 (6 caps)
@@ -11911,12 +12537,8 @@ domains:
         notes: "conceptual or non-export; retained for domain map"
     breaks: []
     consumers_expected:
-      - module: "core/harness/infrastructure/infra_llm_adapter.py"
-        reason: "LLM 适配器 → infra"
       - module: "core/harness/utils/model_injection.py"
         reason: "ModelManager 缓存"
-      - module: "aiPlat-management/frontend/src/pages/Infra"
-        reason: "Infra 管理前端"
       - module: "aiPlat-infra/infra/management/model/config_loader.py"
         reason: "adapters 发现与 CredentialPool 共用 DB 路径"
 
@@ -11939,10 +12561,6 @@ domains:
         signature: "FastAPI app lifecycle, startup/shutdown"
     breaks: []
     consumers_expected:
-      - module: "aiPlat-platform/apps/fde/api/router.py"
-        reason: "FDE 路由挂载"
-      - module: "aiPlat-platform/server.py"
-        reason: "Platform server 入口"
 
   # ══════════════════════════════════════════════════════════════
   # 二十四、编排系统 (4 caps)
@@ -11972,8 +12590,6 @@ domains:
         notes: "conceptual or non-export; retained for domain map"
     breaks: []
     consumers_expected:
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "Pipeline 编排"
       - module: "core/api/routers/pipeline_execution.py"
         reason: "fork/forks 端点经 CoreFacade 取 store"
 
@@ -12474,8 +13090,6 @@ domains:
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline 质量评分"
-      - module: "aiPlat-management/frontend/src/pages/Diagnostics"
-        reason: "诊断仪表盘"
 
   # ══════════════════════════════════════════════════════════════
   # 二十六、编排层 (Orchestration) (5 caps)
@@ -12511,8 +13125,6 @@ domains:
         reason: "Pipeline → Swarm/Debate/Roundtable/MoA dispatch"
       - module: "core/harness/coordination/swarm_broker.py"
         reason: "动态组队"
-      - module: "core/harness/optimization/goal_executor.py"
-        reason: "Goal 分解后并行执行"
 
   # ══════════════════════════════════════════════════════════════
   # 二十七、L6 自主能力 (5 caps)
@@ -12552,8 +13164,6 @@ domains:
         reason: "_try_decompose_pending"
       - module: "core/server.py"
         reason: "DiscoveryListener 启动"
-      - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
-        reason: "_get_goal_decomposition_stats"
 
   # ══════════════════════════════════════════════════════════════
   # 二十八、记忆系统白盒化 (5 caps)
@@ -12585,8 +13195,6 @@ domains:
         module: "aiPlat-management/frontend/src/components/core/SemanticMemoryModal.tsx"
     breaks: []
     consumers_expected:
-      - module: "core/api/routers/memory.py"
-        reason: "全量记忆 REST 端点"
       - module: "aiPlat-management/frontend/src/pages/Core/Memory/Memory.tsx"
         reason: "记忆管理页面"
 

@@ -16,8 +16,9 @@ authority: supporting
 |------|------|
 | [phase0-standard-pack-baseline.md](./phase0-standard-pack-baseline.md) | 标准 schema/语义校验结果（原始 `*.log` 被 `.gitignore`，以本摘要为准） |
 | [phase0-asset-inventory.md](./phase0-asset-inventory.md) | 资产 / owner 盘点 |
-| [phase0-conformance-gap-n24.md](./phase0-conformance-gap-n24.md) | 附录 N 24 项差距表（2026-11-16 刷新；SSOT 见 catalog） |
+| [phase0-conformance-gap-n24.md](./phase0-conformance-gap-n24.md) | 附录 N 24 项差距表（2026-11-19 刷新；SSOT 见 catalog） |
 | [n24-conformance-catalog.yaml](./n24-conformance-catalog.yaml) | 附录 N 机器可读目录（证据包 SSOT） |
+| [phase2-catalog-honesty-triage.md](./phase2-catalog-honesty-triage.md) | catalog exists 诚实锁盘点（仍开放/已过时/并入既有刀；非 certified） |
 | [phase0-pilot-lock-service.md](./phase0-pilot-lock-service.md) | 试点域边界与 G0 |
 | [phase1-g1-evidence.md](./phase1-g1-evidence.md) | Phase 1 G1（Fact Ledger） |
 | [phase2-g2-evidence.md](./phase2-g2-evidence.md) | Phase 2 G2（L1 硬门 + Fact→Graph 可重建） |
@@ -33,18 +34,50 @@ authority: supporting
 | [phase2-objectset-acl-evidence.md](./phase2-objectset-acl-evidence.md) | Phase 2 W8 ObjectSet ABox ACL（实例/字段 + 跨租户负向） |
 | [phase2-scenario-evidence.md](./phase2-scenario-evidence.md) | Phase 2 W9 Knowledge Scenario（模拟不写主事实 + 合并人审） |
 | [phase2-ontology-package-evidence.md](./phase2-ontology-package-evidence.md) | Phase 2 W9 Ontology Package（版本/哈希校验 + 兼容 + 依赖锁定 + 回滚） |
+| [phase2-object-type-publish-evidence.md](./phase2-object-type-publish-evidence.md) | N02 deepen：ObjectType 人审发布（角色门；非 certified） |
+| [phase2-wiki-rebuild-evidence.md](./phase2-wiki-rebuild-evidence.md) | N05 deepen：Wiki 有条件重建派生页（非 wiki_engine 全量/非 certified） |
+| [phase2-knowledge-gold-eval-evidence.md](./phase2-knowledge-gold-eval-evidence.md) | N10 deepen：域级 Exact-match gold 流水线（非准确率宣称/非 certified） |
+| [phase2-record-semantics-evidence.md](./phase2-record-semantics-evidence.md) | N17 deepen：记录级语义运行时权威（非 RBAC 真源/非 certified） |
+| [phase2-deployed-rbac-evidence.md](./phase2-deployed-rbac-evidence.md) | N18 deepen：部署侧 RBAC 真源（禁 reference_policy 权威；非全路径/非 certified） |
+| [phase2-fact-query-audit-evidence.md](./phase2-fact-query-audit-evidence.md) | N19 deepen：Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve/wiki_context 热路径（非全部旁路/非 certified） |
+| [phase2-fact-query-wiki-context-hotpath-evidence.md](./phase2-fact-query-wiki-context-hotpath-evidence.md) | N19 deepen：Agent `sys_wiki_context` 信封失败兜底审计（非 certified） |
+| [phase2-fact-query-wiki-structured-hotpath-evidence.md](./phase2-fact-query-wiki-structured-hotpath-evidence.md) | N19 deepen：Wiki 结构化查询 Facade/HTTP 热路径审计（非 certified） |
+| [phase2-fact-query-ontology-context-hotpath-evidence.md](./phase2-fact-query-ontology-context-hotpath-evidence.md) | N19 deepen：Agent `sys_ontology_context`（域版）热路径审计（非 certified） |
+| [phase2-fact-query-ontology-urn-hotpath-evidence.md](./phase2-fact-query-ontology-urn-hotpath-evidence.md) | N19 deepen：URN syscall + HTTP ontology 热路径审计（非 certified） |
+| [phase2-fact-query-wiki-pages-hotpath-evidence.md](./phase2-fact-query-wiki-pages-hotpath-evidence.md) | N19 deepen：Wiki pages Facade/HTTP 热路径审计（非 certified） |
+| [phase2-fact-query-graph-neighbors-hotpath-evidence.md](./phase2-fact-query-graph-neighbors-hotpath-evidence.md) | N19 deepen：`sys_graph_neighbors` + MaterialsChat 透传审计（非 certified） |
+| [phase2-fact-query-graph-query-hotpath-evidence.md](./phase2-fact-query-graph-query-hotpath-evidence.md) | N19 deepen：补齐 `sys_graph_query` + MaterialsChat 透传审计（非 certified） |
+| [phase2-fact-query-wiki-search-pages-bare-hotpath-evidence.md](./phase2-fact-query-wiki-search-pages-bare-hotpath-evidence.md) | N19 deepen：裸 `wiki_search_pages` list 审计（非 certified） |
+| [phase2-fact-query-fde-clarify-tenant-hotpath-evidence.md](./phase2-fact-query-fde-clarify-tenant-hotpath-evidence.md) | N19 deepen：FDE clarify tenant 透传审计（非 certified） |
+| [phase2-fact-query-wiki-engine-search-pages-hotpath-evidence.md](./phase2-fact-query-wiki-engine-search-pages-hotpath-evidence.md) | N19 deepen：wiki_engine.search_pages opt-in 审计（非 certified） |
+| [phase2-constraint-layers-evidence.md](./phase2-constraint-layers-evidence.md) | N20 deepen：L1>L2>L3 + Gateway/put_fact/query_facts_gateway/MaterialsChat/GraphRAG/Wiki-KB/裸 list/query_facts list 热路径 n20_constraint（非 list→dict/非 certified） |
+| [phase2-query-abstain-citations-evidence.md](./phase2-query-abstain-citations-evidence.md) | N21 deepen：abstain+citations + Wiki/KB + Materials + GraphRAG + list n21_query（非改写 list 主类型/非 certified） |
+| [phase2-raw-fact-index-reconcile-evidence.md](./phase2-raw-fact-index-reconcile-evidence.md) | N14 deepen：Raw↔Fact↔Index 全链路对账（非生产切写认证/非 certified） |
+| [phase2-calibration-pipeline-evidence.md](./phase2-calibration-pipeline-evidence.md) | N13 deepen：Operational 校准流水线（查询路径封顶；非真实 ECE/非 certified） |
+| [phase2-ocs-enterprise-scan-evidence.md](./phase2-ocs-enterprise-scan-evidence.md) | N23 deepen：企业域 OCS 扫描（DomainRouter+词汇预注册；非全域完整/非 certified） |
 | [phase2-confidence-calibration-evidence.md](./phase2-confidence-calibration-evidence.md) | W10 Confidence Calibration（附录 O 门槛 + 失败降级 medium） |
 | [phase2-ocs-evidence.md](./phase2-ocs-evidence.md) | W10 OCS Completeness（§13.4 覆盖计分 + 门槛门；禁节点数档位） |
-| [phase2-knowledge-migration-evidence.md](./phase2-knowledge-migration-evidence.md) | W10 Knowledge Migration（双写/对账/回滚演练；切写未授权） |
+| [phase2-knowledge-migration-evidence.md](./phase2-knowledge-migration-evidence.md) | W10 Knowledge Migration（双写/对账/回滚演练；切写见 cutover-auth） |
 | [phase2-conformance-pack-evidence.md](./phase2-conformance-pack-evidence.md) | W10 Conformance / 认证证据包（N24 目录 + §9.4 槽位；非 24/24 认证） |
 | [phase2-implementer-semantics-evidence.md](./phase2-implementer-semantics-evidence.md) | W10 N18 实现方语义测试（5 探针 + 门槛门；非全量认证） |
 | [phase2-source-policy-evidence.md](./phase2-source-policy-evidence.md) | W3 N04 Source Policy / Conflict（策略登记 + 冲突不自动选边 + 人审；非全写入强制） |
+| [phase2-action-policy-audit-evidence.md](./phase2-action-policy-audit-evidence.md) | N08 deepen：Policy/Approval/Audit + kill switch（非 certified） |
+| [phase2-lv4-false-positive-gate-evidence.md](./phase2-lv4-false-positive-gate-evidence.md) | N08 deepen：Lv4 误报门 v2（禁 0 样本假绿；非全量 Action Lv4/非 certified） |
+| [phase2-migration-cutover-auth-evidence.md](./phase2-migration-cutover-auth-evidence.md) | N11/N14 deepen：作业级切写授权（token；非生产认证/非 certified） |
+| [phase2-role-action-matrix-evidence.md](./phase2-role-action-matrix-evidence.md) | N07/N22 deepen：角色×动作轴（配置驱动；非部署 RBAC/非 certified） |
+| [phase2-objectset-filter-evidence.md](./phase2-objectset-filter-evidence.md) | N07/N22 deepen：ObjectSet 嵌套 filter（非 Wiki/KB 全入口/非 certified） |
+| [phase2-reviewer-rbac-evidence.md](./phase2-reviewer-rbac-evidence.md) | N04/N12 deepen：publish reviewer 角色门（配置驱动；非部署 RBAC/非 certified） |
 | [phase2-fact-state-evidence.md](./phase2-fact-state-evidence.md) | W3 N12 Fact 状态机（review/lifecycle/claim + 审计；非裸 put_fact 唯一强制） |
 | [phase2-claim-evidence-evidence.md](./phase2-claim-evidence-evidence.md) | Batch F2 N03 Claim 证据硬门+冲突记录（门槛门；非全量认证） |
+| [phase2-claim-status-write-evidence.md](./phase2-claim-status-write-evidence.md) | N03 deepen：Claim 状态写路径（transition→put_claim；非全量/非 certified） |
+| [phase2-unified-query-gateway-evidence.md](./phase2-unified-query-gateway-evidence.md) | N06 deepen：fact+object_set+wiki+index+materials_chat+graphrag 统一 Gateway（非全部其它应用/非 certified） |
 | [phase2-slo-target-evidence.md](./phase2-slo-target-evidence.md) | Batch F1 §9.4 SLO 目标登记（非生产遥测达标） |
 | [phase2-slo-telemetry-wiring-evidence.md](./phase2-slo-telemetry-wiring-evidence.md) | F1 deepen：生产 SLO 遥测接线（wiring≠attainment；Full 仍 conditional） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
+| [phase2-datasource-process-raw-evidence.md](./phase2-datasource-process-raw-evidence.md) | N01 deepen：process_from_datasource → Raw ingest opt-in（非默认强制/非 certified） |
+| [phase2-datasource-process-raw-default-force-evidence.md](./phase2-datasource-process-raw-default-force-evidence.md) | N01 deepen：process Raw 默认强制（可 opt-out / 非 certified） |
+| [phase2-datasource-connector-matrix-evidence.md](./phase2-datasource-connector-matrix-evidence.md) | N01 deepen：Core file/sql/api 连接器矩阵 + hash 强制快照（非 vendor / 非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |
 | [phase2-claim-revision-evidence.md](./phase2-claim-revision-evidence.md) | Batch H1 N24 Claim Revision 归档/抬号（非 Source/回滚 UI/非 certified） |
 | [phase2-source-revision-evidence.md](./phase2-source-revision-evidence.md) | Batch H2 N24 Source Revision 归档/抬号（非回滚 UI/非 certified） |
@@ -56,11 +89,20 @@ authority: supporting
 | [phase2-revision-restore-ui-evidence.md](./phase2-revision-restore-ui-evidence.md) | Batch J2 N24 Revision Restore 管理端薄 UI（非全量总线/非 certified） |
 | [phase2-unified-audit-view-evidence.md](./phase2-unified-audit-view-evidence.md) | Batch J3 N24 Package+Action+revision 只读统一视图（非写总线/非 certified） |
 | [phase2-unified-audit-ui-evidence.md](./phase2-unified-audit-ui-evidence.md) | Batch J4 N24 Unified Audit 管理端薄 UI（非写总线/非 certified） |
+| [phase2-unified-audit-ui-streams-evidence.md](./phase2-unified-audit-ui-streams-evidence.md) | N24 J12：UI 暴露 action_store / fact_query_audit 流过滤（非写总线/非 certified） |
+| [phase2-unified-audit-ui-materialize-evidence.md](./phase2-unified-audit-ui-materialize-evidence.md) | N24 J13：UI materialize + 写总线只读列表（非 certified） |
+| [phase2-unified-audit-ui-bus-gate-evidence.md](./phase2-unified-audit-ui-bus-gate-evidence.md) | N24 J14：UI 按模式调用 view/bus suite·gate（非 certified） |
+| [phase2-unified-audit-ui-append-evidence.md](./phase2-unified-audit-ui-append-evidence.md) | N24 J15：UI 写总线薄 append（非 certified） |
+| [phase2-unified-audit-ui-append-payload-evidence.md](./phase2-unified-audit-ui-append-payload-evidence.md) | N24 J16：UI append 可选 refs/payload JSON（非 certified） |
+| [phase2-unified-audit-ui-event-detail-evidence.md](./phase2-unified-audit-ui-event-detail-evidence.md) | N24 J17：UI 事件详情展开 + bus event_type 过滤（非 certified） |
 | [phase2-unified-audit-bus-evidence.md](./phase2-unified-audit-bus-evidence.md) | Batch J5 N24 Unified Audit 写总线（非 ActionStore 合并/非 certified） |
 | [phase2-unified-audit-hotpath-evidence.md](./phase2-unified-audit-hotpath-evidence.md) | Batch J6 N24 Package/Action 热路径写总线（非 ActionStore 合并/非 certified） |
 | [phase2-unified-audit-action-store-evidence.md](./phase2-unified-audit-action-store-evidence.md) | Batch J7 N24 ActionStore.action_audit 汇入统一审计（非 certified） |
 | [phase2-unified-audit-action-store-tenant-evidence.md](./phase2-unified-audit-action-store-tenant-evidence.md) | Batch J8 N24 ActionStore 物理 tenant_id（非 certified） |
+| [phase2-unified-audit-fact-query-bus-hotpath-evidence.md](./phase2-unified-audit-fact-query-bus-hotpath-evidence.md) | N24 J11：Fact/Query 快照写总线热路径（非 certified） |
+| [phase2-unified-audit-fact-query-stream-evidence.md](./phase2-unified-audit-fact-query-stream-evidence.md) | N24 J10：Fact/Query 审计快照 fan-in 统一视图/materialize（非 certified） |
 | [phase2-unified-audit-action-store-tenant-backfill-evidence.md](./phase2-unified-audit-action-store-tenant-backfill-evidence.md) | Batch J9 N24 ActionStore tenant_id 存量回填（非 certified） |
+| [phase2-cross-tenant-unified-gateway-evidence.md](./phase2-cross-tenant-unified-gateway-evidence.md) | N09 deepen：统一 Gateway fact/object_set 跨租户探针（非全域认证） |
 | [phase2-cross-tenant-objectset-audit-evidence.md](./phase2-cross-tenant-objectset-audit-evidence.md) | Batch K1 N09 ObjectSet+UnifiedAudit 跨租户探针（非 Wiki/KB 全入口/非 certified） |
 | [phase2-cross-tenant-wiki-kb-evidence.md](./phase2-cross-tenant-wiki-kb-evidence.md) | Batch K2 N09 Wiki/KB 跨租户探针（非 GraphRAG/非 certified） |
 | [phase2-cross-tenant-graphrag-evidence.md](./phase2-cross-tenant-graphrag-evidence.md) | Batch K3 N09 GraphRAG 向量层跨租户（非图节点 ACL/非 certified） |
