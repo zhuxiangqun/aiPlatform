@@ -65,14 +65,7 @@ def test_match_condition_bool_depth2():
         )
         is False
     )
-    # 嵌套 $not → 拒配
-    assert (
-        match_abox_condition(
-            {"$and": [{"$not": {"status": "closed"}}]},
-            attrs,
-        )
-        is False
-    )
+    # 嵌套 $not → 见 not-bool-depth2；本文件只锁定深度 3 拒配
 
 
 def test_check_entity_acl_bool_depth2_gates_deny(tmp_path: Path, monkeypatch):
