@@ -111,6 +111,7 @@ authority: supporting
 | [phase2-abox-acl-condition-bool-depth12-evidence.md](./phase2-abox-acl-condition-bool-depth12-evidence.md) | N07/N22 deepen：ABox ACL condition $and/$or 深度 12（有界 / 拒配传播 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-condition-bool-depth13-evidence.md](./phase2-abox-acl-condition-bool-depth13-evidence.md) | N07/N22 deepen：ABox ACL condition $and/$or 深度 13（有界 / 拒配传播 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-condition-bool-depth14-evidence.md](./phase2-abox-acl-condition-bool-depth14-evidence.md) | N07/N22 deepen：ABox ACL condition $and/$or 深度 14（有界 / 拒配传播 / 非完整表达式 / 非 certified） |
+| [phase2-abox-acl-condition-bool-depth15-evidence.md](./phase2-abox-acl-condition-bool-depth15-evidence.md) | N07/N22 deepen：ABox ACL condition $and/$or 深度 15（有界 / 拒配传播 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-condition-not-not-evidence.md](./phase2-abox-acl-condition-not-not-evidence.md) | N07/N22 deepen：ABox ACL $not→$not 正规求值再取反（有界 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-condition-not-shallow-evidence.md](./phase2-abox-acl-condition-not-shallow-evidence.md) | N07/N22 deepen：ABox ACL condition 浅层 $not（单字段子句 / 非多层嵌套 / 非 certified） |
 | [phase2-abox-acl-condition-nin-evidence.md](./phase2-abox-acl-condition-nin-evidence.md) | N07/N22 deepen：ABox ACL condition $nin（$in 对偶 / 非表达式语言 / 非 certified） |
