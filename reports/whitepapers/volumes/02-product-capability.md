@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-22T01:49:13Z"
+generated_at: "2026-11-22T02:48:58Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "ace9096afd523824f6f6258f55950ed5d363be57ed0e47c9c61e977eadd235cd"
+caps_sha256: "bde20034b2614c1db85fce30020b773a2896f5c352e50e947ca0b2d38e07f5e8"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=ace9096afd523824f6f6258f55950ed5d363be57ed0e47c9c61e977eadd235cd scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=bde20034b2614c1db85fce30020b773a2896f5c352e50e947ca0b2d38e07f5e8 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-22T01:49:13Z` |
-| CAPABILITIES sha256 | `ace9096afd52…` |
+| 生成时间 (UTC) | `2026-11-22T02:48:58Z` |
+| CAPABILITIES sha256 | `bde20034b261…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1490,7 +1490,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3197 capabilities (caps_count) | 3197 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3198 capabilities (caps_count) | 3198 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1512,7 +1512,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 729 | FDE 能力自描述 |
 
 ##### aiPlat-platform/apps/fde/api/router.py
 
@@ -1524,7 +1524,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | N02 ObjectType publish Facade 入口 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 729 | N02 ObjectType publish Facade 入口 |
 | skill-system | §六 Skill 系统 | 213 | CoreFacade 暴露 skill compat |
 | evaluation-system | §十三 评估系统 | 646 | CoreFacade 暴露 m2 deferred estimate |
 | diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
@@ -1566,14 +1566,14 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 729 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
 
 ##### core/api/routers/wiki_ontology_engine.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 728 | 本体引擎 REST API |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 729 | 本体引擎 REST API |
 
 ##### core/api/routers/workspace_tools.py
 

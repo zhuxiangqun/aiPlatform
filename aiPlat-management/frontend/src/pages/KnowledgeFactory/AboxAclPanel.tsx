@@ -51,9 +51,9 @@ function splitCsv(raw: string): string[] {
     .filter(Boolean);
 }
 
-/** H.1 矩阵固定轴（per-role 差异；非 certified / 非任意 RBAC 产品）。 */
-const H1_MATRIX_ROLES = ['viewer', 'analyst', 'admin'] as const;
-const H1_MATRIX_ACTIONS = ['read', 'update', 'state_change', 'delete'] as const;
+/** H.1 矩阵默认轴（加载 crud_matrix 前兜底；运行时以 SSOT 覆盖）。 */
+const H1_MATRIX_ROLES_DEFAULT = ['viewer', 'analyst', 'admin'];
+const H1_MATRIX_ACTIONS_DEFAULT = ['read', 'update', 'state_change', 'delete'];
 
 function principalRoleName(p: string): string {
   const s = p.trim();
@@ -61,11 +61,15 @@ function principalRoleName(p: string): string {
 }
 
 /** 共享 principals/actions → 矩阵单元格（薄表单回退；各选中角色同勾）。 */
-function matrixCellsFromShared(principals: string, actions: string): Record<string, Set<string>> {
+function matrixCellsFromShared(
+  principals: string,
+  actions: string,
+  roleAxis: string[],
+): Record<string, Set<string>> {
   const roles = new Set(splitCsv(principals).map(principalRoleName).filter(Boolean));
   const acts = splitCsv(actions);
   const out: Record<string, Set<string>> = {};
-  for (const r of H1_MATRIX_ROLES) {
+  for (const r of roleAxis) {
     out[r] = new Set(roles.has(r) ? acts : []);
   }
   return out;
@@ -75,21 +79,25 @@ function matrixCellsFromShared(principals: string, actions: string): Record<stri
 function matrixCellsFromForm(
   principals: string,
   actions: string,
+  roleAxis: string[],
   roleActions?: Record<string, string[]>,
 ): Record<string, Set<string>> {
   if (roleActions && Object.keys(roleActions).length > 0) {
     const out: Record<string, Set<string>> = {};
-    for (const r of H1_MATRIX_ROLES) {
+    for (const r of roleAxis) {
       const list = roleActions[r] || [];
       out[r] = new Set(list.map(String).filter(Boolean));
     }
     return out;
   }
-  return matrixCellsFromShared(principals, actions);
+  return matrixCellsFromShared(principals, actions, roleAxis);
 }
 
 /** 矩阵 → principals + actions 并集 + role_actions（保留 per-role 差异）。 */
-function formFromMatrixCells(cells: Record<string, Set<string>>): {
+function formFromMatrixCells(
+  cells: Record<string, Set<string>>,
+  roleAxis: string[],
+): {
   principals: string;
   actions: string;
   roleActions: Record<string, string[]>;
@@ -97,7 +105,7 @@ function formFromMatrixCells(cells: Record<string, Set<string>>): {
   const principals: string[] = [];
   const actUnion = new Set<string>();
   const roleActions: Record<string, string[]> = {};
-  for (const r of H1_MATRIX_ROLES) {
+  for (const r of roleAxis) {
     const set = cells[r];
     if (set && set.size > 0) {
       principals.push(`role:${r}`);
@@ -216,6 +224,9 @@ const AboxAclPanel: React.FC = () => {
   );
   const [h1Policies, setH1Policies] = useState<Record<string, unknown>[]>([]);
   const [h1ListOut, setH1ListOut] = useState('');
+  // 为什么：矩阵轴来自 GET acl → crud_matrix.h1_matrix_*（env SSOT）；非前端硬编码产品轴
+  const [h1MatrixRoles, setH1MatrixRoles] = useState<string[]>(H1_MATRIX_ROLES_DEFAULT);
+  const [h1MatrixActions, setH1MatrixActions] = useState<string[]>(H1_MATRIX_ACTIONS_DEFAULT);
 
   const pushFormToRaw = useCallback(
     (next?: {
@@ -271,6 +282,32 @@ const AboxAclPanel: React.FC = () => {
         : [];
       setH1Policies(policies);
       setCertified(Boolean(body.certified));
+      const cm = (body.crud_matrix || {}) as {
+        h1_matrix_roles?: unknown;
+        h1_matrix_actions?: unknown;
+        roles?: unknown;
+        actions?: unknown;
+      };
+      const rolesRaw = Array.isArray(cm.h1_matrix_roles)
+        ? cm.h1_matrix_roles
+        : Array.isArray(cm.roles)
+          ? cm.roles
+          : null;
+      const actsRaw = Array.isArray(cm.h1_matrix_actions)
+        ? cm.h1_matrix_actions
+        : Array.isArray(cm.actions)
+          ? (cm.actions as unknown[]).filter((a) => String(a) !== 'admin')
+          : null;
+      if (rolesRaw && rolesRaw.length) {
+        setH1MatrixRoles(
+          rolesRaw.map((r) => String(r).trim().toLowerCase()).filter(Boolean),
+        );
+      }
+      if (actsRaw && actsRaw.length) {
+        setH1MatrixActions(
+          actsRaw.map((a) => String(a).trim().toLowerCase()).filter(Boolean),
+        );
+      }
     } catch (e: unknown) {
       setEntities({});
       setFields({});
@@ -776,7 +813,7 @@ const AboxAclPanel: React.FC = () => {
 
         <div className="border-t border-gray-800 pt-3 space-y-2">
           <div className="text-[12px] text-gray-300">
-            H.1 薄表单 + per-role 矩阵（role_actions 独立动作集 · 固定轴 · 非 certified / 非任意 RBAC）
+            H.1 薄表单 + per-role 矩阵（role_actions · 配置轴 crud_matrix.h1_matrix_* · 非 certified / 非任意 RBAC）
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
             <label className="text-[11px] text-gray-400 space-y-1 block">
@@ -821,7 +858,10 @@ const AboxAclPanel: React.FC = () => {
                 onChange={(e) => {
                   const v = e.target.value;
                   setH1Actions(v);
-                  const shared = formFromMatrixCells(matrixCellsFromShared(h1Principals, v));
+                  const shared = formFromMatrixCells(
+                    matrixCellsFromShared(h1Principals, v, h1MatrixRoles),
+                    h1MatrixRoles,
+                  );
                   setH1RoleActions(shared.roleActions);
                   pushFormToRaw({
                     actions: v,
@@ -840,7 +880,10 @@ const AboxAclPanel: React.FC = () => {
                 onChange={(e) => {
                   const v = e.target.value;
                   setH1Principals(v);
-                  const shared = formFromMatrixCells(matrixCellsFromShared(v, h1Actions));
+                  const shared = formFromMatrixCells(
+                    matrixCellsFromShared(v, h1Actions, h1MatrixRoles),
+                    h1MatrixRoles,
+                  );
                   setH1RoleActions(shared.roleActions);
                   pushFormToRaw({
                     principals: v,
@@ -878,14 +921,14 @@ const AboxAclPanel: React.FC = () => {
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <div className="text-[11px] text-gray-400">
-              per-role 矩阵（角色×动作 · 勾选写入 role_actions；actions 为并集 · 固定轴 · 非任意 RBAC）
+              per-role 矩阵（角色×动作 · 勾选写入 role_actions；actions 为并集 · 配置轴 · 非任意 RBAC）
             </div>
             <div className="overflow-auto rounded border border-gray-800">
               <table className="w-full text-[11px] text-gray-300 border-collapse">
                 <thead>
                   <tr className="bg-gray-950/80 text-gray-500">
                     <th className="px-2 py-1.5 text-left font-normal">role</th>
-                    {H1_MATRIX_ACTIONS.map((a) => (
+                    {h1MatrixActions.map((a) => (
                       <th key={a} className="px-2 py-1.5 text-center font-normal font-mono">
                         {a}
                       </th>
@@ -894,11 +937,16 @@ const AboxAclPanel: React.FC = () => {
                 </thead>
                 <tbody>
                   {(() => {
-                    const cells = matrixCellsFromForm(h1Principals, h1Actions, h1RoleActions);
-                    return H1_MATRIX_ROLES.map((role) => (
+                    const cells = matrixCellsFromForm(
+                      h1Principals,
+                      h1Actions,
+                      h1MatrixRoles,
+                      h1RoleActions,
+                    );
+                    return h1MatrixRoles.map((role) => (
                       <tr key={role} className="border-t border-gray-800">
                         <td className="px-2 py-1 font-mono text-gray-400">{role}</td>
-                        {H1_MATRIX_ACTIONS.map((act) => {
+                        {h1MatrixActions.map((act) => {
                           const on = cells[role]?.has(act) ?? false;
                           return (
                             <td key={act} className="px-2 py-1 text-center">
@@ -909,12 +957,12 @@ const AboxAclPanel: React.FC = () => {
                                 disabled={loading}
                                 onChange={() => {
                                   const next: Record<string, Set<string>> = {};
-                                  for (const r of H1_MATRIX_ROLES) {
+                                  for (const r of h1MatrixRoles) {
                                     next[r] = new Set(cells[r] || []);
                                   }
                                   if (on) next[role].delete(act);
                                   else next[role].add(act);
-                                  const folded = formFromMatrixCells(next);
+                                  const folded = formFromMatrixCells(next, h1MatrixRoles);
                                   setH1Principals(folded.principals);
                                   setH1Actions(folded.actions);
                                   setH1RoleActions(folded.roleActions);

@@ -44,5 +44,5 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- 任意角色/动作轴（仍固定 viewer/analyst/admin × 四动作）
+- 任意自由输入角色/动作轴（配置轴 deepen → `phase2-abox-acl-h1-matrix-config-axes-evidence.md`）
 - 多层嵌套布尔 / 完整表达式语言

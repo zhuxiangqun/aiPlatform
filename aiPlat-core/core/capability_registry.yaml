@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3197
+total_capabilities: 3198
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 728
+    caps_count: 729
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4798,6 +4798,10 @@ domains:
       - symbol: "load_role_action_matrix"
         type: "function"
         signature: "N07/N22: config role×action matrix"
+        module: "core/policy/graph_abox_acl.py"
+      - symbol: "h1_matrix_axes"
+        type: "function"
+        signature: "N07/N22: H.1 UI matrix roles/actions from role×action SSOT"
         module: "core/policy/graph_abox_acl.py"
       - symbol: "role_action_allowed"
         type: "function"
