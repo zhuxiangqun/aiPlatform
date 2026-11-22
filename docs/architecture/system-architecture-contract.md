@@ -133,6 +133,7 @@ review_cycle: 90d
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL H.1 矩阵配置轴（h1_matrix_axes + crud_matrix.h1_matrix_* → AboxAclPanel；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL condition $and/$or 深度 2（_BOOL_MAX_DEPTH=2；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL $not 否定字段或纯字段 $and/$or（禁 $not→$not / 子树再嵌布尔；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL condition $and/$or 深度 3（_BOOL_MAX_DEPTH=3；深度 4 拒配；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 
 ---
 
