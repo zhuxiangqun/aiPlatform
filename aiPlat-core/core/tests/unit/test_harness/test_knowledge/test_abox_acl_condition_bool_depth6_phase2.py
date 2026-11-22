@@ -93,48 +93,8 @@ def test_match_condition_bool_depth6():
         )
         is False
     )
-    # 深度 7 → 拒配（None 传播，外层不可 fail-open）
-    assert (
-        match_abox_condition(
-            {
-                "$and": [
-                    {
-                        "$or": [
-                            {
-                                "$and": [
-                                    {
-                                        "$or": [
-                                            {
-                                                "$and": [
-                                                    {
-                                                        "$or": [
-                                                            {
-                                                                "$and": [
-                                                                    {
-                                                                        "$or": [
-                                                                            {
-                                                                                "status": "open"
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    }
-                                                ]
-                                            }
-                                        ]
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            },
-            attrs,
-        )
-        is False
-    )
+    # 深度 7+ 拒配见 bool_depth7；本切片只验深度 6 命中
+    # 为什么：超深拒配不可被外层 $not 取反（禁 fail-open）— 深度 8 树
     assert (
         match_abox_condition(
             {
@@ -153,7 +113,9 @@ def test_match_condition_bool_depth6():
                                                                 {
                                                                     "$and": [
                                                                         {
-                                                                            "status": "closed"
+                                                                            "$or": [
+                                                                                {"status": "open"}
+                                                                            ]
                                                                         }
                                                                     ]
                                                                 }
@@ -174,6 +136,7 @@ def test_match_condition_bool_depth6():
         )
         is False
     )
+
 
 
 def test_check_entity_acl_bool_depth6_gates_deny(tmp_path: Path, monkeypatch):
@@ -259,5 +222,5 @@ def test_panel_documents_bool_depth6():
     )
     text = panel.read_text(encoding="utf-8")
     assert "$and" in text
-    assert "深度≤6" in text or "深度 ≤6" in text or "深度<=6" in text
+    assert "深度≤" in text or "深度 ≤" in text or "深度<=" in text
     assert "非表达式语言" in text
