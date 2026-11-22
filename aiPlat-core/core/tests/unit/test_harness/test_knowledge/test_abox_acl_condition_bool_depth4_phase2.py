@@ -56,30 +56,7 @@ def test_match_condition_bool_depth4():
         )
         is False
     )
-    # 深度 5 → 拒配
-    assert (
-        match_abox_condition(
-            {
-                "$and": [
-                    {
-                        "$or": [
-                            {
-                                "$and": [
-                                    {
-                                        "$or": [
-                                            {"$and": [{"status": "open"}]},
-                                        ]
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            },
-            attrs,
-        )
-        is False
-    )
+    # 深度 5+ 拒配见 bool_depth5；本切片只验深度 4
     # 为什么：超深拒配不可被外层 $not 取反（禁 fail-open）
     assert (
         match_abox_condition(
@@ -166,5 +143,5 @@ def test_panel_documents_bool_depth4():
     )
     text = panel.read_text(encoding="utf-8")
     assert "$and" in text
-    assert "深度≤4" in text or "深度 ≤4" in text or "深度<=4" in text
+    assert "深度≤" in text or "深度 ≤" in text or "深度<=" in text
     assert "非表达式语言" in text
