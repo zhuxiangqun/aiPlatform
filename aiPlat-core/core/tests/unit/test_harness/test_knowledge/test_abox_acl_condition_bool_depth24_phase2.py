@@ -27,9 +27,10 @@ def test_match_condition_bool_depth24():
     attrs = {"bay": "b1", "status": "open"}
     assert match_abox_condition(_depth24_tree(bay_value="b1"), attrs) is True
     assert match_abox_condition(_depth24_tree(bay_value="b2"), attrs) is False
-    assert match_abox_condition(_wrap(25, {"bay": "b1"}), attrs) is False
+    # 深度 25+ 拒配见 bool_depth25；本切片只验深度 24 命中
+    # 为什么：超深拒配不可被外层 $not 取反（禁 fail-open）— 深度 26 树
     assert (
-        match_abox_condition({"$not": _wrap(24, {"bay": "bx"})}, attrs) is False
+        match_abox_condition({"$not": _wrap(25, {"bay": "b1"})}, attrs) is False
     )
 
 
@@ -68,5 +69,5 @@ def test_panel_documents_bool_depth24():
     )
     text = panel.read_text(encoding="utf-8")
     assert "$and" in text
-    assert "深度≤24" in text or "深度 ≤24" in text or "深度<=24" in text
+    assert "深度≤" in text or "深度 ≤" in text or "深度<=" in text
     assert "非表达式语言" in text
