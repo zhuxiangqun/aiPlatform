@@ -26,7 +26,7 @@ def test_match_condition_not_not():
         )
         is True
     )
-    # 超深 $not 链拒配（深度 ≤4 → 五层 $not 拒配）
+    # 超深 $not 链拒配（深度 ≤5 → 六层 $not 拒配）
     assert (
         match_abox_condition(
             {
@@ -34,7 +34,9 @@ def test_match_condition_not_not():
                     "$not": {
                         "$not": {
                             "$not": {
-                                "$not": {"status": "open"},
+                                "$not": {
+                                    "$not": {"status": "open"},
+                                }
                             }
                         }
                     }

@@ -136,6 +136,7 @@ review_cycle: 90d
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL $not→$not（正规求值再取反；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL condition $and/$or 深度 3（_BOOL_MAX_DEPTH=3；深度 4 拒配；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL condition $and/$or 深度 4（_BOOL_MAX_DEPTH=4；拒配 None 不可被 $not 取反；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL condition $and/$or 深度 5（_BOOL_MAX_DEPTH=5；深度 6 拒配+拒配传播；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 
 ---
 
