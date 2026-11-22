@@ -40,4 +40,5 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- 深度 ≥23 / 完整表达式语言
+- 深度 23 → 见 `phase2-abox-acl-condition-bool-depth23-evidence.md`
+- 深度 ≥24 / 完整表达式语言
