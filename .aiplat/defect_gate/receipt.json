@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-22T14:48:18+08:00",
+  "reviewed_at": "2026-11-22T15:12:33+08:00",
   "base_ref": "origin/main",
-  "merge_base": "0ef17fab6dffe98024929ae46c72b9e94f2b21cf",
-  "diff_sha256": "5928b06b504178dbf37ee8f6aaca7d6dc922a50a1a5cbd72df33edf714a7d494",
-  "head_sha": "a2a57676e3d4097f546a900e028bc8ee566ed4af",
+  "merge_base": "afe2ef8d3ca65aee06ad5b890e24eff62572af01",
+  "diff_sha256": "eca4d47cfbec584f42de4d9d6358e0122dd0132050edec30c9cff76c8d033440",
+  "head_sha": "2a5deba32565433fb898146121cf94df5837f02e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N07 bool depth-4: _BOOL_MAX_DEPTH=4; Optional[bool] reject (None) propagates so outer $not cannot fail-open. Local lock only."
+  "note": "Depth-5 only raises _BOOL_MAX_DEPTH; reject-as-None still propagates so outer $not cannot fail-open. Residual: depth≥6 / full expr language still out of scope."
 }
