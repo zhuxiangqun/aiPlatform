@@ -5496,7 +5496,12 @@ async def run_cross_tenant_isolation_suite(
             top_k: int = 10,
             run_id: str = "",
             tenant_id: str = "",
+            actor_role: str = "",
+            actor_scopes: Any = None,
+            collection_id: str = "",
+            **_kwargs: Any,
         ) -> Dict[str, Any]:
+            # 为什么：N07 field ACL 后 CRAG 会传 actor_*；签名须兼容否则 TypeError→静默降 Level1
             captured["tenant_id"] = tenant_id
             captured["domain_id"] = domain_id
             # 为什么：提前返回 graphrag 命中，避免 CRAG 继续走 Level1+ 拉长探针
