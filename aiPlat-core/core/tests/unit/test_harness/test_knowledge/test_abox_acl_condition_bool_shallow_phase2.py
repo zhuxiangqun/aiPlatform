@@ -39,14 +39,7 @@ def test_match_condition_bool_shallow():
         )
         is False
     )
-    # 嵌套 / 混用字段键 / 空列表 / 超长 / $not → 拒配
-    assert (
-        match_abox_condition(
-            {"$and": [{"$or": [{"status": "open"}]}]},
-            attrs,
-        )
-        is False
-    )
+    # 混用字段键 / 空列表 / 超长 / $not 形态错误 → 拒配（深度 2 见 bool_depth2）
     assert match_abox_condition({"$and": [{"status": "open"}], "x": 1}, attrs) is False
     assert match_abox_condition({"$and": []}, attrs) is False
     assert match_abox_condition({"$and": [{"status": "open"}] * 9}, attrs) is False
