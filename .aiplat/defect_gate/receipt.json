@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-22T12:51:18+08:00",
+  "reviewed_at": "2026-11-22T12:58:10+08:00",
   "base_ref": "origin/main",
   "merge_base": "ef3dc9fc55fbd9a7e461a565387affb7cd887533",
-  "diff_sha256": "53c7a94e2409f114aab062746f6bd82a8b894e14700fb2092633feeaff08575d",
-  "head_sha": "96b62b29b78f6947b99a48f695c60fd19482952d",
+  "diff_sha256": "ce20dcfd88daf02e4cf6e0a1b4161e78fbc2344712c1ac5723d0c17482eeaa8a",
+  "head_sha": "c978d1bc0b13efa1e1ae7c072d42ebc67625ff37",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N07 $not→$not: recursive evaluate then negate within depth; over-depth rejects closed. Local lock only."
+  "note": "N07 $not→$not: recurse evaluate then negate; depth-bounded. Local lock only."
 }
