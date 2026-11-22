@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-22T10:04:03+08:00",
+  "reviewed_at": "2026-11-22T10:12:19+08:00",
   "base_ref": "origin/main",
   "merge_base": "5929ff6f45b1b2e1b462aac9518981559d437932",
-  "diff_sha256": "e0a3bb67a804e527cf983ff082d7ee64dd3c170d9562b60b3ada4ae361608b75",
-  "head_sha": "527a8ba08ca0fe8a7b8dc3fbc2028df458d95e10",
+  "diff_sha256": "ab69f3c03310e35f4f6f2f38cb42b84177509b1c1f8741e8662692dd8757c1a6",
+  "head_sha": "8ab30c1cd10ca134e64de565b5c8d2484d15dc8f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "ABox ACL H.1 per-role matrix deepen rebased onto main after #980 tip land. Five checks: no old_fallback undoing per-role actions; call sites match; suite asserts role-differentiated actions; single H.1 matrix surface; honesty still non-certified. Local lock only."
+  "note": "H.1 form honesty aligned after per-role matrix; form test no longer requires obsolete lock string. Five checks pass. Local lock only."
 }
