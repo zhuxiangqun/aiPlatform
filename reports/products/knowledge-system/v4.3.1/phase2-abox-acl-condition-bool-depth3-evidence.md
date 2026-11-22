@@ -35,10 +35,11 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 | 入口 | 路径 |
 |------|------|
 | Policy | `_BOOL_MAX_DEPTH=3` → `_match_bool_condition` |
-| UI | `AboxAclPanel` condition：深度≤3 |
+| UI | `AboxAclPanel` condition：有界深度（现 ≤4，见 depth4） |
 
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
 - `$not→$not` → 见 `phase2-abox-acl-condition-not-not-evidence.md`
-- 深度 ≥4 / 完整表达式语言
+- 深度 4 → 见 `phase2-abox-acl-condition-bool-depth4-evidence.md`
+- 完整表达式语言

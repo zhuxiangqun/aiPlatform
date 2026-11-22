@@ -46,26 +46,7 @@ def test_match_condition_bool_depth3():
         )
         is False
     )
-    # 深度 4 → 拒配
-    assert (
-        match_abox_condition(
-            {
-                "$and": [
-                    {
-                        "$or": [
-                            {
-                                "$and": [
-                                    {"$or": [{"status": "open"}]},
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            },
-            attrs,
-        )
-        is False
-    )
+    # 深度 4+ 拒配见 bool_depth4；本切片只验深度 3 命中/未命中
 
 
 def test_check_entity_acl_bool_depth3_gates_deny(tmp_path: Path, monkeypatch):
@@ -121,5 +102,6 @@ def test_panel_documents_bool_depth3():
     )
     text = panel.read_text(encoding="utf-8")
     assert "$and" in text
-    assert "深度≤3" in text or "深度 ≤3" in text or "深度<=3" in text
+    # 为什么：depth4 后 UI 文案为深度≤4；本切片仍要求声明有界深度
+    assert "深度≤" in text or "深度 ≤" in text or "深度<=" in text
     assert "非表达式语言" in text
