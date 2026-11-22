@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-22T09:22:16+08:00",
+  "reviewed_at": "2026-11-22T09:50:28+08:00",
   "base_ref": "origin/main",
-  "merge_base": "b47fc94991058756c61a0ed677580597b8af6f50",
-  "diff_sha256": "d93e5a60d466e39dde27b60cad5da93315acfea0a5b3c004f4c8074dbcbe4a1f",
-  "head_sha": "0ee87a0fa850c13a106db359bf024bc6fd8f640b",
+  "merge_base": "5929ff6f45b1b2e1b462aac9518981559d437932",
+  "diff_sha256": "e0a3bb67a804e527cf983ff082d7ee64dd3c170d9562b60b3ada4ae361608b75",
+  "head_sha": "39a7ad5260ccb4d6c2a287c463f7dcf1433bdf6f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N09 GraphRAG passthrough probe: capture mock accepts actor_role/actor_scopes/collection_id so CRAG TypeError no longer soft-falls to Level1. Five checks: no old_fallback undoing tenant assert; signatures aligned; suite still requires crag_tid==gov_tid==tenant_a; single probe surface; health remains equality-based not self-certifying. Local lock only."
+  "note": "H.1 per-role matrix rebase onto main after #980. Checks: role_actions write path unchanged; matrix axis isolated in test only; instance deny still equality-based; single UI+API surface; certified=false honesty intact. Local lock only."
 }
