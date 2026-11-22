@@ -29,6 +29,8 @@ _REGEX_MAX_PATTERN_LEN = 128
 _REGEX_MAX_SUBJECT_LEN = 4096
 # 为什么：$all 有界成员列表，避免超长期望集做成任意扫描引擎
 _ALL_MAX_ITEMS = 32
+# 为什么：$elemMatch 有界数组扫描，避免任意嵌套文档查询引擎
+_ELEMMATCH_MAX_ITEMS = 64
 # 为什么：有界 $and/$or/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
 _BOOL_MAX_CLAUSES = 8
 _BOOL_MAX_DEPTH = 27  # 顶层=1；允许再嵌26层（深度 27）；更深拒配
@@ -260,14 +262,60 @@ def _match_regex_condition(got: Any, pattern: Any, options: Any = "") -> bool:
         return False
 
 
+
+def _match_elem_match_condition(got: Any, predicate: Any) -> bool:
+    """有界 ``$elemMatch``：数组中至少一元素满足谓词。
+
+    Args:
+        got: 实例属性；须为 list/tuple（过长拒配）。
+        predicate: 非空 dict。全 ``$`` 键 → 对标量元素走 ``_match_condition_value``；
+            否则要求元素为 dict，走字段 AND（禁布尔算子 / 嵌套 ``$elemMatch``）。
+    """
+    # 为什么：只扫有界数组；禁止把 condition 做成任意文档查询语言
+    if not isinstance(got, (list, tuple)):
+        return False
+    if len(got) > _ELEMMATCH_MAX_ITEMS:
+        return False
+    if not isinstance(predicate, dict) or not predicate:
+        return False
+    if _BOOL_OPS.intersection(predicate.keys()):
+        return False
+    if "$elemMatch" in predicate:
+        return False
+    keys = set(predicate.keys())
+    # 标量元素：谓词须全为字段算子键（如 {$eq}/{$in}/{$regex,$options}）
+    if all(str(k).startswith("$") for k in keys):
+        for el in got:
+            if _match_condition_value(el, predicate):
+                return True
+        return False
+    # 文档元素：字段级 AND；嵌套 $elemMatch 拒配（非完整表达式）
+    for el in got:
+        if not isinstance(el, dict):
+            continue
+        nested_reject = False
+        for v in el.values():
+            if isinstance(v, dict) and "$elemMatch" in v:
+                nested_reject = True
+                break
+        if nested_reject:
+            continue
+        # 谓词值侧禁止再挂 $elemMatch
+        if any(isinstance(v, dict) and "$elemMatch" in v for v in predicate.values()):
+            return False
+        if _match_field_conditions(predicate, el):
+            return True
+    return False
+
+
 def _match_condition_value(got: Any, want: Any) -> bool:
-    """单键条件值：标量等值；``{$eq|$ne|$in|$nin|$all|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
+    """单键条件值：标量等值；``{$eq|$ne|$in|$nin|$all|$elemMatch|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
 
     Args:
         got: 实例属性值（可为 None；None 视为字段缺失）。
         want: 条件期望；标量或单运算符 dict（``$regex`` 可与 ``$options`` 同级）。
     """
-    # 为什么：仅开放等值/集合($in/$nin/$all)/存在/数值或 str 字典序比较/有界正则(+i)；禁止嵌套布尔
+    # 为什么：仅开放等值/集合($in/$nin/$all)/$elemMatch/存在/数值或 str 字典序比较/有界正则(+i)；禁止嵌套布尔
     if isinstance(want, dict) and want:
         keys = set(want.keys())
         if "$regex" in keys:
@@ -304,6 +352,8 @@ def _match_condition_value(got: Any, want: Any) -> bool:
                 return False
             got_ss = {str(x) for x in got}
             return all(str(x) in got_ss for x in arg)
+        if op_s == "$elemMatch":
+            return _match_elem_match_condition(got, arg)
         if op_s == "$exists":
             # 为什么：true→字段存在；false→字段缺失；arg 用 bool() 规范化
             present = got is not None
@@ -429,7 +479,7 @@ def match_abox_condition(
 ) -> bool:
     """H.1 最小 condition：全键匹配；空 condition 恒 True。
 
-    每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$all|$exists|$gt|$gte|$lt|$lte|$regex: …}``
+    每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$all|$elemMatch|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
     顶层可单独使用 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
     （深度 ≤27：``$and``/``$or``/``$not`` 可再嵌同族；``$not`` 可否定字段、

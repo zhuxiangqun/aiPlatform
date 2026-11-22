@@ -40,5 +40,6 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- `$elemMatch` / 任意表达式语言
+- `$elemMatch` → 见 `phase2-abox-acl-condition-elemmatch-evidence.md`
+- 任意表达式语言
 - 布尔深度继续 +1 deepen（已停刀）
