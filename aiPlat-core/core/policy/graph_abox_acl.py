@@ -29,7 +29,7 @@ _REGEX_MAX_PATTERN_LEN = 128
 _REGEX_MAX_SUBJECT_LEN = 4096
 # 为什么：有界 $and/$or/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
 _BOOL_MAX_CLAUSES = 8
-_BOOL_MAX_DEPTH = 13  # 顶层=1；允许再嵌12层（深度 13）；更深拒配
+_BOOL_MAX_DEPTH = 14  # 顶层=1；允许再嵌13层（深度 14）；更深拒配
 _BOOL_OPS = frozenset({"$and", "$or", "$not"})
 
 # Identity / PolicyGate role → ABox ACL role (T9 productization)
@@ -420,7 +420,7 @@ def match_abox_condition(
     每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
     顶层可单独使用 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
-    （深度 ≤13：``$and``/``$or``/``$not`` 可再嵌同族；``$not`` 可否定字段、
+    （深度 ≤14：``$and``/``$or``/``$not`` 可再嵌同族；``$not`` 可否定字段、
     纯字段 ``$and``/``$or`` 或另一 ``$not``（正规求值再取反，禁 fail-open）；
     每层子句 ≤8；非完整表达式语言）。
 

@@ -26,9 +26,9 @@ def test_match_condition_not_not():
         )
         is True
     )
-    # 超深 $not 链拒配（深度 ≤13 → 十四层 $not 拒配）
+    # 超深 $not 链拒配（深度 ≤14 → 十五层 $not 拒配）
     deep = {"status": "open"}
-    for _ in range(14):
+    for _ in range(15):
         deep = {"$not": deep}
     assert match_abox_condition(deep, attrs) is False
 

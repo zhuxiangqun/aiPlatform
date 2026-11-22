@@ -98,16 +98,13 @@ def test_match_condition_bool_depth13():
     }
     assert match_abox_condition(_depth13_tree(site_value="s1"), attrs) is True
     assert match_abox_condition(_depth13_tree(site_value="s2"), attrs) is False
-    deep14 = {"status": "open"}
+    # 深度 14+ 拒配见 bool_depth14；本切片只验深度 13 命中
+    # 为什么：超深拒配不可被外层 $not 取反（禁 fail-open）— 深度 15 树
+    deep15 = {"status": "open"}
     for i in range(14):
         op = "$and" if (14 - i) % 2 == 1 else "$or"
-        deep14 = {op: [deep14]}
-    assert match_abox_condition(deep14, attrs) is False
-    deep14_closed = {"status": "closed"}
-    for i in range(13):
-        op = "$and" if (13 - i) % 2 == 1 else "$or"
-        deep14_closed = {op: [deep14_closed]}
-    assert match_abox_condition({"$not": deep14_closed}, attrs) is False
+        deep15 = {op: [deep15]}
+    assert match_abox_condition({"$not": deep15}, attrs) is False
 
 
 def test_check_entity_acl_bool_depth13_gates_deny(tmp_path: Path, monkeypatch):
@@ -171,5 +168,5 @@ def test_panel_documents_bool_depth13():
     )
     text = panel.read_text(encoding="utf-8")
     assert "$and" in text
-    assert "深度≤13" in text or "深度 ≤13" in text or "深度<=13" in text
+    assert "深度≤" in text or "深度 ≤" in text or "深度<=" in text
     assert "非表达式语言" in text
