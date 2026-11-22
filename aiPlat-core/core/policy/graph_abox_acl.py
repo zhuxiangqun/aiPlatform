@@ -909,13 +909,37 @@ def seed_demo_data_gov_acl(domain_id: str = DomainRouter.data_gov_domain()) -> D
     return load_abox_acl(domain_id)
 
 
+def h1_matrix_axes() -> Dict[str, Any]:
+    """H.1 薄矩阵角色/动作轴（与 ``AIPLAT_ABOX_ROLE_ACTION_MATRIX`` SSOT 对齐）。
+
+    Returns:
+        ``roles`` / ``actions`` 列表；``certified`` 恒 false。矩阵勾选不含 ``admin`` 元动作。
+    """
+    matrix = load_role_action_matrix()
+    roles = sorted(str(r).strip().lower() for r in matrix.keys() if str(r).strip())
+    # 为什么：UI 勾选轴用具体 CRUD；admin 元动作不进单元格（仍可写在 actions 并集）
+    actions = sorted(a for a in _VALID_ACTIONS if a != "admin")
+    return {
+        "roles": roles or ["viewer", "analyst", "admin"],
+        "actions": actions or ["read", "update", "state_change", "delete"],
+        "source": "AIPLAT_ABOX_ROLE_ACTION_MATRIX+defaults",
+        "certified": False,
+        "n07_full_conformance": False,
+        "n22_full_conformance": False,
+    }
+
+
 def crud_matrix_doc() -> Dict[str, Any]:
     """Documented CRUD matrix: object × attribute × instance × action."""
     matrix = load_role_action_matrix()
+    axes = h1_matrix_axes()
     return {
         "version": "v1",
         "roles": sorted(matrix.keys()),
         "actions": sorted(_VALID_ACTIONS),
+        # 为什么：管理端 H.1 矩阵轴走同一 SSOT；扩展角色只需改 env JSON
+        "h1_matrix_roles": list(axes["roles"]),
+        "h1_matrix_actions": list(axes["actions"]),
         "role_action_matrix": matrix,
         "role_action_matrix_enabled": role_action_matrix_enabled(),
         "layers": {
