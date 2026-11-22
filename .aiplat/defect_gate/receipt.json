@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-22T06:50:21+08:00",
+  "reviewed_at": "2026-11-22T09:22:16+08:00",
   "base_ref": "origin/main",
-  "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "d925c3525d759882939192e66595c67061f0fcc0e544da6c87c91457812229be",
-  "head_sha": "a74c5f3e698dde1afbaa53f6fe9ff075b211fe37",
+  "merge_base": "b47fc94991058756c61a0ed677580597b8af6f50",
+  "diff_sha256": "d93e5a60d466e39dde27b60cad5da93315acfea0a5b3c004f4c8074dbcbe4a1f",
+  "head_sha": "0ee87a0fa850c13a106db359bf024bc6fd8f640b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Land tip CI: N19/N20 suites read materials_chat.py via Path (no harness→apps); DOCUMENT_SYSTEM ontology LOC 14345. Residual: tip→main needs CI green + non-author Approve."
+  "note": "N09 GraphRAG passthrough probe: capture mock accepts actor_role/actor_scopes/collection_id so CRAG TypeError no longer soft-falls to Level1. Five checks: no old_fallback undoing tenant assert; signatures aligned; suite still requires crag_tid==gov_tid==tenant_a; single probe surface; health remains equality-based not self-certifying. Local lock only."
 }

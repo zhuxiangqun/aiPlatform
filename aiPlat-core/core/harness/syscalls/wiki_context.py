@@ -17,6 +17,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
                      top_k: int = 8, link_depth: int = 1,
                      collection_ids: List[str] = None,
                      tenant_id: str = "",
+                     actor_role: str = "",
                      actor_scopes: Optional[List[str]] = None,
                      filter_by_markings: bool = False,
                      attach_n21_query: bool = True) -> Dict[str, Any]:
@@ -29,7 +30,8 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
 
     Args:
         collection_ids: Wiki collections to search. Defaults to ["default"].
-        actor_scopes: optional scopes for marking-aware filtering.
+        actor_role: 调用方角色；透传到 wiki_retrieve 字段 ACL。
+        actor_scopes: optional scopes for marking-aware filtering / 字段 ACL。
         filter_by_markings: if True, exclude entities the actor cannot access.
         attach_n21_query: 为 True 时附加 ``n21_query`` 信封（不改 results list）。
 
@@ -68,7 +70,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
     except ImportError:
         pass  # noqa: optional-dependency
 
-    # Semantic search via wiki retriever
+    # Semantic search via wiki retriever（透传身份供字段 ACL）
     # 为什么：attach_n21 时信封侧落 N19；关裸 list 防双写
     results = sys_wiki_retrieve(
         question,
@@ -78,6 +80,8 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
         collection_ids=cids,
         tenant_id=tenant_id,
         record_hotpath_audit=not attach_n21_query,
+        actor_role=actor_role,
+        actor_scopes=actor_scopes,
     )
 
     # Link-graph traversed related pages for top results

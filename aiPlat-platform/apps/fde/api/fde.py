@@ -3278,11 +3278,18 @@ async def export_okf(payload: dict = Body(...)):
     from apps.fde.api.graph_tenant import fde_kb_domain
 
     exporter = OKFExporter()
+    scopes = payload.get("actor_scopes")
+    if isinstance(scopes, str):
+        scopes = [s.strip() for s in scopes.split(",") if s.strip()]
     result = await exporter.export(
         payload.get("domain_id") or fde_kb_domain(),
         incremental=payload.get("incremental", False),
         output_dir=payload.get("output_dir", ""),
         tenant_id=fde_graph_tenant(),
+        # 为什么：导出写盘旁路 retrieve，须透传身份做字段 ACL
+        actor_role=str(payload.get("actor_role") or ""),
+        actor_scopes=scopes if isinstance(scopes, list) else None,
+        collection_id=str(payload.get("collection_id") or ""),
     )
     return result
 

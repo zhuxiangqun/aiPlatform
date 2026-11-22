@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3191
+total_capabilities: 3197
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 722
+    caps_count: 728
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4534,6 +4534,18 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "CoreFacade: SLO wiring gate"
+      - symbol: "_apply_field_acl_to_results"
+        module: core/harness/syscalls/retrieval.py
+        type: function
+        signature: "N07/N22 deepen: Wiki/KB/CRAG + bare wiki/GraphRAG + OKF/OWL export field ACL via field_level_security; not certified/UI"
+      - symbol: "_redact_owl_abox_triples"
+        module: core/harness/knowledge/knowledge_ontology.py
+        type: function
+        signature: "N07/N22 deepen: OWL/RDF A-Box triple field ACL; not certified/UI"
+      - symbol: "_redact_suggestion_fields"
+        module: core/harness/knowledge/knowledge_ontology.py
+        type: function
+        signature: "N07/N22 deepen: suggestions OWL field ACL; not certified/UI"
       - symbol: "slo_snapshot_route"
         module: aiPlat-platform/apps/fde/api/slo_routes.py
         type: function
@@ -5264,6 +5276,18 @@ domains:
         module: core/policy/graph_abox_acl.py
         type: function
         signature: "apply field ACL redaction to entity payload"
+      - symbol: "remove_graph_entity_acl"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: remove ABox instance ACL (thin UI delete)"
+      - symbol: "remove_graph_field_acl"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: remove ABox field ACL (thin UI delete)"
+      - symbol: "preview_graph_abox_acl"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: dry-run ABox ACL preview (certified=false)"
       - symbol: "seed_data_gov_demo_graph"
         module: core/apps/fde/service/data_gov_demo_seed.py
         type: function
@@ -5698,8 +5722,6 @@ domains:
         reason: "Wiki CRUD + index + ingest 端点"
       - module: "core/api/routers/wiki_ontology_engine.py"
         reason: "本体引擎 REST API"
-      - module: "core/harness/syscalls/retrieval.py"
-        reason: "GraphIndex 遍历检索"
       - module: "core/harness/knowledge/context_bus.py"
         reason: "10层上下文注入"
       - module: "aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py"
@@ -5799,8 +5821,6 @@ domains:
     consumers_expected:
       - module: "core/harness/memory/manager.py"
         reason: "build_context 注入 ContextBus"
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "RunContext 运行时上下文"
 
   # ══════════════════════════════════════════════════════════════
   # 五、Agent 系统 (155 caps)
@@ -6096,9 +6116,10 @@ domains:
         type: class
         signature: "decision-support: severity, impact, recommended_actions"
       - symbol: "test_report_orchestrator"
-        module: ~/.aiplat/agents/test_report_orchestrator/AGENT.md
-        type: agent
+        module: ""
+        type: doc
         signature: "workspace agent — tests→bug→regenerate per-stage auto-fix"
+        notes: "Runtime-installed under ~/.aiplat/agents/test_report_orchestrator/AGENT.md; not vendored in-repo"
       - symbol: "load_delivery_template"
         module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
         type: function
@@ -8052,14 +8073,10 @@ domains:
         signature: "Static scan. Blocked when a hostile pattern matches. SARIF-shaped results."
     breaks: []
     consumers_expected:
-      - module: "core/harness/syscalls/tool.py"
-        reason: "sys_tool_call → PolicyGate.check_tool"
-      - module: "core/harness/syscalls/skill.py"
-        reason: "sys_skill_call → PolicyGate"
-      - module: "core/harness/execution/pipeline_engine.py"
-        reason: "HITL → PolicyGate + ApprovalGate"
-      - module: "core/harness/syscalls/llm.py"
-        reason: "_guard_messages → PII masking"
+      - module: "core/management/skill_installer.py"
+        reason: "skill install 跑 finalize_skill_compat"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 暴露 skill compat"
 
   # ══════════════════════════════════════════════════════════════
   # 八、可观测性 (23 caps)
@@ -8300,8 +8317,6 @@ domains:
         reason: "Pipeline 故障→StrategySearchEngine"
       - module: "core/server.py"
         reason: "GoalExecutor + WakeScheduler 启动"
-      - module: "core/harness/memory/manager.py"
-        reason: "build_context → SharedKnowledgePool 注入"
 
   # ══════════════════════════════════════════════════════════════
   # 十二、Gate 系统 (153 caps)
@@ -9022,8 +9037,8 @@ domains:
         module: "core/api/core_facade.py"
     breaks: []
     consumers_expected:
-      - module: "aiPlat-platform/apps/diagnosis/api/cases.py"
-        reason: "canonical diagnosis HTTP API"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 暴露 get_diagnosis_store"
 
   # ══════════════════════════════════════════════════════════════
   # 十三、评估系统 (408 caps)
@@ -11619,6 +11634,8 @@ domains:
         module: "core/harness/utils/task_model_lock.py"
     breaks: []
     consumers_expected:
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 暴露 m2 deferred estimate"
 
   # ══════════════════════════════════════════════════════════════
   # 十四、MCP 协议 (3 caps)
@@ -11686,6 +11703,8 @@ domains:
         module: "core/apps/mcp/adapter.py"
     breaks: []
     consumers_expected:
+      - module: "core/apps/mcp/runtime.py"
+        reason: "MCP runtime 消费 finalize_mcp_compat / mark_mcp_connection"
 
   # ══════════════════════════════════════════════════════════════
   # 十四附、A2A 协议 (2 caps)
@@ -11705,6 +11724,10 @@ domains:
         signature: "TASK_ASSIGN/PROGRESS_UPDATE/RESULT/ERROR/CANCEL"
     breaks: []
     consumers_expected:
+      - module: "core/apps/agents/discovery.py"
+        reason: "AgentDiscovery 实现/导出"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 再导出 A2A 能力"
 
   # ══════════════════════════════════════════════════════════════
   # 十五、文档智能 (3 caps)
@@ -11730,6 +11753,8 @@ domains:
         notes: "conceptual or non-export; retained for domain map"
     breaks: []
     consumers_expected:
+      - module: "core/harness/multimodal/integrator.py"
+        reason: "多模态集成消费 VideoParser"
 
   # ══════════════════════════════════════════════════════════════
   # 十六、工具生态 (61 caps)
@@ -12055,10 +12080,10 @@ domains:
         signature: "infer_recency_days(query)→int|None from 「最近N天」/last week phrases"
     breaks: []
     consumers_expected:
-      - module: "core/harness/syscalls/tool.py"
-        reason: "sys_tool_call → ToolRegistry"
-      - module: "core/apps/mcp/adapter.py"
-        reason: "MCPToolAdapter → BaseTool"
+      - module: "core/api/routers/workspace_tools.py"
+        reason: "workspace tools 跑 tool compat"
+      - module: "core/api/core_facade.py"
+        reason: "CoreFacade 暴露 tool compat"
 
   # ══════════════════════════════════════════════════════════════
   # 十七、微调系统 (2 caps)
@@ -12107,8 +12132,6 @@ domains:
         reason: "tool_gap → DeployEngine.deploy"
       - module: "core/harness/optimization/tool_bootstrap.py"
         reason: "_trigger_deploy"
-      - module: "aiPlat-platform/apps/fde/api/fde.py"
-        reason: "FDE canary 端点"
 
   # ══════════════════════════════════════════════════════════════
   # 十九、运行时干预 (64 caps)
@@ -12561,6 +12584,10 @@ domains:
         signature: "FastAPI app lifecycle, startup/shutdown"
     breaks: []
     consumers_expected:
+      - module: "aiPlat-platform/apps/fde/api/router.py"
+        reason: "FDE 路由挂载"
+      - module: "core/server.py"
+        reason: "Core server 入口挂载 CoreFacade"
 
   # ══════════════════════════════════════════════════════════════
   # 二十四、编排系统 (4 caps)
@@ -13257,12 +13284,6 @@ domains:
         reason: "_run_moa 路由模式"
       - module: "core/harness/utils/model_injection.py"
         reason: "is_moa_session/get_moa_preset + override filtering"
-      - module: "core/api/routers/adapters.py"
-        reason: "/model-override/moa 端点"
-      - module: "aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx"
-        reason: "MoA 卡片交互"
-      - module: "core/harness/execution/loop/command_parser.py"
-        reason: "/moa --preset 命令解析"
 
   # ══════════════════════════════════════════════════════════════
   # 三十一、AI知识层增强 (3 caps)
@@ -13288,8 +13309,6 @@ domains:
     consumers_expected:
       - module: "core/api/routers/wiki.py"
         reason: "/wiki/index-md + /ingest/url 端点"
-      - module: "core/harness/memory/manager.py"
-        reason: "build_context 注入 brand_rules"
 
   # ══════════════════════════════════════════════════════════════
   # 三十二、Hermes压缩对标 (3 caps)
@@ -13315,8 +13334,6 @@ domains:
     breaks:
       - "reminders.check_and_inject: 返回类型 Optional[str] → Optional[dict] (backward-compatible)"
     consumers_expected:
-      - module: "core/harness/execution/loop/compressor.py"
-        reason: "5-stage compression pipeline → micro_compress"
       - module: "core/harness/memory/manager.py"
         reason: "build_context → normalize_roles + reminder dict injection"
       - module: "core/harness/memory/reminders.py"

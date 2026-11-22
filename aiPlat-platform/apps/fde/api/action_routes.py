@@ -11,7 +11,7 @@ from apps.fde.api.graph_tenant import fde_graph_domain, fde_graph_tenant
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Header, HTTPException, Query, Request
 
 router = APIRouter(tags=["fde-actions"])
 
@@ -599,16 +599,30 @@ async def ontology_governance_write_preview(body: Dict[str, Any]):
 
 
 @router.post("/ontology/owl-review/{domain_id}")
-async def ontology_owl_review(domain_id: str):
+async def ontology_owl_review(
+    domain_id: str,
+    body: Optional[Dict[str, Any]] = Body(default=None),
+):
     """Offline OWL consistency review — suggestion only; unchecked ≠ valid.
 
     Args:
         domain_id: domain 标识。
+        body: 可选载荷；可含 actor_role / actor_scopes / collection_id。
     """
     try:
         from core.apps.fde.service.offline_owl_review import review_domain_owl_offline
 
-        result = review_domain_owl_offline(domain_id)
+        payload = body if isinstance(body, dict) else {}
+        scopes = payload.get("actor_scopes")
+        if isinstance(scopes, str):
+            scopes = [s.strip() for s in scopes.split(",") if s.strip()]
+        # 为什么：离线审稿经 export_to_owl_rdf，须透传身份做 A-Box 字段 ACL
+        result = review_domain_owl_offline(
+            domain_id,
+            actor_role=str(payload.get("actor_role") or ""),
+            actor_scopes=scopes if isinstance(scopes, list) else None,
+            collection_id=str(payload.get("collection_id") or ""),
+        )
         if result.get("status") in ("unchecked", "error"):
             result["valid"] = False
         return result
@@ -946,43 +960,111 @@ async def execute_action(
 
 @router.get("/graph/acl/{domain_id}")
 async def get_graph_acl(domain_id: str):
-    """Load ABox ACL document + CRUD matrix (T9 / Phase 3 lite).
+    """Load ABox ACL document + CRUD matrix + H.1 投影列表 (T9 / Phase 3 lite).
 
     Args:
         domain_id: domain 标识。
     """
     try:
-        from core.api.core_facade import get_abox_acl_doc, get_abox_crud_matrix
+        from core.api.core_facade import (
+            get_abox_acl_doc,
+            get_abox_crud_matrix,
+            list_graph_h1_policies,
+        )
 
         return {
             "domain_id": domain_id,
             "acl": get_abox_acl_doc(domain_id),
             "crud_matrix": get_abox_crud_matrix(),
+            "h1_policies": list_graph_h1_policies(domain_id),
+            # 为什么：诚实锁 — 管理端薄 UI 可读 ACL，不宣称 N07/N22 certified
+            "certified": False,
         }
     except Exception as e:
         logger.error("get_graph_acl failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
-@router.put("/graph/acl/{domain_id}/entities/{entity_id}")
-async def put_graph_entity_acl(domain_id: str, entity_id: str, body: Dict[str, Any]):
-    """Upsert instance ACL (deny_roles / allow_roles).
+@router.get("/graph/acl/{domain_id}/h1")
+async def get_graph_acl_h1(domain_id: str):
+    """List domain ABox ACL as appendix H.1 projections（薄导出；非 certified）。
+
+    Args:
+        domain_id: domain 标识。
+    """
+    try:
+        from core.api.core_facade import list_graph_h1_policies
+
+        return {
+            "domain_id": domain_id,
+            "h1_policies": list_graph_h1_policies(domain_id),
+            "certified": False,
+        }
+    except Exception as e:
+        logger.error("get_graph_acl_h1 failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.get("/graph/acl/{domain_id}/entities/{entity_id}/h1")
+async def get_graph_entity_acl_h1(domain_id: str, entity_id: str):
+    """Get one entity ABox ACL as appendix H.1 projection（薄导出；非 certified）。
 
     Args:
         domain_id: domain 标识。
         entity_id: entity 标识。
-        body: 请求体。
     """
     try:
-        from core.api.core_facade import set_graph_entity_acl
+        from core.api.core_facade import get_graph_h1_policy
 
+        return {
+            "domain_id": domain_id,
+            "entity_id": entity_id,
+            "h1_policy": get_graph_h1_policy(domain_id, entity_id),
+            "certified": False,
+        }
+    except KeyError:
+        raise HTTPException(status_code=404, detail="h1_entity_not_found")
+    except Exception as e:
+        logger.error("get_graph_entity_acl_h1 failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.put("/graph/acl/{domain_id}/entities/{entity_id}")
+async def put_graph_entity_acl(domain_id: str, entity_id: str, body: Dict[str, Any]):
+    """Upsert instance ACL (deny/allow / condition / masked_properties / h1_policy)。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        body: 请求体；可含 condition（{} 清除）、masked_properties（[] 清除）；
+            若含 h1_policy 对象则走附录 H.1 薄导入（优先于 deny/allow 字段）。
+    """
+    try:
+        from core.api.core_facade import apply_graph_h1_policy, set_graph_entity_acl
+
+        h1 = body.get("h1_policy")
+        if isinstance(h1, dict):
+            entry = apply_graph_h1_policy(domain_id, entity_id, h1)
+            return {
+                "domain_id": domain_id,
+                "entity_id": entity_id,
+                "entry": entry,
+                "h1_applied": True,
+                "certified": False,
+            }
+        cond = body.get("condition")
+        masks = body.get("masked_properties")
         entry = set_graph_entity_acl(
             domain_id,
             entity_id,
             deny_roles=body.get("deny_roles"),
             allow_roles=body.get("allow_roles"),
+            condition=cond if isinstance(cond, dict) else None,
+            masked_properties=masks if isinstance(masks, list) else None,
         )
         return {"domain_id": domain_id, "entity_id": entity_id, "entry": entry}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)[:300])
     except Exception as e:
         logger.error("put_graph_entity_acl failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)[:300])
@@ -1019,6 +1101,83 @@ async def put_graph_field_acl(
         }
     except Exception as e:
         logger.error("put_graph_field_acl failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.delete("/graph/acl/{domain_id}/entities/{entity_id}")
+async def delete_graph_entity_acl(domain_id: str, entity_id: str):
+    """Remove instance ACL entry（薄 UI 删除；非 certified）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+    """
+    try:
+        from core.api.core_facade import remove_graph_entity_acl
+
+        ok = remove_graph_entity_acl(domain_id, entity_id)
+        return {
+            "domain_id": domain_id,
+            "entity_id": entity_id,
+            "status": "ok" if ok else "not_found",
+            "certified": False,
+        }
+    except Exception as e:
+        logger.error("delete_graph_entity_acl failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.delete("/graph/acl/{domain_id}/fields/{entity_id}/{field_name}")
+async def delete_graph_field_acl(domain_id: str, entity_id: str, field_name: str):
+    """Remove ABox field ACL entry（薄 UI 删除；非 certified）。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        field_name: field_name 参数。
+    """
+    try:
+        from core.api.core_facade import remove_graph_field_acl
+
+        ok = remove_graph_field_acl(domain_id, entity_id, field_name)
+        return {
+            "domain_id": domain_id,
+            "entity_id": entity_id,
+            "field": field_name,
+            "status": "ok" if ok else "not_found",
+            "certified": False,
+        }
+    except Exception as e:
+        logger.error("delete_graph_field_acl failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.post("/graph/acl/{domain_id}/preview")
+async def preview_graph_acl(domain_id: str, body: Dict[str, Any]):
+    """Dry-run ABox ACL as a role（薄 UI 预览；非 certified）。
+
+    Args:
+        domain_id: domain 标识。
+        body: 含 entity_id / role / action / 可选 payload。
+    """
+    try:
+        from core.api.core_facade import preview_graph_abox_acl
+
+        entity_id = str(body.get("entity_id") or "").strip()
+        if not entity_id:
+            raise HTTPException(status_code=400, detail="entity_id_required")
+        payload = body.get("payload")
+        return preview_graph_abox_acl(
+            domain_id,
+            entity_id,
+            payload if isinstance(payload, dict) else None,
+            role=str(body.get("role") or ""),
+            action=str(body.get("action") or "read"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("preview_graph_acl failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 

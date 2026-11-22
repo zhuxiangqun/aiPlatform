@@ -73,6 +73,33 @@ authority: supporting
 | [phase2-unified-query-gateway-evidence.md](./phase2-unified-query-gateway-evidence.md) | N06 deepen：fact+object_set+wiki+index+materials_chat+graphrag 统一 Gateway（非全部其它应用/非 certified） |
 | [phase2-slo-target-evidence.md](./phase2-slo-target-evidence.md) | Batch F1 §9.4 SLO 目标登记（非生产遥测达标） |
 | [phase2-slo-telemetry-wiring-evidence.md](./phase2-slo-telemetry-wiring-evidence.md) | F1 deepen：生产 SLO 遥测接线（wiring≠attainment；Full 仍 conditional） |
+| [phase2-wiki-kb-field-acl-evidence.md](./phase2-wiki-kb-field-acl-evidence.md) | N07/N22 deepen：Wiki/KB 统一检索字段 ACL（非全入口 certified） |
+| [phase2-wiki-graphrag-field-acl-evidence.md](./phase2-wiki-graphrag-field-acl-evidence.md) | N07/N22 deepen：裸 Wiki + GraphRAG chunks 字段 ACL（非 certified / 非导出全路径） |
+| [phase2-okf-export-field-acl-evidence.md](./phase2-okf-export-field-acl-evidence.md) | N07/N22 deepen：OKF 导出写盘字段 ACL（非 certified / 非 UI） |
+| [phase2-owl-export-field-acl-evidence.md](./phase2-owl-export-field-acl-evidence.md) | N07/N22 deepen：OWL/RDF 导出 A-Box 字段 ACL（非 certified / 非 UI） |
+| [phase2-owl-suggestions-offline-acl-evidence.md](./phase2-owl-suggestions-offline-acl-evidence.md) | N07/N22 deepen：suggestions OWL / offline_owl_review 身份透传（非 certified / 非 UI） |
+| [phase2-evolution-runner-acl-evidence.md](./phase2-evolution-runner-acl-evidence.md) | N07/N22 deepen：EvolutionRunner suggestions OWL 落盘身份透传（非 certified / 非 UI） |
+| [phase2-wiki-auto-identity-passthrough-evidence.md](./phase2-wiki-auto-identity-passthrough-evidence.md) | N07/N22 deepen：platform ingest/watch/vault → wiki_auto_update 身份透传（非 certified / 非伪造 cron 角色） |
+| [phase2-field-acl-thin-ui-evidence.md](./phase2-field-acl-thin-ui-evidence.md) | N07/N22 deepen：字段 ACL 管理端薄 UI（非 certified / 非全量权限产品） |
+| [phase2-abox-acl-thin-ui-evidence.md](./phase2-abox-acl-thin-ui-evidence.md) | N07/N22 deepen：ABox 实例 ACL 管理端薄 UI（非 certified / 非全量权限产品） |
+| [phase2-abox-acl-delete-evidence.md](./phase2-abox-acl-delete-evidence.md) | N07/N22 deepen：ABox ACL DELETE + 薄 UI 删除（非 certified / 非全量权限产品） |
+| [phase2-abox-acl-preview-evidence.md](./phase2-abox-acl-preview-evidence.md) | N07/N22 deepen：ABox ACL 按角色预览（非 certified / 非 H.1 condition 编辑器） |
+| [phase2-abox-acl-condition-evidence.md](./phase2-abox-acl-condition-evidence.md) | N07/N22 deepen：ABox ACL H.1 condition 最小等值匹配（非完整策略编辑器） |
+| [phase2-abox-acl-condition-ops-evidence.md](./phase2-abox-acl-condition-ops-evidence.md) | N07/N22 deepen：ABox ACL condition $eq/$ne/$in（非表达式语言 / 非 certified） |
+| [phase2-abox-acl-masked-props-evidence.md](./phase2-abox-acl-masked-props-evidence.md) | N07/N22 deepen：ABox ACL H.1 masked_properties + 只读投影（非完整策略编辑器） |
+| [phase2-abox-acl-h1-apply-evidence.md](./phase2-abox-acl-h1-apply-evidence.md) | N07/N22 deepen：ABox ACL H.1 薄导入 apply_h1_policy（非完整策略编辑器） |
+| [phase2-abox-acl-h1-list-evidence.md](./phase2-abox-acl-h1-list-evidence.md) | N07/N22 deepen：ABox ACL H.1 薄导出 list_h1_policies（非完整策略编辑器） |
+| [phase2-abox-acl-h1-get-evidence.md](./phase2-abox-acl-h1-get-evidence.md) | N07/N22 deepen：ABox ACL H.1 单实体 GET + 加载到编辑区（非完整策略编辑器） |
+| [phase2-abox-acl-h1-form-evidence.md](./phase2-abox-acl-h1-form-evidence.md) | N07/N22 deepen：ABox ACL H.1 薄表单 effect/principals/actions（非矩阵编辑器） |
+| [phase2-abox-acl-condition-exists-evidence.md](./phase2-abox-acl-condition-exists-evidence.md) | N07/N22 deepen：ABox ACL condition $exists（非表达式语言 / 非 certified） |
+| [phase2-abox-acl-condition-cmp-evidence.md](./phase2-abox-acl-condition-cmp-evidence.md) | N07/N22 deepen：ABox ACL condition $gt/$gte/$lt/$lte（非表达式语言 / 非 certified） |
+| [phase2-abox-acl-condition-regex-evidence.md](./phase2-abox-acl-condition-regex-evidence.md) | N07/N22 deepen：ABox ACL condition $regex（有界模式 / 非表达式语言 / 非 certified） |
+| [phase2-abox-acl-condition-regex-options-evidence.md](./phase2-abox-acl-condition-regex-options-evidence.md) | N07/N22 deepen：ABox ACL condition $regex+$options:i（仅 i / 非表达式语言 / 非 certified） |
+| [phase2-abox-acl-condition-strcmp-evidence.md](./phase2-abox-acl-condition-strcmp-evidence.md) | N07/N22 deepen：ABox ACL condition 字符串字典序 $gt/$gte/$lt/$lte（非嵌套布尔 / 非 certified） |
+| [phase2-abox-acl-condition-bool-shallow-evidence.md](./phase2-abox-acl-condition-bool-shallow-evidence.md) | N07/N22 deepen：ABox ACL condition 浅层 $and/$or（一层≤8 / 非 certified） |
+| [phase2-abox-acl-condition-not-shallow-evidence.md](./phase2-abox-acl-condition-not-shallow-evidence.md) | N07/N22 deepen：ABox ACL condition 浅层 $not（单字段子句 / 非多层嵌套 / 非 certified） |
+| [phase2-abox-acl-condition-nin-evidence.md](./phase2-abox-acl-condition-nin-evidence.md) | N07/N22 deepen：ABox ACL condition $nin（$in 对偶 / 非表达式语言 / 非 certified） |
+| [phase2-abox-acl-h1-matrix-thin-evidence.md](./phase2-abox-acl-h1-matrix-thin-evidence.md) | N07/N22 deepen：H.1 薄矩阵（共享 actions / 非 per-role / 非 certified） |
 | [phase2-exception-adr.md](./phase2-exception-adr.md) | Batch F1 §9.4 例外 ADR 包（partial 集中登记；非全量 ADR） |
 | [phase2-datasource-raw-evidence.md](./phase2-datasource-raw-evidence.md) | Batch G1 N01 DataSourceConfig content_hash→Raw（非全连接器/非 certified） |
 | [phase2-datasource-process-raw-evidence.md](./phase2-datasource-process-raw-evidence.md) | N01 deepen：process_from_datasource → Raw ingest opt-in（非默认强制/非 certified） |

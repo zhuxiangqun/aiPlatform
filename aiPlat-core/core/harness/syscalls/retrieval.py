@@ -96,6 +96,7 @@ def sys_kb_retrieve(
 
     actor_scopes: List[str] = None,
 
+    actor_role: str = "",
     record_hotpath_audit: bool = True,
 
 ) -> List[Dict[str, Any]]:
@@ -288,6 +289,22 @@ def sys_kb_retrieve(
     if actor_scopes is not None and results:
 
         results = _filter_by_security(results, actor_scopes, collection_id)
+
+
+
+    if (actor_role or actor_scopes is not None) and results:
+
+        results = _apply_field_acl_to_results(
+
+            results,
+
+            actor_role=actor_role or "",
+
+            actor_scopes=actor_scopes,
+
+            collection_id=collection_id,
+
+        )
 
 
 
@@ -845,6 +862,8 @@ def sys_wiki_retrieve(
 
     inference_expand: bool = True,
 
+    actor_role: str = "",
+    actor_scopes: List[str] = None,
     record_hotpath_audit: bool = True,
 
 ) -> List[Dict[str, Any]]:
@@ -871,6 +890,8 @@ def sys_wiki_retrieve(
 
         relation_boost: Boost scores for pages with specific relation types.
 
+        actor_role: 调用方角色；非空时对命中做字段 ACL。
+        actor_scopes: 调用方 scopes；与 actor_role 一起触发字段 ACL。
         record_hotpath_audit: N19 裸 list 热路径；上层信封审计时关以免双写.
 
 
@@ -947,7 +968,7 @@ def sys_wiki_retrieve(
 
                     class_uri, expand_subclasses, relation_filter, relation_boost, inference_expand,
 
-                    tenant_id, record_hotpath_audit
+                    tenant_id, actor_role, actor_scopes, record_hotpath_audit
 
                 )
 
@@ -959,7 +980,7 @@ def sys_wiki_retrieve(
 
                                        class_uri, expand_subclasses, relation_filter, relation_boost,
 
-                                       inference_expand, tenant_id, record_hotpath_audit)
+                                       inference_expand, tenant_id, actor_role, actor_scopes, record_hotpath_audit)
 
     except RuntimeError:
 
@@ -967,7 +988,7 @@ def sys_wiki_retrieve(
 
                                    class_uri, expand_subclasses, relation_filter, relation_boost,
 
-                                   inference_expand, tenant_id, record_hotpath_audit)
+                                   inference_expand, tenant_id, actor_role, actor_scopes, record_hotpath_audit)
 
 
 
@@ -991,6 +1012,8 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
 
                         tenant_id: str = "",
 
+                        actor_role: str = "",
+                        actor_scopes: List[str] = None,
                         record_hotpath_audit: bool = True) -> List[Dict[str, Any]]:
 
     from core.harness.knowledge.wiki_retriever import WikiPageRetriever
@@ -1027,7 +1050,7 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
 
 
 
-    hits = [
+    out = [
 
         {
 
@@ -1048,6 +1071,14 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
         for r in results
 
     ]
+    # 为什么：N07/N22 deepen — 裸 wiki 入口也必须字段 ACL，不能只靠 unified retrieve
+    if actor_role or actor_scopes is not None:
+        out = _apply_field_acl_to_results(
+            out,
+            actor_role=actor_role or "",
+            actor_scopes=actor_scopes,
+            collection_id=(cids[0] if cids else DomainRouter.default_collection()),
+        )
     # 为什么：N19 — 裸 wiki list 旁路落 Query 快照；上层信封路径关开关防双写
     if record_hotpath_audit:
         try:
@@ -1057,7 +1088,7 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
 
             maybe_record_bare_list_hotpath(
                 tenant_id=tenant_id or "",
-                hits=hits,
+                hits=out,
                 channel="wiki",
                 query=query or "",
             )
@@ -1072,12 +1103,12 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
             maybe_stamp_bare_list_constraint_hotpath,
         )
 
-        return maybe_stamp_bare_list_constraint_hotpath(hits, channel="wiki")
+        return maybe_stamp_bare_list_constraint_hotpath(out, channel="wiki")
     except Exception:
         logging.getLogger(__name__).warning(
             "N20 bare wiki list constraint hotpath skipped", exc_info=True
         )
-        return hits
+        return out
 
 
 
@@ -1231,6 +1262,7 @@ def sys_knowledge_retrieve(
 
     actor_scopes: List[str] = None,
 
+    actor_role: str = "",
     record_hotpath_audit: bool = True,
 
 ) -> List[Dict[str, Any]]:
@@ -1375,6 +1407,8 @@ def sys_knowledge_retrieve(
 
                 # 为什么：本入口落 knowledge_retrieve 审计；关裸 list 防双写
                 record_hotpath_audit=False,
+                actor_role=actor_role,
+                actor_scopes=actor_scopes,
 
             )
 
@@ -1715,6 +1749,24 @@ def sys_knowledge_retrieve(
 
 
 
+    # ── N07/N22 deepen: Wiki/KB field ACL on unified retrieve ──
+
+    if actor_role or actor_scopes is not None:
+
+        results = _apply_field_acl_to_results(
+
+            results,
+
+            actor_role=actor_role or "",
+
+            actor_scopes=actor_scopes,
+
+            collection_id=collection_id,
+
+        )
+
+
+
     # ── Latency tracking ──
 
     try:
@@ -1783,9 +1835,63 @@ def sys_knowledge_retrieve(
 
     return _finish(results[:top_k], route="rrf")
 
+def _apply_field_acl_to_results(
+    results: List[Dict[str, Any]],
+    *,
+    actor_role: str = "",
+    actor_scopes: List[str] = None,
+    collection_id: str = DomainRouter.default_collection(),
+) -> List[Dict[str, Any]]:
+    """Apply collection field_permissions.json redaction to retrieve hits.
 
+    Args:
+        results: 检索命中列表。
+        actor_role: 调用方角色（admin 旁路）。
+        actor_scopes: 调用方 scopes；admin 旁路。
+        collection_id: Wiki/KB collection。
 
+    Returns:
+        脱敏后的命中列表；无规则或失败时原样返回。
+    """
 
+    if not results:
+        return results
+
+    scopes = list(actor_scopes or [])
+    if actor_role == "admin" or "admin" in scopes:
+        return results
+
+    try:
+        from core.policy.field_level_security import apply_field_level_security
+        from core.harness.knowledge.knowledge_abox_builder import _safe_uri
+        AI = "http://aiplat.local/knowledge#"
+        out: List[Dict[str, Any]] = []
+        for item in results:
+            if not isinstance(item, dict):
+                out.append(item)
+                continue
+            title = str(
+                item.get("title")
+                or item.get("source")
+                or item.get("doc_id")
+                or item.get("id")
+                or ""
+            )
+            entity_uri = f"{AI}{_safe_uri(title)}" if title else ""
+            safe = apply_field_level_security(
+                item,
+                entity_uri,
+                actor_role=actor_role or "",
+                actor_scopes=scopes,
+                collection_id=collection_id,
+            )
+            out.append(safe)
+        return out
+    except Exception:
+        logging.getLogger("retrieval").debug(
+            "field ACL soft-fail; returning unfiltered", exc_info=True
+        )
+        return results
 
 def _filter_by_security(
 
