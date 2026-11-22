@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-22T06:50:21+08:00",
+  "reviewed_at": "2026-11-22T08:57:08+08:00",
   "base_ref": "origin/main",
-  "merge_base": "8641175335ab7fe5b483be711e22671767d5b022",
-  "diff_sha256": "d925c3525d759882939192e66595c67061f0fcc0e544da6c87c91457812229be",
-  "head_sha": "a74c5f3e698dde1afbaa53f6fe9ff075b211fe37",
+  "merge_base": "b47fc94991058756c61a0ed677580597b8af6f50",
+  "diff_sha256": "a8331d87b3ca90fd396ebac44ff9022e0ab06e908093a5fa87b725f043d31448",
+  "head_sha": "7f24434a5c78e807ba54b2fecaa51c7e782a3148",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Land tip CI: N19/N20 suites read materials_chat.py via Path (no harness→apps); DOCUMENT_SYSTEM ontology LOC 14345. Residual: tip→main needs CI green + non-author Approve."
+  "note": "ABox ACL tip land onto TripleStore main: retrieval keeps field ACL + N19/N20 hotpaths; H.1 form honesty aligned to matrix-thin. Residual: not N07/N22 certified; not full expression language / per-role matrix."
 }
