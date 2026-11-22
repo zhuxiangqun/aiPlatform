@@ -51,7 +51,7 @@ function splitCsv(raw: string): string[] {
     .filter(Boolean);
 }
 
-/** H.1 薄矩阵固定轴（非完整 per-role 差异产品）。 */
+/** H.1 矩阵固定轴（per-role 差异；非 certified / 非任意 RBAC 产品）。 */
 const H1_MATRIX_ROLES = ['viewer', 'analyst', 'admin'] as const;
 const H1_MATRIX_ACTIONS = ['read', 'update', 'state_change', 'delete'] as const;
 
@@ -60,8 +60,8 @@ function principalRoleName(p: string): string {
   return s.toLowerCase().startsWith('role:') ? s.slice(5).trim() : s;
 }
 
-/** 从 principals/actions 展开薄矩阵单元格（H.1 共享 actions → 各选中角色同勾）。 */
-function matrixCellsFromForm(principals: string, actions: string): Record<string, Set<string>> {
+/** 共享 principals/actions → 矩阵单元格（薄表单回退；各选中角色同勾）。 */
+function matrixCellsFromShared(principals: string, actions: string): Record<string, Set<string>> {
   const roles = new Set(splitCsv(principals).map(principalRoleName).filter(Boolean));
   const acts = splitCsv(actions);
   const out: Record<string, Set<string>> = {};
@@ -71,33 +71,56 @@ function matrixCellsFromForm(principals: string, actions: string): Record<string
   return out;
 }
 
-/** 薄矩阵 → principals + 共享 actions 并集（写入 H.1 时折叠差异）。 */
+/** role_actions 优先；缺省时回退共享展开。 */
+function matrixCellsFromForm(
+  principals: string,
+  actions: string,
+  roleActions?: Record<string, string[]>,
+): Record<string, Set<string>> {
+  if (roleActions && Object.keys(roleActions).length > 0) {
+    const out: Record<string, Set<string>> = {};
+    for (const r of H1_MATRIX_ROLES) {
+      const list = roleActions[r] || [];
+      out[r] = new Set(list.map(String).filter(Boolean));
+    }
+    return out;
+  }
+  return matrixCellsFromShared(principals, actions);
+}
+
+/** 矩阵 → principals + actions 并集 + role_actions（保留 per-role 差异）。 */
 function formFromMatrixCells(cells: Record<string, Set<string>>): {
   principals: string;
   actions: string;
+  roleActions: Record<string, string[]>;
 } {
   const principals: string[] = [];
   const actUnion = new Set<string>();
+  const roleActions: Record<string, string[]> = {};
   for (const r of H1_MATRIX_ROLES) {
     const set = cells[r];
     if (set && set.size > 0) {
       principals.push(`role:${r}`);
-      set.forEach((a) => actUnion.add(a));
+      const list = Array.from(set);
+      roleActions[r] = list;
+      list.forEach((a) => actUnion.add(a));
     }
   }
   return {
     principals: principals.join(','),
     actions: Array.from(actUnion).join(',') || 'read',
+    roleActions,
   };
 }
 
-/** 从 H.1 policy 抽出薄表单字段（非完整策略编辑器）。 */
+/** 从 H.1 policy 抽出薄表单字段（含可选 role_actions）。 */
 function formFieldsFromH1(policy: Record<string, unknown>): {
   effect: 'allow' | 'deny';
   principals: string;
   actions: string;
   conditionRaw: string;
   masked: string;
+  roleActions: Record<string, string[]>;
 } {
   const effect = String(policy.effect || 'allow').toLowerCase() === 'deny' ? 'deny' : 'allow';
   const principals = Array.isArray(policy.principals)
@@ -113,7 +136,16 @@ function formFieldsFromH1(policy: Record<string, unknown>): {
   const masked = Array.isArray(policy.masked_properties)
     ? (policy.masked_properties as unknown[]).map(String).join(',')
     : '';
-  return { effect, principals, actions, conditionRaw: cond, masked };
+  const roleActions: Record<string, string[]> = {};
+  const rawRa = policy.role_actions;
+  if (rawRa && typeof rawRa === 'object' && !Array.isArray(rawRa)) {
+    for (const [k, v] of Object.entries(rawRa as Record<string, unknown>)) {
+      const role = principalRoleName(k);
+      if (!role || !Array.isArray(v)) continue;
+      roleActions[role] = v.map(String).filter(Boolean);
+    }
+  }
+  return { effect, principals, actions, conditionRaw: cond, masked, roleActions };
 }
 
 function buildH1FromForm(fields: {
@@ -122,6 +154,7 @@ function buildH1FromForm(fields: {
   actions: string;
   conditionRaw: string;
   masked: string;
+  roleActions?: Record<string, string[]>;
 }): Record<string, unknown> | { error: string } {
   let condition: Record<string, unknown> = {};
   const ct = fields.conditionRaw.trim();
@@ -136,13 +169,17 @@ function buildH1FromForm(fields: {
       return { error: 'condition 须为合法 JSON' };
     }
   }
-  return {
+  const out: Record<string, unknown> = {
     effect: fields.effect,
     principals: splitCsv(fields.principals),
     actions: splitCsv(fields.actions).length ? splitCsv(fields.actions) : ['*'],
     condition,
     masked_properties: splitCsv(fields.masked),
   };
+  if (fields.roleActions && Object.keys(fields.roleActions).length > 0) {
+    out.role_actions = fields.roleActions;
+  }
+  return out;
 }
 
 const AboxAclPanel: React.FC = () => {
@@ -169,10 +206,13 @@ const AboxAclPanel: React.FC = () => {
   const [h1Effect, setH1Effect] = useState<'allow' | 'deny'>('deny');
   const [h1Principals, setH1Principals] = useState('role:viewer');
   const [h1Actions, setH1Actions] = useState('read');
+  const [h1RoleActions, setH1RoleActions] = useState<Record<string, string[]>>({
+    viewer: ['read'],
+  });
   const [h1ConditionRaw, setH1ConditionRaw] = useState('{"status":"open"}');
   const [h1MaskedForm, setH1MaskedForm] = useState('ssn');
   const [h1Raw, setH1Raw] = useState(
-    '{\n  "effect": "deny",\n  "principals": ["role:viewer"],\n  "actions": ["read"],\n  "condition": {"status": "open"},\n  "masked_properties": ["ssn"]\n}',
+    '{\n  "effect": "deny",\n  "principals": ["role:viewer"],\n  "actions": ["read"],\n  "role_actions": {"viewer": ["read"]},\n  "condition": {"status": "open"},\n  "masked_properties": ["ssn"]\n}',
   );
   const [h1Policies, setH1Policies] = useState<Record<string, unknown>[]>([]);
   const [h1ListOut, setH1ListOut] = useState('');
@@ -184,18 +224,24 @@ const AboxAclPanel: React.FC = () => {
       actions?: string;
       conditionRaw?: string;
       masked?: string;
+      roleActions?: Record<string, string[]>;
+      clearRoleActions?: boolean;
     }) => {
+      const roleActions = next?.clearRoleActions
+        ? undefined
+        : (next?.roleActions ?? h1RoleActions);
       const built = buildH1FromForm({
         effect: next?.effect ?? h1Effect,
         principals: next?.principals ?? h1Principals,
         actions: next?.actions ?? h1Actions,
         conditionRaw: next?.conditionRaw ?? h1ConditionRaw,
         masked: next?.masked ?? h1MaskedForm,
+        roleActions,
       });
       if ('error' in built) return;
       setH1Raw(JSON.stringify(built, null, 2));
     },
-    [h1Effect, h1Principals, h1Actions, h1ConditionRaw, h1MaskedForm],
+    [h1Effect, h1Principals, h1Actions, h1ConditionRaw, h1MaskedForm, h1RoleActions],
   );
 
   const applyPolicyToForm = useCallback((policy: Record<string, unknown>) => {
@@ -205,6 +251,7 @@ const AboxAclPanel: React.FC = () => {
     setH1Actions(f.actions);
     setH1ConditionRaw(f.conditionRaw);
     setH1MaskedForm(f.masked);
+    setH1RoleActions(f.roleActions);
     const { certified: _c, ...rest } = policy;
     setH1Raw(JSON.stringify(rest, null, 2));
   }, []);
@@ -729,7 +776,7 @@ const AboxAclPanel: React.FC = () => {
 
         <div className="border-t border-gray-800 pt-3 space-y-2">
           <div className="text-[12px] text-gray-300">
-            H.1 薄表单 + 薄矩阵（effect/principals/actions · 写入共享 actions · 非完整 per-role 矩阵 · 非 certified）
+            H.1 薄表单 + per-role 矩阵（role_actions 独立动作集 · 固定轴 · 非 certified / 非任意 RBAC）
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
             <label className="text-[11px] text-gray-400 space-y-1 block">
@@ -767,13 +814,20 @@ const AboxAclPanel: React.FC = () => {
               </select>
             </label>
             <label className="text-[11px] text-gray-400 space-y-1">
-              actions（逗号分隔）
+              actions（逗号分隔 · 并集；编辑时按 principals 广播为 role_actions）
               <input
                 className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
                 value={h1Actions}
                 onChange={(e) => {
-                  setH1Actions(e.target.value);
-                  pushFormToRaw({ actions: e.target.value });
+                  const v = e.target.value;
+                  setH1Actions(v);
+                  const shared = formFromMatrixCells(matrixCellsFromShared(h1Principals, v));
+                  setH1RoleActions(shared.roleActions);
+                  pushFormToRaw({
+                    actions: v,
+                    principals: shared.principals,
+                    roleActions: shared.roleActions,
+                  });
                 }}
                 placeholder="read,update"
               />
@@ -784,8 +838,15 @@ const AboxAclPanel: React.FC = () => {
                 className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
                 value={h1Principals}
                 onChange={(e) => {
-                  setH1Principals(e.target.value);
-                  pushFormToRaw({ principals: e.target.value });
+                  const v = e.target.value;
+                  setH1Principals(v);
+                  const shared = formFromMatrixCells(matrixCellsFromShared(v, h1Actions));
+                  setH1RoleActions(shared.roleActions);
+                  pushFormToRaw({
+                    principals: v,
+                    actions: shared.actions,
+                    roleActions: shared.roleActions,
+                  });
                 }}
                 placeholder="role:viewer,role:analyst"
               />
@@ -817,7 +878,7 @@ const AboxAclPanel: React.FC = () => {
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <div className="text-[11px] text-gray-400">
-              薄矩阵（角色×动作 · 勾选写入 principals + 共享 actions 并集 · 非完整 per-role 差异矩阵）
+              per-role 矩阵（角色×动作 · 勾选写入 role_actions；actions 为并集 · 固定轴 · 非任意 RBAC）
             </div>
             <div className="overflow-auto rounded border border-gray-800">
               <table className="w-full text-[11px] text-gray-300 border-collapse">
@@ -833,7 +894,7 @@ const AboxAclPanel: React.FC = () => {
                 </thead>
                 <tbody>
                   {(() => {
-                    const cells = matrixCellsFromForm(h1Principals, h1Actions);
+                    const cells = matrixCellsFromForm(h1Principals, h1Actions, h1RoleActions);
                     return H1_MATRIX_ROLES.map((role) => (
                       <tr key={role} className="border-t border-gray-800">
                         <td className="px-2 py-1 font-mono text-gray-400">{role}</td>
@@ -856,9 +917,11 @@ const AboxAclPanel: React.FC = () => {
                                   const folded = formFromMatrixCells(next);
                                   setH1Principals(folded.principals);
                                   setH1Actions(folded.actions);
+                                  setH1RoleActions(folded.roleActions);
                                   pushFormToRaw({
                                     principals: folded.principals,
                                     actions: folded.actions,
+                                    roleActions: folded.roleActions,
                                   });
                                 }}
                               />
@@ -873,7 +936,7 @@ const AboxAclPanel: React.FC = () => {
             </div>
           </div>
           <label className="text-[11px] text-gray-400 space-y-1 block">
-            h1_policy JSON（与薄表单/薄矩阵同步；高级编辑仍可用）
+            h1_policy JSON（与薄表单/per-role 矩阵同步；含 role_actions）
             <textarea
               className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono min-h-[96px]"
               value={h1Raw}
@@ -889,6 +952,7 @@ const AboxAclPanel: React.FC = () => {
                     setH1Actions(f.actions);
                     setH1ConditionRaw(f.conditionRaw);
                     setH1MaskedForm(f.masked);
+                    setH1RoleActions(f.roleActions);
                   }
                 } catch {
                   // 输入中：不打断

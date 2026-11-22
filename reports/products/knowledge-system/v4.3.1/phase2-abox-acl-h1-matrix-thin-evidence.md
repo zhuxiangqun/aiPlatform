@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / ABox ACL H.1 薄矩阵（N07/N22 deepen）
 
 > 实施权威：附录 H.1 / N07/N22；叠在 `$nin` 与 H.1 薄表单之上。  
-> **未宣称** N07/N22 certified / 完整 per-role 差异矩阵 / 完整表达式语言。
+> **未宣称** N07/N22 certified / 完整表达式语言（per-role → 见 `phase2-abox-acl-h1-matrix-per-role-evidence.md`）。
 
 ## 检查表
 
@@ -36,11 +36,12 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 | 入口 | 路径 |
 |------|------|
 | UI | `AboxAclPanel` ← `H1_MATRIX_ROLES` × `H1_MATRIX_ACTIONS` |
-| 语义 | 勾选 → `principals` + **共享** `actions` 并集；与既有 `PUT h1_policy` 同路径 |
-| 诚实锁 | 非 per-role 独立动作集；非 certified |
+| 语义 | 无 `role_actions` 时：勾选折叠为 `principals` + **共享** `actions`；有则见 per-role 证据 |
+| 诚实锁 | 薄路径不单独存 per-cell；非 certified |
+
 
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- 完整 per-role 差异矩阵（每角色独立 actions 存储/回放）
+- per-role 差异矩阵 → 见 `phase2-abox-acl-h1-matrix-per-role-evidence.md`
 - 多层嵌套布尔 / 完整表达式语言

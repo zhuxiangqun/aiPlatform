@@ -1,4 +1,4 @@
-"""N07/N22 deepen：H.1 薄表单字段；非完整 per-role 矩阵 / 非 certified。"""
+"""N07/N22 deepen：H.1 薄表单字段；与 per-role 矩阵共存 / 非 certified。"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[6]
 
 
 def test_abox_panel_h1_thin_form_fields():
-    """薄表单仍在；矩阵 tip 后诚实锁改为「非完整 per-role 矩阵」。"""
+    """薄表单仍在；per-role 矩阵 deepen 后诚实锁改为「非 certified / 非任意 RBAC」。"""
     panel = (
         ROOT
         / "aiPlat-management"
@@ -24,8 +24,10 @@ def test_abox_panel_h1_thin_form_fields():
     assert "h1Effect" in text
     assert "h1Principals" in text
     assert "h1Actions" in text
-    # 为什么：h1-matrix-thin 将「非矩阵编辑器」改为薄矩阵诚实锁
-    assert "非完整 per-role 矩阵" in text
+    # 为什么：h1-matrix-per-role 已落地；诚实锁不再写「非完整 per-role 矩阵」
+    assert "非完整 per-role 矩阵" not in text
+    assert "非 certified" in text
+    assert "非任意 RBAC" in text
     assert "H.1 薄表单" in text
 
 

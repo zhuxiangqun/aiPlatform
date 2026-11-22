@@ -1,6 +1,6 @@
 ---
-total_capabilities: 4087
-last_updated: 2026-11-14
+total_capabilities: 4121
+last_updated: 2026-11-22
 version: "30.14"
 auto_sync: true
 core_guarantees:
@@ -550,7 +550,7 @@ scan_hash: 8f9548ec24f4
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 3457✅）
+> 评分：98/100（2026-07-20 — 4137✅）
 
 ---
 
@@ -1347,7 +1347,7 @@ scan_hash: 8f9548ec24f4
 | **ObjectType 人审发布（v4.3.1 N02 deepen）** | `object_type_publish.py` + CoreFacade + FDE `/object-types*`；Package schema 可选门 | ✅ | draft→in_review→published；publish 角色门；suite/gate certified 恒 false。证据 `phase2-object-type-publish-evidence.md`。**未宣称** 全量发布门户 / 种子替换 / N02 certified。生成物适用：已接线 | 本批 |
 | **Knowledge SDK（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/sdk_generator.py` + CoreFacade + `GET/POST …/fde/sdk/*` | ✅ | 附录 E.3；ObjectType→Client 表面/Python 源码仅经 Facade；`kb:read` L1。证据 `phase2-sdk-evidence.md`。**未宣称** 多语言包发布/字段 ACL/N24 | 本批 |
 | **Knowledge SLO 遥测接线（v4.3.1 F1 deepen）** | `harness/knowledge_pipeline/slo_telemetry.py` + CoreFacade + `GET/POST …/fde/slo/*` | ✅ | 白皮书 §14 三指标采集/快照/接线门；wiring≠attainment。证据 `phase2-slo-telemetry-wiring-evidence.md`。**未宣称** 生产达标/告警/Full unconditional | 本批 |
-| **Wiki/KB 字段 ACL（v4.3.1 N07/N22 deepen）** | `syscalls/retrieval.py` + `knowledge_pipeline/retriever.py` + `knowledge/okf_exporter.py` + `knowledge/knowledge_ontology.py` + `knowledge/evolution_runner.py` + `policy/field_level_security.py` + `graph_abox_acl.py` + `wiki_field_security.py` + FDE `graph/acl` + `FieldAclPanel.tsx` / `AboxAclPanel.tsx` | ✅ | 统一检索/KB/CRAG + 导出字段脱敏 + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition/$eq/$ne/$in/$nin/$exists/$gt/$gte/$lt/$lte(数值或 str 字典序)/$regex(+$options:i)/浅层$and|$or|$not + masked_properties + apply/list/get_h1 + 薄表单 + 薄矩阵（共享 actions）；证据含 `phase2-abox-acl-h1-matrix-thin-evidence.md`。**未宣称** certified / 完整表达式语言 / per-role 差异矩阵。生成物适用：已接线 | 本批 |
+| **Wiki/KB 字段 ACL（v4.3.1 N07/N22 deepen）** | `syscalls/retrieval.py` + `knowledge_pipeline/retriever.py` + `knowledge/okf_exporter.py` + `knowledge/knowledge_ontology.py` + `knowledge/evolution_runner.py` + `policy/field_level_security.py` + `graph_abox_acl.py` + `wiki_field_security.py` + FDE `graph/acl` + `FieldAclPanel.tsx` / `AboxAclPanel.tsx` | ✅ | 统一检索/KB/CRAG + 导出字段脱敏 + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 condition/$eq/$ne/$in/$nin/$exists/$gt/$gte/$lt/$lte(数值或 str 字典序)/$regex(+$options:i)/浅层$and|$or|$not + masked_properties + apply/list/get_h1 + 薄表单 + 薄矩阵 + per-role 矩阵（`role_actions`）；证据含 `phase2-abox-acl-h1-matrix-per-role-evidence.md`。**未宣称** certified / 完整表达式语言 / 任意 RBAC 产品。生成物适用：已接线 | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
 | **service-domain 参考实现** | `~/.aiplat/ontologies/service-domain.yaml` + `~/.aiplat/actions/service-domain_actions.yaml` + `custom_handlers/service_handlers.py` + `~/.aiplat/tests/service-domain_tests.yaml` + `scripts/sop_validate.py` + `docs/manuals/fde/06-sop-domain-delivery.md` | ✅ | 生产级参考实现：6类实体+6种关系+4态状态机+inference_rules + 5个动作（assign/start/submit/complete/reopen）+ 5个async handler + 12条测试用例 + SOP验证脚本6/6 PASS + 5天标准交付流程文档 | 已合入 |
@@ -2986,6 +2986,40 @@ scan_hash: 8f9548ec24f4
 | 发布习惯门：ops harness ready | `scripts/ops_harness_ready_check.sh` + `.github/workflows/aiplat-contracts-guard.yml`（Ops harness ready）+ Governance「Gold match-only」CTA | ✅ | CI 强制：gold `--match-only` + ontology offline YAML + IDE capture hooks；与 Governance 值班板 `release_habit` / 一键 CTA 同门；install-seeds 最佳努力；生成物不适用（平台横切发布门禁） | 已合入 |
 | WorkflowsPage | `aiPlat-management/frontend/src/pages/Core/Workflows/WorkflowsPage.tsx` | ✅ | 自动同步 | 已合入 |
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
+| AnimationFSM | `aiPlat-management/frontend/src/components/digital-human/AnimationFSM.ts` | ✅ | 自动同步 | 已合入 |
+| Rollouts | `aiPlat-management/frontend/src/pages/Core/Learning/Rollouts/Rollouts.tsx` | ✅ | 自动同步 | 已合入 |
+| Resources | `aiPlat-management/frontend/src/pages/Core/Resources/Resources.tsx` | ✅ | 自动同步 | 已合入 |
+| SkillPacks | `aiPlat-management/frontend/src/pages/Core/SkillPacks/SkillPacks.tsx` | ✅ | 自动同步 | 已合入 |
+| Variables | `aiPlat-management/frontend/src/pages/Core/Variables/Variables.tsx` | ✅ | 自动同步 | 已合入 |
+| BrowserTestPanel | `aiPlat-management/frontend/src/pages/Diagnostics/BrowserTest/BrowserTestPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| CapabilityGraph | `aiPlat-management/frontend/src/pages/Diagnostics/CapabilityGraph/CapabilityGraph.tsx` | ✅ | 自动同步 | 已合入 |
+| CapabilityPolicy | `aiPlat-management/frontend/src/pages/Diagnostics/CapabilityPolicy/CapabilityPolicy.tsx` | ✅ | 自动同步 | 已合入 |
+| ChangeControl | `aiPlat-management/frontend/src/pages/Diagnostics/ChangeControl/ChangeControl.tsx` | ✅ | 自动同步 | 已合入 |
+| CodeIntel | `aiPlat-management/frontend/src/pages/Diagnostics/CodeIntel/CodeIntel.tsx` | ✅ | 自动同步 | 已合入 |
+| ExecBackends | `aiPlat-management/frontend/src/pages/Diagnostics/ExecBackends/ExecBackends.tsx` | ✅ | 自动同步 | 已合入 |
+| PolicyDebug | `aiPlat-management/frontend/src/pages/Diagnostics/PolicyDebug/PolicyDebug.tsx` | ✅ | 自动同步 | 已合入 |
+| RoutingDashboard | `aiPlat-management/frontend/src/pages/Diagnostics/RoutingReplay/RoutingDashboard.tsx` | ✅ | 自动同步 | 已合入 |
+| RoutingReplayDetail | `aiPlat-management/frontend/src/pages/Diagnostics/RoutingReplay/RoutingReplayDetail.tsx` | ✅ | 自动同步 | 已合入 |
+| RoutingReplayList | `aiPlat-management/frontend/src/pages/Diagnostics/RoutingReplay/RoutingReplayList.tsx` | ✅ | 自动同步 | 已合入 |
+| ArchitectureView | `aiPlat-management/frontend/src/pages/SystemGraph/ArchitectureView.tsx` | ✅ | 自动同步 | 已合入 |
+| GraphCanvas | `aiPlat-management/frontend/src/pages/SystemGraph/GraphCanvas.tsx` | ✅ | 自动同步 | 已合入 |
+| GraphChat | `aiPlat-management/frontend/src/pages/SystemGraph/GraphChat.tsx` | ✅ | 自动同步 | 已合入 |
+| LayerLegend | `aiPlat-management/frontend/src/pages/SystemGraph/LayerLegend.tsx` | ✅ | 自动同步 | 已合入 |
+| NodeDetailPanel | `aiPlat-management/frontend/src/pages/SystemGraph/NodeDetailPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| RulesPanel | `aiPlat-management/frontend/src/pages/SystemGraph/RulesPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| SearchBar | `aiPlat-management/frontend/src/pages/SystemGraph/SearchBar.tsx` | ✅ | 自动同步 | 已合入 |
+| SkillMarketplace | `aiPlat-management/frontend/src/pages/Workspace/SkillMarketplace/SkillMarketplace.tsx` | ✅ | 自动同步 | 已合入 |
+| agentStore | `aiPlat-management/frontend/src/stores/agentStore.ts` | ✅ | 自动同步 | 已合入 |
+| kbStore | `aiPlat-management/frontend/src/stores/kbStore.ts` | ✅ | 自动同步 | 已合入 |
+| mcpStore | `aiPlat-management/frontend/src/stores/mcpStore.ts` | ✅ | 自动同步 | 已合入 |
+| memoryStore | `aiPlat-management/frontend/src/stores/memoryStore.ts` | ✅ | 自动同步 | 已合入 |
+| skillStore | `aiPlat-management/frontend/src/stores/skillStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceAgentStore | `aiPlat-management/frontend/src/stores/workspaceAgentStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceMcpStore | `aiPlat-management/frontend/src/stores/workspaceMcpStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceSkillStore | `aiPlat-management/frontend/src/stores/workspaceSkillStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceToolStore | `aiPlat-management/frontend/src/stores/workspaceToolStore.ts` | ✅ | 自动同步 | 已合入 |
+| animations | `aiPlat-management/frontend/src/styles/animations.ts` | ✅ | 自动同步 | 已合入 |
+| theme | `aiPlat-management/frontend/src/styles/theme.ts` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | harness/infrastructure/gates/policy_gate.py | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
 | resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级 open/ask/closed；**P0-2**：profile 默认（prod/staging→closed，dev→ask，未设→open）；prod open 须 `AIPLAT_POLICY_FAIL_OPEN_UNTIL`；非关键固定 open+审计；生成物不适用（平台横切） | 已合入 |
@@ -4995,7 +5029,7 @@ scan_hash: 8f9548ec24f4
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
 | Skill 系统 | 210 | 0 | 210 |
-| 安全与治理 | 92 | 0 | 92 |
+| 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
@@ -5033,7 +5067,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4076** | **11** | **4087** |
+| **总计** | **4110** | **11** | **4121** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

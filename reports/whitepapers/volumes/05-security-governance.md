@@ -4,19 +4,19 @@ volume_id: security-governance
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-22T00:56:03Z"
+generated_at: "2026-11-22T01:49:13Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "c868b4aac3fab7c0d89587853e4b55316d92c22d4fe5167aa32aa405ff4ec746"
+caps_sha256: "ace9096afd523824f6f6258f55950ed5d363be57ed0e47c9c61e977eadd235cd"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=c868b4aac3fab7c0d89587853e4b55316d92c22d4fe5167aa32aa405ff4ec746 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=ace9096afd523824f6f6258f55950ed5d363be57ed0e47c9c61e977eadd235cd scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-22T00:56:03Z` |
-| CAPABILITIES sha256 | `c868b4aac3fa…` |
+| 生成时间 (UTC) | `2026-11-22T01:49:13Z` |
+| CAPABILITIES sha256 | `ace9096afd52…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -238,40 +238,43 @@ rules:
 | 发布习惯门：ops harness ready | `scripts/ops_harness_ready_check.sh` + `.github/workflows/aiplat-contracts-guard.yml`（Ops harness ready）+ Governance「Gold match-only」CTA | ✅ | CI 强制：gold `--match-only` + ontology offline YAML + IDE capture hooks；与 Governance 值班板 `release_habit` / 一键 CTA 同门；install-seeds 最佳努力；生成物不适用（平台横切发布门禁） | 已合入 |
 | WorkflowsPage | `aiPlat-management/frontend/src/pages/Core/Workflows/WorkflowsPage.tsx` | ✅ | 自动同步 | 已合入 |
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
+| AnimationFSM | `aiPlat-management/frontend/src/components/digital-human/AnimationFSM.ts` | ✅ | 自动同步 | 已合入 |
+| Rollouts | `aiPlat-management/frontend/src/pages/Core/Learning/Rollouts/Rollouts.tsx` | ✅ | 自动同步 | 已合入 |
+| Resources | `aiPlat-management/frontend/src/pages/Core/Resources/Resources.tsx` | ✅ | 自动同步 | 已合入 |
+| SkillPacks | `aiPlat-management/frontend/src/pages/Core/SkillPacks/SkillPacks.tsx` | ✅ | 自动同步 | 已合入 |
+| Variables | `aiPlat-management/frontend/src/pages/Core/Variables/Variables.tsx` | ✅ | 自动同步 | 已合入 |
+| BrowserTestPanel | `aiPlat-management/frontend/src/pages/Diagnostics/BrowserTest/BrowserTestPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| CapabilityGraph | `aiPlat-management/frontend/src/pages/Diagnostics/CapabilityGraph/CapabilityGraph.tsx` | ✅ | 自动同步 | 已合入 |
+| CapabilityPolicy | `aiPlat-management/frontend/src/pages/Diagnostics/CapabilityPolicy/CapabilityPolicy.tsx` | ✅ | 自动同步 | 已合入 |
+| ChangeControl | `aiPlat-management/frontend/src/pages/Diagnostics/ChangeControl/ChangeControl.tsx` | ✅ | 自动同步 | 已合入 |
+| CodeIntel | `aiPlat-management/frontend/src/pages/Diagnostics/CodeIntel/CodeIntel.tsx` | ✅ | 自动同步 | 已合入 |
+| ExecBackends | `aiPlat-management/frontend/src/pages/Diagnostics/ExecBackends/ExecBackends.tsx` | ✅ | 自动同步 | 已合入 |
+| PolicyDebug | `aiPlat-management/frontend/src/pages/Diagnostics/PolicyDebug/PolicyDebug.tsx` | ✅ | 自动同步 | 已合入 |
+| RoutingDashboard | `aiPlat-management/frontend/src/pages/Diagnostics/RoutingReplay/RoutingDashboard.tsx` | ✅ | 自动同步 | 已合入 |
+| RoutingReplayDetail | `aiPlat-management/frontend/src/pages/Diagnostics/RoutingReplay/RoutingReplayDetail.tsx` | ✅ | 自动同步 | 已合入 |
+| RoutingReplayList | `aiPlat-management/frontend/src/pages/Diagnostics/RoutingReplay/RoutingReplayList.tsx` | ✅ | 自动同步 | 已合入 |
+| ArchitectureView | `aiPlat-management/frontend/src/pages/SystemGraph/ArchitectureView.tsx` | ✅ | 自动同步 | 已合入 |
+| GraphCanvas | `aiPlat-management/frontend/src/pages/SystemGraph/GraphCanvas.tsx` | ✅ | 自动同步 | 已合入 |
+| GraphChat | `aiPlat-management/frontend/src/pages/SystemGraph/GraphChat.tsx` | ✅ | 自动同步 | 已合入 |
+| LayerLegend | `aiPlat-management/frontend/src/pages/SystemGraph/LayerLegend.tsx` | ✅ | 自动同步 | 已合入 |
+| NodeDetailPanel | `aiPlat-management/frontend/src/pages/SystemGraph/NodeDetailPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| RulesPanel | `aiPlat-management/frontend/src/pages/SystemGraph/RulesPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| SearchBar | `aiPlat-management/frontend/src/pages/SystemGraph/SearchBar.tsx` | ✅ | 自动同步 | 已合入 |
+| SkillMarketplace | `aiPlat-management/frontend/src/pages/Workspace/SkillMarketplace/SkillMarketplace.tsx` | ✅ | 自动同步 | 已合入 |
+| agentStore | `aiPlat-management/frontend/src/stores/agentStore.ts` | ✅ | 自动同步 | 已合入 |
+| kbStore | `aiPlat-management/frontend/src/stores/kbStore.ts` | ✅ | 自动同步 | 已合入 |
+| mcpStore | `aiPlat-management/frontend/src/stores/mcpStore.ts` | ✅ | 自动同步 | 已合入 |
+| memoryStore | `aiPlat-management/frontend/src/stores/memoryStore.ts` | ✅ | 自动同步 | 已合入 |
+| skillStore | `aiPlat-management/frontend/src/stores/skillStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceAgentStore | `aiPlat-management/frontend/src/stores/workspaceAgentStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceMcpStore | `aiPlat-management/frontend/src/stores/workspaceMcpStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceSkillStore | `aiPlat-management/frontend/src/stores/workspaceSkillStore.ts` | ✅ | 自动同步 | 已合入 |
+| workspaceToolStore | `aiPlat-management/frontend/src/stores/workspaceToolStore.ts` | ✅ | 自动同步 | 已合入 |
+| animations | `aiPlat-management/frontend/src/styles/animations.ts` | ✅ | 自动同步 | 已合入 |
+| theme | `aiPlat-management/frontend/src/styles/theme.ts` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | harness/infrastructure/gates/policy_gate.py | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
-| resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级 open/ask/closed；**P0-2**：profile 默认（prod/staging→closed，dev→ask，未设→open）；prod open 须 `AIPLAT_POLICY_FAIL_OPEN_UNTIL`；非关键固定 open+审计；生成物不适用（平台横切） | 已合入 |
-| default_fail_mode_for_profile / audit_policy_fail_mode_config | harness/infrastructure/gates/policy_gate.py | ✅ | P0-2 灰度默认与漂移快照；architecture_health 接线；生成物不适用 | 已合入 |
-| is_hard_floor_escape_active / audit_hard_floor_escape | harness/infrastructure/gates/approval_gate.py | ✅ | P0-2：hard-floor 逃生须 `DISABLED`+未来 `UNTIL`，过期自动恢复；健康检查漂移；生成物不适用 | 已合入 |
-| apply_architecture_profile | ⚠️ deprecated core/schemas_builder.py | ✅ | 阶段 architecture_profile（oneshot/react_tools/plan_execute/reflect_loop）覆盖 backend+agent_type；upgrade_policy=off\|signals\|aggressive；code_split 后端编码试点 plan_execute；生成物适用（team YAML） | 已合入 |
-| ApprovalGate | harness/infrastructure/approval/manager.py | ✅ | approve/deny/pending，双门禁 | 已合入 |
-| Prompt 注入防护 | harness/syscalls/llm.py:125 | ✅ | 6条正则+特殊token过滤+覆盖防护指令 | 已合入 |
-| 记忆投毒防御 | harness/memory/base.py:39 | ✅ | source_tag/trust_weight/provenance | 已合入 |
-| PII 脱敏（全量覆盖） | kb/service.py` → `_mask_pii()` + `services/pii_detector.py | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，全部 6 条入库路径已覆盖 | 已合入 |
-| CodeAuditor | harness/security/code_auditor.py | ✅ | 注入/XSS/CSRF/认证/授权检查 | 已合入 |
-| RBAC 多租户 | [概念] | ✅ | platform 层 — 架构决策；tenant + actor + scopes 三级隔离 | 待核实 |
-| 架构守卫 190 规则 + AST 未定义符号守卫 | [配置] | ✅ | §1-§76 自动扫描 + guard_undefined_names.py（第 17 维"未定义变量"升级为 AST 级，2026-08-19） | 已合入 |
-| 190 条 CI 检查 + AST 守卫 | scripts/architecture_guard.sh | ✅ | 零依赖 grep 扫描 + AST 级未定义符号检查 | 已合入 |
-| 前端 API 契约检查 | ../../scripts/guard_frontend.py | ✅ | TS fetch ↔ Python data.get 一致性 | 已合入 |
-| PII 检测脱敏 | services/pii_detector.py | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，Presidio+正则双引擎 | 已合入 |
-| 合规报告 SOC2/ISO27001 | management/compliance_checks.py | ✅ | 12检查 + SOC2 CC/ISO27001 A映射 + 自动报告生成 | 已合入 |
-| 架构契约上下文注入 | harness/utils/prompt_loader.py` → `harness/assembly/prompt_assembler.py | ✅ | coding-contract 模板在代码生成前注入 Agent system prompt（6条核心约束） | 已合入 |
-| ContextAssembler 上下文组装 | harness/assembly/context_assembler.py | ✅ | PromptContext + TokenBudgetManager：token 预算、压缩阈值、来源归因 | 已合入 |
-| Compaction Prompt 压缩模板 | harness/assembly/compaction_prompt.py | ✅ | ReActLoop 可配置压缩 prompt（`get_compaction_prompt` / `AIPLAT_COMPACTION_PROMPT`） | 已合入 |
-| 审计日志防篡改 | ../../aiPlat-platform/governance/audit/logger.py | ✅ | SHA-256 链式哈希 + verify_integrity()；生成物不适用（理由：平台横切审计，生成应用由平台侧强制执行） | 已合入 |
-| 对象级权限 | policy/object_permission.py | ✅ | 每实体/每动作/每角色细粒度控制，支持本体继承 | 已合入 |
-| 字段级安全 | policy/field_level_security.py | ✅ | 单元/字段级数据可见性，Palantir CBAC对齐 | 已合入 |
-| 技能签名验证 | security/skill_signature_gate.py | ✅ | Ed25519 签名校验 + 可信公钥注册表 | 已合入 |
-| SecretsManager | harness/infrastructure/secrets_manager.py | ✅ | AES-256-GCM 加密存储 + 审计日志 | 已合入 |
-| Ed25519 签名 | harness/infrastructure/crypto/signature.py | ✅ | 密钥生成/签名/验签，技能/制品完整性保护 | 已合入 |
-| CryptoSecretBox | harness/infrastructure/crypto/secretbox.py | ✅ | 对称加密盒，运行时密钥保护 | 已合入 |
-| DI 容器 | harness/infrastructure/di/__init__.py | ✅ | 依赖注入容器，12/18服务调用已转换 | 已合入 |
-| Config Settings | harness/infrastructure/config/settings.py | ✅ | 层级配置管理 + 环境变量覆盖 | 已合入 |
-| SSO/OIDC 集成 | ../../aiPlat-platform/auth/identity_provider.py | ✅ | Keycloak/Azure AD/Okta，discovery/jwks映射 + login/callback/token API | 已合入 |
-| CrisisDetector | harness/security/crisis_detector.py | ✅ | 自伤/暴力/危急三級检测，WARN/BLOCK/SILENT 模式 | 已合入 |
-| CrisisGate | harness/security/crisis_gate.py | ✅ | syscall 边界危机拦截，ALLOW/WARN/FLAG/BLOCK/ESCALATE | 已合入 |
-| EmotionTracker | harness/security/emotion_tracker.py | ✅ | 跨会话情绪弧追踪 + 过度依赖检测 | 已合入 |
-| ApprovalGate (危险命令) | harness/infrastructure/gates/approval_gate.py | ✅ | 25规则危险操作检测，CRITICAL/HIGH/MEDIUM/LOW 四级，集成 PolicyGate；**Hard floors**：CRITICAL 不可被 auto_approv
+| resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级 open/ask/closed；**P0-2**：profile 默认（prod/staging→closed，dev→ask，未设→open）；prod open 须 `AIPLAT_POLICY_FA
 
 …
 
