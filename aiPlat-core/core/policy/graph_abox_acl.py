@@ -370,12 +370,30 @@ def _match_bool_condition(
     op = next(iter(bool_hit))
     arg = condition.get(op)
     if op == "$not":
-        # 为什么：$not 只否定字段子句；嵌套布尔若当字段失败再取反会 fail-open
+        # 为什么：先正规求值再取反；禁止把布尔子句当字段匹配失败后取反（fail-open）
         if not isinstance(arg, dict) or not arg:
             return False
-        if _BOOL_OPS.intersection(arg.keys()):
+        inner_hit = set(arg.keys()) & _BOOL_OPS
+        if not inner_hit:
+            return not _match_field_conditions(arg, attrs)
+        # 为什么：仅允许 $not→纯字段 $and|$or；禁 $not→$not / 再嵌布尔（拒配不可取反）
+        if len(arg) != 1 or "$not" in inner_hit:
             return False
-        return not _match_field_conditions(arg, attrs)
+        if depth >= _BOOL_MAX_DEPTH:
+            return False
+        inner_op = next(iter(inner_hit))
+        inner_arg = arg.get(inner_op)
+        if not isinstance(inner_arg, list) or not inner_arg or len(inner_arg) > _BOOL_MAX_CLAUSES:
+            return False
+        inner_matched: List[bool] = []
+        for clause in inner_arg:
+            if not isinstance(clause, dict) or not clause:
+                return False
+            if _BOOL_OPS.intersection(clause.keys()):
+                return False
+            inner_matched.append(_match_field_conditions(clause, attrs))
+        child_ok = all(inner_matched) if inner_op == "$and" else any(inner_matched)
+        return not child_ok
     if not isinstance(arg, list) or not arg or len(arg) > _BOOL_MAX_CLAUSES:
         return False
     matched: List[bool] = []
@@ -384,10 +402,8 @@ def _match_bool_condition(
             return False
         nested_hit = set(clause.keys()) & _BOOL_OPS
         if nested_hit:
-            # 为什么：深度 2 允许 $and/$or 子句再挂一层布尔；更深或 $not 嵌套拒配
+            # 为什么：深度内允许 $and/$or/$not 子句再挂一层；超深拒配
             if depth >= _BOOL_MAX_DEPTH:
-                return False
-            if "$not" in nested_hit:
                 return False
             matched.append(
                 _match_bool_condition(clause, attrs, depth=depth + 1)
@@ -408,8 +424,9 @@ def match_abox_condition(
     每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
     顶层可单独使用 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
-    （深度 ≤2：``$and``/``$or`` 可再嵌一层同族；每层子句 ≤8；``$not`` 仅字段子句；
-    非完整表达式语言）。
+    （深度 ≤2：``$and``/``$or`` 可再嵌 ``$and``/``$or``/``$not(字段)``；``$not`` 可否定
+    字段或纯字段 ``$and``/``$or``；禁止 ``$not→$not`` / ``$not`` 子树再嵌布尔；
+    每层子句 ≤8；非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。
