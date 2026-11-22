@@ -27,6 +27,8 @@ _VALID_ACTIONS = frozenset({"read", "update", "state_change", "delete", "admin"}
 # 为什么：H.1 $regex 仅开放短模式 + 有界主语，降低 ReDoS / 任意编译风险（非完整正则引擎产品）
 _REGEX_MAX_PATTERN_LEN = 128
 _REGEX_MAX_SUBJECT_LEN = 4096
+# 为什么：$all 有界成员列表，避免超长期望集做成任意扫描引擎
+_ALL_MAX_ITEMS = 32
 # 为什么：有界 $and/$or/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
 _BOOL_MAX_CLAUSES = 8
 _BOOL_MAX_DEPTH = 27  # 顶层=1；允许再嵌26层（深度 27）；更深拒配
@@ -259,13 +261,13 @@ def _match_regex_condition(got: Any, pattern: Any, options: Any = "") -> bool:
 
 
 def _match_condition_value(got: Any, want: Any) -> bool:
-    """单键条件值：标量等值；``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
+    """单键条件值：标量等值；``{$eq|$ne|$in|$nin|$all|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
 
     Args:
         got: 实例属性值（可为 None；None 视为字段缺失）。
         want: 条件期望；标量或单运算符 dict（``$regex`` 可与 ``$options`` 同级）。
     """
-    # 为什么：仅开放等值/集合/存在/数值或 str 字典序比较/有界正则(+i)；禁止嵌套布尔
+    # 为什么：仅开放等值/集合($in/$nin/$all)/存在/数值或 str 字典序比较/有界正则(+i)；禁止嵌套布尔
     if isinstance(want, dict) and want:
         keys = set(want.keys())
         if "$regex" in keys:
@@ -292,6 +294,16 @@ def _match_condition_value(got: Any, want: Any) -> bool:
                 return False
             got_s = str(got)
             return all(got_s != str(x) for x in arg)
+        if op_s == "$all":
+            # 为什么：主语须为集合；期望集有界；空期望 ≡ 空真（与 Mongo $all 空列表一致）
+            if not isinstance(got, (list, tuple, set)):
+                return False
+            if not isinstance(arg, (list, tuple, set)):
+                return False
+            if len(arg) > _ALL_MAX_ITEMS:
+                return False
+            got_ss = {str(x) for x in got}
+            return all(str(x) in got_ss for x in arg)
         if op_s == "$exists":
             # 为什么：true→字段存在；false→字段缺失；arg 用 bool() 规范化
             present = got is not None
@@ -417,7 +429,7 @@ def match_abox_condition(
 ) -> bool:
     """H.1 最小 condition：全键匹配；空 condition 恒 True。
 
-    每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex: …}``
+    每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$all|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
     顶层可单独使用 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
     （深度 ≤27：``$and``/``$or``/``$not`` 可再嵌同族；``$not`` 可否定字段、
