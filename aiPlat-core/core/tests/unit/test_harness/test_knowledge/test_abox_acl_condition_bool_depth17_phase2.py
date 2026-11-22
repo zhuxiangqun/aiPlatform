@@ -137,8 +137,8 @@ def test_match_condition_bool_depth17():
     }
     assert match_abox_condition(_depth17_tree(bay_value="b1"), attrs) is True
     assert match_abox_condition(_depth17_tree(bay_value="b2"), attrs) is False
-    # 深度 17+ 拒配见 bool_depth17；本切片只验深度 17 命中
-    # 为什么：超深拒配不可被外层 $not 取反（禁 fail-open）— 深度 18 树
+    # 深度 18+ 拒配见 bool_depth18；本切片只验深度 17 命中
+    # 为什么：超深拒配不可被外层 $not 取反（禁 fail-open）— 深度 19 树
     assert (
         match_abox_condition({"$not": _wrap(18, {"status": "open"})}, attrs)
         is False
