@@ -41,9 +41,7 @@ def test_match_condition_not_over_bool():
         )
         is False
     )
-    # $not → $not 拒配
-    assert match_abox_condition({"$not": {"$not": {"status": "closed"}}}, attrs) is False
-    # $not → $and 再嵌布尔 → 拒配（不可取反成 True）
+    # $not → $and 内嵌 $or（深度内正规求值）；命中 → False
     assert (
         match_abox_condition(
             {
@@ -58,6 +56,8 @@ def test_match_condition_not_over_bool():
         )
         is False
     )
+    # $not→$not 见 not-not 证据；此处保留混键拒配
+    assert match_abox_condition({"$not": {"$and": [], "x": 1}}, attrs) is False
     # $not → 纯字段 $and（命中）→ False
     assert (
         match_abox_condition(

@@ -376,24 +376,13 @@ def _match_bool_condition(
         inner_hit = set(arg.keys()) & _BOOL_OPS
         if not inner_hit:
             return not _match_field_conditions(arg, attrs)
-        # 为什么：仅允许 $not→纯字段 $and|$or；禁 $not→$not / 再嵌布尔（拒配不可取反）
-        if len(arg) != 1 or "$not" in inner_hit:
+        # 为什么：纯单键布尔子树才可取反；混键/双算子拒配
+        if len(arg) != 1 or len(inner_hit) != 1:
             return False
         if depth >= _BOOL_MAX_DEPTH:
             return False
-        inner_op = next(iter(inner_hit))
-        inner_arg = arg.get(inner_op)
-        if not isinstance(inner_arg, list) or not inner_arg or len(inner_arg) > _BOOL_MAX_CLAUSES:
-            return False
-        inner_matched: List[bool] = []
-        for clause in inner_arg:
-            if not isinstance(clause, dict) or not clause:
-                return False
-            if _BOOL_OPS.intersection(clause.keys()):
-                return False
-            inner_matched.append(_match_field_conditions(clause, attrs))
-        child_ok = all(inner_matched) if inner_op == "$and" else any(inner_matched)
-        return not child_ok
+        # 为什么：$not→$not / $not→$and|$or 均递归正规求值，再取反（深度计入）
+        return not _match_bool_condition(arg, attrs, depth=depth + 1)
     if not isinstance(arg, list) or not arg or len(arg) > _BOOL_MAX_CLAUSES:
         return False
     matched: List[bool] = []
@@ -424,8 +413,8 @@ def match_abox_condition(
     每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
     顶层可单独使用 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
-    （深度 ≤3：``$and``/``$or`` 可再嵌 ``$and``/``$or``/``$not(字段)``；``$not`` 可否定
-    字段或纯字段 ``$and``/``$or``；禁止 ``$not→$not`` / ``$not`` 子树再嵌布尔；
+    （深度 ≤3：``$and``/``$or``/``$not`` 可再嵌同族；``$not`` 可否定字段、
+    纯字段 ``$and``/``$or`` 或另一 ``$not``（正规求值再取反，禁 fail-open）；
     每层子句 ≤8；非完整表达式语言）。
 
     Args:

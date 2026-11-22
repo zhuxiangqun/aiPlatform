@@ -10,14 +10,14 @@ pilot_domain: lock-service
 # Phase 2 / ABox ACL $not 否定 $and/$or（N07/N22 deepen）
 
 > 实施权威：附录 H.1 / N07/N22；叠在 bool depth-2 之上。  
-> **未宣称** N07/N22 certified / 完整表达式语言 / `$not→$not` / 任意深度。
+> **未宣称** N07/N22 certified / 完整表达式语言 / 任意深度。`$not→$not` → 见 `phase2-abox-acl-condition-not-not-evidence.md`。
 
 ## 检查表
 
 | Gate 条件 | 状态 | 证据 |
 |-----------|:----:|------|
 | `$and` 内嵌 `$not(字段)` / `$not→$or` / 纯字段 `$not→$and` | pass | `test_match_condition_not_over_bool` |
-| `$not→$not` / `$not` 子树再嵌布尔拒配 | pass | 同上 |
+| `$not` 混键拒配 | pass | 同上（`$not→$not` → not-not 证据） |
 | deny 门控 | pass | `test_check_entity_acl_not_bool_gates_deny` |
 | 薄 UI 文案 | pass | `test_panel_documents_not_bool_depth2` |
 
@@ -40,5 +40,6 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- `$not→$not` / 完整表达式语言
+- `$not→$not` → 见 `phase2-abox-acl-condition-not-not-evidence.md`
 - 深度 3 `$and`/`$or` → 见 `phase2-abox-acl-condition-bool-depth3-evidence.md`
+- 完整表达式语言
