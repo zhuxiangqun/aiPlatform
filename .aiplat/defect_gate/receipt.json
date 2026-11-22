@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T07:42:00+08:00",
+  "reviewed_at": "2026-11-23T07:50:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "e84879af2054413c942db07792c203e655d06f9f",
-  "diff_sha256": "998a38b8fab39673a9569e44f7b190b88a6af9649ffc6bcde894d85cadc2b7e4",
-  "head_sha": "4d0a06fc39c8fcdd57dc6347883b32daa43b897a",
+  "diff_sha256": "4777fa4f42866321baa1fca243eab7565e38e627b79d69ea6655b134b51ac2db",
+  "head_sha": "71c82fa0f3458db17d5d72aa20a3c082d00cd503",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "$all is field-level beside $in/$nin; non-collection subject and oversized expect reject as False. Residual: $elemMatch / full expr / certified."
+  "note": "$elemMatch is field-level; nested $elemMatch and bool predicates reject. Includes $all from #1013 lineage. Residual: full expr / certified."
 }
