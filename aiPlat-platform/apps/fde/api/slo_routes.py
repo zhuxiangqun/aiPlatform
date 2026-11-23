@@ -107,6 +107,52 @@ async def slo_evaluate_wiring_route(
     return out
 
 
+@router.post("/slo/evaluate-attainment")
+async def slo_evaluate_attainment_route(
+    request: Request,
+    x_aiplat_tenant_id: Optional[str] = Header(None, alias="X-AIPLAT-TENANT-ID"),
+) -> Dict[str, Any]:
+    """评估 SLO 生产达标窗口（attainment_ok；certified 恒假）。
+
+    Args:
+        request: FastAPI Request（JSON：tenant_id/domain_id/window_hours/
+            min_samples/approval_record_path/include_live）。
+        x_aiplat_tenant_id: 租户 header。
+    """
+    from core.api.core_facade import evaluate_knowledge_slo_attainment_window
+
+    body: Dict[str, Any] = {}
+    try:
+        raw = await request.json()
+        if isinstance(raw, dict):
+            body = raw
+    except Exception:
+        body = {}
+
+    tid = _tenant_from(
+        request, x_aiplat_tenant_id, str(body.get("tenant_id") or "")
+    )
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id_required")
+    window = int(body.get("window_hours") or 24)
+    min_samples = int(body.get("min_samples") or 1)
+    include_live = body.get("include_live")
+    if include_live is None:
+        include_live = True
+    approval = body.get("approval_record_path")
+    out = evaluate_knowledge_slo_attainment_window(
+        tid,
+        domain_id=str(body.get("domain_id") or ""),
+        window_hours=window,
+        include_live=bool(include_live),
+        min_samples=min_samples,
+        approval_record_path=str(approval) if approval else None,
+    )
+    if out.get("status") == "error":
+        raise HTTPException(status_code=400, detail=out.get("reason") or "error")
+    return out
+
+
 @router.post("/slo/sample")
 async def slo_record_sample_route(
     request: Request,
