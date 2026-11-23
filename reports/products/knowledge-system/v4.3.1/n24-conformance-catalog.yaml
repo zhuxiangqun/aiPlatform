@@ -32,6 +32,8 @@ slo_telemetry_freeze: true
 slo_telemetry_note: "SLO target registry + telemetry wiring is Operational-sufficient; stop further default SLO wiring deepen. Residual: production attainment / alerting / Full unconditional."
 n01_raw_integrity_freeze: true
 n01_raw_integrity_note: "N01 Raw integrity + DataSource→Raw + Core file/sql/api connector matrix is Core-sufficient; stop further default N01 deepen. Residual: certified / vendor driver matrix."
+n02_object_type_freeze: true
+n02_object_type_note: "N02 Package + ObjectType draft→human publish (role gate) is Core-sufficient; stop further default N02 deepen. Residual: certified / full publish portal / seed replacement."
 core_adr_exceptions: []
 extended_minimum_ids:
   - N05
@@ -82,9 +84,10 @@ items:
       - aiPlat-core/workspace_seeds/ontologies/lock-service.yaml
       - reports/products/knowledge-system/v4.3.1/phase2-ontology-package-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-object-type-publish-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-n02-object-type-freeze-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/object_type_publish.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_object_type_publish_phase2.py
-    note: "Core-scoped exists (附录 N.2); 域 YAML version + Package + ObjectType draft→人审发布（角色门；Package schema 门可选）；非全量发布门户/非种子替换/非 N02 certified"
+    note: "Core-scoped exists (附录 N.2); 域 YAML version + Package + ObjectType draft→人审发布（角色门；Package schema 门可选）；n02_object_type_freeze=true 停止默认 N02 deepen；非全量发布门户/非种子替换/非 N02 certified"
   - id: N03
     level: core
     title: Fact/Claim 有 evidence

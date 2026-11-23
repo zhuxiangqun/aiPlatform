@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T12:02:59+08:00",
+  "reviewed_at": "2026-11-23T13:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ba372a94b2c4000c0792a2b543c065cf325f0a55",
-  "diff_sha256": "69497e80d45fa0ac2ba82859586cc844a0e36dbd899b0172f108630ee0e06ba5",
-  "head_sha": "841e498f22a66b4171b50613b83563e607398af7",
+  "merge_base": "6691fdddd7222b88c403ad4086b878b92aee682a",
+  "diff_sha256": "f894bf974188e5003addfb2443b17f7167ec9be6f55e0cee3514e48c59834bd6",
+  "head_sha": "1c3b509987b3fdc81eb0a0997937e6c85bbc8e1c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N01 Raw freeze Core-sufficient; certified/vendor matrix still open. Local lock only."
+  "note": "N02 ObjectType freeze Core-sufficient; certified/full portal/seed replacement still open. Local lock only."
 }

@@ -45,4 +45,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 - 全量管理端发布门户 / 多域批量人审
 - 替换 `*-object-types.json` 种子为唯一运行时真源
-- N02 certified / 关闭 ADR 例外
+- N02 certified / 关闭 ADR 例外（发布面冻结见 `phase2-n02-object-type-freeze-evidence.md`）

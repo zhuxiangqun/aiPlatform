@@ -138,7 +138,7 @@ review_cycle: 90d
 > 2026-11-23：知识系统 v4.3.1 N24 统一审计面冻结（`n24_unified_audit_freeze`；Operational-sufficient；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-23：知识系统 v4.3.1 SLO 遥测面冻结（`slo_telemetry_freeze`；Operational-sufficient；wiring≠attainment）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-23：知识系统 v4.3.1 N01 Raw/连接器面冻结（`n01_raw_integrity_freeze`；Core-sufficient；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
-> 2026-11-23：知识系统 v4.3.1 N01 Raw/连接器面冻结（`n01_raw_integrity_freeze`；Core-sufficient；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-23：知识系统 v4.3.1 N02 ObjectType 发布面冻结（`n02_object_type_freeze`；Core-sufficient；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL condition $and/$or 深度 2（_BOOL_MAX_DEPTH=2；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL $not 否定字段或纯字段 $and/$or（禁 $not→$not / 子树再嵌布尔；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL $not→$not（正规求值再取反；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

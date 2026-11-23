@@ -26,7 +26,7 @@ pilot_domain: lock-service
 | N24 统一审计面冻结（Operational） | pass | `n24_unified_audit_freeze: true`（非 Core 最小集冒充） |
 | SLO 遥测面冻结（Operational） | pass | `slo_telemetry_freeze: true`（wiring≠attainment） |
 | N01 Raw/连接器面冻结（Core） | pass | `n01_raw_integrity_freeze: true` |
-| N01 Raw/连接器面冻结（Core） | pass | `n01_raw_integrity_freeze: true` |
+| N02 ObjectType 发布面冻结（Core） | pass | `n02_object_type_freeze: true` |
 | `core_ready` 门 | pass | `evaluate_core_ready_gate` |
 | FDE HTTP 接线 | pass | `GET …/conformance-pack/core-ready` / `pilot-core-cert` |
 | 无批准时 pilot_certified 恒 false | pass | 缺路径 / superseded pending + honesty 测 |
