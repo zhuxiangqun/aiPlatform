@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T14:25:00+08:00",
+  "reviewed_at": "2026-11-23T18:55:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1b4a83c7cac964cd06ed48d918ea33309dc27168",
-  "diff_sha256": "b0fb7a384a10be602fed625ab0c38f70791466d365adc6872d981f0e7054b8f8",
-  "head_sha": "9e237e7a07e189834bbda87c1154ecb0e122b944",
+  "merge_base": "f0aaf1c91e091f30a3deb2b1c67ec92326094b42",
+  "diff_sha256": "14fedd9fe20792bfae4bfe366542805e62eae0cd371af6e03e2d9e1ec545170d",
+  "head_sha": "68d4cd83410b86802b796b4549b0f0fb538d0bdd",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase2 sufficient-freeze closeout; 20 flags + complete marker; certified still false. Local lock only."
+  "note": "N02 ObjectTypePublishPanel thin portal; freeze stays; certified honesty via suite/gate UI; no parallel API."
 }
