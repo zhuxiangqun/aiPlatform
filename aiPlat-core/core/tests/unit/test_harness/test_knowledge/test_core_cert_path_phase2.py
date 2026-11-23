@@ -37,6 +37,8 @@ def test_catalog_levels_and_core_minimum():
     assert cat.get("n20_constraint_layers_freeze") is True
     assert cat.get("n21_query_abstain_freeze") is True
     assert cat.get("n23_ocs_freeze") is True
+    assert cat.get("phase2_sufficient_freeze_complete") is True
+    assert not cp.sufficient_freeze_missing(cat)
     core = [it for it in items if it.get("level") == "core"]
     assert all(it.get("status") == "exists" for it in core)
 
@@ -68,6 +70,8 @@ def test_core_ready_gate_passes_without_certifying():
     assert gate["n20_constraint_layers_freeze"] is True
     assert gate["n21_query_abstain_freeze"] is True
     assert gate["n23_ocs_freeze"] is True
+    assert gate["phase2_sufficient_freeze_complete"] is True
+    assert gate["sufficient_freeze_missing"] == []
 
 
 def test_pilot_core_cert_requires_approval(tmp_path):

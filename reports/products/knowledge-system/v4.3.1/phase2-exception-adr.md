@@ -14,6 +14,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 > **集中登记当前例外**；**非**全量 ADR 体系；试点 Core（朱鸿林）+ Extended（朱莹）+ Operational（朱莹）+ 全量（朱向群，conditional）已批准；SLO 目标已登记且遥测已接线（非生产达标）。  
 > 2026-11-19：Core 12 / Extended 6 / Operational 6 均按附录 N.2–N.4 标为等级 scoped `exists`；N09 **探针集冻结**；深度缺口记为后续加深，不阻塞已开徽章。  
 > 2026-11-21：非本表 catalog note 盘点见 `phase2-catalog-honesty-triage.md`（不关闭本表例外）。
+> 2026-11-23：Phase 2 **sufficient-freeze 程序收口**（`phase2_sufficient_freeze_complete`；20 旗）；residual/certified 仍开放。见 `phase2-sufficient-freeze-closeout-evidence.md`。
 
 ## 例外清单（范围 / 期限 / 补偿）
 

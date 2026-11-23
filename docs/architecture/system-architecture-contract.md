@@ -140,6 +140,7 @@ review_cycle: 90d
 > 2026-11-23：知识系统 v4.3.1 N01 Raw/连接器面冻结（`n01_raw_integrity_freeze`；Core-sufficient；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-23：知识系统 v4.3.1 N02 ObjectType 发布面冻结（`n02_object_type_freeze`；Core-sufficient；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-23：知识系统 v4.3.1 剩余 ADR 例外面批量冻结（`n03_claim_freeze` 等 13 旗；sufficient；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-23：知识系统 v4.3.1 Phase 2 sufficient-freeze 程序收口（`phase2_sufficient_freeze_complete`；20 旗；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL condition $and/$or 深度 2（_BOOL_MAX_DEPTH=2；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL $not 否定字段或纯字段 $and/$or（禁 $not→$not / 子树再嵌布尔；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL $not→$not（正规求值再取反；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

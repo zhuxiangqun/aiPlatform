@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4121
+total_capabilities: 4122
 last_updated: 2026-11-22
 version: "30.14"
 auto_sync: true
@@ -1339,7 +1339,7 @@ scan_hash: 8f9548ec24f4
 | **OCS Completeness（v4.3.1 W10 最小切片）** | `harness/knowledge/ontology_completeness.py` + `evaluate_ocs_gate` + FDE `/ocs/{domain}` `/gate` | ✅ | §13.4 六维权重；C5=logic 类实例/边覆盖（禁节点数档位）；域 `ocs_threshold`（默认≥80）；诚实锁非准确率/忠实度/审计。证据 `phase2-ocs-evidence.md`。**未宣称** 全域完整 / N24 / 迁移切写。生成物适用：已接线（经 Facade） | 本批 |
 | **企业域 OCS 扫描（v4.3.1 N23 deepen）** | `run_ocs_enterprise_scan_suite` / `evaluate_ocs_enterprise_scan_gate` + Facade | ✅ | DomainRouter 扫域 + 词汇预注册 + 门槛地板；certified/enterprise_complete 恒 false。证据 `phase2-ocs-enterprise-scan-evidence.md`。**`n23_ocs_freeze` 停止默认 deepen**；证据 `phase2-remaining-adr-freeze-evidence.md`。**未宣称** 企业全域完整 / N23 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Knowledge Migration（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/knowledge_migration.py` + CoreFacade start/dual-write/reconcile/read-pointer/rollback-drill + FDE `/knowledge-migrations*` | ✅ | §15 / 计划 §8；双写 source 权威；missing/stale/orphan 对账+修复；影子读需对账干净；回滚演练回 source；`process_cutover_authorized=false`。证据 `phase2-knowledge-migration-evidence.md`。**未宣称** 生产回填/切写 / OCS / N24。生成物适用：已接线（经 Facade） | 本批 |
-| **Conformance Pack（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/conformance_pack.py` + CoreFacade build/gate + FDE `/conformance-pack*` | ✅ | 附录 N 机读目录 `n24-conformance-catalog.yaml`；§9.4 认证槽位；证据路径校验；结构门槛门；`certified`/`n24_full_conformance` 恒 false。证据 `phase2-conformance-pack-evidence.md`。**未宣称** 24/24 / Core / SLO。生成物适用：已接线（经 Facade） | 本批 |
+| **Conformance Pack（v4.3.1 W10 最小切片）** | `harness/knowledge_pipeline/conformance_pack.py` + CoreFacade build/gate + FDE `/conformance-pack*` | ✅ | 附录 N 机读目录 `n24-conformance-catalog.yaml`；§9.4 认证槽位；证据路径校验；结构门槛门；**`phase2_sufficient_freeze_complete` + `SUFFICIENT_FREEZE_FLAGS`（20）程序收口**；`certified`/`n24_full_conformance` 恒 false。证据 `phase2-conformance-pack-evidence.md` + `phase2-sufficient-freeze-closeout-evidence.md`。**未宣称** 24/24 / Core / SLO / Nxx certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Implementer Semantics（v4.3.1 W10 / N18 最小切片）** | `harness/knowledge_pipeline/implementer_semantics.py` + CoreFacade run/gate + FDE `/implementer-semantics*` | ✅ | conformance README 真实实现探针：Raw 不可变 / published 拒空 evidence / citation 解析 / 跨租户隔离 / customer_action 审计+幂等；门槛门；`certified` 恒 false。证据 `phase2-implementer-semantics-evidence.md`。**未宣称** 生产 RBAC 源替换 / N18 全量 / 24/24。生成物适用：已接线（经 Facade） | 本批 |
 | **Source Policy / Conflict（v4.3.1 W3 / N04）** | `harness/knowledge_pipeline/source_policy.py` + CoreFacade register/scan/adjudicate/put_fact_with_source_policy/gate + FDE `/source-policies*` `/conflicts*` | ✅ | 附录 K + 写入硬门：策略登记；冲突不自动选边；人审；published 经 transition（actor/reason）；`certified` 恒 false。证据 `phase2-source-policy-evidence.md`。**未宣称** N04 全量 / N24。生成物适用：已接线（经 Facade） | 本批 |
 | **Fact State Machine（v4.3.1 W3 / N12）** | `harness/knowledge_pipeline/fact_state_machine.py` + FactLedger `put_fact` 硬门/`get_fact` + CoreFacade review/lifecycle/claim/gate + FDE `/fact-state*` | ✅ | §7.5 + 写入硬门：禁直发 published；禁裸改状态；transition 审计；retracted 不删。证据 `phase2-fact-state-evidence.md` / `test_fact_write_gates_phase2.py`。**未宣称** 部署 RBAC 真源 / N12 全量。生成物适用：已接线（经 Facade） | 本批 |
@@ -1767,6 +1767,7 @@ scan_hash: 8f9548ec24f4
 | evaluate_conformance_gate_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
 | get_conformance_pack_route | `aiPlat-platform/apps/fde/api/conformance_pack_routes.py` | ✅ | 自动同步 | 已合入 |
 | load_conformance_catalog | `core/harness/knowledge_pipeline/conformance_pack.py` | ✅ | 自动同步 | 已合入 |
+| sufficient_freeze_missing | `core/harness/knowledge_pipeline/conformance_pack.py` | ✅ | Phase2 sufficient freeze 缺失旗列举（≠certified） | 本批 |
 | evaluate_conformance_gate | `core/harness/knowledge_pipeline/conformance_pack.py` | ✅ | 自动同步 | 已合入 |
 | build_conformance_pack | `core/harness/knowledge_pipeline/conformance_pack.py` | ✅ | 自动同步 | 已合入 |
 | write_knowledge_migration_store | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5024,7 +5025,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 779 | 1 | 780 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 813 | 9 | 822 |
+| 知识引擎（本体） | 814 | 9 | 823 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5067,7 +5068,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4110** | **11** | **4121** |
+| **总计** | **4111** | **11** | **4122** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -140,6 +140,7 @@ authority: supporting
 | [phase2-n01-raw-integrity-freeze-evidence.md](./phase2-n01-raw-integrity-freeze-evidence.md) | N01：Raw/连接器面冻结（Core-sufficient / 非 vendor 矩阵 / 非 certified / ADR 例外行保留） |
 | [phase2-n02-object-type-freeze-evidence.md](./phase2-n02-object-type-freeze-evidence.md) | N02：ObjectType 发布面冻结（Core-sufficient / 非全量门户 / 非 certified / ADR 例外行保留） |
 | [phase2-remaining-adr-freeze-evidence.md](./phase2-remaining-adr-freeze-evidence.md) | 剩余 ADR 例外面批量冻结（N03/N04·N12/N05/N06/N10/N11·N14/N13/N17–N21/N23；sufficient / 非 certified） |
+| [phase2-sufficient-freeze-closeout-evidence.md](./phase2-sufficient-freeze-closeout-evidence.md) | Phase 2：sufficient-freeze 程序收口（20 旗齐 / 非 certified / residual 仍开放） |
 | [phase2-abox-acl-h1-matrix-thin-evidence.md](./phase2-abox-acl-h1-matrix-thin-evidence.md) | N07/N22 deepen：H.1 薄矩阵回退（共享 actions / 非 certified） |
 | [phase2-abox-acl-h1-matrix-per-role-evidence.md](./phase2-abox-acl-h1-matrix-per-role-evidence.md) | N07/N22 deepen：H.1 per-role 矩阵（role_actions / 固定轴 / 非任意 RBAC / 非 certified） |
 | [phase2-abox-acl-h1-matrix-config-axes-evidence.md](./phase2-abox-acl-h1-matrix-config-axes-evidence.md) | N07/N22 deepen：H.1 矩阵配置轴（crud_matrix.h1_matrix_* ← role×action SSOT / 非任意 RBAC / 非 certified） |

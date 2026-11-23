@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T13:30:00+08:00",
+  "reviewed_at": "2026-11-23T14:25:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "8e474a2b0176f16971ef7fb3d04149f980438cd9",
-  "diff_sha256": "b99deb5abbacbc62c1e16ae720fa3aad196a38d14ce5abd9f5c167b8c97b7cc9",
-  "head_sha": "c032b195f984927dc155d4ad68366e8c47d5ac71",
+  "merge_base": "1b4a83c7cac964cd06ed48d918ea33309dc27168",
+  "diff_sha256": "b0fb7a384a10be602fed625ab0c38f70791466d365adc6872d981f0e7054b8f8",
+  "head_sha": "9e237e7a07e189834bbda87c1154ecb0e122b944",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Remaining ADR freezes sufficient-only; no Nxx certified. Residuals stay open. Local lock only."
+  "note": "Phase2 sufficient-freeze closeout; 20 flags + complete marker; certified still false. Local lock only."
 }
