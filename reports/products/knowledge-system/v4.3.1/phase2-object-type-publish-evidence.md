@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / N02 ObjectType 人审发布证据
 
 > 实施权威：附录 N N02 partial 加深。  
-> **未宣称** 全量 ObjectType 发布门户 / 替换 workspace_seeds 真源 / N02 certified。  
+> **未宣称** 多域批量门户 / 替换 workspace_seeds 真源 / N02 certified（薄门户见 `phase2-n02-object-type-publish-portal-evidence.md`）。  
 > 流水线：draft → in_review → published|rejected；publish 须配置角色；Package schema 门可选（`AIPLAT_OBJECT_TYPE_PUBLISH_GATE`，默认关）。
 
 ## 检查表
@@ -43,6 +43,6 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做
 
-- 全量管理端发布门户 / 多域批量人审
+- 多域批量人审 / 工作流编排（薄门户另见 publish-portal 证据）
 - 替换 `*-object-types.json` 种子为唯一运行时真源
 - N02 certified / 关闭 ADR 例外（发布面冻结见 `phase2-n02-object-type-freeze-evidence.md`）
