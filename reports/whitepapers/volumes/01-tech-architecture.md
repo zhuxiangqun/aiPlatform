@@ -4,19 +4,19 @@ volume_id: tech-architecture
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-23T13:15:11Z"
+generated_at: "2026-11-23T15:11:20Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "44aa7ca687dbde031742c82b8e8fb16b677a036c78c203e84e3f88409561478b"
+caps_sha256: "f83ea86d85e5aaf0dff5f4e36692972ee0373dc8250f7bd3b06d41c4c287ee4d"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=tech-architecture suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=44aa7ca687dbde031742c82b8e8fb16b677a036c78c203e84e3f88409561478b scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=tech-architecture suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=f83ea86d85e5aaf0dff5f4e36692972ee0373dc8250f7bd3b06d41c4c287ee4d scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 技术架构白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-23T13:15:11Z` |
-| CAPABILITIES sha256 | `44aa7ca687db…` |
+| 生成时间 (UTC) | `2026-11-23T15:11:20Z` |
+| CAPABILITIES sha256 | `f83ea86d85e5…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -173,6 +173,8 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 ### AI Platform 部署指南
 
 > 系统级部署指南 - 各层必须遵循
+
+> 选型 / 安全边界 / 失效模式：[architecture/enterprise_deployment.md](../../../docs/architecture/enterprise_deployment.md)
 
 ---
 
@@ -365,8 +367,6 @@ aiPlat-app (Layer 3)     ← 最上层，最后部署
 │ - 部署 platform 服务                                    │
 │ - 配置认证、多租户、计费                               │
 │ - 健康检查                                              │
-└────────────────────────┬────────────────────────────────┘
-                         │ 等待平台服务就绪
 
 …
 

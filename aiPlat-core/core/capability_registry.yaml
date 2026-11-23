@@ -8584,7 +8584,7 @@ domains:
       - symbol: "inject_output_style"
         module: aiPlat-core/core/harness/utils/output_style.py
         type: function
-        signature: "A0: append locked ADHD overlay to system tail (user-facing only)"
+        signature: "A0/adhd_v2: append ADHD overlay with hard constraints (no invented ETA / high-risk tangent escalate / list_cap presentation-only)"
       - symbol: "resolve_output_style"
         module: aiPlat-core/core/harness/utils/output_style.py
         type: function
