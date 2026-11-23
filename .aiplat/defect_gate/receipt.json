@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T13:15:00+08:00",
+  "reviewed_at": "2026-11-23T13:30:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "6691fdddd7222b88c403ad4086b878b92aee682a",
-  "diff_sha256": "f894bf974188e5003addfb2443b17f7167ec9be6f55e0cee3514e48c59834bd6",
-  "head_sha": "1c3b509987b3fdc81eb0a0997937e6c85bbc8e1c",
+  "merge_base": "8e474a2b0176f16971ef7fb3d04149f980438cd9",
+  "diff_sha256": "b99deb5abbacbc62c1e16ae720fa3aad196a38d14ce5abd9f5c167b8c97b7cc9",
+  "head_sha": "c032b195f984927dc155d4ad68366e8c47d5ac71",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N02 ObjectType freeze Core-sufficient; certified/full portal/seed replacement still open. Local lock only."
+  "note": "Remaining ADR freezes sufficient-only; no Nxx certified. Residuals stay open. Local lock only."
 }
