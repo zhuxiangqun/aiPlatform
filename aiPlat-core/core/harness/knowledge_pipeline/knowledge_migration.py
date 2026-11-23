@@ -3,8 +3,11 @@
 职责：登记迁移作业；双写 source+target；按 key/hash 对账并可修复；
 记录读指针与回滚演练。source 在切写前始终权威。
 N11/N14 deepen：显式切写授权（token+actor+reason+对账干净）；
+显式 residual：``attest_production_cutover_readiness`` 有界就绪回执（opt-in）。
 ``process_cutover_authorized`` / 生产 certified 恒 false。
-非目标：不做真实生产回填；不自动切写；不宣称 N11/N14/N24 certified。
+
+非目标：不做真实生产回填；不自动切写；不宣称 N11/N14/N24 certified；
+不可用时诚实上报 ``production_attestation_unavailable``，不冒充生产认证。
 """
 from __future__ import annotations
 
@@ -975,11 +978,147 @@ def request_write_cutover(
     }
 
 
+def attest_production_cutover_readiness(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    raw_fact_index_ok: Optional[bool] = None,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N11/N14 residual：有界生产切写就绪回执（非生产认证）。
+
+    收集作业授权 + 对账快照哈希；默认关闭（无 env 时
+    ``production_attestation_unavailable``）。即使 opt-in 成功，
+    ``production_cutover_certified`` / ``certified`` 仍恒 false。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 签署人。
+        reason: 签署理由。
+        raw_fact_index_ok: 可选 Raw↔Fact↔Index 对账结果（外部注入）。
+        db_path: 可选库路径。
+    """
+    tid = (tenant_id or "").strip()
+    jid = (job_id or "").strip()
+    act = (actor or "").strip()
+    why = (reason or "").strip()
+    base = {
+        "job_id": jid,
+        "tenant_id": tid,
+        "actor": act,
+        "reason": why,
+        "process_cutover_authorized": False,
+        "production_cutover_certified": False,
+        "certified": False,
+        "n11_full_conformance": False,
+        "n14_full_conformance": False,
+        "accuracy_claim": False,
+    }
+    if not tid or not jid or not act or not why:
+        return {**base, "status": "invalid", "error": "job_tenant_actor_reason_required"}
+
+    # 为什么：默认关闭「生产就绪回执」，避免 CI/本地误把作业授权当生产认证
+    if os.environ.get("AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+    }:
+        return {
+            **base,
+            "status": "production_attestation_unavailable",
+            "via": "env_disabled",
+            "note": "set AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST=1 to enable readiness receipt",
+        }
+
+    with _connect(db_path) as conn:
+        job = _job_row(conn, jid, tid)
+        if not job:
+            return {**base, "status": "not_found", "error": "job_not_found"}
+        job_d = _job_to_dict(job)
+
+    if not bool(job_d.get("cutover_authorized")):
+        return {
+            **base,
+            **{k: job_d[k] for k in ("phase", "cutover_authorized", "domain") if k in job_d},
+            "status": "blocked",
+            "error": "cutover_not_authorized",
+        }
+
+    recon = reconcile_migration(
+        jid, tenant_id=tid, repair=False, db_path=db_path
+    )
+    if not recon.get("ok"):
+        return {
+            **base,
+            "status": "blocked",
+            "error": "reconcile_not_ok",
+            "reconcile": recon,
+        }
+
+    if raw_fact_index_ok is False:
+        return {
+            **base,
+            "status": "blocked",
+            "error": "raw_fact_index_not_ok",
+        }
+
+    evidence = {
+        "job_id": jid,
+        "tenant_id": tid,
+        "domain": job_d.get("domain"),
+        "phase": job_d.get("phase"),
+        "cutover_authorized": True,
+        "reconcile_ok": True,
+        "raw_fact_index_ok": raw_fact_index_ok,
+        "actor": act,
+        "reason": why,
+        "measured_at": time.time(),
+    }
+    digest = hashlib.sha256(
+        json.dumps(evidence, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    attestation_id = f"att-{digest[:16]}"
+
+    with _connect(db_path) as conn:
+        _append_event(
+            conn,
+            job_id=jid,
+            tenant_id=tid,
+            event_type="production_cutover_attestation",
+            detail={
+                "attestation_id": attestation_id,
+                "digest": digest,
+                "actor": act,
+                "reason": why,
+                "raw_fact_index_ok": raw_fact_index_ok,
+            },
+        )
+        conn.commit()
+
+    return {
+        **base,
+        "status": "ok",
+        "via": "opt_in",
+        "attestation_id": attestation_id,
+        "evidence_digest": digest,
+        "evidence": evidence,
+        "phase": job_d.get("phase"),
+        "cutover_authorized": True,
+        "note": (
+            "readiness receipt only; not production cutover certified / "
+            "not N11/N14 full conformance"
+        ),
+    }
+
+
 def run_migration_cutover_auth_suite(
     *,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """N11/N14 deepen：切写授权套件（certified 恒 false）。
+    """N11/N14 deepen + residual：切写授权 / 生产就绪回执套件（certified 恒 false）。
 
     Args:
         db_path: 可选临时库。
@@ -994,7 +1133,9 @@ def run_migration_cutover_auth_suite(
         path = str(Path(tmp.name) / "mig.db")
 
     prev_token = os.environ.get("AIPLAT_KNOWLEDGE_CUTOVER_TOKEN")
+    prev_attest = os.environ.get("AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST")
     os.environ["AIPLAT_KNOWLEDGE_CUTOVER_TOKEN"] = "n11-test-token"
+    os.environ.pop("AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST", None)
     try:
         # 为什么：套件域用合成 id，禁止 harness 硬编码业务域 lock-service（§80/§98）
         job = start_migration_job(
@@ -1061,6 +1202,36 @@ def run_migration_cutover_auth_suite(
             cut.get("production_cutover_certified") is False
         )
 
+        # residual：默认无 env → unavailable
+        unavail = attest_production_cutover_readiness(
+            jid,
+            tenant_id="n11-t",
+            actor="ops",
+            reason="attest-check",
+            db_path=path,
+        )
+        checks["prod_attest_unavailable"] = (
+            unavail.get("status") == "production_attestation_unavailable"
+            and unavail.get("production_cutover_certified") is False
+        )
+
+        # residual：opt-in 就绪回执仍非 certified
+        os.environ["AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST"] = "1"
+        att = attest_production_cutover_readiness(
+            jid,
+            tenant_id="n11-t",
+            actor="ops",
+            reason="attest-opt-in",
+            raw_fact_index_ok=True,
+            db_path=path,
+        )
+        checks["prod_attest_opt_in"] = (
+            att.get("status") == "ok"
+            and bool(att.get("attestation_id"))
+            and att.get("production_cutover_certified") is False
+            and att.get("certified") is False
+        )
+
         # 6) 撤销
         rev = revoke_migration_cutover(
             jid, tenant_id="n11-t", actor="ops", reason="done", db_path=path
@@ -1075,6 +1246,10 @@ def run_migration_cutover_auth_suite(
             os.environ.pop("AIPLAT_KNOWLEDGE_CUTOVER_TOKEN", None)
         else:
             os.environ["AIPLAT_KNOWLEDGE_CUTOVER_TOKEN"] = prev_token
+        if prev_attest is None:
+            os.environ.pop("AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST", None)
+        else:
+            os.environ["AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST"] = prev_attest
         if tmp is not None:
             tmp.cleanup()
 
@@ -1088,9 +1263,10 @@ def run_migration_cutover_auth_suite(
         "n11_full_conformance": False,
         "n14_full_conformance": False,
         "production_cutover_certified": False,
+        "n11_n14_migration_freeze": True,
         "note": (
-            "Migration cutover auth deepen; job-level token only; "
-            "not production certified / not N11/N14 full"
+            "Migration cutover auth deepen + production readiness residual; "
+            "job-level token only; not production certified / not N11/N14 full"
         ),
     }
 
@@ -1122,6 +1298,8 @@ def evaluate_migration_cutover_auth_gate(
         "cutover_phase_ok",
         "honesty_process_false",
         "honesty_prod_certified_false",
+        "prod_attest_unavailable",
+        "prod_attest_opt_in",
         "revoke_ok",
         "honesty_certified_false",
     )
@@ -1133,5 +1311,7 @@ def evaluate_migration_cutover_auth_gate(
         "ok": not issues,
         "issues": issues,
         "certified": False,
-        "note": "Migration cutover auth deepen; not N11/N14 certified",
+        "production_cutover_certified": False,
+        "n11_n14_migration_freeze": True,
+        "note": "Migration cutover auth + readiness residual; not N11/N14 certified",
     }

@@ -43,6 +43,17 @@ class RollbackDrillBody(BaseModel):
     note: str = ""
 
 
+class ProductionAttestBody(BaseModel):
+    """N11 residual：生产切写就绪回执（非 certified）。"""
+
+    actor: str = Field(..., min_length=1)
+    reason: str = Field(..., min_length=1)
+    raw_fact_index_ok: Optional[bool] = Field(
+        None,
+        description="可选 Raw↔Fact↔Index 对账结果；False 时阻断",
+    )
+
+
 @router.post("/knowledge-migrations")
 async def start_knowledge_migration_route(
     body: MigrationStartBody = Body(...),
@@ -185,6 +196,36 @@ async def rollback_drill_knowledge_migration_route(
 
     out = rollback_drill_knowledge_migration(
         job_id, tenant_id=tenant_id, note=body.note
+    )
+    if out.get("status") in ("invalid", "not_found"):
+        raise HTTPException(
+            status_code=400 if out.get("status") == "invalid" else 404,
+            detail=out.get("error") or out.get("status"),
+        )
+    return out
+
+
+@router.post("/knowledge-migrations/{job_id}/production-attest")
+async def attest_knowledge_production_cutover_route(
+    job_id: str,
+    body: ProductionAttestBody = Body(...),
+    tenant_id: str = Query(..., description="tenant id (required)"),
+):
+    """N11 residual：生产切写就绪回执（非 production certified）。
+
+    Args:
+        job_id: 作业 id。
+        body: actor/reason/可选 Raw↔Fact↔Index。
+        tenant_id: 租户。
+    """
+    from core.api.core_facade import attest_knowledge_production_cutover_readiness
+
+    out = attest_knowledge_production_cutover_readiness(
+        job_id,
+        tenant_id=tenant_id,
+        actor=body.actor,
+        reason=body.reason,
+        raw_fact_index_ok=body.raw_fact_index_ok,
     )
     if out.get("status") in ("invalid", "not_found"):
         raise HTTPException(

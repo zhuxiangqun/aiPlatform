@@ -22,7 +22,7 @@ pilot_domain: lock-service
 | `n05_wiki_rebuild_freeze` | Extended | N05 | wiki_engine/FTS 全量 / certified | `phase2-wiki-rebuild-evidence.md` |
 | `n06_query_gateway_freeze` | Core | N06 | 全部其它应用入口 / certified | `phase2-unified-query-gateway-evidence.md` |
 | `n10_gold_eval_freeze` | Operational | N10 | 准确率宣称 / certified（LLM judge opt-in residual 已落地，见 `phase2-n10-llm-judge-residual-evidence.md`） | `phase2-knowledge-gold-eval-evidence.md` |
-| `n11_n14_migration_freeze` | Operational | N11/N14 | 生产切写认证 / certified | `phase2-raw-fact-index-reconcile-evidence.md` |
+| `n11_n14_migration_freeze` | Operational | N11/N14 | 生产切写认证 / certified（就绪回执 opt-in residual 已落地，见 `phase2-n11-production-attest-residual-evidence.md`） | `phase2-raw-fact-index-reconcile-evidence.md` |
 | `n13_calibration_freeze` | Operational | N13/校准 | 真实 ECE 训练 / 准确率宣称 / certified | `phase2-calibration-pipeline-evidence.md` |
 | `n17_record_semantics_freeze` | Core | N17 | semantic_cases 全量 / certified | `phase2-record-semantics-evidence.md` |
 | `n18_deployed_rbac_freeze` | Core | N18 | 召回/聚合/导出/缓存全路径 / certified | `phase2-deployed-rbac-evidence.md` |

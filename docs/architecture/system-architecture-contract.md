@@ -122,6 +122,7 @@ review_cycle: 90d
 > 2026-11-24：Interop S6 薄切片（A-P5 deps / A-P4 `declared_unavailable` / B-P3 gate / B-P5 `composite_profile_id`）；**未宣称** 生产沙箱完备。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N07/N22 ObjectSet `$where`/`$expr` 显式 residual（`$where` unavailable；`$expr` 有界二元比较；freeze 仍 true；certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N10 gold LLM judge 显式 residual（`judge_mode=llm` / `llm_judge_object_equiv`；不可用诚实上报；freeze 仍 true；accuracy/certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-24：知识系统 N11/N14 生产切写就绪回执显式 residual（`attest_production_cutover_readiness`；不可用诚实上报；freeze 仍 true；production_cutover_certified/certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 W6 Knowledge SDK 最小切片（ObjectType→Client 表面/源码经 Facade；L1 kb:read）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 F1 deepen 生产 SLO 遥测接线（三指标采集/快照/wiring 门经 Facade；attainment/certified 恒假）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen Wiki/KB 统一检索字段 ACL（sys_knowledge_retrieve/KB/CRAG）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
