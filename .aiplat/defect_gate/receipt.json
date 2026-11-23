@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T23:55:30+08:00",
+  "reviewed_at": "2026-11-24T00:30:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "51814bb475dc180d19e88e3ea0ab673bf31a4b13",
-  "diff_sha256": "0f2fb77c9391f05756ea9bffc5ab458d7485a8b19d1f78864d5883d3c09d0681",
-  "head_sha": "cf6d8ebba980fe08d8640aa1a6a984359a6be446",
+  "merge_base": "87f9967fcbb4bac926858aa3c1c2df9edd4a35f1",
+  "diff_sha256": "09c3cc4476a24a3cf09a6535eead953540036607ea44a50f17fbcc80f936b0b9",
+  "head_sha": "203d80e90b3f599c8e38f3a0db3ad8c6c02337c7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Workflow-only action pin bumps (replay #538/#213/#212); no product runtime change."
+  "note": "#787: IGNORE ZAP 90005 (request-side Sec-Fetch noise); not a server header fix."
 }
