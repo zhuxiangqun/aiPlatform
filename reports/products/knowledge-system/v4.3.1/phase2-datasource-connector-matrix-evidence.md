@@ -41,5 +41,5 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 ## 明确未做
 
 - PG/MySQL/Oracle 等 vendor 驱动全量矩阵
-- N01 certified / 关闭 ADR 例外
+- N01 certified / 关闭 ADR 例外（Raw 面冻结见 `phase2-n01-raw-integrity-freeze-evidence.md`）
 - 取消 process Raw opt-out 逃生舱

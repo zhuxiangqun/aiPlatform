@@ -262,6 +262,7 @@ def build_conformance_pack(
         "n08_action_policy_freeze": bool(cat.get("n08_action_policy_freeze")),
         "n24_unified_audit_freeze": bool(cat.get("n24_unified_audit_freeze")),
         "slo_telemetry_freeze": bool(cat.get("slo_telemetry_freeze")),
+        "n01_raw_integrity_freeze": bool(cat.get("n01_raw_integrity_freeze")),
     }
 
 
@@ -368,6 +369,7 @@ def evaluate_core_ready_gate(
         "n08_action_policy_freeze": bool(pack.get("n08_action_policy_freeze")),
         "n24_unified_audit_freeze": bool(pack.get("n24_unified_audit_freeze")),
         "slo_telemetry_freeze": bool(pack.get("slo_telemetry_freeze")),
+        "n01_raw_integrity_freeze": bool(pack.get("n01_raw_integrity_freeze")),
         # 为什么：结构门不得冒充认证
         "certified": False,
         "pilot_certified": False,

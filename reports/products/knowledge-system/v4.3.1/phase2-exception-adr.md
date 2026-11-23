@@ -19,7 +19,7 @@ standard: docs/standards/knowledge-system/v4.3.1/normative-appendix.md §N
 
 | ID | 范围 | 期限 | 补偿 |
 |----|------|------|------|
-| N01 | FactLedger 读时 hash + DataSourceConfig content_hash→Raw + process Raw 默认强制（可 opt-out）+ Core file/sql/api 连接器矩阵；非 vendor 驱动矩阵 / 非 certified | 至 N01 全量/试点签字 | 见 raw-integrity + datasource-raw + process-raw + default-force + `phase2-datasource-connector-matrix-evidence.md` |
+| N01 | FactLedger 读时 hash + DataSourceConfig content_hash→Raw + process Raw 默认强制（可 opt-out）+ Core file/sql/api 连接器矩阵 + **停止**默认 N01 deepen（`n01_raw_integrity_freeze`）；未宣称 vendor 驱动矩阵 / certified | Raw 面足够；certified/vendor 矩阵 仍开放 | 见 raw-integrity + datasource-raw + process-raw + default-force + `phase2-datasource-connector-matrix-evidence.md` + `phase2-n01-raw-integrity-freeze-evidence.md` |
 | N02 | 域 YAML version + Package + ObjectType draft→人审发布（角色门；Package schema 门可选）；非全量发布门户 / 非种子替换 / 非 certified | 至 N02 全量/试点签字 | 见 ontology-package + `phase2-object-type-publish-evidence.md` |
 | N03 | Claim 证据硬门+冲突记录 + 状态写路径（transition→put_claim）；非全量 Claim 生命周期产品 / 非 certified | 至 N03 全量/试点签字 | 见 claim-evidence + `phase2-claim-status-write-evidence.md` |
 | N06 | FactLedger F.1 契约 + 统一入口（fact/object_set/wiki/index/materials_chat/graphrag → F.1；Materials/GraphRAG 挂 gateway_f1）；非全部其它应用 / 非 certified | 至 N06 全量/试点签字 | 见 gateway-contract + `phase2-unified-query-gateway-evidence.md` |
