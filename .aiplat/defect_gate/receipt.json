@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T09:11:10+08:00",
+  "reviewed_at": "2026-11-23T09:36:59+08:00",
   "base_ref": "origin/main",
-  "merge_base": "3b79ac669c91100109fc5dfb88544a32d15dda46",
-  "diff_sha256": "2f1a3e378f146ae46796b7066a0321ff5a844ec5f33da2dfdf36835ee7ad0af0",
-  "head_sha": "975788a7890f1c8f9fd6c7fb9f6f21b8adcb92bb",
+  "merge_base": "468ee0db6e639224ce4da1a2bdf88fe76740f5f4",
+  "diff_sha256": "b88ae1c22686644aa20848256ff72cdd18cccbea41967b981072e1365c9c9097",
+  "head_sha": "4e3d1641f42ecc8842c62df20ad5b7a0bbd7bcde",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Slice C field $not; morph None no fail-open. Includes A+B. Local lock only."
+  "note": "H.1 freeze Extended-sufficient; certified still false; ADR row kept. Local lock only."
 }
