@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T11:14:41+08:00",
+  "reviewed_at": "2026-11-23T12:02:59+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2bcb6fdc2dabc209bc49bd6d55a309aba4f7f61e",
-  "diff_sha256": "7cdc4fd4b66eaf173208f9fc22691c2bdb140e923c476f113af373b7bf51d950",
-  "head_sha": "22948be745c039cdffa5c7ef2f6ffe8cb793c474",
+  "merge_base": "ba372a94b2c4000c0792a2b543c065cf325f0a55",
+  "diff_sha256": "69497e80d45fa0ac2ba82859586cc844a0e36dbd899b0172f108630ee0e06ba5",
+  "head_sha": "841e498f22a66b4171b50613b83563e607398af7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "SLO telemetry freeze; wiring!=attainment. Local lock only."
+  "note": "N01 Raw freeze Core-sufficient; certified/vendor matrix still open. Local lock only."
 }
