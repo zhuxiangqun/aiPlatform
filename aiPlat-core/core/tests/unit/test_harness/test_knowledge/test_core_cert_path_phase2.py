@@ -20,6 +20,7 @@ def test_catalog_levels_and_core_minimum():
     assert cat.get("n09_core_probe_freeze") is True
     assert cat.get("n07_n22_h1_condition_freeze") is True
     assert cat.get("n08_action_policy_freeze") is True
+    assert cat.get("n24_unified_audit_freeze") is True
     core = [it for it in items if it.get("level") == "core"]
     assert all(it.get("status") == "exists" for it in core)
 
@@ -34,6 +35,7 @@ def test_core_ready_gate_passes_without_certifying():
     assert gate["n09_core_probe_freeze"] is True
     assert gate["n07_n22_h1_condition_freeze"] is True
     assert gate["n08_action_policy_freeze"] is True
+    assert gate["n24_unified_audit_freeze"] is True
 
 
 def test_pilot_core_cert_requires_approval(tmp_path):

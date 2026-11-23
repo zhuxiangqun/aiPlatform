@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T10:12:03+08:00",
+  "reviewed_at": "2026-11-23T10:50:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "8a0ebc07b61088f61e3f1d1bca4b1c1714833a08",
-  "diff_sha256": "9350afd2a8db854914e1f2ad9cf015c1af4e67b1877aaada0aae7a0f287f3e9b",
-  "head_sha": "a59dfa5cf83c0f285605ccda98c168480a81f17a",
+  "merge_base": "741b41d39833f56195fbea452435d89bc627d071",
+  "diff_sha256": "7780874d90216bd03dd851ced85294547020a8a149032c9126f989eba33e3ac8",
+  "head_sha": "9fcb3a2091394a6d9cd5f71a48a1d00d45f757b3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N08 Policy freeze Extended-sufficient; certified/full Lv4 still open. Local lock only."
+  "note": "N24 audit freeze Operational-sufficient; certified/full ops console still open. Local lock only."
 }

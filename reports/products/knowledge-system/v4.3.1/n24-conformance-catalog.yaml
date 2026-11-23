@@ -26,6 +26,8 @@ n07_n22_h1_condition_freeze: true
 n07_n22_h1_condition_note: "H.1 bounded condition surface (ops through expr-lang A+B+C) is Extended-sufficient; stop further default condition-op deepen. Residual: certified / $where|$expr / arbitrary RBAC."
 n08_action_policy_freeze: true
 n08_action_policy_note: "N08 Policy/Approval/Audit + kill switch + Lv4 FP gate v2 is Extended-sufficient; stop further default N08 deepen. Residual: certified / full Action Lv4 auto-close."
+n24_unified_audit_freeze: true
+n24_unified_audit_note: "N24 revision + unified audit bus/UI surface is Operational-sufficient; stop further default N24 deepen. Residual: certified / full ops console."
 core_adr_exceptions: []
 extended_minimum_ids:
   - N05
@@ -528,6 +530,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-append-payload-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-ui-event-detail-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-fact-query-bus-hotpath-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-n24-unified-audit-freeze-evidence.md
       - docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/harness/knowledge_pipeline/unified_audit_view.py
@@ -550,7 +553,7 @@ items:
       - aiPlat-platform/apps/fde/api/unified_audit_routes.py
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/RevisionRestorePanel.tsx
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/UnifiedAuditPanel.tsx
-    note: "Operational-scoped exists (附录 N.4); Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填 + Fact/Query 源流 fan-in + 总线热路径 + UI 流过滤 + UI materialize + UI bus suite/gate + UI 薄 append + UI append refs/payload + UI 事件详情/bus event_type 过滤；非 N24 certified"
+    note: "Operational-scoped exists (附录 N.4); Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填 + Fact/Query 源流 fan-in + 总线热路径 + UI 流过滤 + UI materialize + UI bus suite/gate + UI 薄 append + UI append refs/payload + UI 事件详情/bus event_type 过滤；n24_unified_audit_freeze=true 停止默认 N24 deepen；非 N24 certified / 非全量运维台"
 
 # §9.4 认证证据包槽位（路径或 explicit missing）
 certification_slots:
