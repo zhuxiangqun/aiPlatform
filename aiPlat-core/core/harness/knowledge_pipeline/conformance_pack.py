@@ -258,6 +258,7 @@ def build_conformance_pack(
             cat.get("core_minimum_ids") or sorted(CORE_MINIMUM_IDS)
         ),
         "n09_core_probe_freeze": bool(cat.get("n09_core_probe_freeze")),
+        "n07_n22_h1_condition_freeze": bool(cat.get("n07_n22_h1_condition_freeze")),
     }
 
 
@@ -360,6 +361,7 @@ def evaluate_core_ready_gate(
         "core_pending": missing_core,
         "core_adr_exceptions": sorted(exc),
         "n09_core_probe_freeze": bool(pack.get("n09_core_probe_freeze")),
+        "n07_n22_h1_condition_freeze": bool(pack.get("n07_n22_h1_condition_freeze")),
         # 为什么：结构门不得冒充认证
         "certified": False,
         "pilot_certified": False,

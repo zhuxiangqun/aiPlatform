@@ -18,6 +18,7 @@ def test_catalog_levels_and_core_minimum():
         assert levels.get(cid) == "core", cid
     assert set(cat.get("core_minimum_ids") or []) == set(cp.CORE_MINIMUM_IDS)
     assert cat.get("n09_core_probe_freeze") is True
+    assert cat.get("n07_n22_h1_condition_freeze") is True
     core = [it for it in items if it.get("level") == "core"]
     assert all(it.get("status") == "exists" for it in core)
 
@@ -30,6 +31,7 @@ def test_core_ready_gate_passes_without_certifying():
     assert gate["pilot_certified"] is False
     assert gate["core_claim"] is False
     assert gate["n09_core_probe_freeze"] is True
+    assert gate["n07_n22_h1_condition_freeze"] is True
 
 
 def test_pilot_core_cert_requires_approval(tmp_path):
