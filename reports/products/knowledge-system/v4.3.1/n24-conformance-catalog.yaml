@@ -30,6 +30,8 @@ n24_unified_audit_freeze: true
 n24_unified_audit_note: "N24 revision + unified audit bus/UI surface is Operational-sufficient; stop further default N24 deepen. Residual: certified / full ops console."
 slo_telemetry_freeze: true
 slo_telemetry_note: "SLO target registry + telemetry wiring is Operational-sufficient; stop further default SLO wiring deepen. Residual: production attainment / alerting / Full unconditional."
+n01_raw_integrity_freeze: true
+n01_raw_integrity_note: "N01 Raw integrity + DataSource→Raw + Core file/sql/api connector matrix is Core-sufficient; stop further default N01 deepen. Residual: certified / vendor driver matrix."
 core_adr_exceptions: []
 extended_minimum_ids:
   - N05
@@ -61,6 +63,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-datasource-process-raw-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-datasource-process-raw-default-force-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-datasource-connector-matrix-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-n01-raw-integrity-freeze-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/harness/ontology_engine/data_source.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_raw_integrity_phase2.py
@@ -68,7 +71,7 @@ items:
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_process_raw_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_process_raw_default_force_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_connector_matrix_phase2.py
-    note: "Core-scoped exists (附录 N.2); 读时验+DataSourceConfig content_hash→FactLedger ingest+process Raw 默认强制（可 opt-out）+ Core file/sql/api 连接器矩阵；非 vendor 驱动矩阵/非 N01 certified"
+    note: "Core-scoped exists (附录 N.2); 读时验+DataSourceConfig content_hash→FactLedger ingest+process Raw 默认强制（可 opt-out）+ Core file/sql/api 连接器矩阵；n01_raw_integrity_freeze=true 停止默认 N01 deepen；非 vendor 驱动矩阵/非 N01 certified"
   - id: N02
     level: core
     title: 语义模型版本化

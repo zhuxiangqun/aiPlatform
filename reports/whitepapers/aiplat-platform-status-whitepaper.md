@@ -3,10 +3,10 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-11-23T03:12:22Z"
+generated_at: "2026-11-23T04:00:55Z"
 source: AIPLAT_CAPABILITIES.md
 doc_type: Report
-source_sha256: "3f5f56f7c21ba2364d332bc92fa9a5b5fadf71e51001b7d6c53ad257beabbd68"
+source_sha256: "35d45a3e6a1285cc9b8fff543616edd0abe765cf61799611acdc2d99c38575c7"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 total_capabilities: 4121
 capabilities_version: "30.14"
@@ -15,7 +15,7 @@ language: zh-CN
 packaging: executive-digest
 ---
 
-<!-- whitepaper_stamp source_sha256=3f5f56f7c21ba2364d332bc92fa9a5b5fadf71e51001b7d6c53ad257beabbd68 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=4121 -->
+<!-- whitepaper_stamp source_sha256=35d45a3e6a1285cc9b8fff543616edd0abe765cf61799611acdc2d99c38575c7 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=4121 -->
 
 # aiPlat 平台现状白皮书
 
@@ -47,8 +47,8 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-11-23T03:12:22Z` |
-| CAPABILITIES SHA-256 | `3f5f56f7c21ba2364d332bc92fa9a5b5fadf71e51001b7d6c53ad257beabbd68` |
+| 生成时间 (UTC) | `2026-11-23T04:00:55Z` |
+| CAPABILITIES SHA-256 | `35d45a3e6a1285cc9b8fff543616edd0abe765cf61799611acdc2d99c38575c7` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.14` |
 | CAPABILITIES last_updated | `2026-11-22` |
