@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import FactoryProgressGuide from './FactoryProgressGuide';
 import RevisionRestorePanel from './RevisionRestorePanel';
+import ObjectTypePublishPanel from './ObjectTypePublishPanel';
 import FieldAclPanel from './FieldAclPanel';
 import AboxAclPanel from './AboxAclPanel';
 import UnifiedAuditPanel from './UnifiedAuditPanel';
@@ -1477,6 +1478,7 @@ const KnowledgeFactoryPage: React.FC = () => {
           />
           <CrossDomainResolutionPanel />
           <RevisionRestorePanel />
+          <ObjectTypePublishPanel />
           <FieldAclPanel />
           <AboxAclPanel />
           <UnifiedAuditPanel />

@@ -36,6 +36,7 @@ authority: supporting
 | [phase2-scenario-evidence.md](./phase2-scenario-evidence.md) | Phase 2 W9 Knowledge Scenario（模拟不写主事实 + 合并人审） |
 | [phase2-ontology-package-evidence.md](./phase2-ontology-package-evidence.md) | Phase 2 W9 Ontology Package（版本/哈希校验 + 兼容 + 依赖锁定 + 回滚） |
 | [phase2-object-type-publish-evidence.md](./phase2-object-type-publish-evidence.md) | N02 deepen：ObjectType 人审发布（角色门；非 certified） |
+| [phase2-n02-object-type-publish-portal-evidence.md](./phase2-n02-object-type-publish-portal-evidence.md) | N02 residual：管理端 ObjectType 发布薄门户（非多域批量 / 非 certified） |
 | [phase2-wiki-rebuild-evidence.md](./phase2-wiki-rebuild-evidence.md) | N05 deepen：Wiki 有条件重建派生页（非 wiki_engine 全量/非 certified） |
 | [phase2-knowledge-gold-eval-evidence.md](./phase2-knowledge-gold-eval-evidence.md) | N10 deepen：域级 Exact-match gold 流水线（非准确率宣称/非 certified） |
 | [phase2-record-semantics-evidence.md](./phase2-record-semantics-evidence.md) | N17 deepen：记录级语义运行时权威（非 RBAC 真源/非 certified） |

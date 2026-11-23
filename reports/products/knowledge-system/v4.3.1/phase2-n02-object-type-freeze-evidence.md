@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / N02 ObjectType 发布面冻结
 
 > 实施权威：附录 N.2 N02；仿 N09 / N01 freeze。  
-> **未宣称** N02 certified / 全量发布门户 / 种子替换 / 关闭 ADR 例外行。
+> **未宣称** N02 certified / 多域批量门户 / 种子替换 / 关闭 ADR 例外行（薄门户见 `phase2-n02-object-type-publish-portal-evidence.md`）。
 
 ## 检查表
 
@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 ## 明确未做
 
 - N02 certified 或删除 ADR 例外行
-- 全量管理端发布门户 / 多域批量人审
+- 多域批量人审 / 工作流编排（单租户薄门户另见 publish-portal 证据）
 - 替换 `*-object-types.json` 种子为唯一运行时真源
 - 恢复默认 N02 deepen mop
