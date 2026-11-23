@@ -24,6 +24,8 @@ n09_core_probe_freeze: true
 n09_core_probe_note: "Cross-tenant isolation suite probes are Core-sufficient; no further default-literal mop for Core."
 n07_n22_h1_condition_freeze: true
 n07_n22_h1_condition_note: "H.1 bounded condition surface (ops through expr-lang A+B+C) is Extended-sufficient; stop further default condition-op deepen. Residual: certified / $where|$expr / arbitrary RBAC."
+n08_action_policy_freeze: true
+n08_action_policy_note: "N08 Policy/Approval/Audit + kill switch + Lv4 FP gate v2 is Extended-sufficient; stop further default N08 deepen. Residual: certified / full Action Lv4 auto-close."
 core_adr_exceptions: []
 extended_minimum_ids:
   - N05
@@ -217,8 +219,9 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-g2-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-action-policy-audit-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-lv4-false-positive-gate-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-n08-action-policy-freeze-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/lv4_false_positive_gate.py
-    note: "Extended-scoped exists (附录 N.3); Registry 裸 bypass 拒绝；require_approval 强制入队；kill switch；Lv4 误报门 v2 deepen（禁 0 样本假绿）；非全量 Action Lv4 / 非 certified"
+    note: "Extended-scoped exists (附录 N.3); Registry 裸 bypass 拒绝；require_approval 强制入队；kill switch；Lv4 误报门 v2；n08_action_policy_freeze=true 停止默认 N08 deepen；非全量 Action Lv4 / 非 certified"
   - id: N09
     level: core
     title: 跨租户 0 泄漏

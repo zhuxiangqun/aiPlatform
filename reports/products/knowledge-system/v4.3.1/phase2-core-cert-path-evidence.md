@@ -22,6 +22,7 @@ pilot_domain: lock-service
 | Core 12 项 exists（Core-scoped） | pass | catalog status |
 | N09 探针冻结 | pass | `n09_core_probe_freeze: true` |
 | N07/N22 H.1 条件面冻结（Extended） | pass | `n07_n22_h1_condition_freeze: true`（非 Core 最小集冒充） |
+| N08 Action Policy 面冻结（Extended） | pass | `n08_action_policy_freeze: true`（非 Core 最小集冒充） |
 | `core_ready` 门 | pass | `evaluate_core_ready_gate` |
 | FDE HTTP 接线 | pass | `GET …/conformance-pack/core-ready` / `pilot-core-cert` |
 | 无批准时 pilot_certified 恒 false | pass | 缺路径 / superseded pending + honesty 测 |

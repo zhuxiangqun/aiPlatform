@@ -44,4 +44,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 - 宣称全量 Action 已达 Lv4 自动闭环
 - 删除 kill switch / require_approval 既有路径
-- N08 certified / 关闭 ADR 例外冒充签字
+- N08 certified / 关闭 ADR 例外冒充签字（Policy 面冻结见 `phase2-n08-action-policy-freeze-evidence.md`）
