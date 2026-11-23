@@ -118,6 +118,7 @@ review_cycle: 90d
 > 2026-11-19：知识系统 v4.3.1 N09 Query/Form/签名默认参数（workbench/FDE/wiki/server/org/value + MemoryManager → `default_*()`；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N09 builder module_id 默认（L2–L5/project_service/schema_migration → `default_module_id()`；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N09 杂项 label 默认（channel/agent_type/benchmark/output_style → `default_label()`；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-23：`output_style` **adhd_v2** 硬约束（禁编造 ETA / 高风险旁支升级 / list_cap 仅呈现）+ `enterprise_deployment.md` 选型三问；pre-commit Phase 45 真阻断 arch-pattern。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 W6 Knowledge SDK 最小切片（ObjectType→Client 表面/源码经 Facade；L1 kb:read）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 F1 deepen 生产 SLO 遥测接线（三指标采集/快照/wiring 门经 Facade；attainment/certified 恒假）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen Wiki/KB 统一检索字段 ACL（sys_knowledge_retrieve/KB/CRAG）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
