@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T14:25:00+08:00",
+  "reviewed_at": "2026-11-23T18:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1b4a83c7cac964cd06ed48d918ea33309dc27168",
-  "diff_sha256": "b0fb7a384a10be602fed625ab0c38f70791466d365adc6872d981f0e7054b8f8",
-  "head_sha": "9e237e7a07e189834bbda87c1154ecb0e122b944",
+  "merge_base": "f0aaf1c91e091f30a3deb2b1c67ec92326094b42",
+  "diff_sha256": "fee4963f8a2431f2b9e5cbbf528799909f2de2bcabbb08762d1c8767d6f6df1f",
+  "head_sha": "2299713d8daaa09f6c365a2008b1186d3bfa795b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase2 sufficient-freeze closeout; 20 flags + complete marker; certified still false. Local lock only."
+  "note": "N01 vendor soft-probe matrix; oracle declared_unavailable; certified false; freeze stays. Local lock only. CI unlock is non-author GitHub Approve."
 }
