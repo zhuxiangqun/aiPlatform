@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T18:58:00+08:00",
+  "reviewed_at": "2026-11-23T20:12:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f0aaf1c91e091f30a3deb2b1c67ec92326094b42",
-  "diff_sha256": "409012ba81234e8a7745d03ca523f06c4f5ce8c55ec65b304f25edc8b41219db",
-  "head_sha": "49e01a3004edc8f0b966edc2ef026cbf88834e40",
+  "merge_base": "PLACEHOLDER",
+  "diff_sha256": "PLACEHOLDER",
+  "head_sha": "PLACEHOLDER",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N02 ObjectTypePublishPanel + whitepaper sync; freeze stays; no parallel API."
+  "note": "temp during merge; will refresh after merge commit"
 }

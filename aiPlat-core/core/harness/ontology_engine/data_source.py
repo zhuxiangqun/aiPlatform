@@ -31,6 +31,42 @@ logger = logging.getLogger(__name__)
 # 为什么：N01 Raw 强制快照按 Core source_type 轴声明矩阵；非 PG/MySQL 等 vendor 全量认证
 DATASOURCE_RAW_CONNECTOR_MATRIX: Tuple[str, ...] = ("file", "sql", "api")
 
+# 为什么：N01 residual — SQL vendor 驱动声明轴；oracle 无内置驱动，禁止假绿
+DATASOURCE_VENDOR_DRIVER_MATRIX: Tuple[str, ...] = (
+    "sqlite",
+    "postgresql",
+    "mysql",
+    "oracle",
+)
+
+# vendor → 软依赖探测规格（importlib；非生产连库验收）
+_DATASOURCE_VENDOR_DRIVER_SPECS: Dict[str, Dict[str, Any]] = {
+    "sqlite": {
+        "dialect": "sqlite",
+        "status": "soft_probe",
+        "required_modules": ("sqlalchemy",),
+        "driver_any_of": (),
+    },
+    "postgresql": {
+        "dialect": "postgresql",
+        "status": "soft_probe",
+        "required_modules": ("sqlalchemy",),
+        "driver_any_of": ("psycopg2", "psycopg", "asyncpg"),
+    },
+    "mysql": {
+        "dialect": "mysql",
+        "status": "soft_probe",
+        "required_modules": ("sqlalchemy",),
+        "driver_any_of": ("pymysql",),
+    },
+    "oracle": {
+        "dialect": "oracle",
+        "status": "declared_unavailable",
+        "required_modules": (),
+        "driver_any_of": (),
+    },
+}
+
 
 class DataSourceIntegrityError(ValueError):
     """DataSource 内容 hash / 快照契约错误（N01 加深）。"""
@@ -78,6 +114,118 @@ def require_datasource_raw_connector(source_type: str) -> str:
         )
     return st
 
+
+def _module_available(name: str) -> bool:
+    """importlib 探测模块是否可导入（不执行副作用连接）。
+
+    Args:
+        name: 模块名（如 sqlalchemy / pymysql）。
+    """
+    import importlib.util
+
+    return importlib.util.find_spec(name) is not None
+
+
+def probe_vendor_driver(vendor: str) -> Dict[str, Any]:
+    """软依赖探测 SQL vendor 驱动可用性（非生产连库验收）。
+
+    Args:
+        vendor: sqlite / postgresql / mysql / oracle。
+
+    Returns:
+        vendor / status / available / missing / certified=false。
+
+    Raises:
+        DataSourceIntegrityError: vendor 不在声明轴内。
+    """
+    key = (vendor or "").strip().lower()
+    if key not in DATASOURCE_VENDOR_DRIVER_MATRIX:
+        raise DataSourceIntegrityError(
+            f"probe_vendor_driver unsupported vendor={vendor!r}; "
+            f"matrix={list(DATASOURCE_VENDOR_DRIVER_MATRIX)}"
+        )
+    spec = _DATASOURCE_VENDOR_DRIVER_SPECS[key]
+    status = str(spec["status"])
+    # 为什么：oracle 无内置驱动路径；声明不可用，禁止因偶然装了 oracledb 而假绿
+    if status == "declared_unavailable":
+        return {
+            "vendor": key,
+            "dialect": spec["dialect"],
+            "status": "declared_unavailable",
+            "available": False,
+            "required_modules": list(spec["required_modules"]),
+            "driver_any_of": list(spec["driver_any_of"]),
+            "missing": ["declared_unavailable"],
+            "present": [],
+            "certified": False,
+            "n01_full_conformance": False,
+            "note": "no built-in oracle driver; declared unavailable (not fake-green)",
+        }
+
+    missing: List[str] = []
+    present: List[str] = []
+    for mod in spec["required_modules"]:
+        if _module_available(mod):
+            present.append(mod)
+        else:
+            missing.append(mod)
+    driver_any = tuple(spec.get("driver_any_of") or ())
+    driver_hit = ""
+    if driver_any:
+        for mod in driver_any:
+            if _module_available(mod):
+                present.append(mod)
+                driver_hit = mod
+                break
+        if not driver_hit:
+            missing.append(f"driver_any_of:{'|'.join(driver_any)}")
+
+    available = not missing
+    return {
+        "vendor": key,
+        "dialect": spec["dialect"],
+        "status": "available" if available else "unavailable",
+        "available": available,
+        "required_modules": list(spec["required_modules"]),
+        "driver_any_of": list(driver_any),
+        "driver_selected": driver_hit or None,
+        "missing": missing,
+        "present": present,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": (
+            "soft importlib probe only; not production cluster acceptance / "
+            "not N01 certified"
+        ),
+    }
+
+
+def datasource_vendor_driver_matrix() -> Dict[str, Any]:
+    """返回 N01 SQL vendor 驱动声明矩阵 + 软依赖探测结果。
+
+    Returns:
+        vendors / probes；``certified`` / ``n01_full_conformance`` 恒 false。
+    """
+    probes = {v: probe_vendor_driver(v) for v in DATASOURCE_VENDOR_DRIVER_MATRIX}
+    return {
+        "vendors": list(DATASOURCE_VENDOR_DRIVER_MATRIX),
+        "probes": probes,
+        "available_vendors": [
+            v for v, p in probes.items() if p.get("available") is True
+        ],
+        "declared_unavailable": [
+            v
+            for v, p in probes.items()
+            if p.get("status") == "declared_unavailable"
+        ],
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": (
+            "SQL vendor soft-probe matrix (sqlite/postgresql/mysql; "
+            "oracle declared_unavailable); not production acceptance / "
+            "not N01 certified"
+        ),
+    }
 
 @dataclass
 class DataSourceConfig:

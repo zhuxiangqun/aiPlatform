@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4129
+total_capabilities: 4137
 last_updated: 2026-11-22
 version: "30.14"
 auto_sync: true
@@ -550,7 +550,7 @@ scan_hash: 8f9548ec24f4
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 4137✅）
+> 评分：98/100（2026-07-20 — 4137✅；含 N01 vendor 软依赖矩阵 8 项）
 
 ---
 
@@ -1204,7 +1204,7 @@ scan_hash: 8f9548ec24f4
 | **Knowledge Pipeline v3** | `harness/knowledge_pipeline/extractor.py` + `resolver.py` + `retriever.py` | ✅ | 知识生命周期三层管线：`DocumentIngestor`（文档分块）→ `EntityExtractor`（LLM驱动9实体+10关系自动抽取，置信度三级路由≥0.85自动/0.60-0.85待审/<0.60丢弃）→ `DraftYamlWriter`（YAML草稿输出）→ `CrossDomainResolver`（三级匹配：精确键0.6+Jaro-Winkler名称0.25+向量余弦0.15）→ `GraphRAGRetriever`（实体路由→BFS 2跳子图→定向向量检索→推理路径注入） | 已合入 |
 | **Fact Ledger（v4.3.1 Phase 1）** | `harness/knowledge_pipeline/fact_ledger.py` + CoreFacade `fact_ledger_query_gateway` + FDE confirm / `GET .../extractions/facts` | ✅ | 附录 A/D 最小账本：不可变 Raw（sha256+快照）、Fact/Claim（published 必须 evidence）、查询 SQL 层 `tenant_id` 前置过滤；有 `{domain}-object-types.json` 种子的域在确认时写账本；跨租户测试见 `test_fact_ledger_phase1.py`。**未宣称**附录 N 全量符合 | 已合入 |
 | **Raw 读时完整性（v4.3.1 N01 partial）** | `verify_raw_integrity` / `read_raw_bytes` / `evaluate_raw_integrity_gate` + Facade `fact_ledger_verify_raw_integrity` / `evaluate_fact_raw_integrity_gate` | ✅ | 读时复算 sha256；篡改/缺失拒绝；门槛门 certified 恒 false。证据 `phase2-raw-integrity-evidence.md`。**未宣称** 全连接器矩阵 / N01 certified。生成物适用：已接线（经 Facade） | 已合入 |
-| **DataSource→Raw 完整性（v4.3.1 N01 G1+process+matrix）** | `validate_datasource_content_hash` / `snapshot_datasource_bytes` / `ingest_datasource_raw` / `process_from_datasource`(默认强制/可 opt-out) / `datasource_raw_connector_matrix` + Facade ingest/suite/matrix suite/gate | ✅ | content_hash→Raw；process Raw 默认强制（可 opt-out）；Core `file/sql/api` 连接器矩阵 + hash 强制快照套件；**`n01_raw_integrity_freeze` 停止默认 N01 deepen**；certified 恒 false。证据 `phase2-datasource-connector-matrix-evidence.md` + `phase2-n01-raw-integrity-freeze-evidence.md`。**未宣称** vendor 驱动矩阵 / N01 certified。生成物适用：已接线 | 本批 |
+| **DataSource→Raw 完整性（v4.3.1 N01 G1+process+matrix+vendor）** | `validate_datasource_content_hash` / `snapshot_datasource_bytes` / `ingest_datasource_raw` / `process_from_datasource`(默认强制/可 opt-out) / `datasource_raw_connector_matrix` / `datasource_vendor_driver_matrix` + Facade ingest/suite/matrix/vendor suite/gate | ✅ | content_hash→Raw；process Raw 默认强制（可 opt-out）；Core `file/sql/api` 连接器矩阵 + SQL vendor 软依赖探测（sqlite/postgresql/mysql；oracle `declared_unavailable`）；**`n01_raw_integrity_freeze` 停止默认 N01 deepen**；certified 恒 false。证据 `phase2-datasource-connector-matrix-evidence.md` + `phase2-n01-raw-integrity-freeze-evidence.md` + `phase2-n01-vendor-driver-matrix-evidence.md`。**未宣称** 生产连库验收 / N01 certified。生成物适用：已接线 | 本批 |
 | **Fact Revision 账本（v4.3.1 N24 G2）** | `list_fact_revisions` / `get_fact_at_revision` / `diff_fact_revisions` / `run_fact_revision_suite` / `evaluate_fact_revision_gate` + Facade list/get/diff/suite/gate | ✅ | put_fact 内容变更强制 revision bump + 归档旧快照；门槛门 certified 恒 false。证据 `phase2-fact-revision-evidence.md`。**未宣称** Claim/回滚 UI/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Claim Revision 账本（v4.3.1 N24 H1）** | `list_claim_revisions` / `get_claim_at_revision` / `diff_claim_revisions` / `run_claim_revision_suite` / `evaluate_claim_revision_gate` + Facade list/get/diff/suite/gate | ✅ | put_claim 内容变更强制 revision bump + 归档；门槛门 certified 恒 false。证据 `phase2-claim-revision-evidence.md`。**未宣称** Source/回滚 UI/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Source Revision 账本（v4.3.1 N24 H2）** | `list_source_revisions` / `get_source_at_revision` / `diff_source_revisions` / `run_source_revision_suite` / `evaluate_source_revision_gate` + Facade list/get/diff/suite/gate | ✅ | register_source 内容变更强制 revision bump + 归档；旧 Raw 保留；门槛门 certified 恒 false。证据 `phase2-source-revision-evidence.md`。**未宣称** 回滚 UI/统一审计总线 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -1619,6 +1619,14 @@ scan_hash: 8f9548ec24f4
 | evaluate_datasource_connector_matrix_gate | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
 | run_datasource_connector_matrix_suite | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
 | require_datasource_raw_connector | `core/harness/ontology_engine/data_source.py` | ✅ | 自动同步 | 已合入 |
+| probe_vendor_driver | `core/harness/ontology_engine/data_source.py` | ✅ | 本批 | N01 vendor 软探测 |
+| datasource_vendor_driver_matrix | `core/harness/ontology_engine/data_source.py` | ✅ | 本批 | N01 vendor 矩阵 |
+| run_datasource_vendor_matrix_suite | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 本批 | N01 vendor 套件 |
+| evaluate_datasource_vendor_matrix_gate | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 本批 | N01 vendor 门槛门 |
+| get_datasource_vendor_driver_matrix | `core/api/core_facade.py` | ✅ | 本批 | Facade vendor 矩阵 |
+| probe_datasource_vendor_driver | `core/api/core_facade.py` | ✅ | 本批 | Facade vendor 探测 |
+| fact_ledger_run_datasource_vendor_matrix_suite | `core/api/core_facade.py` | ✅ | 本批 | Facade vendor 套件 |
+| evaluate_fact_datasource_vendor_matrix_gate | `core/api/core_facade.py` | ✅ | 本批 | Facade vendor 门槛门 |
 | evaluate_datasource_raw_gate | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
 | datasource_require_raw_ingest_enabled | `core/harness/ontology_engine/data_source.py` | ✅ | 自动同步 | 已合入 |
 | get_graph_h1_policy | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5032,7 +5040,7 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 781 | 1 | 782 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 819 | 9 | 828 |
+| 知识引擎（本体） | 827 | 9 | 836 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5075,7 +5083,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4118** | **11** | **4129** |
+| **总计** | **4126** | **11** | **4137** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
