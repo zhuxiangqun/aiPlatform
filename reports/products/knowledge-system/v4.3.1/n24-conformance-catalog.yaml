@@ -34,6 +34,32 @@ n01_raw_integrity_freeze: true
 n01_raw_integrity_note: "N01 Raw integrity + DataSource→Raw + Core file/sql/api connector matrix is Core-sufficient; stop further default N01 deepen. Residual: certified / vendor driver matrix."
 n02_object_type_freeze: true
 n02_object_type_note: "N02 Package + ObjectType draft→human publish (role gate) is Core-sufficient; stop further default N02 deepen. Residual: certified / full publish portal / seed replacement."
+n03_claim_freeze: true
+n03_claim_note: "N03 Claim evidence+conflict+status write is Core-sufficient; stop further default N03 deepen. Residual: certified / full Claim lifecycle product."
+n04_n12_write_rbac_freeze: true
+n04_n12_write_rbac_note: "N04/N12 write gates + config-driven publish reviewer role is Core-sufficient; stop further default N04/N12 deepen. Residual: certified / deployed RBAC as sole authority product."
+n05_wiki_rebuild_freeze: true
+n05_wiki_rebuild_note: "N05 rebuild taxonomy + Fact→Wiki conditional rebuild is Extended-sufficient; stop further default N05 deepen. Residual: certified / wiki_engine/FTS full."
+n06_query_gateway_freeze: true
+n06_query_gateway_note: "N06 F.1 + unified query gateway (fact/object_set/wiki/index/materials_chat/graphrag) is Core-sufficient; stop further default N06 deepen. Residual: certified / all other app entrypoints."
+n10_gold_eval_freeze: true
+n10_gold_eval_note: "N10 appendix O thresholds + domain Exact-match gold pipeline is Operational-sufficient; stop further default N10 deepen. Residual: certified / LLM judge / accuracy claim."
+n11_n14_migration_freeze: true
+n11_n14_migration_note: "N11/N14 dual-write reconcile + cutover token + Raw↔Fact↔Index chain is Operational-sufficient; stop further default N11/N14 deepen. Residual: certified / production cutover attestation."
+n13_calibration_freeze: true
+n13_calibration_note: "N13 calibration ceiling on query path is Operational-sufficient; stop further default N13 deepen. Residual: certified / real ECE training / accuracy claim."
+n17_record_semantics_freeze: true
+n17_record_semantics_note: "N17 record-level semantics runtime authority is Core-sufficient; stop further default N17 deepen. Residual: certified / full semantic_cases vs Fact Store."
+n18_deployed_rbac_freeze: true
+n18_deployed_rbac_note: "N18 implementer probes + deployed RBAC authority is Core-sufficient; stop further default N18 deepen. Residual: certified / recall/aggregate/export/cache full paths."
+n19_fact_query_audit_freeze: true
+n19_fact_query_audit_note: "N19 Fact/Query unified audit + hotpath best-effort coverage is Extended-sufficient; stop further default N19 deepen. Residual: certified / force all bypass paths."
+n20_constraint_layers_freeze: true
+n20_constraint_layers_note: "N20 L1>L2>L3 constraint stack + hotpath n20_constraint is Extended-sufficient; stop further default N20 deepen. Residual: certified / list→dict rewrite / Lv4."
+n21_query_abstain_freeze: true
+n21_query_abstain_note: "N21 abstain+citations envelopes on Fact/Wiki/Materials/GraphRAG/list is Core-sufficient; stop further default N21 deepen. Residual: certified / rewrite list primary return type."
+n23_ocs_freeze: true
+n23_ocs_note: "N23 enterprise domain OCS scan + vocab pre-register + floor gate is Operational-sufficient; stop further default N23 deepen. Residual: certified / enterprise-wide completeness."
 core_adr_exceptions: []
 extended_minimum_ids:
   - N05
@@ -100,7 +126,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-claim-status-write-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_claim_evidence_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_claim_status_write_phase2.py
-    note: "Core-scoped exists (附录 N.2); Claim 证据硬门+冲突+状态写路径；非全量 Claim 生命周期产品/非认证"
+    note: "Core-scoped exists (附录 N.2); Claim 证据硬门+冲突+状态写路径；非全量 Claim 生命周期产品/非认证；n03_claim_freeze=true 停止默认 deepen"
   - id: N04
     level: core
     title: 来源策略与冲突裁决
@@ -112,7 +138,7 @@ items:
       - aiPlat-core/core/harness/knowledge_pipeline/source_policy.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_fact_write_gates_phase2.py
       - reports/products/knowledge-system/v4.3.1/phase2-reviewer-rbac-evidence.md
-    note: "Core-scoped exists (附录 N.2); 写入硬门+冲突门+transition 发布 + 配置驱动 publish 角色门；非部署 RBAC 真源/非 N04 全量认证"
+    note: "Core-scoped exists (附录 N.2); 写入硬门+冲突门+transition 发布 + 配置驱动 publish 角色门；非部署 RBAC 真源/非 N04 全量认证；n04_n12_write_rbac_freeze=true 停止默认 deepen"
   - id: N05
     level: extended
     title: Wiki/索引有条件重建
@@ -127,7 +153,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-wiki-rebuild-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/wiki_rebuild.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_wiki_rebuild_phase2.py
-    note: "Extended-scoped exists (附录 N.3); 三分类 + Fact→Wiki 派生页有条件重建；非 wiki_engine/FTS 全量/非 certified"
+    note: "Extended-scoped exists (附录 N.3); 三分类 + Fact→Wiki 派生页有条件重建；非 wiki_engine/FTS 全量/非 certified；n05_wiki_rebuild_freeze=true 停止默认 deepen"
   - id: N06
     level: core
     title: Gateway 查询契约
@@ -141,7 +167,7 @@ items:
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_gateway_contract_phase2.py
       - reports/products/knowledge-system/v4.3.1/phase2-unified-query-gateway-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_unified_query_gateway_phase2.py
-    note: "Core-scoped exists (附录 N.2); F.1 契约 + fact/object_set/wiki/index/materials_chat/graphrag 统一入口（Materials/GraphRAG 挂 gateway_f1）；非全部其它应用/非认证"
+    note: "Core-scoped exists (附录 N.2); F.1 契约 + fact/object_set/wiki/index/materials_chat/graphrag 统一入口（Materials/GraphRAG 挂 gateway_f1）；非全部其它应用/非认证；n06_query_gateway_freeze=true 停止默认 deepen"
   - id: N07
     level: extended
     title: 权限召回前过滤
@@ -284,7 +310,7 @@ items:
       - aiPlat-core/core/harness/knowledge_pipeline/confidence_calibration.py
       - aiPlat-core/core/harness/knowledge_pipeline/knowledge_gold_eval.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_knowledge_gold_eval_phase2.py
-    note: "Operational-scoped exists (附录 N.4); 附录 O 校准门槛 + 域级 Exact-match gold 流水线；非 LLM judge/非准确率宣称/非 N10 certified"
+    note: "Operational-scoped exists (附录 N.4); 附录 O 校准门槛 + 域级 Exact-match gold 流水线；非 LLM judge/非准确率宣称/非 N10 certified；n10_gold_eval_freeze=true 停止默认 deepen"
   - id: N11
     level: operational
     title: 迁移/回滚方案
@@ -295,7 +321,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/knowledge_migration.py
       - reports/products/knowledge-system/v4.3.1/phase2-migration-cutover-auth-evidence.md
-    note: "Operational-scoped exists (附录 N.4); 双写/对账/回滚演练 + 作业级切写授权（token）；非生产切写认证/非 certified"
+    note: "Operational-scoped exists (附录 N.4); 双写/对账/回滚演练 + 作业级切写授权（token）；非生产切写认证/非 certified；n11_n14_migration_freeze=true 停止默认 deepen"
   - id: N12
     level: core
     title: Fact 状态机
@@ -306,7 +332,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-fact-state-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_state_machine.py
       - reports/products/knowledge-system/v4.3.1/phase2-reviewer-rbac-evidence.md
-    note: "Core-scoped exists (附录 N.2); 边表+审计+put_fact 禁改状态/直发 + 配置驱动 publish 角色门；非部署 RBAC 真源/非 N12 全量认证"
+    note: "Core-scoped exists (附录 N.2); 边表+审计+put_fact 禁改状态/直发 + 配置驱动 publish 角色门；非部署 RBAC 真源/非 N12 全量认证；n04_n12_write_rbac_freeze=true 停止默认 deepen"
   - id: N13
     level: operational
     title: confidence 校准规则
@@ -316,7 +342,7 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-calibration-pipeline-evidence.md
-    note: "Operational-scoped exists (附录 N.4); 失败/缺失/过期 → 最高 medium；未宣称准确率"
+    note: "Operational-scoped exists (附录 N.4); 失败/缺失/过期 → 最高 medium；未宣称准确率；n13_calibration_freeze=true 停止默认 deepen"
   - id: N14
     level: operational
     title: 跨存储失败恢复/对账
@@ -328,7 +354,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-migration-cutover-auth-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-raw-fact-index-reconcile-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/raw_fact_index_reconcile.py
-    note: "Operational-scoped exists (附录 N.4); 迁移 job 对账 + 切写授权 + Raw↔Fact↔Index 全链路 deepen；非生产切写认证/非 certified"
+    note: "Operational-scoped exists (附录 N.4); 迁移 job 对账 + 切写授权 + Raw↔Fact↔Index 全链路 deepen；非生产切写认证/非 certified；n11_n14_migration_freeze=true 停止默认 deepen"
   - id: N15
     level: core
     title: JSON Schema 与附录一致
@@ -358,7 +384,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase0-standard-pack-baseline.md
       - reports/products/knowledge-system/v4.3.1/phase2-record-semantics-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/record_semantics.py
-    note: "Core-scoped exists (附录 N.2); 记录级语义运行时权威 deepen 已接线（validate/transition/ledger scan）；非 reference_policy 替换 / 非 semantic_cases 全量对 Fact Store / 非 certified"
+    note: "Core-scoped exists (附录 N.2); 记录级语义运行时权威 deepen 已接线（validate/transition/ledger scan）；非 reference_policy 替换 / 非 semantic_cases 全量对 Fact Store / 非 certified；n17_record_semantics_freeze=true 停止默认 deepen"
   - id: N18
     level: core
     title: 实现方语义测试通过
@@ -370,7 +396,7 @@ items:
       - aiPlat-core/core/harness/knowledge_pipeline/implementer_semantics.py
       - reports/products/knowledge-system/v4.3.1/phase2-deployed-rbac-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/deployed_rbac_policy.py
-    note: "Core-scoped exists (附录 N.2); 最小 5 探针 + 部署侧 RBAC 真源 deepen（禁 reference_policy 作权威）；非召回/聚合/导出/缓存全路径 / 非 certified"
+    note: "Core-scoped exists (附录 N.2); 最小 5 探针 + 部署侧 RBAC 真源 deepen（禁 reference_policy 作权威）；非召回/聚合/导出/缓存全路径 / 非 certified；n18_deployed_rbac_freeze=true 停止默认 deepen"
   - id: N19
     level: extended
     title: 运行时权威与审计快照
@@ -392,7 +418,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-fact-query-fde-clarify-tenant-hotpath-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-fact-query-wiki-engine-search-pages-hotpath-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_query_audit.py
-    note: "Extended-scoped exists (附录 N.3); customer_action before/after + Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve/sys_wiki_context/wiki_structured/wiki_search_pages_api/sys_ontology_context(域)/URN syscall+HTTP/sys_graph_neighbors/sys_graph_query/裸 wiki_search_pages/FDE clarify tenant/wiki_engine.search_pages(opt-in) 热路径 best-effort deepen；非全部旁路强制 / 非 N24 总线全量 / 非 certified"
+    note: "Extended-scoped exists (附录 N.3); customer_action before/after + Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve/sys_wiki_context/wiki_structured/wiki_search_pages_api/sys_ontology_context(域)/URN syscall+HTTP/sys_graph_neighbors/sys_graph_query/裸 wiki_search_pages/FDE clarify tenant/wiki_engine.search_pages(opt-in) 热路径 best-effort deepen；非全部旁路强制 / 非 N24 总线全量 / 非 certified；n19_fact_query_audit_freeze=true 停止默认 deepen"
   - id: N20
     level: extended
     title: L1/L2/L3 约束分层
@@ -405,7 +431,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-action-execution-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-constraint-layers-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/constraint_layers.py
-    note: "Extended-scoped exists (附录 N.3); L1+审批 + 知识面 L1>L2>L3 栈 + Gateway/put_fact/query_facts_gateway/MaterialsChat/GraphRAG/Wiki-KB/裸 list/query_facts list 热路径 n20_constraint deepen；非 list→dict 改写 / 非 Lv4 / 非 certified"
+    note: "Extended-scoped exists (附录 N.3); L1+审批 + 知识面 L1>L2>L3 栈 + Gateway/put_fact/query_facts_gateway/MaterialsChat/GraphRAG/Wiki-KB/裸 list/query_facts list 热路径 n20_constraint deepen；非 list→dict 改写 / 非 Lv4 / 非 certified；n20_constraint_layers_freeze=true 停止默认 deepen"
   - id: N21
     level: core
     title: 防假绿
@@ -417,7 +443,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-query-abstain-citations-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/query_abstain_citations.py
-    note: "Core-scoped exists (附录 N.2); OCS/校准诚实锁 + Fact/object_set + Wiki/KB 查询形 + MaterialsChat RAG/trivial/cache_hit + GraphRAG + list 挂 n21_query；非改写 list 主返回类型 / 非 certified"
+    note: "Core-scoped exists (附录 N.2); OCS/校准诚实锁 + Fact/object_set + Wiki/KB 查询形 + MaterialsChat RAG/trivial/cache_hit + GraphRAG + list 挂 n21_query；非改写 list 主返回类型 / 非 certified；n21_query_abstain_freeze=true 停止默认 deepen"
   - id: N22
     level: extended
     title: 实例/字段级 ACL
@@ -505,7 +531,7 @@ items:
       - aiPlat-core/core/harness/knowledge/ontology_completeness.py
       - reports/products/knowledge-system/v4.3.1/phase2-ocs-enterprise-scan-evidence.md
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ocs_enterprise_scan_phase2.py
-    note: "Operational-scoped exists (附录 N.4); §13.4 覆盖计分 + 门槛门；未宣称企业全域完整"
+    note: "Operational-scoped exists (附录 N.4); §13.4 覆盖计分 + 门槛门；未宣称企业全域完整；n23_ocs_freeze=true 停止默认 deepen"
   - id: N24
     level: operational
     title: 版本/变更/审计

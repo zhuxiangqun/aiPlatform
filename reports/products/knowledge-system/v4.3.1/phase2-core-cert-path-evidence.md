@@ -27,6 +27,19 @@ pilot_domain: lock-service
 | SLO 遥测面冻结（Operational） | pass | `slo_telemetry_freeze: true`（wiring≠attainment） |
 | N01 Raw/连接器面冻结（Core） | pass | `n01_raw_integrity_freeze: true` |
 | N02 ObjectType 发布面冻结（Core） | pass | `n02_object_type_freeze: true` |
+| N03 面冻结（Core） | pass | `n03_claim_freeze: true` |
+| N04/N12 面冻结（Core） | pass | `n04_n12_write_rbac_freeze: true` |
+| N05 面冻结（Extended） | pass | `n05_wiki_rebuild_freeze: true` |
+| N06 面冻结（Core） | pass | `n06_query_gateway_freeze: true` |
+| N10 面冻结（Operational） | pass | `n10_gold_eval_freeze: true` |
+| N11/N14 面冻结（Operational） | pass | `n11_n14_migration_freeze: true` |
+| N13/校准 面冻结（Operational） | pass | `n13_calibration_freeze: true` |
+| N17 面冻结（Core） | pass | `n17_record_semantics_freeze: true` |
+| N18 面冻结（Core） | pass | `n18_deployed_rbac_freeze: true` |
+| N19 面冻结（Extended） | pass | `n19_fact_query_audit_freeze: true` |
+| N20 面冻结（Extended） | pass | `n20_constraint_layers_freeze: true` |
+| N21 面冻结（Core） | pass | `n21_query_abstain_freeze: true` |
+| N23/OCS 面冻结（Operational） | pass | `n23_ocs_freeze: true` |
 | `core_ready` 门 | pass | `evaluate_core_ready_gate` |
 | FDE HTTP 接线 | pass | `GET …/conformance-pack/core-ready` / `pilot-core-cert` |
 | 无批准时 pilot_certified 恒 false | pass | 缺路径 / superseded pending + honesty 测 |

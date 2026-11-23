@@ -24,6 +24,19 @@ def test_catalog_levels_and_core_minimum():
     assert cat.get("slo_telemetry_freeze") is True
     assert cat.get("n01_raw_integrity_freeze") is True
     assert cat.get("n02_object_type_freeze") is True
+    assert cat.get("n03_claim_freeze") is True
+    assert cat.get("n04_n12_write_rbac_freeze") is True
+    assert cat.get("n05_wiki_rebuild_freeze") is True
+    assert cat.get("n06_query_gateway_freeze") is True
+    assert cat.get("n10_gold_eval_freeze") is True
+    assert cat.get("n11_n14_migration_freeze") is True
+    assert cat.get("n13_calibration_freeze") is True
+    assert cat.get("n17_record_semantics_freeze") is True
+    assert cat.get("n18_deployed_rbac_freeze") is True
+    assert cat.get("n19_fact_query_audit_freeze") is True
+    assert cat.get("n20_constraint_layers_freeze") is True
+    assert cat.get("n21_query_abstain_freeze") is True
+    assert cat.get("n23_ocs_freeze") is True
     core = [it for it in items if it.get("level") == "core"]
     assert all(it.get("status") == "exists" for it in core)
 
@@ -42,6 +55,19 @@ def test_core_ready_gate_passes_without_certifying():
     assert gate["slo_telemetry_freeze"] is True
     assert gate["n01_raw_integrity_freeze"] is True
     assert gate["n02_object_type_freeze"] is True
+    assert gate["n03_claim_freeze"] is True
+    assert gate["n04_n12_write_rbac_freeze"] is True
+    assert gate["n05_wiki_rebuild_freeze"] is True
+    assert gate["n06_query_gateway_freeze"] is True
+    assert gate["n10_gold_eval_freeze"] is True
+    assert gate["n11_n14_migration_freeze"] is True
+    assert gate["n13_calibration_freeze"] is True
+    assert gate["n17_record_semantics_freeze"] is True
+    assert gate["n18_deployed_rbac_freeze"] is True
+    assert gate["n19_fact_query_audit_freeze"] is True
+    assert gate["n20_constraint_layers_freeze"] is True
+    assert gate["n21_query_abstain_freeze"] is True
+    assert gate["n23_ocs_freeze"] is True
 
 
 def test_pilot_core_cert_requires_approval(tmp_path):

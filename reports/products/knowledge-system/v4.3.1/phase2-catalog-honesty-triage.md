@@ -14,6 +14,8 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 > 范围：`n24-conformance-catalog.yaml` 中 `status: exists` 且 note 仍含深度缺口，但 **未** 单独列入 [`phase2-exception-adr.md`](./phase2-exception-adr.md) 例外表的项。  
 > 判定三选一：**仍开放** / **已过时** / **并入既有刀**。  
 > **禁止**：本盘点冒充附录 N certified / 关闭 ADR 例外 / 风险已接受签字。
+>
+> 2026-11-23：剩余 ADR 例外面已批量冻结（`phase2-remaining-adr-freeze-evidence.md`）；本表 residual 列仍开放，不因 freeze 关闭。
 
 ## 本切片修复
 
