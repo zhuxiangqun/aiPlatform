@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / ABox ACL H.1 矩阵配置轴（N07/N22 deepen）
 
 > 实施权威：附录 H.1 / N07/N22；叠在 per-role 矩阵之上。  
-> **未宣称** N07/N22 certified / 任意 RBAC 产品 / 完整表达式语言。
+> **未宣称** N07/N22 certified / 任意 RBAC 产品。有界表达式 A+B+C 见 expr-lang 证据；条件面 deepen 已冻结见 `phase2-abox-acl-h1-condition-freeze-evidence.md`。
 
 ## 检查表
 
@@ -44,4 +44,4 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 
 - N07/N22 certified 或关闭 ADR 例外
 - 任意自由输入角色/动作轴（仍须经 env/配置 SSOT）
-- 多层嵌套布尔 / 完整表达式语言
+- `$where`/`$expr`（H.1 条件面 deepen 已冻结）
