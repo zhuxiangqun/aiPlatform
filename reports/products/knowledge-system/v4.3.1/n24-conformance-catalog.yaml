@@ -60,6 +60,8 @@ n21_query_abstain_freeze: true
 n21_query_abstain_note: "N21 abstain+citations envelopes on Fact/Wiki/Materials/GraphRAG/list is Core-sufficient; stop further default N21 deepen. Residual: certified / rewrite list primary return type."
 n23_ocs_freeze: true
 n23_ocs_note: "N23 enterprise domain OCS scan + vocab pre-register + floor gate is Operational-sufficient; stop further default N23 deepen. Residual: certified / enterprise-wide completeness."
+phase2_sufficient_freeze_complete: true
+phase2_sufficient_freeze_note: "Phase 2 default-deepen program closed via sufficient freezes (20 flags); residuals/certified still open. Not Nxx certified / not Full unconditional."
 core_adr_exceptions: []
 extended_minimum_ids:
   - N05

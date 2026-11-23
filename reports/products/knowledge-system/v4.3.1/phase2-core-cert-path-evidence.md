@@ -40,6 +40,7 @@ pilot_domain: lock-service
 | N20 面冻结（Extended） | pass | `n20_constraint_layers_freeze: true` |
 | N21 面冻结（Core） | pass | `n21_query_abstain_freeze: true` |
 | N23/OCS 面冻结（Operational） | pass | `n23_ocs_freeze: true` |
+| Phase 2 sufficient-freeze 程序收口 | pass | `phase2_sufficient_freeze_complete: true` |
 | `core_ready` 门 | pass | `evaluate_core_ready_gate` |
 | FDE HTTP 接线 | pass | `GET …/conformance-pack/core-ready` / `pilot-core-cert` |
 | 无批准时 pilot_certified 恒 false | pass | 缺路径 / superseded pending + honesty 测 |

@@ -54,6 +54,46 @@ FULL_MINIMUM_IDS = (
     CORE_MINIMUM_IDS | EXTENDED_MINIMUM_IDS | OPERATIONAL_MINIMUM_IDS
 )
 
+# Phase 2 默认 deepen 程序收口：各面 sufficient freeze（≠ certified）
+SUFFICIENT_FREEZE_FLAGS = frozenset(
+    {
+        "n09_core_probe_freeze",
+        "n07_n22_h1_condition_freeze",
+        "n08_action_policy_freeze",
+        "n24_unified_audit_freeze",
+        "slo_telemetry_freeze",
+        "n01_raw_integrity_freeze",
+        "n02_object_type_freeze",
+        "n03_claim_freeze",
+        "n04_n12_write_rbac_freeze",
+        "n05_wiki_rebuild_freeze",
+        "n06_query_gateway_freeze",
+        "n10_gold_eval_freeze",
+        "n11_n14_migration_freeze",
+        "n13_calibration_freeze",
+        "n17_record_semantics_freeze",
+        "n18_deployed_rbac_freeze",
+        "n19_fact_query_audit_freeze",
+        "n20_constraint_layers_freeze",
+        "n21_query_abstain_freeze",
+        "n23_ocs_freeze",
+    }
+)
+
+
+def sufficient_freeze_missing(src: Dict[str, Any]) -> List[str]:
+    """返回 catalog/pack 中未置真的 sufficient freeze 旗。
+
+    Args:
+        src: catalog 或 pack 字典。
+
+    Returns:
+        缺失旗名（排序）。
+    """
+    return sorted(
+        f for f in SUFFICIENT_FREEZE_FLAGS if not bool((src or {}).get(f))
+    )
+
 
 def _repo_root() -> Path:
     """仓库根（aiPlat-core/core/harness/... → parents[4]）。"""
@@ -277,6 +317,11 @@ def build_conformance_pack(
         "n20_constraint_layers_freeze": bool(cat.get("n20_constraint_layers_freeze")),
         "n21_query_abstain_freeze": bool(cat.get("n21_query_abstain_freeze")),
         "n23_ocs_freeze": bool(cat.get("n23_ocs_freeze")),
+        "phase2_sufficient_freeze_complete": bool(
+            cat.get("phase2_sufficient_freeze_complete")
+        )
+        and not sufficient_freeze_missing(cat),
+        "sufficient_freeze_missing": sufficient_freeze_missing(cat),
     }
 
 
@@ -398,6 +443,12 @@ def evaluate_core_ready_gate(
         "n20_constraint_layers_freeze": bool(pack.get("n20_constraint_layers_freeze")),
         "n21_query_abstain_freeze": bool(pack.get("n21_query_abstain_freeze")),
         "n23_ocs_freeze": bool(pack.get("n23_ocs_freeze")),
+        "phase2_sufficient_freeze_complete": bool(
+            pack.get("phase2_sufficient_freeze_complete")
+        ),
+        "sufficient_freeze_missing": list(
+            pack.get("sufficient_freeze_missing") or []
+        ),
         # 为什么：结构门不得冒充认证
         "certified": False,
         "pilot_certified": False,

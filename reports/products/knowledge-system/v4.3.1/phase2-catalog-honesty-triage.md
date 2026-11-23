@@ -16,6 +16,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 > **禁止**：本盘点冒充附录 N certified / 关闭 ADR 例外 / 风险已接受签字。
 >
 > 2026-11-23：剩余 ADR 例外面已批量冻结（`phase2-remaining-adr-freeze-evidence.md`）；本表 residual 列仍开放，不因 freeze 关闭。
+> 2026-11-23：Phase 2 sufficient-freeze 程序收口（`phase2-sufficient-freeze-closeout-evidence.md`）；仍不关闭 residual / certified。
 
 ## 本切片修复
 
