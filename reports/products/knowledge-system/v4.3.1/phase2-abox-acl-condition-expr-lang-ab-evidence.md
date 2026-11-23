@@ -42,6 +42,6 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- `$where` / `$expr` / 字段级 `$not:{$gt:…}`（切片 C）
+- `$where` / `$expr`（字段级 `$not` → `phase2-abox-acl-condition-expr-lang-c-evidence.md`）
 - 布尔深度继续 +1 deepen（已停刀）
 - nest≥3 / 点号段≥9
