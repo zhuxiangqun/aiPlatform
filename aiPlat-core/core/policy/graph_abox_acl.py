@@ -27,10 +27,14 @@ _VALID_ACTIONS = frozenset({"read", "update", "state_change", "delete", "admin"}
 # 为什么：H.1 $regex 仅开放短模式 + 有界主语，降低 ReDoS / 任意编译风险（非完整正则引擎产品）
 _REGEX_MAX_PATTERN_LEN = 128
 _REGEX_MAX_SUBJECT_LEN = 4096
-# 为什么：有界 $and/$or/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
+# 为什么：$all 有界成员列表，避免超长期望集做成任意扫描引擎
+_ALL_MAX_ITEMS = 32
+# 为什么：$elemMatch 有界数组扫描，避免任意嵌套文档查询引擎
+_ELEMMATCH_MAX_ITEMS = 64
+# 为什么：有界 $and/$or/$nor/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
 _BOOL_MAX_CLAUSES = 8
 _BOOL_MAX_DEPTH = 28  # 顶层=1；允许再嵌27层（深度 28）；更深拒配
-_BOOL_OPS = frozenset({"$and", "$or", "$not"})
+_BOOL_OPS = frozenset({"$and", "$or", "$nor", "$not"})
 
 # Identity / PolicyGate role → ABox ACL role (T9 productization)
 _ROLE_ALIASES: Dict[str, str] = {
@@ -258,14 +262,60 @@ def _match_regex_condition(got: Any, pattern: Any, options: Any = "") -> bool:
         return False
 
 
+
+def _match_elem_match_condition(got: Any, predicate: Any) -> bool:
+    """有界 ``$elemMatch``：数组中至少一元素满足谓词。
+
+    Args:
+        got: 实例属性；须为 list/tuple（过长拒配）。
+        predicate: 非空 dict。全 ``$`` 键 → 对标量元素走 ``_match_condition_value``；
+            否则要求元素为 dict，走字段 AND（禁布尔算子 / 嵌套 ``$elemMatch``）。
+    """
+    # 为什么：只扫有界数组；禁止把 condition 做成任意文档查询语言
+    if not isinstance(got, (list, tuple)):
+        return False
+    if len(got) > _ELEMMATCH_MAX_ITEMS:
+        return False
+    if not isinstance(predicate, dict) or not predicate:
+        return False
+    if _BOOL_OPS.intersection(predicate.keys()):
+        return False
+    if "$elemMatch" in predicate:
+        return False
+    keys = set(predicate.keys())
+    # 标量元素：谓词须全为字段算子键（如 {$eq}/{$in}/{$regex,$options}）
+    if all(str(k).startswith("$") for k in keys):
+        for el in got:
+            if _match_condition_value(el, predicate):
+                return True
+        return False
+    # 文档元素：字段级 AND；嵌套 $elemMatch 拒配（非完整表达式）
+    for el in got:
+        if not isinstance(el, dict):
+            continue
+        nested_reject = False
+        for v in el.values():
+            if isinstance(v, dict) and "$elemMatch" in v:
+                nested_reject = True
+                break
+        if nested_reject:
+            continue
+        # 谓词值侧禁止再挂 $elemMatch
+        if any(isinstance(v, dict) and "$elemMatch" in v for v in predicate.values()):
+            return False
+        if _match_field_conditions(predicate, el):
+            return True
+    return False
+
+
 def _match_condition_value(got: Any, want: Any) -> bool:
-    """单键条件值：标量等值；``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
+    """单键条件值：标量等值；``{$eq|$ne|$in|$nin|$all|$elemMatch|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
 
     Args:
         got: 实例属性值（可为 None；None 视为字段缺失）。
         want: 条件期望；标量或单运算符 dict（``$regex`` 可与 ``$options`` 同级）。
     """
-    # 为什么：仅开放等值/集合/存在/数值或 str 字典序比较/有界正则(+i)；禁止嵌套布尔
+    # 为什么：仅开放等值/集合($in/$nin/$all)/$elemMatch/存在/数值或 str 字典序比较/有界正则(+i)；禁止嵌套布尔
     if isinstance(want, dict) and want:
         keys = set(want.keys())
         if "$regex" in keys:
@@ -292,6 +342,18 @@ def _match_condition_value(got: Any, want: Any) -> bool:
                 return False
             got_s = str(got)
             return all(got_s != str(x) for x in arg)
+        if op_s == "$all":
+            # 为什么：主语须为集合；期望集有界；空期望 ≡ 空真（与 Mongo $all 空列表一致）
+            if not isinstance(got, (list, tuple, set)):
+                return False
+            if not isinstance(arg, (list, tuple, set)):
+                return False
+            if len(arg) > _ALL_MAX_ITEMS:
+                return False
+            got_ss = {str(x) for x in got}
+            return all(str(x) in got_ss for x in arg)
+        if op_s == "$elemMatch":
+            return _match_elem_match_condition(got, arg)
         if op_s == "$exists":
             # 为什么：true→字段存在；false→字段缺失；arg 用 bool() 规范化
             present = got is not None
@@ -353,7 +415,7 @@ def _match_bool_condition(
     *,
     depth: int,
 ) -> Optional[bool]:
-    """有界 ``$and``/``$or``/``$not``（深度 ≤ ``_BOOL_MAX_DEPTH``）。
+    """有界 ``$and``/``$or``/``$nor``/``$not``（深度 ≤ ``_BOOL_MAX_DEPTH``）。
 
     Args:
         condition: 纯布尔算子 dict（单键）。
@@ -367,7 +429,7 @@ def _match_bool_condition(
         return None
     keys = set(condition.keys())
     bool_hit = keys & _BOOL_OPS
-    # 为什么：只允许纯 {$and:[]} / {$or:[]} / {$not:{}}；与字段键混用 / 双算子 → 拒配
+    # 为什么：只允许纯 {$and|$or|$nor:[]} / {$not:{}}；与字段键混用 / 双算子 → 拒配
     if len(keys) != 1 or len(bool_hit) != 1:
         return None
     op = next(iter(bool_hit))
@@ -397,7 +459,7 @@ def _match_bool_condition(
             return None
         nested_hit = set(clause.keys()) & _BOOL_OPS
         if nested_hit:
-            # 为什么：深度内允许 $and/$or/$not 子句再挂一层；超深拒配
+            # 为什么：深度内允许 $and/$or/$nor/$not 子句再挂一层；超深拒配
             if depth >= _BOOL_MAX_DEPTH:
                 return None
             child = _match_bool_condition(clause, attrs, depth=depth + 1)
@@ -408,7 +470,12 @@ def _match_bool_condition(
             matched.append(_match_field_conditions(clause, attrs))
     if op == "$and":
         return all(matched)
-    return any(matched)
+    if op == "$or":
+        return any(matched)
+    if op == "$nor":
+        # 为什么：$nor ≡ ¬(∨)；子句拒配已在上方传播为 None，此处仅对成功求值取反
+        return not any(matched)
+    return None
 
 
 def match_abox_condition(
@@ -417,12 +484,12 @@ def match_abox_condition(
 ) -> bool:
     """H.1 最小 condition：全键匹配；空 condition 恒 True。
 
-    每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$exists|$gt|$gte|$lt|$lte|$regex: …}``
+    每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$all|$elemMatch|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
-    顶层可单独使用 ``{$and: [...]}`` / ``{$or: [...]}`` / ``{$not: {…}}``
-    （深度 ≤28：``$and``/``$or``/``$not`` 可再嵌同族；``$not`` 可否定字段、
-    纯字段 ``$and``/``$or`` 或另一 ``$not``（正规求值再取反，禁 fail-open）；
-    每层子句 ≤8；非完整表达式语言）。
+    顶层可单独使用 ``{$and|$or|$nor: [...]}`` / ``{$not: {…}}``
+    （深度 ≤28：``$and``/``$or``/``$nor``/``$not`` 可再嵌同族；``$not`` 可否定字段、
+    纯字段 ``$and``/``$or``/``$nor`` 或另一 ``$not``（正规求值再取反，禁 fail-open）；
+    ``$nor`` ≡ ¬(∨)；每层子句 ≤8；非完整表达式语言）。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。

@@ -124,10 +124,13 @@ authority: supporting
 | [phase2-abox-acl-condition-bool-depth25-evidence.md](./phase2-abox-acl-condition-bool-depth25-evidence.md) | N07/N22 deepen：ABox ACL condition $and/$or 深度 25（有界 / 拒配传播 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-condition-bool-depth26-evidence.md](./phase2-abox-acl-condition-bool-depth26-evidence.md) | N07/N22 deepen：ABox ACL condition $and/$or 深度 26（有界 / 拒配传播 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-condition-bool-depth27-evidence.md](./phase2-abox-acl-condition-bool-depth27-evidence.md) | N07/N22 deepen：ABox ACL condition $and/$or 深度 27（有界 / 拒配传播 / 非完整表达式 / 非 certified） |
+| [phase2-abox-acl-condition-nor-evidence.md](./phase2-abox-acl-condition-nor-evidence.md) | N07/N22 deepen：ABox ACL condition $nor（≡¬∨ / 有界 / 拒配传播 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-condition-bool-depth28-evidence.md](./phase2-abox-acl-condition-bool-depth28-evidence.md) | N07/N22 deepen：ABox ACL condition $and/$or 深度 28（有界 / 拒配传播 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-condition-not-not-evidence.md](./phase2-abox-acl-condition-not-not-evidence.md) | N07/N22 deepen：ABox ACL $not→$not 正规求值再取反（有界 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-condition-not-shallow-evidence.md](./phase2-abox-acl-condition-not-shallow-evidence.md) | N07/N22 deepen：ABox ACL condition 浅层 $not（单字段子句 / 非多层嵌套 / 非 certified） |
 | [phase2-abox-acl-condition-nin-evidence.md](./phase2-abox-acl-condition-nin-evidence.md) | N07/N22 deepen：ABox ACL condition $nin（$in 对偶 / 非表达式语言 / 非 certified） |
+| [phase2-abox-acl-condition-all-evidence.md](./phase2-abox-acl-condition-all-evidence.md) | N07/N22 deepen：ABox ACL condition $all（有界期望集 / 非 `$elemMatch` / 非 certified） |
+| [phase2-abox-acl-condition-elemmatch-evidence.md](./phase2-abox-acl-condition-elemmatch-evidence.md) | N07/N22 deepen：ABox ACL condition $elemMatch（有界数组 / 非嵌套 / 非完整表达式 / 非 certified） |
 | [phase2-abox-acl-h1-matrix-thin-evidence.md](./phase2-abox-acl-h1-matrix-thin-evidence.md) | N07/N22 deepen：H.1 薄矩阵回退（共享 actions / 非 certified） |
 | [phase2-abox-acl-h1-matrix-per-role-evidence.md](./phase2-abox-acl-h1-matrix-per-role-evidence.md) | N07/N22 deepen：H.1 per-role 矩阵（role_actions / 固定轴 / 非任意 RBAC / 非 certified） |
 | [phase2-abox-acl-h1-matrix-config-axes-evidence.md](./phase2-abox-acl-h1-matrix-config-axes-evidence.md) | N07/N22 deepen：H.1 矩阵配置轴（crud_matrix.h1_matrix_* ← role×action SSOT / 非任意 RBAC / 非 certified） |

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T07:04:20+08:00",
+  "reviewed_at": "2026-11-23T08:10:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "e84879af2054413c942db07792c203e655d06f9f",
-  "diff_sha256": "e1879e58283133b2ce33483a9b2c6bdd7efa8bdaeb0d3de60c61156708794daa",
-  "head_sha": "9c60a3b0a84b02d263ddd28933e2abd4f3351012",
+  "merge_base": "4fb71f2ae76cf8ba32c66423efd33e61b2721411",
+  "diff_sha256": "675b38605cff3bbc455813e663eef563bfc28003b33c2cb131c9cd841cdd4d22",
+  "head_sha": "61327793f31dae0cc9dd9db87d079dfc6eeb0073",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Depth-28 only raises _BOOL_MAX_DEPTH; reject-as-None still propagates so outer $not cannot fail-open. Residual: depth≥29 / full expr language still out of scope."
+  "note": "Synced depth-28 from main into $nor/$all/$elemMatch tip; depth +1 deepen remains stopped. Residual: full expr / certified."
 }
