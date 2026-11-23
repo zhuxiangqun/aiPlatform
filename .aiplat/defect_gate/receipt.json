@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T08:00:00+08:00",
+  "reviewed_at": "2026-11-23T08:10:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "e84879af2054413c942db07792c203e655d06f9f",
-  "diff_sha256": "6a200a73b019788c17d9302e8127da4b1d4f017d891fa32a3bf37c3fa702ef39",
-  "head_sha": "9317d3a59a1a9e89b33ebc0abfecb52595fb0763",
+  "merge_base": "4fb71f2ae76cf8ba32c66423efd33e61b2721411",
+  "diff_sha256": "675b38605cff3bbc455813e663eef563bfc28003b33c2cb131c9cd841cdd4d22",
+  "head_sha": "61327793f31dae0cc9dd9db87d079dfc6eeb0073",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Merged $nor onto $all/$elemMatch tip; reject-as-None and field-op rejects unchanged. Residual: full expr / certified. Supersedes #1012."
+  "note": "Synced depth-28 from main into $nor/$all/$elemMatch tip; depth +1 deepen remains stopped. Residual: full expr / certified."
 }
