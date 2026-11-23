@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / ABox ACL condition $elemMatch（N07/N22 deepen）
 
 > 实施权威：附录 H.1 / N07/N22；叠在 `$all` + `$nor` + 有界 bool depth（停刀）之上。  
-> **未宣称** N07/N22 certified / 完整表达式语言 / 嵌套 `$elemMatch`。
+> **未宣称** N07/N22 certified / Mongo 全兼容。嵌套 `$elemMatch` + 布尔谓词见 `phase2-abox-acl-condition-expr-lang-ab-evidence.md`。
 
 ## 检查表
 
@@ -18,7 +18,7 @@ pilot_domain: lock-service
 |-----------|:----:|------|
 | 文档元素字段 AND | pass | `test_match_condition_elemmatch` |
 | 标量元素值算子 | pass | 同上 |
-| 拒配（非数组/布尔/嵌套） | pass | 同上 |
+| 拒配（非数组/空谓词） | pass | 同上 |
 | deny 门控 | pass | `test_check_entity_acl_elemmatch_gates_deny` |
 | 薄 UI 文案 | pass | `test_panel_documents_elemmatch` |
 
@@ -41,5 +41,5 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 ## 明确未做
 
 - N07/N22 certified 或关闭 ADR 例外
-- 嵌套 `$elemMatch` / `$and|$or` 谓词 / 任意表达式语言
+- 任意表达式语言 / `$where`/`$expr`（有界切片 A+B → `phase2-abox-acl-condition-expr-lang-ab-evidence.md`）
 - 布尔深度继续 +1 deepen（已停刀）

@@ -31,10 +31,32 @@ _REGEX_MAX_SUBJECT_LEN = 4096
 _ALL_MAX_ITEMS = 32
 # 为什么：$elemMatch 有界数组扫描，避免任意嵌套文档查询引擎
 _ELEMMATCH_MAX_ITEMS = 64
+# 为什么：嵌套 $elemMatch 有界（外层=1）；禁止做成任意深度文档查询
+_ELEMMATCH_MAX_NEST = 2
+# 为什么：点号路径段数有界，避免任意深度属性遍历
+_DOTTED_MAX_SEGMENTS = 8
 # 为什么：有界 $and/$or/$nor/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
 _BOOL_MAX_CLAUSES = 8
 _BOOL_MAX_DEPTH = 28  # 顶层=1；允许再嵌27层（深度 28）；更深拒配
 _BOOL_OPS = frozenset({"$and", "$or", "$nor", "$not"})
+# 为什么：$type 只开放有限别名；未知类型名拒配（非 BSON 全表产品）
+_TYPE_NAME_ALIASES: Dict[str, str] = {
+    "string": "string",
+    "str": "string",
+    "number": "number",
+    "int": "number",
+    "long": "number",
+    "double": "number",
+    "float": "number",
+    "bool": "bool",
+    "boolean": "bool",
+    "array": "array",
+    "list": "array",
+    "object": "object",
+    "dict": "object",
+    "null": "null",
+    "none": "null",
+}
 
 # Identity / PolicyGate role → ABox ACL role (T9 productization)
 _ROLE_ALIASES: Dict[str, str] = {
@@ -229,19 +251,24 @@ def _as_comparable_number(value: Any) -> Optional[float]:
     return None
 
 
-def _match_regex_condition(got: Any, pattern: Any, options: Any = "") -> bool:
-    """有界 ``$regex``；``$options`` 仅允许 ``i``（大小写不敏感）。
+def _eval_regex_condition(
+    got: Any, pattern: Any, options: Any = ""
+) -> Optional[bool]:
+    """有界 ``$regex``；``$options`` 仅允许 ``i``。
 
     Args:
-        got: 实例属性值；None → 不匹配。
+        got: 实例属性值；None → 不匹配（False，非形态拒配）。
         pattern: 正则模式（须为非空 str 且长度 ≤ `_REGEX_MAX_PATTERN_LEN`）。
         options: 可选 flags 字符串；空 / 缺省 = 无 flags；含非 ``i`` 字符 → 拒配。
+
+    Returns:
+        True/False 为匹配结果；``None`` 为形态/编译拒配（不可被字段 ``$not`` 取反）。
     """
-    # 为什么：仅开放 IGNORECASE，拒绝 m/s/x 等扩大匹配面的 flags
+    # 为什么：仅开放 IGNORECASE；形态/编译失败返回 None，禁止 $not 把坏正则翻成 True
     if got is None:
         return False
     if not isinstance(pattern, str) or not pattern or len(pattern) > _REGEX_MAX_PATTERN_LEN:
-        return False
+        return None
     flags = 0
     if options is None or options == "":
         pass
@@ -250,96 +277,221 @@ def _match_regex_condition(got: Any, pattern: Any, options: Any = "") -> bool:
             if ch == "i":
                 flags |= re.IGNORECASE
             else:
-                return False
+                return None
     else:
-        return False
+        return None
     subject = str(got)
     if len(subject) > _REGEX_MAX_SUBJECT_LEN:
         subject = subject[:_REGEX_MAX_SUBJECT_LEN]
     try:
         return re.search(pattern, subject, flags) is not None
     except re.error:
+        return None
+
+
+def _match_regex_condition(got: Any, pattern: Any, options: Any = "") -> bool:
+    """``_eval_regex_condition`` 的 bool 包装（拒配 → False）。
+
+    Args:
+        got: 实例属性值。
+        pattern: 正则模式。
+        options: 可选 flags 字符串。
+    """
+    got_r = _eval_regex_condition(got, pattern, options)
+    return False if got_r is None else got_r
+
+
+
+def _resolve_attr_value(attrs: Dict[str, Any], key: str) -> tuple[Any, bool]:
+    """解析字段键；支持有界点号路径（``a.b.c``），回退 metadata/props。
+
+    Args:
+        attrs: 实例属性根。
+        key: 字段名或点号路径。
+
+    Returns:
+        ``(value, ok)``。``ok=False`` 表示路径形态拒配（空段/超段数）；
+        合法但缺失字段时 ``value`` 为 ``None`` 且 ``ok=True``。
+    """
+    key_s = str(key)
+    if not key_s:
+        return None, False
+    meta = attrs.get("metadata") if isinstance(attrs.get("metadata"), dict) else {}
+    props = attrs.get("props") if isinstance(attrs.get("props"), dict) else {}
+    if "." not in key_s:
+        got = attrs.get(key_s)
+        if got is None:
+            got = meta.get(key_s)
+        if got is None:
+            got = props.get(key_s)
+        return got, True
+    parts = key_s.split(".")
+    # 为什么：空段 / 超段数一律拒配，避免任意深度遍历或 ``a..b`` 歧义
+    if len(parts) < 2 or len(parts) > _DOTTED_MAX_SEGMENTS or any(p == "" for p in parts):
+        return None, False
+    for root in (attrs, meta, props):
+        if not isinstance(root, dict):
+            continue
+        cur: Any = root
+        miss = False
+        for seg in parts:
+            if not isinstance(cur, dict) or seg not in cur:
+                miss = True
+                break
+            cur = cur[seg]
+        if not miss:
+            return cur, True
+    return None, True
+
+
+def _eval_type_condition(got: Any, arg: Any) -> Optional[bool]:
+    """有界 ``$type``：单个别名或别名列表（OR）。
+
+    Args:
+        got: 字段值。
+        arg: 类型名 / 别名，或 list/tuple 多选。
+
+    Returns:
+        True/False；未知类型名 / 空列表 / 超长 → ``None``（不可被字段 ``$not`` 取反）。
+    """
+    if isinstance(arg, (list, tuple)):
+        if not arg or len(arg) > _ALL_MAX_ITEMS:
+            return None
+        parts = [_eval_type_condition(got, one) for one in arg]
+        if any(p is None for p in parts):
+            return None
+        return any(bool(p) for p in parts)
+    name = _TYPE_NAME_ALIASES.get(str(arg).strip().lower())
+    # 为什么：未知类型名拒配（不猜测 BSON 码表）；供 $not 识别为形态失败
+    if name is None:
+        return None
+    if name == "null":
+        return got is None
+    if got is None:
         return False
+    if name == "string":
+        return isinstance(got, str)
+    if name == "number":
+        return isinstance(got, (int, float)) and not isinstance(got, bool)
+    if name == "bool":
+        return isinstance(got, bool)
+    if name == "array":
+        return isinstance(got, (list, tuple))
+    if name == "object":
+        return isinstance(got, dict)
+    return None
 
 
+def _match_type_condition(got: Any, arg: Any) -> bool:
+    """``_eval_type_condition`` 的 bool 包装（拒配 → False）。
 
-def _match_elem_match_condition(got: Any, predicate: Any) -> bool:
+    Args:
+        got: 字段值。
+        arg: 类型名 / 别名，或 list/tuple 多选。
+    """
+    got_r = _eval_type_condition(got, arg)
+    return False if got_r is None else got_r
+
+
+def _match_elem_match_condition(got: Any, predicate: Any, *, nest: int) -> bool:
     """有界 ``$elemMatch``：数组中至少一元素满足谓词。
 
     Args:
         got: 实例属性；须为 list/tuple（过长拒配）。
         predicate: 非空 dict。全 ``$`` 键 → 对标量元素走 ``_match_condition_value``；
-            否则要求元素为 dict，走字段 AND（禁布尔算子 / 嵌套 ``$elemMatch``）。
+            纯布尔算子 → 对文档元素走 ``_match_bool_condition``；
+            否则要求元素为 dict，走字段 AND（可再嵌 ``$elemMatch``，``nest`` ≤ 帽）。
+        nest: 当前 ``$elemMatch`` 嵌套层（外层=1）。
     """
-    # 为什么：只扫有界数组；禁止把 condition 做成任意文档查询语言
+    # 为什么：只扫有界数组；嵌套层有界，禁止任意文档查询语言
+    if nest < 1 or nest > _ELEMMATCH_MAX_NEST:
+        return False
     if not isinstance(got, (list, tuple)):
         return False
     if len(got) > _ELEMMATCH_MAX_ITEMS:
         return False
     if not isinstance(predicate, dict) or not predicate:
         return False
-    if _BOOL_OPS.intersection(predicate.keys()):
-        return False
+    # 为什么：谓词顶层键 ``$elemMatch`` 无意义 → 拒配
     if "$elemMatch" in predicate:
         return False
     keys = set(predicate.keys())
-    # 标量元素：谓词须全为字段算子键（如 {$eq}/{$in}/{$regex,$options}）
-    if all(str(k).startswith("$") for k in keys):
+    # 文档元素：谓词可为纯 {$and|$or|$nor|$not:...}（深度帽仍生效；拒配不 fail-open）
+    if _BOOL_OPS.intersection(keys):
         for el in got:
-            if _match_condition_value(el, predicate):
+            if not isinstance(el, dict):
+                continue
+            res = _match_bool_condition(predicate, el, depth=1, elem_nest=nest)
+            if res is True:
                 return True
         return False
-    # 文档元素：字段级 AND；嵌套 $elemMatch 拒配（非完整表达式）
+    # 标量元素：谓词须全为字段算子键（如 {$eq}/{$in}/{$regex,$options}/{$size}/{$type}）
+    if all(str(k).startswith("$") for k in keys):
+        for el in got:
+            if _match_condition_value(el, predicate, elem_nest=nest):
+                return True
+        return False
+    # 文档元素：字段级 AND；嵌套 $elemMatch 由 elem_nest 帽约束
     for el in got:
         if not isinstance(el, dict):
             continue
-        nested_reject = False
-        for v in el.values():
-            if isinstance(v, dict) and "$elemMatch" in v:
-                nested_reject = True
-                break
-        if nested_reject:
-            continue
-        # 谓词值侧禁止再挂 $elemMatch
-        if any(isinstance(v, dict) and "$elemMatch" in v for v in predicate.values()):
-            return False
-        if _match_field_conditions(predicate, el):
+        if _match_field_conditions(predicate, el, elem_nest=nest):
             return True
     return False
 
 
-def _match_condition_value(got: Any, want: Any) -> bool:
-    """单键条件值：标量等值；``{$eq|$ne|$in|$nin|$all|$elemMatch|$exists|$gt|$gte|$lt|$lte|$regex}``（可附 ``$options``）。
+def _eval_condition_value(
+    got: Any, want: Any, *, elem_nest: int = 0
+) -> Optional[bool]:
+    """单键条件值求值（含字段级 ``$not``）。
 
     Args:
         got: 实例属性值（可为 None；None 视为字段缺失）。
-        want: 条件期望；标量或单运算符 dict（``$regex`` 可与 ``$options`` 同级）。
+        want: 条件期望；标量或算子 dict（``$regex`` 可与 ``$options`` 同级）。
+        elem_nest: 外层已进入的 ``$elemMatch`` 层数（0=未进入）；用于嵌套帽。
+
+    Returns:
+        True/False；``None`` 为形态拒配（不可被字段 ``$not`` 取反成 True）。
     """
-    # 为什么：仅开放等值/集合($in/$nin/$all)/$elemMatch/存在/数值或 str 字典序比较/有界正则(+i)；禁止嵌套布尔
+    # 为什么：开放等值/集合/$elemMatch/$size/$type/$not/存在/比较/有界正则；形态失败与未命中分离
     if isinstance(want, dict) and want:
         keys = set(want.keys())
         if "$regex" in keys:
             # 为什么：只允许 {$regex} 或 {$regex,$options}；其它键组合一律拒配
             if keys - {"$regex", "$options"}:
-                return False
-            return _match_regex_condition(got, want.get("$regex"), want.get("$options", ""))
+                return None
+            return _eval_regex_condition(
+                got, want.get("$regex"), want.get("$options", "")
+            )
         if len(want) != 1:
-            return False
+            return None
         op, arg = next(iter(want.items()))
         op_s = str(op)
+        if op_s == "$not":
+            # 为什么：字段级 $not 正规求值再取反；子形态拒配向上传播，禁止 fail-open
+            if not isinstance(arg, dict) or not arg:
+                return None
+            inner_keys = set(arg.keys())
+            # 为什么：禁止字段 $not 再挂布尔算子 / 嵌套字段 $not（切片 C 有界）
+            if inner_keys & _BOOL_OPS:
+                return None
+            child = _eval_condition_value(got, arg, elem_nest=elem_nest)
+            if child is None:
+                return None
+            return not child
         if op_s == "$eq":
             return str(got) == str(arg)
         if op_s == "$ne":
             return str(got) != str(arg)
         if op_s == "$in":
             if not isinstance(arg, (list, tuple, set)):
-                return False
+                return None
             got_s = str(got)
             return any(got_s == str(x) for x in arg)
         if op_s == "$nin":
             # 为什么：$in 对偶；非 list/tuple/set 拒配（与 $in 对称）
             if not isinstance(arg, (list, tuple, set)):
-                return False
+                return None
             got_s = str(got)
             return all(got_s != str(x) for x in arg)
         if op_s == "$all":
@@ -347,13 +499,22 @@ def _match_condition_value(got: Any, want: Any) -> bool:
             if not isinstance(got, (list, tuple, set)):
                 return False
             if not isinstance(arg, (list, tuple, set)):
-                return False
+                return None
             if len(arg) > _ALL_MAX_ITEMS:
-                return False
+                return None
             got_ss = {str(x) for x in got}
             return all(str(x) in got_ss for x in arg)
         if op_s == "$elemMatch":
-            return _match_elem_match_condition(got, arg)
+            return _match_elem_match_condition(got, arg, nest=elem_nest + 1)
+        if op_s == "$size":
+            # 为什么：仅 list/tuple 长度；bool 不是 int；负长度形态拒配
+            if isinstance(arg, bool) or not isinstance(arg, int) or arg < 0:
+                return None
+            if not isinstance(got, (list, tuple)):
+                return False
+            return len(got) == arg
+        if op_s == "$type":
+            return _eval_type_condition(got, arg)
         if op_s == "$exists":
             # 为什么：true→字段存在；false→字段缺失；arg 用 bool() 规范化
             present = got is not None
@@ -369,7 +530,7 @@ def _match_condition_value(got: Any, want: Any) -> bool:
                 if op_s == "$lt":
                     return left_n < right_n
                 return left_n <= right_n
-            # 为什么：两端均为 str 时走字典序；混合类型 / bool / None 拒配（非表达式语言）
+            # 为什么：两端均为 str 时走字典序；混合类型 / bool / None → 未命中（可被 $not 取反）
             if isinstance(got, str) and isinstance(arg, str):
                 if op_s == "$gt":
                     return got > arg
@@ -379,32 +540,44 @@ def _match_condition_value(got: Any, want: Any) -> bool:
                     return got < arg
                 return got <= arg
             return False
-        return False
+        # 未知算子 → 形态拒配
+        return None
     return str(got) == str(want)
+
+
+def _match_condition_value(got: Any, want: Any, *, elem_nest: int = 0) -> bool:
+    """``_eval_condition_value`` 的 bool 包装（拒配 → False）。
+
+    Args:
+        got: 实例属性值（可为 None；None 视为字段缺失）。
+        want: 条件期望；标量或算子 dict（``$regex`` 可与 ``$options`` 同级）。
+        elem_nest: 外层已进入的 ``$elemMatch`` 层数（0=未进入）；用于嵌套帽。
+    """
+    got_r = _eval_condition_value(got, want, elem_nest=elem_nest)
+    return False if got_r is None else got_r
 
 
 def _match_field_conditions(
     condition: Dict[str, Any],
     attrs: Dict[str, Any],
+    *,
+    elem_nest: int = 0,
 ) -> bool:
-    """字段级全键 AND；子句不得含 ``$and``/``$or``/``$not``。
+    """字段级全键 AND；子句不得含 ``$and``/``$or``/``$not``；支持有界点号路径。
 
     Args:
         condition: 字段条件 dict。
         attrs: 实例属性（含 metadata/props 回退源）。
+        elem_nest: 外层 ``$elemMatch`` 层数（传给嵌套 ``$elemMatch``）。
     """
     # 为什么：字段子句只允许字段算子；布尔嵌套走 ``_match_bool_condition``
     if _BOOL_OPS.intersection(condition.keys()):
         return False
-    meta = attrs.get("metadata") if isinstance(attrs.get("metadata"), dict) else {}
-    props = attrs.get("props") if isinstance(attrs.get("props"), dict) else {}
     for key, want in condition.items():
-        got = attrs.get(key)
-        if got is None:
-            got = meta.get(key)
-        if got is None:
-            got = props.get(key)
-        if not _match_condition_value(got, want):
+        got, ok = _resolve_attr_value(attrs, key)
+        if not ok:
+            return False
+        if not _match_condition_value(got, want, elem_nest=elem_nest):
             return False
     return True
 
@@ -414,6 +587,7 @@ def _match_bool_condition(
     attrs: Dict[str, Any],
     *,
     depth: int,
+    elem_nest: int = 0,
 ) -> Optional[bool]:
     """有界 ``$and``/``$or``/``$nor``/``$not``（深度 ≤ ``_BOOL_MAX_DEPTH``）。
 
@@ -421,6 +595,7 @@ def _match_bool_condition(
         condition: 纯布尔算子 dict（单键）。
         attrs: 实例属性。
         depth: 当前深度（顶层调用传 1）。
+        elem_nest: 外层 ``$elemMatch`` 层数（嵌套 ``$elemMatch`` 帽透传）。
 
     Returns:
         True/False 为求值结果；``None`` 为形态/深度拒配（不可被外层 ``$not`` 取反成 True）。
@@ -440,13 +615,15 @@ def _match_bool_condition(
             return None
         inner_hit = set(arg.keys()) & _BOOL_OPS
         if not inner_hit:
-            return not _match_field_conditions(arg, attrs)
+            return not _match_field_conditions(arg, attrs, elem_nest=elem_nest)
         # 为什么：纯单键布尔子树才可取反；混键/双算子拒配
         if len(arg) != 1 or len(inner_hit) != 1:
             return None
         if depth >= _BOOL_MAX_DEPTH:
             return None
-        child = _match_bool_condition(arg, attrs, depth=depth + 1)
+        child = _match_bool_condition(
+            arg, attrs, depth=depth + 1, elem_nest=elem_nest
+        )
         # 为什么：子树拒配不可取反（否则超深 $not 链会 fail-open 成 True）
         if child is None:
             return None
@@ -462,12 +639,16 @@ def _match_bool_condition(
             # 为什么：深度内允许 $and/$or/$nor/$not 子句再挂一层；超深拒配
             if depth >= _BOOL_MAX_DEPTH:
                 return None
-            child = _match_bool_condition(clause, attrs, depth=depth + 1)
+            child = _match_bool_condition(
+                clause, attrs, depth=depth + 1, elem_nest=elem_nest
+            )
             if child is None:
                 return None
             matched.append(child)
         else:
-            matched.append(_match_field_conditions(clause, attrs))
+            matched.append(
+                _match_field_conditions(clause, attrs, elem_nest=elem_nest)
+            )
     if op == "$and":
         return all(matched)
     if op == "$or":
@@ -482,14 +663,16 @@ def match_abox_condition(
     condition: Optional[Dict[str, Any]],
     attrs: Optional[Dict[str, Any]],
 ) -> bool:
-    """H.1 最小 condition：全键匹配；空 condition 恒 True。
+    """H.1 condition：全键匹配；空 condition 恒 True。
 
-    每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$all|$elemMatch|$exists|$gt|$gte|$lt|$lte|$regex: …}``
-    （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
+    每键支持标量等值，或
+    ``{$eq|$ne|$in|$nin|$all|$elemMatch|$exists|$size|$type|$not|$gt|$gte|$lt|$lte|$regex: …}``
+    （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序；
+    点号路径 ``a.b.c`` 段数 ≤8；``$elemMatch`` 可嵌套且 nest≤2，谓词可含有界布尔；
+    字段级 ``$not`` 正规求值再取反，禁嵌套字段 ``$not``/布尔算子，形态拒配不 fail-open）。
     顶层可单独使用 ``{$and|$or|$nor: [...]}`` / ``{$not: {…}}``
-    （深度 ≤28：``$and``/``$or``/``$nor``/``$not`` 可再嵌同族；``$not`` 可否定字段、
-    纯字段 ``$and``/``$or``/``$nor`` 或另一 ``$not``（正规求值再取反，禁 fail-open）；
-    ``$nor`` ≡ ¬(∨)；每层子句 ≤8；非完整表达式语言）。
+    （深度 ≤28；``$nor`` ≡ ¬(∨)；每层子句 ≤8）。
+    有界表达式切片 A+B+C；**非** ``$where``/``$expr`` / 非 certified。
 
     Args:
         condition: 可选条件 dict（如 status/tenant_id）。
@@ -506,9 +689,9 @@ def match_abox_condition(
     bool_hit = keys & _BOOL_OPS
     if bool_hit:
         # 为什么：拒配（None）对外恒 False（规则不生效），且不会被嵌套 $not 再翻成 True
-        got = _match_bool_condition(condition, attrs, depth=1)
+        got = _match_bool_condition(condition, attrs, depth=1, elem_nest=0)
         return False if got is None else got
-    return _match_field_conditions(condition, attrs)
+    return _match_field_conditions(condition, attrs, elem_nest=0)
 
 
 def _normalize_masked_properties(props: Optional[List[Any]]) -> List[str]:
