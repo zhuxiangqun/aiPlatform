@@ -42,4 +42,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform .venv/bin/python -m pytest \
 ## 明确未做
 
 - Lv4 误报门 v2 deepen 见 `phase2-lv4-false-positive-gate-evidence.md`（本文件不重复宣称全量 Action Lv4）
-- N08 certified / 关闭 ADR 例外
+- N08 certified / 关闭 ADR 例外（Policy 面冻结见 `phase2-n08-action-policy-freeze-evidence.md`）
