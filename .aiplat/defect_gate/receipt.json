@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T18:15:00+08:00",
+  "reviewed_at": "2026-11-23T18:25:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "f0aaf1c91e091f30a3deb2b1c67ec92326094b42",
-  "diff_sha256": "fee4963f8a2431f2b9e5cbbf528799909f2de2bcabbb08762d1c8767d6f6df1f",
-  "head_sha": "2299713d8daaa09f6c365a2008b1186d3bfa795b",
+  "diff_sha256": "76b13e72a84a0b0b28afbcc1bab8c609131060a89f67c078602faabf02bfcfe9",
+  "head_sha": "f639669e6a48bfdf57784255c29917c2f89608bf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N01 vendor soft-probe matrix; oracle declared_unavailable; certified false; freeze stays. Local lock only. CI unlock is non-author GitHub Approve."
+  "note": "N01 vendor soft-probe + DOCUMENT_SYSTEM line sync. Local lock only. CI unlock is non-author GitHub Approve."
 }
