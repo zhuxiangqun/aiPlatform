@@ -7387,6 +7387,47 @@ def evaluate_knowledge_slo_wiring_gate(
     )
 
 
+def evaluate_knowledge_slo_attainment_window(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    db_path: Any = None,
+    include_live: bool = True,
+    min_samples: int = 1,
+    approval_record_path: Any = None,
+) -> Dict[str, Any]:
+    """SLO 生产达标窗口（窗口达标 + 非作者批准 → attainment_ok；显式 residual）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 窗口小时。
+        db_path: 可选样本库。
+        include_live: 是否计入 live 源。
+        min_samples: 每指标最少样本。
+        approval_record_path: SLO 达标窗口批准 JSON 路径。
+
+    Returns:
+        evaluate_slo_attainment_window 回执。``certified`` 恒假。
+    """
+    from core.harness.knowledge_pipeline.slo_telemetry import (
+        evaluate_slo_attainment_window,
+    )
+
+    return evaluate_slo_attainment_window(
+        tenant_id,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        db_path=str(db_path) if db_path else None,
+        include_live=include_live,
+        min_samples=int(min_samples),
+        approval_record_path=str(approval_record_path)
+        if approval_record_path
+        else None,
+    )
+
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 

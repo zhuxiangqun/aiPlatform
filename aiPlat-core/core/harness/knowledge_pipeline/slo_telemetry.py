@@ -1,19 +1,24 @@
-"""知识系统生产 SLO 遥测接线（F1 deepen / 白皮书 §14）。
+"""知识系统生产 SLO 遥测与达标窗口（F1 / 白皮书 §14；显式 residual）。
 
-职责：租户隔离样本记录、对标默认目标的快照、接线门（wiring≠attainment）。
-非目标：不宣称生产窗口达标；不做告警/仪表盘；不升级 Full unconditional；
-不采集 ingest/object-sync/索引重建（后续切片）。
+职责：租户隔离样本记录、对标默认目标的快照、接线门、达标窗口评估。
+非目标：不做告警/仪表盘；不升级 Full unconditional / n24_full_conformance；
+不采集 ingest/object-sync/索引重建（默认 deepen 仍冻结）。
+诚实锁：wiring≠attainment；attainment_ok 须窗口达标 + 非作者批准；certified 恒 false。
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# 达标窗口：每指标最少有效样本；测试可覆写
+DEFAULT_ATTAINMENT_MIN_SAMPLES = 1
 
 # 为什么：镜像 phase2-slo-target-evidence / 白皮书 §14；本刀只接线 3 个已有源指标
 DEFAULT_SLO_TARGETS: Dict[str, Dict[str, Any]] = {
@@ -474,13 +479,172 @@ def evaluate_slo_wiring_gate(
         "n24_full_conformance": False,
         "issues": issues,
         "snapshot": snap,
-        "note": "wiring_ok may pass; attainment/certified always false in this slice",
+        "note": "wiring_ok may pass; attainment/certified always false on wiring gate",
+    }
+
+
+def _load_slo_approval_record(path: Path) -> Dict[str, Any]:
+    """读取 SLO 达标窗口批准记录。
+
+    Args:
+        path: JSON 路径。
+
+    Returns:
+        批准记录 dict；缺文件或坏 JSON 时含 ``error``。
+    """
+    if not path.is_file():
+        return {"error": f"approval_missing:{path}"}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        return {"error": f"approval_invalid:{e}"}
+
+
+def _slo_approval_allows(rec: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """非作者批准是否足以开启 attainment_ok（不开启 certified）。
+
+    Args:
+        rec: 批准记录对象。
+
+    Returns:
+        (是否允许, issues)。
+    """
+    issues: List[str] = []
+    if rec.get("error"):
+        return False, [str(rec["error"])]
+    status = str(rec.get("status") or "").lower()
+    decision = str(rec.get("decision") or "").lower()
+    if status != "approved" or decision not in ("approved", "conditional"):
+        issues.append("approval_not_approved")
+    scope = str(rec.get("scope") or "").lower()
+    # 为什么：拒绝复用 Core/Full 批准文件冒充 SLO 达标窗口批准
+    if "slo" not in scope and "attainment" not in scope:
+        issues.append("approval_scope_not_slo_attainment")
+    approvers = list(rec.get("approvers") or [])
+    if not approvers:
+        issues.append("approvers_required")
+    non_author = False
+    for a in approvers:
+        if isinstance(a, dict) and a.get("is_author") is False:
+            non_author = True
+        elif isinstance(a, dict) and a.get("is_author") is True:
+            continue
+        elif isinstance(a, str) and "author" not in a.lower():
+            non_author = True
+    if len(approvers) >= 2:
+        non_author = True
+    if rec.get("conflict_waiver"):
+        non_author = True
+    if approvers and not non_author:
+        issues.append("non_author_approver_required")
+    if not str(rec.get("effective_date") or "").strip():
+        issues.append("effective_date_required")
+    return not issues, issues
+
+
+def evaluate_slo_attainment_window(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    db_path: Optional[str] = None,
+    include_live: bool = True,
+    min_samples: int = DEFAULT_ATTAINMENT_MIN_SAMPLES,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """生产达标窗口评估：窗口内三指标达标 + 非作者批准 → attainment_ok。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 回溯窗口小时。
+        db_path: 样本库。
+        include_live: 是否计入 live 源。
+        min_samples: 每指标最少有效样本；不足则窗口未达标。
+        approval_record_path: SLO 达标窗口批准 JSON；缺省则 attainment_ok 恒假。
+
+    Returns:
+        gate dict。``certified`` / ``n24_full_conformance`` 恒 false（不清除 Full conditional）。
+    """
+    wiring = evaluate_slo_wiring_gate(
+        tenant_id,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        db_path=db_path,
+        include_live=include_live,
+    )
+    snap = wiring.get("snapshot") or {}
+    issues: List[str] = list(wiring.get("issues") or [])
+    metric_issues: List[str] = []
+    min_n = max(1, int(min_samples))
+
+    window_meets = True
+    if snap.get("status") != "ok":
+        window_meets = False
+        if "snapshot_unavailable" not in issues:
+            issues.append("snapshot_unavailable")
+    else:
+        for mid in _METRIC_IDS:
+            m = (snap.get("metrics") or {}).get(mid) or {}
+            n = int(m.get("effective_samples") or 0)
+            if n < min_n:
+                metric_issues.append(f"insufficient_samples:{mid}:{n}<{min_n}")
+                window_meets = False
+                continue
+            meets = m.get("meets_target")
+            if meets is not True:
+                metric_issues.append(f"misses_target:{mid}")
+                window_meets = False
+
+    issues.extend(metric_issues)
+
+    approval_issues: List[str] = []
+    approval_ok = False
+    approval_rec: Dict[str, Any] = {}
+    if not approval_record_path:
+        approval_issues.append("approval_record_path_required")
+    else:
+        approval_rec = _load_slo_approval_record(Path(approval_record_path))
+        approval_ok, a_issues = _slo_approval_allows(approval_rec)
+        approval_issues.extend(a_issues)
+
+    # 为什么：达标徽章仅窗口+批准；绝不自动 certified / Full unconditional
+    attainment_ok = bool(
+        wiring.get("wiring_ok") and window_meets and approval_ok
+    )
+
+    status = "ok"
+    if wiring.get("status") not in (None, "ok"):
+        status = str(wiring.get("status") or "error")
+
+    return {
+        "status": status,
+        "tenant_id": str(tenant_id or "").strip(),
+        "domain_id": str(domain_id or ""),
+        "window_hours": int(window_hours),
+        "min_samples": min_n,
+        "wiring_ok": bool(wiring.get("wiring_ok")),
+        "window_meets_targets": bool(window_meets and wiring.get("wiring_ok")),
+        "approval_ok": approval_ok,
+        "attainment_ok": attainment_ok,
+        "certified": False,
+        "n24_full_conformance": False,
+        "issues": issues + approval_issues,
+        "approval_record_path": approval_record_path,
+        "approval_record_id": approval_rec.get("record_id") if approval_ok else None,
+        "snapshot": snap,
+        "note": (
+            "attainment_ok requires window_meets_targets + non-author SLO approval; "
+            "certified/n24_full_conformance always false; Full remains conditional"
+        ),
     }
 
 
 __all__ = [
     "DEFAULT_SLO_TARGETS",
-        "record_slo_sample",
+    "DEFAULT_ATTAINMENT_MIN_SAMPLES",
+    "record_slo_sample",
     "get_slo_snapshot",
     "evaluate_slo_wiring_gate",
+    "evaluate_slo_attainment_window",
 ]

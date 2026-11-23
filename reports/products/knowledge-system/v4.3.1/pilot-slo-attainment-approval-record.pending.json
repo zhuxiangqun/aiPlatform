@@ -1,0 +1,12 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "pilot lock-service SLO attainment window (白皮书 §14)",
+  "status": "pending",
+  "decision": "pending",
+  "approvers": [],
+  "approval_date": "",
+  "effective_date": "",
+  "exceptions": [],
+  "record_id": "PILOT-SLO-ATTAINMENT-lock-service-PENDING",
+  "note": "Pending non-author approval. Does not unlock attainment_ok."
+}

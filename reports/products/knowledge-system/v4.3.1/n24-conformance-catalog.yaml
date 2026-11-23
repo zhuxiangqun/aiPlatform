@@ -29,7 +29,7 @@ n08_action_policy_note: "N08 Policy/Approval/Audit + kill switch + Lv4 FP gate v
 n24_unified_audit_freeze: true
 n24_unified_audit_note: "N24 revision + unified audit bus/UI surface is Operational-sufficient; stop further default N24 deepen. Residual: certified / full ops console."
 slo_telemetry_freeze: true
-slo_telemetry_note: "SLO target registry + telemetry wiring is Operational-sufficient; stop further default SLO wiring deepen. Residual: production attainment / alerting / Full unconditional."
+slo_telemetry_note: "SLO target registry + telemetry wiring is Operational-sufficient; stop further default SLO wiring deepen. Residual: production attainment window (evaluate_slo_attainment_window wired; attainment_ok≠certified) / alerting / Full unconditional."
 n01_raw_integrity_freeze: true
 n01_raw_integrity_note: "N01 Raw integrity + DataSource→Raw + Core file/sql/api connector matrix is Core-sufficient; stop further default N01 deepen. Residual: certified / vendor driver matrix."
 n02_object_type_freeze: true
@@ -611,7 +611,7 @@ certification_slots:
   - id: slo
     title: SLO
     path: reports/products/knowledge-system/v4.3.1/phase2-slo-target-evidence.md
-    note: "Operational-scoped exists (附录 N.4); 目标登记 + 遥测接线（phase2-slo-telemetry-wiring-evidence.md）；slo_telemetry_freeze=true 停止默认 SLO wiring deepen；非生产达标 / Full 仍 conditional；见 phase2-slo-telemetry-freeze-evidence.md"
+    note: "Operational-scoped exists (附录 N.4); 目标登记 + 遥测接线（phase2-slo-telemetry-wiring-evidence.md）；slo_telemetry_freeze=true 停止默认 SLO wiring deepen；达标窗口 residual 已接线（phase2-slo-attainment-window-evidence.md；attainment_ok≠certified）；非 Full unconditional；见 phase2-slo-telemetry-freeze-evidence.md"
   - id: exception_adr
     title: 例外 ADR
     path: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md

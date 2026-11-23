@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3199
+total_capabilities: 3201
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 730
+    caps_count: 732
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4522,6 +4522,10 @@ domains:
         module: core/harness/knowledge_pipeline/slo_telemetry.py
         type: function
         signature: "F1 deepen: wiring_ok gate; attainment/certified false"
+      - symbol: "evaluate_slo_attainment_window"
+        module: core/harness/knowledge_pipeline/slo_telemetry.py
+        type: function
+        signature: "SLO attainment window; attainment_ok≠certified"
       - symbol: "record_knowledge_slo_sample"
         module: core/api/core_facade.py
         type: function
@@ -4534,6 +4538,10 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "CoreFacade: SLO wiring gate"
+      - symbol: "evaluate_knowledge_slo_attainment_window"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: SLO attainment window; certified false"
       - symbol: "_apply_field_acl_to_results"
         module: core/harness/syscalls/retrieval.py
         type: function
