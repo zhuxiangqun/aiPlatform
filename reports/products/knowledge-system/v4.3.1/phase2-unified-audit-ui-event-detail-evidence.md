@@ -39,4 +39,4 @@ cd aiPlat-management/frontend && npx tsc --noEmit
 ## 明确未做
 
 - JSON schema 编辑器 / 导出下载 / 全量运维台
-- N24 / 附录 N 全量认证
+- N24 / 附录 N 全量认证（审计面冻结见 `phase2-n24-unified-audit-freeze-evidence.md`）
