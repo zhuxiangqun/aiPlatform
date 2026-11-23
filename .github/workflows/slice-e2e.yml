@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: Install Python deps
@@ -32,7 +32,7 @@ jobs:
         run: bash scripts/slice_e2e.sh --scenario lock-service --inject disconnect --out "$RUNNER_TEMP/slice-e2e"
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: slice-e2e-logs
           path: ${{ runner.temp }}/slice-e2e
