@@ -378,10 +378,13 @@ if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
 fi
 
 # ── Phase 45: Architecture pattern compliance ──
+# 为什么：脚本默认 BLOCK_ARCH_PATTERNS=1 且 exit 1；hook 不得吞退出码，否则「阻断」名存实亡
 if [ -z "${SKIP_ARCH_PATTERNS:-}" ]; then
     bash "$WORKSPACE/scripts/verify_architecture_patterns.sh" || {
-        echo "  ⚠️  Architecture pattern warnings (review before pushing)"
-        echo "     Set BLOCK_ARCH_PATTERNS=1 to block commits on pattern violations"
+        echo "  ❌ Architecture pattern compliance failed (blocking commit)."
+        echo "     Set SKIP_ARCH_PATTERNS=1 to skip (NOT recommended)."
+        echo "     Set BLOCK_ARCH_PATTERNS=0 for warnings-only inside the verifier."
+        exit 1
     }
 fi
 

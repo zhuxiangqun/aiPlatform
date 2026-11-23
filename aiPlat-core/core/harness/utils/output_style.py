@@ -3,7 +3,6 @@
 Locked ADHD ruleset + whitelist overrides. Does not rewrite tool/stack payloads.
 """
 from __future__ import annotations
-from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
 import hashlib
 import logging
@@ -11,11 +10,13 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence
 
+from core.utils.paths import get_aiplat_home
+
 logger = logging.getLogger(__name__)
 
 STYLE_DEFAULT = "default"
 STYLE_ADHD = "adhd"
-STYLE_VERSION = "adhd_v1"
+STYLE_VERSION = "adhd_v2"
 WHITELIST_OVERRIDE_KEYS = frozenset({"list_cap", "time_estimate_unit", "locale"})
 
 _SEED_SKILL = (
@@ -35,8 +36,8 @@ def resolve_output_style(
     """Resolve style from project/session/extra mapping.
 
     Args:
-        source: source 参数。
-        default: default 参数。
+        source: project/session/extra mapping that may carry ``output_style``.
+        default: fallback style when missing or unknown.
     """
     if not source:
         return default
@@ -55,7 +56,7 @@ def whitelist_overrides(source: Optional[Mapping[str, Any]] = None) -> Dict[str,
     """Return only allowed tenant override keys.
 
     Args:
-        source: source 参数。
+        source: mapping that may carry ``output_style_overrides``.
     """
     if not source:
         return {}
@@ -74,8 +75,7 @@ def whitelist_overrides(source: Optional[Mapping[str, Any]] = None) -> Dict[str,
 
 
 def skill_body_path() -> Path:
-    """skill_body_path。
-    """
+    """Resolve ADHD style SKILL.md path (workspace then seed)."""
     home = Path(get_aiplat_home())
     ws = home / "skills" / "output_style_adhd" / "SKILL.md"
     if ws.is_file():
@@ -84,8 +84,7 @@ def skill_body_path() -> Path:
 
 
 def load_adhd_skill_text() -> str:
-    """load_adhd_skill_text。
-    """
+    """Load ADHD style skill markdown text."""
     path = skill_body_path()
     try:
         return path.read_text(encoding="utf-8")
@@ -95,8 +94,7 @@ def load_adhd_skill_text() -> str:
 
 
 def skill_body_hash() -> str:
-    """skill_body_hash。
-    """
+    """Short sha256 of ADHD skill body (frontmatter stripped)."""
     text = load_adhd_skill_text()
     if not text:
         return ""
@@ -116,8 +114,8 @@ def build_style_overlay(
     """Ephemeral system-tail overlay (Prompt-cache safe: append only).
 
     Args:
-        style: style 参数。
-        overrides: overrides 参数。
+        style: resolved style id (``default`` / ``adhd``).
+        overrides: whitelist-only tenant overrides.
     """
     if resolve_output_style({"output_style": style}) != STYLE_ADHD:
         return ""
@@ -129,7 +127,12 @@ def build_style_overlay(
         f"[output_style={STYLE_ADHD} version={STYLE_VERSION} hash={skill_body_hash()}]\n"
         f"Apply locked ADHD user-facing style. list_cap={list_cap}; "
         f"time_estimate_unit={unit}; locale={locale}.\n"
-        "Lead with the next action; number steps; restate state; "
+        "Hard constraints: (1) no invented time estimates — omit or say "
+        "'耗时未知' unless grounded in tool/history; (2) high-risk side issues "
+        "(security/data-loss/leak) get a separate ⚠ paragraph, never one buried "
+        "line; (3) list_cap is presentation-only — never truncate analysis/tool "
+        "results/candidates.\n"
+        "Lead with the next action; number steps; restate state; grade tangents; "
         "no preamble/closers. Keep tool results and stack traces verbatim "
         "in fenced code blocks. Do not alter JSON contracts.\n"
     )
@@ -143,10 +146,12 @@ def inject_output_style(
 ) -> List[Dict[str, Any]]:
     """Append style overlay to the last system message, or insert a system tail.
 
+    Skips injection when style is default. Never mutates tool-role contents.
+
     Args:
-        messages: messages 参数。
-        style: style 参数。
-        overrides: overrides 参数。
+        messages: chat messages to copy and optionally augment.
+        style: resolved style id (``default`` / ``adhd``).
+        overrides: whitelist-only tenant overrides.
     """
     msgs: List[Dict[str, Any]] = [dict(m) for m in messages]
     overlay = build_style_overlay(style, overrides)
@@ -172,9 +177,9 @@ def apply_project_style_meta(
     """Persist style preference on project dict (factory / session).
 
     Args:
-        project: project 参数。
-        output_style: output_style 参数。
-        overrides: overrides 参数。
+        project: mutable project/session mapping.
+        output_style: optional style id to resolve and store.
+        overrides: optional whitelist overrides to store.
     """
     if output_style is not None:
         project["output_style"] = resolve_output_style({"output_style": output_style})
@@ -196,8 +201,7 @@ _EVENTS_FILENAME = "output_style_events.json"
 
 
 def output_style_events_path() -> Path:
-    """output_style_events_path。
-    """
+    """Resolve JSONL path for output_style telemetry events."""
     home = Path(get_aiplat_home())
     return home / "wiki" / _EVENTS_FILENAME
 
@@ -206,7 +210,7 @@ def estimate_reply_tokens(text: str) -> int:
     """Rough token estimate for telemetry (not billing-grade).
 
     Args:
-        text: text 参数。
+        text: reply text to estimate.
     """
     s = str(text or "")
     if not s:
@@ -218,7 +222,7 @@ def infer_followups(messages: Optional[Sequence[Mapping[str, Any]]] = None) -> i
     """Count user turns after the first (proxy for follow-up pressure).
 
     Args:
-        messages: messages 参数。
+        messages: chat messages; ``None`` counts as zero.
     """
     if not messages:
         return 0
@@ -241,17 +245,19 @@ def record_output_style_event(
 ) -> Dict[str, Any]:
     """A3a: append one style telemetry row (queryable JSON).
 
+    A3b: optional ``experiment_id`` / ``arm`` for split attribution (still no topology change).
+
     Args:
-        style: style 参数。
-        project_id: project 标识。
-        session_id: 会话 ID。
-        source: source 参数。
-        tokens: tokens 参数。
-        followups: followups 参数。
-        first_pass_ok: first_pass_ok 参数。
-        experiment_id: experiment 标识。
-        arm: arm 参数。
-        extra: extra 参数。
+        style: resolved style id.
+        project_id: project identifier for filtering.
+        session_id: session identifier for filtering.
+        source: call site tag (e.g. factory chat).
+        tokens: optional token estimate.
+        followups: optional follow-up count.
+        first_pass_ok: optional first-pass success flag.
+        experiment_id: A3b experiment id (empty when not split).
+        arm: A3b arm label (default/adhd).
+        extra: optional extra telemetry fields.
     """
     import json
     import time
@@ -308,11 +314,11 @@ def query_output_style_events(
     """A3a/A3b: read recent style telemetry (newest last).
 
     Args:
-        limit: 返回条数上限。
-        style: style 参数。
-        project_id: project 标识。
-        experiment_id: experiment 标识。
-        arm: arm 参数。
+        limit: max rows to return.
+        style: optional style filter.
+        project_id: optional project filter.
+        experiment_id: optional experiment filter.
+        arm: optional arm filter.
     """
     import json
 
@@ -357,7 +363,7 @@ def get_output_style_experiment_pct(
     """ADHD arm percentage 0–100. Env default 0 (experiment off).
 
     Args:
-        source: source 参数。
+        source: optional mapping that may carry ``output_style_experiment_pct``.
     """
     if source:
         raw = source.get("output_style_experiment_pct")
@@ -381,7 +387,7 @@ def style_experiment_bucket(sticky_id: str) -> int:
     """Stable 0–99 bucket from sticky id (project/session).
 
     Args:
-        sticky_id: sticky 标识。
+        sticky_id: project or session id used for sticky assignment.
     """
     import hashlib
 
@@ -414,11 +420,14 @@ def assign_output_style_experiment(
 ) -> Dict[str, Any]:
     """A3b: sticky default|adhd arm. Explicit user style wins; pct=0 → no split.
 
+    Persists ``output_style_arm`` / ``output_style_experiment_id`` on the project.
+    Does not rewrite style when user locked or experiment disabled.
+
     Args:
-        project: project 参数。
-        sticky_id: sticky 标识。
-        adhd_pct: adhd_pct 参数。
-        experiment_id: experiment 标识。
+        project: mutable project/session mapping.
+        sticky_id: id used for sticky bucket assignment.
+        adhd_pct: optional ADHD arm percentage override.
+        experiment_id: experiment identifier to persist.
     """
     exp_id = str(
         project.get("output_style_experiment_id")
@@ -488,8 +497,8 @@ def compare_output_style_arms(
     """A3b: contrast table from telemetry (tokens / followups / first_pass_ok).
 
     Args:
-        experiment_id: experiment 标识。
-        limit: 返回条数上限。
+        experiment_id: experiment to contrast.
+        limit: max telemetry rows to scan.
     """
     rows = query_output_style_events(limit=limit, experiment_id=experiment_id)
     # Also include rows tagged by style when experiment_id empty on older events

@@ -11,6 +11,7 @@ authority: supporting
 > 对外长文/四层防御叙述见 [`docs/reference/articles/private-control-plane.md`](../reference/articles/private-control-plane.md)——**同名异职：短入口 vs 文章，勿合并正文**。
 
 > 相关约束正文：[`governance.md`](./governance.md)、[`eu-ai-act-compliance.md`](./eu-ai-act-compliance.md)。
+> 企业部署选型三问 / 失效模式：[`enterprise_deployment.md`](./enterprise_deployment.md)。
 
 ## 核心组件
 
@@ -22,3 +23,4 @@ authority: supporting
 
 > 实现细节与四层防御叙事：[`../reference/articles/private-control-plane.md`](../reference/articles/private-control-plane.md)。
 > 治理与合规条文：[`governance.md`](./governance.md)、[`eu-ai-act-compliance.md`](./eu-ai-act-compliance.md)。
+> 选型 / 出域跳 / 控制面归属：[`enterprise_deployment.md`](./enterprise_deployment.md)。
