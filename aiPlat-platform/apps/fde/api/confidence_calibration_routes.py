@@ -1,7 +1,7 @@
 """FDE Confidence Calibration — 薄路由，经 CoreFacade（附录 O）。"""
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -38,6 +38,14 @@ class ConfidenceResolveBody(BaseModel):
     domain: str = Field(..., min_length=1)
     query_type: str = Field(..., min_length=1)
     requested: str = "high"
+
+
+class EceTrainBody(BaseModel):
+    """N13 residual：样本 ECE/Brier 有界训练（非准确率宣称）。"""
+
+    samples: List[Dict[str, Any]] = Field(default_factory=list)
+    n_bins: int = Field(10, ge=1, le=50)
+    high_threshold: float = Field(0.8, ge=0.0, le=1.0)
 
 
 @router.post("/confidence-calibrations")
@@ -168,3 +176,21 @@ async def resolve_confidence_ceiling_route(
     if out.get("status") == "invalid":
         raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
     return out
+
+
+@router.post("/confidence-calibrations/ece-train")
+async def compute_ece_from_samples_route(
+    body: EceTrainBody = Body(...),
+):
+    """N13 residual：从标注样本计算 ECE/Brier（非 certified）。
+
+    Args:
+        body: samples / n_bins / high_threshold。
+    """
+    from core.api.core_facade import compute_ece_from_samples
+
+    return compute_ece_from_samples(
+        body.samples,
+        n_bins=body.n_bins,
+        high_threshold=body.high_threshold,
+    )

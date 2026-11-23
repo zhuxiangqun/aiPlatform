@@ -58,6 +58,7 @@ authority: supporting
 | [phase2-query-abstain-citations-evidence.md](./phase2-query-abstain-citations-evidence.md) | N21 deepen：abstain+citations + Wiki/KB + Materials + GraphRAG + list n21_query（非改写 list 主类型/非 certified） |
 | [phase2-raw-fact-index-reconcile-evidence.md](./phase2-raw-fact-index-reconcile-evidence.md) | N14 deepen：Raw↔Fact↔Index 全链路对账（非生产切写认证/非 certified） |
 | [phase2-calibration-pipeline-evidence.md](./phase2-calibration-pipeline-evidence.md) | N13 deepen：Operational 校准流水线（查询路径封顶；非真实 ECE/非 certified） |
+| [phase2-n13-ece-train-residual-evidence.md](./phase2-n13-ece-train-residual-evidence.md) | N13 residual：opt-in 样本 ECE/Brier（不可用诚实上报；非准确率/非 certified） |
 | [phase2-ocs-enterprise-scan-evidence.md](./phase2-ocs-enterprise-scan-evidence.md) | N23 deepen：企业域 OCS 扫描（DomainRouter+词汇预注册；非全域完整/非 certified） |
 | [phase2-confidence-calibration-evidence.md](./phase2-confidence-calibration-evidence.md) | W10 Confidence Calibration（附录 O 门槛 + 失败降级 medium） |
 | [phase2-ocs-evidence.md](./phase2-ocs-evidence.md) | W10 OCS Completeness（§13.4 覆盖计分 + 门槛门；禁节点数档位） |

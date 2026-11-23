@@ -47,7 +47,7 @@ n10_gold_eval_note: "N10 appendix O thresholds + domain Exact-match gold pipelin
 n11_n14_migration_freeze: true
 n11_n14_migration_note: "N11/N14 dual-write reconcile + cutover token + Raw↔Fact↔Index chain is Operational-sufficient; stop further default N11/N14 deepen. Residual: certified; production readiness receipt opt-in landed (attest_production_cutover_readiness; unavailable when AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST off — phase2-n11-production-attest-residual-evidence.md) — still not production cutover certified."
 n13_calibration_freeze: true
-n13_calibration_note: "N13 calibration ceiling on query path is Operational-sufficient; stop further default N13 deepen. Residual: certified / real ECE training / accuracy claim."
+n13_calibration_note: "N13 calibration ceiling on query path is Operational-sufficient; stop further default N13 deepen. Residual: certified / accuracy claim; sample ECE train opt-in landed (compute_ece_from_samples; unavailable when AIPLAT_KNOWLEDGE_ECE_TRAIN off — phase2-n13-ece-train-residual-evidence.md) — still not accuracy certified."
 n17_record_semantics_freeze: true
 n17_record_semantics_note: "N17 record-level semantics runtime authority is Core-sufficient; stop further default N17 deepen. Residual: certified / full semantic_cases vs Fact Store."
 n18_deployed_rbac_freeze: true
@@ -348,7 +348,9 @@ items:
     evidence:
       - reports/products/knowledge-system/v4.3.1/phase2-confidence-calibration-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-calibration-pipeline-evidence.md
-    note: "Operational-scoped exists (附录 N.4); 失败/缺失/过期 → 最高 medium；未宣称准确率；n13_calibration_freeze=true 停止默认 deepen"
+      - reports/products/knowledge-system/v4.3.1/phase2-n13-ece-train-residual-evidence.md
+      - aiPlat-core/core/harness/knowledge_pipeline/confidence_calibration.py
+    note: "Operational-scoped exists (附录 N.4); 失败/缺失/过期 → 最高 medium + 显式 residual 样本 ECE（compute_ece_from_samples；不可用诚实上报）；未宣称准确率/非 certified；n13_calibration_freeze=true 停止默认 deepen"
   - id: N14
     level: operational
     title: 跨存储失败恢复/对账
