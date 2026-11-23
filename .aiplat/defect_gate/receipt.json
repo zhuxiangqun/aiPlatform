@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T00:30:00+08:00",
+  "reviewed_at": "2026-11-24T01:10:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "87f9967fcbb4bac926858aa3c1c2df9edd4a35f1",
-  "diff_sha256": "09c3cc4476a24a3cf09a6535eead953540036607ea44a50f17fbcc80f936b0b9",
-  "head_sha": "203d80e90b3f599c8e38f3a0db3ad8c6c02337c7",
+  "merge_base": "7f4f14e3890bb4f88e56bfbbdcd3bcc260d59634",
+  "diff_sha256": "75aea6d76709c00c3a253eb62261f3e07bfa197dd06b81916959230b9eba6925",
+  "head_sha": "b044f927b282697904bd63cdb4de03fffcbbbf9f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "#787: IGNORE ZAP 90005 (request-side Sec-Fetch noise); not a server header fix."
+  "note": "S6 thin: A-P5 deps/cycle, A-P4 declared_unavailable, B-P3 gate, B-P5 profile incomplete; no production sandbox claim."
 }

@@ -1,7 +1,11 @@
 """P1 composite — scored vs report-only; accuracy_claim stays false."""
 from __future__ import annotations
 
-from app.scoring.composite import build_composite, metric_role
+from app.scoring.composite import (
+    build_composite,
+    engineering_score_accepted,
+    metric_role,
+)
 from app.scoring.semantics import build_scoring_block
 from app.worker.runners import execute_runner
 
@@ -75,3 +79,36 @@ def test_prompt_eval_runner_has_composite():
     meta = out["metrics"].get("meta") or {}
     assert meta.get("runner_id") == "prompt_eval"
     assert meta.get("composite_version") == "v1.3"
+
+
+def test_engineering_score_rejects_legacy_path():
+    assert engineering_score_accepted("package_build_composite") is True
+    assert engineering_score_accepted("build_composite") is True
+    assert engineering_score_accepted("legacy_7dim") is False
+    assert engineering_score_accepted("") is False
+
+
+def test_composite_profile_incomplete_without_efficiency():
+    # quality-only metrics → default path still scores; profile requires both families
+    partial = build_composite({"groundedness": 1.0})
+    assert partial["score"] is not None
+    assert partial.get("incomplete") is False
+
+    gated = build_composite(
+        {"groundedness": 1.0},
+        composite_profile_id="engineering_v1",
+    )
+    assert gated["incomplete"] is True
+    assert gated["score"] is None
+    assert "efficiency" in (gated.get("missing_families") or [])
+    assert gated["composite_profile_id"] == "engineering_v1"
+
+
+def test_composite_profile_complete_with_quality_and_efficiency():
+    full = build_composite(
+        {"groundedness": 1.0, "latency_ms": 0},
+        composite_profile_id="engineering_v1",
+    )
+    assert full["incomplete"] is False
+    assert full["score"] is not None
+    assert full["missing_families"] == []
