@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T23:26:30+08:00",
+  "reviewed_at": "2026-11-23T23:55:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "bf1f9981bda5bba6bf3b29de9294c28fcdc2d7e8",
-  "diff_sha256": "581e31b00a5081bea0fc94c0ac737ef188ae2d365576bbdc1d5fcba5dbae0a7e",
-  "head_sha": "5f824455653c7bd65d0eae757b8cc58ebab65e38",
+  "merge_base": "51814bb475dc180d19e88e3ea0ab673bf31a4b13",
+  "diff_sha256": "0f2fb77c9391f05756ea9bffc5ab458d7485a8b19d1f78864d5883d3c09d0681",
+  "head_sha": "cf6d8ebba980fe08d8640aa1a6a984359a6be446",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Replay #903/#218 + clause-sync system contract for contracts-guard; no manuals resurrection."
+  "note": "Workflow-only action pin bumps (replay #538/#213/#212); no product runtime change."
 }
