@@ -190,7 +190,10 @@ const HandlerDraftUpgradeModal: React.FC<Props> = ({ open, skill, onClose, onDon
           </section>
 
           <p className="text-xs text-gray-600">
-            静态试跑仅 compile + execute 签名，不执行任意代码。启用会写入 handler.py 并记审计。生产上架仍走市场审核。
+            静态试跑仅 compile + execute 签名，不执行任意代码。启用会写入 handler.py
+            并记审计；启用后无运行时沙箱，以工作区用户权限与已授权工具集执行（PolicyGate
+            只管能否调用，不审查 handler 体内逻辑）。生产上架仍走市场审核。详见外源互通方案
+            §2.1 信任边界。
           </p>
         </div>
       )}

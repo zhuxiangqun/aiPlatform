@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4137
+total_capabilities: 4144
 last_updated: 2026-11-22
 version: "30.14"
 auto_sync: true
@@ -590,7 +590,11 @@ scan_hash: 8f9548ec24f4
 | tool_compat_path | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | read_mcp_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | write_mcp_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
-| compute_mcp_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| compute_mcp_compat | `core/harness/maintenance/asset_compat.py` | ✅ | MCP COMPAT；空 tool_allowlist 不可默认可调度（min-priv v0） | 本批 |
+| wrap_untrusted_mcp_tool_description | `core/harness/maintenance/asset_compat.py` | ✅ | MCP description 不受信前缀+截断；生成物适用：已接线（adapter） | 本批 |
+| set_mcp_tool_allowlist | `core/harness/maintenance/asset_compat.py` | ✅ | 写入 tool_allowlist 并刷新 COMPAT | 本批 |
+| resolve_mcp_policy_allowlist | `core/harness/maintenance/asset_compat.py` | ✅ | 读 policy.yaml allowlist | 本批 |
+| TIER_HANDLER_READY | `core/harness/maintenance/asset_compat.py` | ✅ | 有 handler.py 的 Skill tier（execution_surface=handler） | 本批 |
 | resolve_mcp_dir_from_info | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | resolve_mcp_dir | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | resolve_agent_dir_from_info | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
@@ -2747,6 +2751,9 @@ scan_hash: 8f9548ec24f4
 | enable_handler_draft | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | finalize_skill_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | scan_untrusted_skill_text | `core/apps/skills/skill_boundary.py` | ✅ | 自动同步 | 已合入 |
+| content_gate_findings | `core/harness/maintenance/skill_boundary.py` | ✅ | ContentGate 启发式 findings（block/degrade/warn） | 本批 |
+| content_gate_level | `core/harness/maintenance/skill_boundary.py` | ✅ | ContentGate 最高严重级别 | 本批 |
+| apply_content_gate_to_compat | `core/harness/maintenance/skill_boundary.py` | ✅ | 合流写入 COMPAT issues/schedulable；生成物适用：已接线（导入横切） | 本批 |
 | skill_skip_reason | `core/apps/skills/skill_boundary.py` | ✅ | 自动同步 | 已合入 |
 | enable_skill_result | `core/apps/skills/skill_boundary.py` | ✅ | 自动同步 | 已合入 |
 | resolve_e2e_url | `aiPlat-core/core/engine/skills/e2e_test/SKILL.md` | ✅ | 自动同步 | 已合入 |
@@ -5038,13 +5045,13 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 781 | 1 | 782 |
+| Harness 执行引擎 | 785 | 1 | 786 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 827 | 9 | 836 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 210 | 0 | 210 |
+| Skill 系统 | 213 | 0 | 213 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -5083,7 +5090,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4126** | **11** | **4137** |
+| **总计** | **4133** | **11** | **4144** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

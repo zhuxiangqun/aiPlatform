@@ -167,7 +167,22 @@ def ensure_report_scoring(
                 scoring_block["composite"] = composite
                 scoring_block.setdefault("schema", "eval.scoring.semantics.v1")
                 scoring_block["accuracy_claim"] = False
+                # SSOT path token (SCORING_AND_CLAIM_MAP) — engineering composite.
+                scoring_block["path"] = "package_build_composite"
+                scoring_block["weights_used"] = composite.get("weights_used")
+                scoring_block["family_scores"] = composite.get("family_scores")
                 out["scoring"] = scoring_block
+
+    # Always normalize path when composite already present without path.
+    scoring_existing = _as_dict(out.get("scoring"))
+    if scoring_existing and not scoring_existing.get("path"):
+        if isinstance(scoring_existing.get("composite"), Mapping):
+            scoring_existing["path"] = "package_build_composite"
+            comp = _as_dict(scoring_existing.get("composite"))
+            scoring_existing.setdefault("weights_used", comp.get("weights_used"))
+            scoring_existing.setdefault("family_scores", comp.get("family_scores"))
+            scoring_existing["accuracy_claim"] = False
+            out["scoring"] = scoring_existing
 
     return ensure_report_meta(out, meta=meta)
 

@@ -17,6 +17,23 @@ export type AttributableReport = {
   ok?: boolean;
   error?: string;
   coverage_note?: string;
+  scoring?: {
+    path?: string;
+    composite_policy?: string;
+    accuracy_claim?: boolean;
+    deprecated_for_engineering?: boolean;
+    ui_badge?: string;
+    weights_used?: Record<string, number> | null;
+    family_scores?: Record<string, number | null> | null;
+  };
+  scoring_honesty?: {
+    path?: string;
+    composite_policy?: string;
+    accuracy_claim?: boolean;
+    deprecated_for_engineering?: boolean;
+    ui_badge?: string;
+    note?: string;
+  };
   gate?: {
     pass?: boolean;
     veto?: boolean;
@@ -290,6 +307,32 @@ export default function EvalAttributableReportCard({
             得分 {report.composite_score ?? '—'}
             {report.grade ? `（等级 ${report.grade}）` : ''}
           </div>
+          {(() => {
+            const path =
+              report.scoring?.path ||
+              report.scoring_honesty?.path ||
+              report.scoring?.composite_policy ||
+              report.scoring_honesty?.composite_policy ||
+              '';
+            const isLegacy =
+              path === 'legacy_7dim' ||
+              report.scoring?.deprecated_for_engineering === true ||
+              report.scoring_honesty?.deprecated_for_engineering === true;
+            const badge =
+              report.scoring?.ui_badge ||
+              report.scoring_honesty?.ui_badge ||
+              (isLegacy ? '历史口径·非工程' : '');
+            if (!badge && !path) return null;
+            return (
+              <p
+                className="text-[10px] text-amber-400/90 mt-0.5"
+                data-testid="eval-scoring-path-badge"
+                data-scoring-path={path || (isLegacy ? 'legacy_7dim' : '')}
+              >
+                {badge || path}
+              </p>
+            );
+          })()}
           <p className="text-[10px] text-gray-500 mt-0.5">得分只是工程参考，不是「准确率认证」</p>
         </div>
       </div>

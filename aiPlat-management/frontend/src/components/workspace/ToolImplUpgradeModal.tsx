@@ -162,7 +162,9 @@ const ToolImplUpgradeModal: React.FC<Props> = ({ open, tool, onClose, onDone }) 
           </section>
 
           <p className="text-xs text-gray-600">
-            启用会写入 .py 并注册到 ToolRegistry。静态试跑仅 compile + TOOL_DEF，不执行任意代码。生产上架仍走 listing 门禁。
+            启用会写入 .py 并注册到 ToolRegistry。静态试跑仅 compile + TOOL_DEF，不执行任意代码。
+            启用后无运行时沙箱，以工作区用户权限与已授权工具集执行（PolicyGate 只管能否调用）。
+            生产上架仍走 listing 门禁。详见外源互通方案 §2.1 信任边界。
           </p>
         </div>
       )}

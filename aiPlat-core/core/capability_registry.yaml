@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3212
+total_capabilities: 3219
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 642
+    caps_count: 646
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2454,6 +2454,22 @@ domains:
       - symbol: compute_mcp_compat
         type: function
         signature: 'Score MCP COMPAT: connectable / connected / gated / blocked.'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: wrap_untrusted_mcp_tool_description
+        type: function
+        signature: 'wrap_untrusted_mcp_tool_description(description, *, max_chars, server_name, tool_name)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: set_mcp_tool_allowlist
+        type: function
+        signature: 'set_mcp_tool_allowlist(mcp_dir, tool_names, *, connection_status)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: resolve_mcp_policy_allowlist
+        type: function
+        signature: 'resolve_mcp_policy_allowlist(mcp_dir) -> (allowlist, policy)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: TIER_HANDLER_READY
+        type: constant
+        signature: 'handler_ready'
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
       - symbol: write_mcp_compat
         type: function
@@ -7226,7 +7242,7 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 213
+    caps_count: 216
     provides:
       - symbol: "finalize_skill_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -8130,13 +8146,27 @@ domains:
       - symbol: "scan_untrusted_skill_text"
         module: aiPlat-core/core/apps/skills/skill_boundary.py
         type: function
-        signature: "Static scan. Blocked when a hostile pattern matches. SARIF-shaped results."
+        signature: "ContentGate static scan; blocked only on block-severity; SARIF + findings."
+      - symbol: "content_gate_findings"
+        module: aiPlat-core/core/harness/maintenance/skill_boundary.py
+        type: function
+        signature: "content_gate_findings(text) → heuristic findings (block/degrade/warn)"
+      - symbol: "content_gate_level"
+        module: aiPlat-core/core/harness/maintenance/skill_boundary.py
+        type: function
+        signature: "content_gate_level(findings) → max severity or None"
+      - symbol: "apply_content_gate_to_compat"
+        module: aiPlat-core/core/harness/maintenance/skill_boundary.py
+        type: function
+        signature: "apply_content_gate_to_compat(compat, scan) merges gate into COMPAT"
     breaks: []
     consumers_expected:
       - module: "core/management/skill_installer.py"
         reason: "skill install 跑 finalize_skill_compat"
       - module: "core/api/core_facade.py"
         reason: "CoreFacade 暴露 skill compat"
+      - module: "core/harness/maintenance/asset_compat.py"
+        reason: "compute_skill_compat 合流 ContentGate"
 
   # ══════════════════════════════════════════════════════════════
   # 八、可观测性 (23 caps)

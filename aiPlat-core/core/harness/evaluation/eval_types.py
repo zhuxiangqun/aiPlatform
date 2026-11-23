@@ -494,13 +494,25 @@ class AgentEvalResult:
 
     def scoring_honesty(self) -> Dict[str, Any]:
         """Machine-readable P1 dual-path honesty for API/UI consumers."""
+        weights_used = {
+            "task_completion": 0.30,
+            "tool_quality": 0.20,
+            "trajectory": 0.05,
+            "step_efficiency": 0.15,
+            "error_recovery": 0.15,
+            "safety": 0.10,
+            "cost": 0.05,
+        }
         return {
             "schema": "eval.scoring.honesty.v0",
+            # SSOT path token for UI/API (SCORING_AND_CLAIM_MAP).
+            "path": "legacy_7dim",
             "composite_policy": self.COMPOSITE_POLICY,
             "accuracy_claim": False,
             # ARCH v1.4: Central composite stays forever for historical grades;
             # engineering surfaces must use package build_composite.
             "deprecated_for_engineering": True,
+            "ui_badge": "历史口径·非工程",
             "report_only_dimensions": list(self.REPORT_ONLY_DIMENSIONS),
             "scored_dimensions": [
                 "task_completion",
@@ -511,6 +523,8 @@ class AgentEvalResult:
                 "safety",
                 "cost",
             ],
+            "weights_used": weights_used,
+            "family_scores": None,  # legacy path has dims, not package families
             "canonical_engineering_composite": self.CANONICAL_ENGINEERING_COMPOSITE,
             "missing_fill": {
                 "task_completion": 0.5,

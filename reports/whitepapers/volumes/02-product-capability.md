@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-23T12:12:45Z"
+generated_at: "2026-11-23T13:15:11Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "578beb57e2e9b92c26ef571cfbe90d74be5e48060bab71297147c13f8cecbcad"
+caps_sha256: "44aa7ca687dbde031742c82b8e8fb16b677a036c78c203e84e3f88409561478b"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=578beb57e2e9b92c26ef571cfbe90d74be5e48060bab71297147c13f8cecbcad scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=44aa7ca687dbde031742c82b8e8fb16b677a036c78c203e84e3f88409561478b scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-23T12:12:45Z` |
-| CAPABILITIES sha256 | `578beb57e2e9…` |
+| 生成时间 (UTC) | `2026-11-23T13:15:11Z` |
+| CAPABILITIES sha256 | `44aa7ca687db…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1314,13 +1314,13 @@ _(节选；全文见权威源)_
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 781 | 1 | 782 |
+| Harness 执行引擎 | 785 | 1 | 786 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 827 | 9 | 836 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 210 | 0 | 210 |
+| Skill 系统 | 213 | 0 | 213 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -1359,7 +1359,7 @@ _(节选；全文见权威源)_
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4126** | **11** | **4137** |
+| **总计** | **4133** | **11** | **4144** |
 
 ### 3.2 上手路径（节选）
 
@@ -1490,7 +1490,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3212 capabilities (caps_count) | 3212 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3219 capabilities (caps_count) | 3219 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1525,7 +1525,7 @@ git pull origin main
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | knowledge-engine-ontology | §三 知识引擎（本体） | 743 | N02 ObjectType publish Facade 入口 |
-| skill-system | §六 Skill 系统 | 213 | CoreFacade 暴露 skill compat |
+| skill-system | §六 Skill 系统 | 216 | CoreFacade 暴露 skill compat |
 | evaluation-system | §十三 评估系统 | 646 | CoreFacade 暴露 m2 deferred estimate |
 | diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
 | tool-ecosystem | §十六 工具生态 | 76 | CoreFacade 暴露 tool compat |
@@ -1616,7 +1616,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 642 | 自身消费 PipelineStageConfig + StageRunner |
+| harness-execution-engine | §一 Harness 执行引擎 | 646 | 自身消费 PipelineStageConfig + StageRunner |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
 | model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |

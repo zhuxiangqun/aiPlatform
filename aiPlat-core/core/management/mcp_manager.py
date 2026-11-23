@@ -19,6 +19,8 @@ import json
 import os
 import yaml
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class MCPServerInfo:
@@ -379,6 +381,13 @@ class MCPManager:
                 if k in policy_extra and policy_extra.get(k) is not None:
                     pol[k] = policy_extra.get(k)
         policy_yaml.write_text(yaml.safe_dump(pol, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        # 最小权限 v0：upsert 后同步 tool_allowlist + 刷新 COMPAT（禁止仅改 allowed_tools 假绿）
+        try:
+            from core.harness.maintenance.asset_compat import set_mcp_tool_allowlist
+
+            set_mcp_tool_allowlist(server_dir, list(info.allowed_tools or []))
+        except Exception:
+            logger.debug("mcp set_mcp_tool_allowlist after upsert skipped", exc_info=True)
 
         self.reload()
         _notify_resource_mutated("mcp_server", "upserted", info.name)
