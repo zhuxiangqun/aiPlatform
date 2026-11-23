@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3222
+total_capabilities: 3223
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2835,7 +2835,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 744
+    caps_count: 745
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4457,6 +4457,10 @@ domains:
       - symbol: "authorize_migration_cutover"
         type: "function"
         signature: "N11/N14: job-level cutover authorize (token)"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "attest_production_cutover_readiness"
+        type: "function"
+        signature: "N11/N14 residual: production readiness receipt (certified=false)"
         module: "core/harness/knowledge_pipeline/knowledge_migration.py"
       - symbol: "request_write_cutover"
         type: "function"

@@ -6985,6 +6985,36 @@ def request_knowledge_migration_write_cutover(
     )
 
 
+def attest_knowledge_production_cutover_readiness(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    raw_fact_index_ok: Optional[bool] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N11/N14 residual 生产切写就绪回执（certified 恒 false）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 签署人。
+        reason: 签署理由。
+        raw_fact_index_ok: 可选 Raw↔Fact↔Index 对账结果。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        attest_production_cutover_readiness,
+    )
+
+    return attest_production_cutover_readiness(
+        job_id,
+        tenant_id=tenant_id,
+        actor=actor,
+        reason=reason,
+        raw_fact_index_ok=raw_fact_index_ok,
+    )
+
+
 def run_migration_cutover_auth_suite() -> Dict[str, Any]:
     """N11/N14 deepen：切写授权套件（certified 恒 false）。"""
     from core.harness.knowledge_pipeline.knowledge_migration import (
