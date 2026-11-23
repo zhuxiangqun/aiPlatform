@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T20:15:00+08:00",
+  "reviewed_at": "2026-11-23T23:13:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ec5ddbc440951693006a9874be230f258e9583ec",
-  "diff_sha256": "e50e9c2f6467a3a2d77c24db26bd11bbb3e985cf871a3152238e1f27893265fb",
-  "head_sha": "8c03cfa7baa41dbbb8a267062c4d94d020286986",
+  "merge_base": "bf1f9981bda5bba6bf3b29de9294c28fcdc2d7e8",
+  "diff_sha256": "4ea56a546ba54e82962af980679fec97b41482081a5058fc532c2e5b10728b0e",
+  "head_sha": "efa2604bc3b5298ae705953a7a315c0f502bc840",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N02 ObjectTypePublishPanel after merge main(#1027); freeze stays; no parallel API."
+  "note": "Replay #903 pre-commit exit honor + #218 adhd_v2; kept private-control frontmatter; no docs/manuals resurrection."
 }
