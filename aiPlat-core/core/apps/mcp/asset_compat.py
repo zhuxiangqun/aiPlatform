@@ -18,6 +18,9 @@ from core.harness.maintenance.asset_compat import (  # noqa: F401
     read_mcp_compat,
     resolve_mcp_dir,
     resolve_mcp_dir_from_info,
+    resolve_mcp_policy_allowlist,
     revoke_mcp_tool_confirm,
+    set_mcp_tool_allowlist,
+    wrap_untrusted_mcp_tool_description,
     write_mcp_compat,
 )

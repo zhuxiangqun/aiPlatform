@@ -1849,12 +1849,27 @@ def build_attributable_report(
         "legacy_dim_scores": _legacy_dim_scores(
             raw, safety_status=str(safety.get("status") or ""), set_id=sid
         ),
+        "scoring": (
+            raw.get("scoring")
+            if isinstance(raw.get("scoring"), dict)
+            else {
+                "path": "legacy_7dim",
+                "composite_policy": "legacy_7dim",
+                "accuracy_claim": False,
+                "deprecated_for_engineering": True,
+                "ui_badge": "历史口径·非工程",
+            }
+        ),
         "scoring_honesty": {
+            "path": "legacy_7dim",
             "composite_policy": "legacy_7dim",
             "accuracy_claim": False,
+            "deprecated_for_engineering": True,
+            "ui_badge": "历史口径·非工程",
             "note": (
-                "Central composite is legacy_7dim engineering score; "
-                "not accuracy certification. See legacy_dim_scores for weighted recomputation."
+                "Central composite is legacy_7dim (report-only for engineering gates); "
+                "not accuracy certification. See legacy_dim_scores for weighted recomputation. "
+                "SSOT: packages/aiplat-evaluation/docs/a3/SCORING_AND_CLAIM_MAP.md"
             ),
         },
         "gate": {

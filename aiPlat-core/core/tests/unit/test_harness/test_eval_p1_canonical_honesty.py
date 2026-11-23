@@ -8,9 +8,12 @@ from core.harness.evaluation.eval_types import AgentEvalResult
 def test_agent_eval_result_marks_report_only_dims():
     r = AgentEvalResult(agent_id="a1", eval_set_id="s1")
     h = r.scoring_honesty()
+    assert h["path"] == "legacy_7dim"
     assert h["composite_policy"] == "legacy_7dim"
     assert h["accuracy_claim"] is False
     assert h["deprecated_for_engineering"] is True
+    assert h["ui_badge"] == "历史口径·非工程"
+    assert isinstance(h.get("weights_used"), dict) and h["weights_used"]
     assert "text_quality" in h["report_only_dimensions"]
     assert "content_safety" in h["report_only_dimensions"]
     assert "refusal" in h["report_only_dimensions"]
@@ -23,6 +26,7 @@ def test_serialize_eval_result_embeds_scoring_honesty():
     r = AgentEvalResult(agent_id="a1", eval_set_id="s1", total_tasks=0)
     payload = serialize_eval_result(r)
     assert payload["accuracy_claim"] is False
+    assert payload["scoring"]["path"] == "legacy_7dim"
     assert payload["scoring"]["composite_policy"] == "legacy_7dim"
     assert payload["scoring"]["accuracy_claim"] is False
     assert payload["scoring"]["deprecated_for_engineering"] is True

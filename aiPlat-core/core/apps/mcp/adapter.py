@@ -74,9 +74,17 @@ class MCPToolAdapter(BaseTool):
                 metadata.update(extra_metadata)
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
+        # 为什么：MCP description 来自不受信服务端，进入 LLM 前必须包装截断
+        from core.harness.maintenance.asset_compat import wrap_untrusted_mcp_tool_description
+
+        safe_desc = wrap_untrusted_mcp_tool_description(
+            str(mcp_tool.description or ""),
+            server_name=server_name,
+            tool_name=tool_name,
+        )
         config = ToolConfig(
             name=f"mcp.{server_name}.{tool_name}",
-            description=mcp_tool.description,
+            description=safe_desc,
             parameters=mcp_tool.input_schema,
             metadata=metadata,
         )
@@ -200,12 +208,13 @@ class MCPClientWrapper:
         if not client:
             raise ValueError(f"MCP server '{server_name}' not found")
             
+        # 最小权限 v0：空 allowlist = 零业务工具注册（禁止「空=全开」假绿）
         allow = set([str(x) for x in (allowed_tools or []) if str(x).strip()])
         confirmed = set([str(x) for x in (confirmed_tools or []) if str(x).strip()])
         tool_risk = tool_risk or {}
         count = 0
         for tool_name, mcp_tool in client.tools.items():
-            if allow and tool_name not in allow:
+            if tool_name not in allow:
                 continue
             r = str(tool_risk.get(tool_name) or risk_level or "medium")
             need_approval = bool(approval_required) if approval_required is not None else (r in {"high", "critical"})

@@ -228,8 +228,11 @@ def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     return {
         "schema": "eval.g2b.claim_unlock_checklist.v0",
         "tenant_id": tenant_id,
+        # product accuracy_claim — never auto-derived from scoped (SCORING_AND_CLAIM_MAP).
         "accuracy_claim": False,
+        "product_accuracy_claim": False,
         "scoped_accuracy_claim": claim,
+        "scoped_does_not_imply_product": True,
         "not_accuracy_certification": True,
         "claim_refuse_reason": _PRODUCT_CLAIM_REFUSE,
         "accept_accuracy_claim": bool(att.get("accept_accuracy_claim")),
@@ -242,6 +245,7 @@ def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "sample_n": n,
         "qa_resign_checklist": arena_rung.get("qa_resign_checklist")
         or arena.get("qa_resign_checklist"),
+        "scoring_claim_map": "packages/aiplat-evaluation/docs/a3/SCORING_AND_CLAIM_MAP.md",
         "honesty": (
             "scoped_accuracy_claim mirrors attestation accept + aggregate "
             "--claim-ready; product accuracy_claim stays false. Arena QA / staging / "

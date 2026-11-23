@@ -5,14 +5,15 @@ status: implemented
 authority: design-target
 language: zh-CN
 created: 2026-11-12
-updated: 2026-11-15
+updated: 2026-11-23
 doc_id: EXTERNAL_ASSET_INTEROP_COMPAT_TIERS_BD9D3F
-last_reviewed: 2026-11-15
+last_reviewed: 2026-11-23
 ---
 # 外源资产互通完整改善方案（Agent / Skill / Tool / MCP）
 
 > **设计目标态 + 落地进度。** 先读 §0；实施读 §1 起。  
-> 全文长稿曾因 physical-merge `max_net_lines=200` 拆为本文（契约口径）+ 后续 detail PR。
+> 全文长稿曾因 physical-merge `max_net_lines=200` 拆为本文（契约口径）+ 后续 detail PR。  
+> **信任硬化**：§2.1；总方案见 [`interop-eval-trust-hardening.md`](./interop-eval-trust-hardening.md)。
 
 ## 0. 白话版
 
@@ -70,14 +71,26 @@ last_reviewed: 2026-11-15
 - **L1 兼容**：写 `_compat`（tier 一等公民）；升格 mapped / handler / bound  
 - **L2 运行时**：只调度 schedulable；唯一执行面 + 门禁  
 
+### 2.1 信任边界（诚实锁 · 2026-11-23）
+
+> 防止读者把「能调度 / SecureScan 通过 / PolicyGate 放行」误读成「内容安全或执行期沙箱已认证」。
+
+1. **说明书型 Skill 默认可调度 ≠ 内容安全已认证。** 对抗性指令（间接 prompt injection / 诱导滥用已授权工具）风险由导入 **ContentGate**（`skill_boundary` 启发式：block/degrade/warn → 拒装或降 `schedulable`）+ 运行时工具授权共同约束；**SecureScan alone 不够**（SecureScan 仅路径穿越 / 危险后缀 / zip 炸弹等包结构门，明确 Non-goals：full malware analysis、runtime sandboxing、语义内容扫描）。ContentGate **非**语义防注入完备。
+2. **启用后的第三方 `handler.py` / tool 实现：无运行时沙箱**，以工作区用户身份与已授权工具集执行；**PolicyGate 只决定能否调用该资产，不审查 handler 体内逻辑**。此为工作区试用默认；生产上架另走 marketplace / 审核。
+3. **§5.4 试跑仅静态 compile + 签名/`TOOL_DEF`，不 exec 草稿**；点「启用」转正后才进入正式调度执行面。
+4. **MCP 最小权限 v0（2026-11-23）**：`connected` 且 `policy.yaml` 的 `tool_allowlist`（兼容 `allowed_tools`）**为空/缺失 → `schedulable=false`、UI「还差几步」**；空 allowlist 运行时**零业务工具注册**（禁止「空=全开」）。`gated` 仍可调度但工具级确认。MCP description 为不受信输入：进入 LLM 前经 `wrap_untrusted_mcp_tool_description` 前缀+截断；`_compat.issues` 含 `mcp_tool_descriptions_untrusted`。Non-goals：语义防注入完备、注解自动信任。
+
+升格页 / InstallReport 脚注应指向本节，避免「SecureScan + PolicyGate = 执行期安全」的误解。
+
 ## 3. Compat tiers（产品校正后）
 
 ### Skill
 
 | Tier | 默认可调度 |
 |------|:----------:|
-| `prompt_ready` | ✅（无 handler.py 是常态） |
-| `tool_mapped` | ✅ |
+| `prompt_ready` | ✅（**仅**无 `handler.py`；`execution_surface=prompt`） |
+| `handler_ready` | ✅（有 `handler.py`；`execution_surface=handler`） |
+| `tool_mapped` | ✅（`execution_surface=tools`） |
 | `needs_handler` | ❌（可有草稿，未启用） |
 | `blocked` | ❌ |
 
@@ -106,8 +119,8 @@ last_reviewed: 2026-11-15
 | Tier | 默认可调度 |
 |------|:----------:|
 | `connectable` | ❌（应自动尝试连接） |
-| `connected` | ✅ 默认立刻可用（最小权限） |
-| `gated` | 部分（高风险个别确认） |
+| `connected` | ✅ **仅当** `tool_allowlist` 非空；否则「还差几步」（§2.1·4） |
+| `gated` | ✅ 可调度但工具级确认（高风险 / `approval_required`） |
 | `blocked` | ❌ |
 
 ## 4. `_compat`（必备语义）
@@ -137,10 +150,10 @@ last_reviewed: 2026-11-15
 
 ## 6. 分资产口径（校正）
 
-- **Skill**：无 handler 默认 `prompt_ready`；假绿自动 handler 禁止；启用走 §5.4  
+- **Skill**：无 handler → `prompt_ready`；有 handler → `handler_ready`；假绿自动 handler 禁止；启用走 §5.4  
 - **Agent**：默认 `persona_ready` 能聊；缺依赖不关对话；全功能要 `bound_ready`  
 - **Tool**：映射/MCP 后立刻能调；实现草稿要升格页启用；高风险 effects 要确认  
-- **MCP**：保存后自动连接；连上即用；高风险工具个别 gated；断连不假成功  
+- **MCP**：保存后自动连接；**空 allowlist 不可默认可调度**；确认工具写入 allowlist 后才「现在就能用」；高风险工具个别 gated；断连不假成功；description 不受信包装  
 
 ## 7. 交付切片（摘要）与落地
 
@@ -177,11 +190,16 @@ last_reviewed: 2026-11-15
 | 公网/GitHub MCP E2E | 有 hermetic 本地 stdio；不做公网依赖门禁 |
 | 独立「启用」审批产品 | 工作区 RBAC 可启用试用；生产上架走 marketplace，不另做 enable 审批流 |
 | 运行时执行草稿试跑 | 安全：仅 compile + 签名/`TOOL_DEF`；不 `exec` 任意草稿 |
+| 启用后 handler 运行时沙箱 | **刻意不做（首期）**：见 §2.1·2；沙箱属 hardening A-P4 |
+| SecureScan 语义防注入完备 | **刻意不做**：包结构门 ≠ 内容门；内容门 = ContentGate 启发式（A-P1 / S2，非完备） |
+| MCP 描述注入语义完备防护 | **残差**：v0 仅前缀+截断 + issues；非语义防注入 |
+| 启用后 handler 沙箱 / P6 依赖语义 | **后置**：hardening A-P4 / A-P5 |
 
-**已关闭（本方案交付）**：§5.4 Skill/Tool 升格预览·丢弃·静态试跑·改权限；MCP `gated` 逐工具确认（`policy.confirmed_tools` + gated-tools API + 管理端模态）。
+**已关闭（本方案交付）**：§5.4 Skill/Tool 升格预览·丢弃·静态试跑·改权限；MCP `gated` 逐工具确认（`policy.confirmed_tools` + gated-tools API + 管理端模态）。  
+**信任硬化（2026-11-23）**：§2.1；ContentGate（A-P1）；MCP 最小权限 v0 + description wrap（A-P2）；`handler_ready` / `execution_surface`（A-P3）。不等于沙箱或语义防注入完备。
 
 ## 10. 验证入口
 
-- Skill：`test_asset_compat_phase_a.py`（含 preview/discard/dry_run/enable 权限）  
+- Skill：`test_asset_compat_phase_a.py` + `test_asset_compat_handler_ready.py` + `test_asset_content_gate.py`  
 - Tool/MCP：`test_asset_compat_phase_c.py` / `phase_d.py` + `test_mcp_install_sync_hermetic_e2e.py`  
 - 系统契约 clause 82–85；`architecture_guard.sh §98`

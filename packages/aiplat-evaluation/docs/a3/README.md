@@ -49,6 +49,7 @@ doc_type: Index
 | [`ADR_CANONICAL_RUNNERS_V1.md`](./ADR_CANONICAL_RUNNERS_V1.md) | Prompt/KB package runner canonical；legacy core 只读 |
 | [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md) | score/composite 版本与历史兼容（当前 v1.2 弱代理 smoke） |
 | [`STORE_SURFACE_V0.md`](./STORE_SURFACE_V0.md) | standalone store 诚实子集（sets/reports/jobs） |
+| [`SCORING_AND_CLAIM_MAP.md`](./SCORING_AND_CLAIM_MAP.md) | **对外 SSOT**：计分路径 / scoped≠product claim / 展示强制项 |
 | [`G2B_RE_REVIEW_PROCEDURE.md`](./G2B_RE_REVIEW_PROCEDURE.md) | G2b 预注册改判/重审规程 |
 | [`REPORT_COMPARE_V0.md`](./REPORT_COMPARE_V0.md) | P1b 报告对比：同 composite_version 才 comparable |
 | [`EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./EVAL_EVIDENCE_LEVEL_MAP_V1.md) | **索引** → [`_archive/EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./_archive/EVAL_EVIDENCE_LEVEL_MAP_V1.md)（✅ Accepted） |

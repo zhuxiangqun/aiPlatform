@@ -6,6 +6,7 @@ from core.harness.maintenance.asset_compat import (  # noqa: F401
     HANDLER_DRAFT,
     SKILL_NOT_SCHEDULABLE,
     TIER_BLOCKED,
+    TIER_HANDLER_READY,
     TIER_NEEDS_HANDLER,
     TIER_PROMPT_READY,
     TIER_TOOL_MAPPED,

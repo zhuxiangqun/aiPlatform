@@ -233,12 +233,44 @@ class MCPRuntime:
         # add_server connects + lists tools
         await self._manager.add_server(cfg.name, cfg)
 
-        pol = self._policy(s)
+        pol = dict(self._policy(s) or {})
+        # 合并磁盘 policy.yaml（tool_allowlist / allowed_tools）— 最小权限 v0
+        disk_policy_present = False
+        allowed_tools: list = []
+        try:
+            from core.harness.maintenance.asset_compat import resolve_mcp_dir, resolve_mcp_policy_allowlist
+
+            mdir = resolve_mcp_dir(cfg.name)
+            if mdir is not None and (mdir / "policy.yaml").is_file():
+                disk_policy_present = True
+                disk_allow, disk_pol = resolve_mcp_policy_allowlist(mdir)
+                if disk_pol:
+                    pol = {**pol, **disk_pol}
+                # 为什么：磁盘已声明 allowlist（哪怕为空）时禁止再回退 server.allowed_tools
+                allowed_tools = list(disk_allow)
+            else:
+                disk_allow, disk_pol = ([], {})
+                if disk_pol:
+                    pol = {**pol, **disk_pol}
+        except Exception as e:
+            logging.debug("mcp disk policy merge skipped: %s", e, exc_info=True)
+            disk_policy_present = False
+            allowed_tools = []
+        if not disk_policy_present and not allowed_tools:
+            # 无 policy.yaml 时，server 对象显式列表才可作为 allowlist
+            allowed_tools = [
+                str(x).strip() for x in (getattr(s, "allowed_tools", None) or []) if str(x).strip()
+            ]
+        if not disk_policy_present and not allowed_tools:
+            for key in ("tool_allowlist", "allowed_tools"):
+                raw = pol.get(key)
+                if isinstance(raw, list) and raw:
+                    allowed_tools = [str(x).strip() for x in raw if str(x).strip()]
+                    break
         risk_level = str(pol.get("risk_level") or ("high" if transport == "stdio" else "medium"))
         tool_risk = pol.get("tool_risk") if isinstance(pol.get("tool_risk"), dict) else {}
         approval_required = pol.get("approval_required")
         confirmed_tools = pol.get("confirmed_tools") if isinstance(pol.get("confirmed_tools"), list) else []
-        allowed_tools = getattr(s, "allowed_tools", None) or []
         meta = getattr(s, "metadata", {}) or {}
         server_description = meta.get("description", "") if isinstance(meta, dict) else ""
 
@@ -275,6 +307,8 @@ class MCPRuntime:
             tool_registry: tool_registry 参数。
         """
         import difflib
+        from core.harness.maintenance.asset_compat import resolve_mcp_dir, resolve_mcp_policy_allowlist
+
         hint_lower = tool_name_hint.lower().replace("mcp.", "")
         for server_name, state in self._registered.items():
             candidates = [(n, difflib.SequenceMatcher(None, hint_lower, n.lower()).ratio())
@@ -282,11 +316,22 @@ class MCPRuntime:
             candidates.sort(key=lambda x: -x[1])
             if candidates and candidates[0][1] > 0.3:
                 match_name = candidates[0][0]
+                short = match_name.split(".", 2)[-1] if match_name.startswith("mcp.") else match_name
+                # 为什么：禁止 on-demand 绕过空 allowlist（最小权限 v0）
+                mdir = resolve_mcp_dir(server_name)
+                allow, _ = resolve_mcp_policy_allowlist(mdir) if mdir is not None else ([], {})
+                if short not in set(allow):
+                    logging.debug(
+                        "mcp search_and_register denied by min-priv allowlist: %s not in %s",
+                        short,
+                        allow,
+                    )
+                    continue
                 if match_name not in tool_registry.list_tools():
                     try:
                         await self._wrapper.register_server_tools(
                             server_name, tool_registry,
-                            allowed_tools=[match_name.split(".", 2)[-1]],
+                            allowed_tools=[short],
                         )
                         return match_name
                     except Exception as e:
