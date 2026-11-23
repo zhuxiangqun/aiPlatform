@@ -19,6 +19,8 @@ import json
 import os
 import yaml
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class MCPServerInfo:
