@@ -5048,6 +5048,167 @@ def evaluate_datasource_connector_matrix_gate(
     }
 
 
+_N01_VENDOR_MATRIX_CASES = (
+    "matrix_declares_sqlite_postgresql_mysql_oracle",
+    "probe_sqlite_honest",
+    "probe_postgresql_honest",
+    "probe_mysql_honest",
+    "oracle_declared_unavailable",
+    "missing_driver_not_fake_green",
+    "honesty_flags_false",
+)
+
+
+def run_datasource_vendor_matrix_suite() -> Dict[str, Any]:
+    """N01 SQL vendor 驱动矩阵：软依赖探测 + 诚实声明；certified 恒 false。
+
+    Returns:
+        套件汇总；``certified`` / ``n01_full_conformance`` 恒 false。
+        缺驱动时 ``available=false``，不要求装齐驱动即可过套件。
+    """
+    from core.harness.ontology_engine.data_source import (
+        DATASOURCE_VENDOR_DRIVER_MATRIX,
+        datasource_vendor_driver_matrix,
+        probe_vendor_driver,
+    )
+
+    matrix_meta = datasource_vendor_driver_matrix()
+    cases: List[Dict[str, Any]] = []
+
+    vendors = list(matrix_meta.get("vendors") or [])
+    matrix_ok = (
+        vendors == list(DATASOURCE_VENDOR_DRIVER_MATRIX)
+        and matrix_meta.get("certified") is False
+        and matrix_meta.get("n01_full_conformance") is False
+        and "oracle" in (matrix_meta.get("declared_unavailable") or [])
+    )
+    cases.append(
+        {
+            "id": "matrix_declares_sqlite_postgresql_mysql_oracle",
+            "ok": matrix_ok,
+            "detail": "" if matrix_ok else "matrix_mismatch",
+        }
+    )
+
+    for vendor in ("sqlite", "postgresql", "mysql"):
+        probe = probe_vendor_driver(vendor)
+        honest = (
+            probe.get("vendor") == vendor
+            and probe.get("certified") is False
+            and probe.get("n01_full_conformance") is False
+            and isinstance(probe.get("available"), bool)
+            and (
+                (probe.get("available") is True and probe.get("status") == "available")
+                or (
+                    probe.get("available") is False
+                    and probe.get("status") == "unavailable"
+                )
+            )
+        )
+        cases.append(
+            {
+                "id": f"probe_{vendor}_honest",
+                "ok": honest,
+                "detail": "" if honest else f"{vendor}_probe_dishonest",
+                "probe": probe,
+            }
+        )
+
+    oracle = probe_vendor_driver("oracle")
+    oracle_ok = (
+        oracle.get("status") == "declared_unavailable"
+        and oracle.get("available") is False
+        and oracle.get("certified") is False
+    )
+    cases.append(
+        {
+            "id": "oracle_declared_unavailable",
+            "ok": oracle_ok,
+            "detail": "" if oracle_ok else "oracle_not_declared_unavailable",
+            "probe": oracle,
+        }
+    )
+
+    # 为什么：缺驱动不得假绿 — 任一 soft_probe unavailable 时 certified 必须仍为 false
+    fake_green = False
+    for v, p in (matrix_meta.get("probes") or {}).items():
+        if p.get("available") is False and p.get("certified") is True:
+            fake_green = True
+        if p.get("status") == "declared_unavailable" and p.get("available") is True:
+            fake_green = True
+    cases.append(
+        {
+            "id": "missing_driver_not_fake_green",
+            "ok": not fake_green,
+            "detail": "" if not fake_green else "fake_green_detected",
+        }
+    )
+
+    honesty_ok = (
+        matrix_meta.get("certified") is False
+        and matrix_meta.get("n01_full_conformance") is False
+    )
+    cases.append(
+        {
+            "id": "honesty_flags_false",
+            "ok": honesty_ok,
+            "detail": "" if honesty_ok else "honesty_flags_set",
+        }
+    )
+
+    passed = sum(1 for c in cases if c.get("ok") is True)
+    required = list(_N01_VENDOR_MATRIX_CASES)
+    missing = [x for x in required if not any(c.get("id") == x for c in cases)]
+    ok = passed == len(required) and not missing
+    return {
+        "suite": "datasource_vendor_matrix",
+        "ok": ok,
+        "passed": passed,
+        "total": len(cases),
+        "required_cases": required,
+        "missing_required": missing,
+        "cases": cases,
+        "matrix": matrix_meta,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": (
+            "SQL vendor soft-probe matrix; not production cluster acceptance / "
+            "not N01 certified"
+        ),
+    }
+
+
+def evaluate_datasource_vendor_matrix_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N01 vendor 驱动矩阵门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_datasource_vendor_matrix_suite`` 回执。
+    """
+    s = dict(suite or {})
+    issues: List[str] = []
+    if not s:
+        issues.append("suite_required")
+    if s.get("ok") is not True:
+        issues.append("suite_not_ok")
+    if s.get("missing_required"):
+        issues.append("missing_required_cases")
+    if s.get("certified") is True or s.get("n01_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    return {
+        "gate": "datasource_vendor_matrix",
+        "ok": not issues,
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        "certified": False,
+        "n01_full_conformance": False,
+        "note": "vendor soft-probe matrix; not production / N01 certified",
+    }
+
+
 _N09_CASES = (
     "query_facts_no_leak",
     "get_source_no_leak",
