@@ -2,10 +2,12 @@
 
 由 ObjectType 绑定生成类型化调用表面；运行时经 CoreFacade，不绕过权限/审批。
 非目标：不实现多语言包发布、字段级 ACL、手写平行 API。
+写盘安装仅允许落在仓库 ``aiplat-sdk/aiplat/knowledge/``（或测试注入的同名 allowlist 根）。
 """
 from __future__ import annotations
 
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -21,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 _REQUIRED_READ = ["kb:read"]
 _FORBIDDEN_IN_SOURCE = ("sql", "write_fact", "raw_sql", "_bypass_approval")
+# 写盘安装：相对 aiplat 包内固定子目录；禁止越出 allowlist
+_SDK_KNOWLEDGE_REL = Path("aiplat-sdk") / "aiplat" / "knowledge"
 
 
 def _client_name(object_type: str) -> str:
@@ -556,4 +560,175 @@ def list_sdk_object_types(
         "object_types": types,
         "bindings_path": str(path),
         "policy_gate": gate,
+    }
+
+
+def _module_filename(object_type: str) -> str:
+    """ObjectType → 安全模块文件名（无路径分隔符）。
+
+    Args:
+        object_type: ObjectType id。
+    """
+    safe = re.sub(r"[^A-Za-z0-9_]", "_", str(object_type or "").strip()) or "object"
+    if safe[0].isdigit():
+        safe = f"t_{safe}"
+    return f"{safe.lower()}_client.py"
+
+
+def resolve_sdk_install_root(
+    *,
+    install_root: Optional[Path] = None,
+    workspace_root: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """解析写盘安装根目录（须为 allowlist 下的 ``…/aiplat-sdk/aiplat/knowledge``）。
+
+    Args:
+        install_root: 显式根；若给则必须 resolve 后以 ``/aiplat-sdk/aiplat/knowledge`` 结尾。
+        workspace_root: 可选工作区根；默认自本文件向上发现含 ``aiplat-sdk/aiplat`` 的根。
+
+    Returns:
+        ``{status, root?}``；越权/缺失 → error。
+    """
+    if install_root is not None:
+        root = Path(install_root).expanduser().resolve()
+        marker = str(Path("aiplat-sdk") / "aiplat" / "knowledge")
+        # 为什么：显式根也必须落在 knowledge 包路径，防任意写盘
+        if not (str(root).replace("\\", "/").endswith(marker.replace("\\", "/"))):
+            return {
+                "status": "error",
+                "reason": "install_root_not_allowlisted",
+                "root": str(root),
+            }
+        return {"status": "ok", "root": root}
+
+    env = (os.environ.get("AIPLAT_SDK_INSTALL_ROOT") or "").strip()
+    if env:
+        return resolve_sdk_install_root(install_root=Path(env))
+
+    start = Path(workspace_root).resolve() if workspace_root else Path(__file__).resolve()
+    for p in [start, *start.parents]:
+        candidate = (p / _SDK_KNOWLEDGE_REL).resolve()
+        parent_pkg = candidate.parent  # …/aiplat
+        if parent_pkg.is_dir() and parent_pkg.name == "aiplat":
+            return {"status": "ok", "root": candidate}
+
+    return {
+        "status": "error",
+        "reason": "aiplat_sdk_knowledge_root_not_found",
+    }
+
+
+def _assert_under_root(target: Path, root: Path) -> bool:
+    """目标路径是否严格位于 root 之下（含 root 自身文件）。
+
+    Args:
+        target: 拟写文件。
+        root: allowlist 根。
+    """
+    try:
+        target.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def install_sdk_python(
+    object_type: str,
+    *,
+    permissions: Optional[List[str]] = None,
+    bindings_path: Optional[Path] = None,
+    install_root: Optional[Path] = None,
+    workspace_root: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """生成 Python SDK 源码并写盘到 allowlist 根（``aiplat-sdk/aiplat/knowledge``）。
+
+    Args:
+        object_type: ObjectType id。
+        permissions: 须含 kb:read。
+        bindings_path: 可选绑定 JSON。
+        install_root: 可选显式安装根（须 allowlist）。
+        workspace_root: 可选工作区根（用于发现 aiplat-sdk）。
+
+    Returns:
+        含 ``path`` / ``bytes_written`` 的回执；**未宣称**多语言包发布。
+    """
+    resolved = resolve_sdk_install_root(
+        install_root=install_root, workspace_root=workspace_root
+    )
+    if resolved.get("status") != "ok":
+        return {**resolved, "object_type": object_type, "path": ""}
+
+    root = Path(resolved["root"])
+    surface = build_sdk_surface(
+        object_type, permissions=permissions, bindings_path=bindings_path
+    )
+    rendered = render_sdk_python(surface)
+    if rendered.get("status") != "ok":
+        return {
+            **rendered,
+            "surface": surface,
+            "path": "",
+            "bytes_written": 0,
+        }
+
+    source = str(rendered.get("source") or "")
+    if not source.strip():
+        return {
+            "status": "error",
+            "reason": "empty_source",
+            "object_type": object_type,
+            "path": "",
+            "bytes_written": 0,
+            "surface": surface,
+        }
+
+    filename = _module_filename(object_type)
+    # 为什么：拒绝 `../` 文件名；仅允许单段 basename
+    if Path(filename).name != filename or "/" in filename or "\\" in filename:
+        return {
+            "status": "error",
+            "reason": "unsafe_filename",
+            "object_type": object_type,
+            "path": "",
+        }
+
+    root.mkdir(parents=True, exist_ok=True)
+    init_py = root / "__init__.py"
+    if not init_py.exists():
+        # 包标记；不自动 re-export 生成类（避免污染公开 API）
+        init_py.write_text(
+            '"""Generated Knowledge SDK clients (appendix E.3). Auto-written; do not hand-edit as parallel API."""\n',
+            encoding="utf-8",
+        )
+
+    target = (root / filename).resolve()
+    if not _assert_under_root(target, root):
+        return {
+            "status": "error",
+            "reason": "path_escape_denied",
+            "object_type": object_type,
+            "path": str(target),
+        }
+
+    # 为什么：再次扫描禁词，防止写盘前被篡改的 source
+    lowered = source.lower()
+    for bad in _FORBIDDEN_IN_SOURCE:
+        if bad in lowered:
+            return {
+                "status": "error",
+                "reason": f"generated_source_forbidden:{bad}",
+                "object_type": object_type,
+                "path": "",
+            }
+
+    target.write_text(source, encoding="utf-8")
+    return {
+        "status": "ok",
+        "object_type": str(surface.get("object_type") or object_type),
+        "client_name": rendered.get("client_name"),
+        "path": str(target),
+        "bytes_written": len(source.encode("utf-8")),
+        "install_root": str(root),
+        "surface": surface,
+        "note": "python_write_install_only; multi_lang_publish_not_claimed",
     }
