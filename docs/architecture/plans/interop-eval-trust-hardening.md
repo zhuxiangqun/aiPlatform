@@ -9,8 +9,10 @@ updated: 2026-11-23
 s1_status: implemented
 s2_status: implemented
 s4_status: implemented
+s5_status: implemented
+s6_status: thin-landed
 doc_id: INTEROP_EVAL_TRUST_HARDENING_20261123
-last_reviewed: 2026-11-23
+last_reviewed: 2026-11-24
 based_on:
   - docs/architecture/plans/external-asset-interop-compat-tiers.md
   - docs/architecture/plans/eval-trust-boundary-lab-vs-cert.md
@@ -226,7 +228,7 @@ A3 未授权前禁止 standalone 假全量 8 实体 CRUD；维持 `STORE_SURFACE
 | **S3** | A-P2 MCP 最小权限 | 中 | S1 · **已合入 PR #1029** |
 | **S4** | B-P1 + B-P2 载荷/UI/claim 表 | 中 | S1 |
 | **S5** | A-P3 tier 语义 | 小 | S2 可并行 |
-| **S6+** | A-P4/P5 · B-P3/P5 | 大 | 产品显式点名 |
+| **S6+** | A-P4/P5 · B-P3/P5 | 大 | 产品显式点名 · **薄切片已合**：A-P5 deps + A-P4 `declared_unavailable` + B-P3 gate helper + B-P5 `composite_profile_id`；**未宣称** 生产沙箱完备 / Full |
 
 **默认并行**：`S1` 后开 **S2∥S4**，再 **S3**，然后 **S5**。
 

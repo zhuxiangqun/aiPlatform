@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3219
+total_capabilities: 3221
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 646
+    caps_count: 647
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1985,7 +1985,11 @@ domains:
         module: "packages/aiplat-evaluation/app/worker/cost_cap.py"
       - symbol: "build_composite"
         type: "function"
-        signature: "build_composite(metrics, family_of=None)→dict"
+        signature: "build_composite(metrics, family_of=None, composite_profile_id=None)→dict; profile incomplete→score=None"
+        module: "packages/aiplat-evaluation/app/scoring/composite.py"
+      - symbol: "engineering_score_accepted"
+        type: "function"
+        signature: "engineering_score_accepted(scoring_path)→bool; B-P3 package composite only"
         module: "packages/aiplat-evaluation/app/scoring/composite.py"
       - symbol: "metric_role"
         type: "function"
@@ -7242,7 +7246,7 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 216
+    caps_count: 217
     provides:
       - symbol: "finalize_skill_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -7307,7 +7311,11 @@ domains:
       - symbol: "compute_skill_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
-        signature: "compute_skill_compat(skill_dir,*,source,adapt_summary)→dict"
+        signature: "compute_skill_compat(skill_dir,*,source,adapt_summary)→dict; A-P5 deps+cycle"
+      - symbol: "handler_sandbox_status"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "handler_sandbox_status()→dict; A-P4 declared_unavailable default"
       - symbol: "write_skill_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function

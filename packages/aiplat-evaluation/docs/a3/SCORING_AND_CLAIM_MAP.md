@@ -43,6 +43,13 @@ updated: 2026-11-23
 
 Family 重归一化含义：只测 quality 时 composite≈quality；测 quality+efficiency 才是加权分。因此 **composite 不天然可跨对象排名**（与信任边界文档一致）。
 
+**B-P5（已接线）**：调用 `build_composite(..., composite_profile_id="engineering_v1")` 时，
+固定要求 `quality`+`efficiency`；缺维 → `incomplete=true` 且 `score=null`，**禁止**把部分 family
+静默重归一化当完整可比分。未传 profile 时保留历史重归一化行为（工程回归兼容）。
+
+**B-P3（已接线）**：`engineering_score_accepted(scoring.path)` — 新门禁只认
+`package_build_composite` / `build_composite`；`legacy_7dim` → false。
+
 ## 4. Claim 升级（scoped → product）
 
 | 门 | 说明 |

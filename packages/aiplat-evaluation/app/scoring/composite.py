@@ -17,7 +17,7 @@ owns the independent eval package runner_result.scoring.composite.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple  # Tuple: profile family sets
 
 # Metric → role (scored | report_only). Unknown keys → report_only.
 _METRIC_ROLE: Dict[str, str] = {
@@ -109,12 +109,37 @@ def _to_unit(name: str, value: Any) -> Optional[float]:
     return round(v, 4)
 
 
+# B-P5：固定 family 集的可比 profile；缺维 → incomplete，禁止当「完整分」
+_COMPOSITE_PROFILES: Dict[str, Tuple[str, ...]] = {
+    "engineering_v1": ("quality", "efficiency"),
+}
+
+
+def engineering_score_accepted(scoring_path: Optional[str]) -> bool:
+    """B-P3：新工程门禁只认 package composite，拒绝 legacy_7dim。
+
+    Args:
+        scoring_path: ``scoring.path`` 或等价字符串。
+    """
+    path = str(scoring_path or "").strip()
+    return path in {"package_build_composite", "build_composite"}
+
+
 def build_composite(
     metrics: Optional[Mapping[str, Any]] = None,
     *,
     family_of: Optional[Any] = None,
+    composite_profile_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Build engineering composite 0..100 from scored metrics only."""
+    """Build engineering composite 0..100 from scored metrics only.
+
+    Args:
+        metrics: runner metrics map.
+        family_of: optional metric→family classifier.
+        composite_profile_id: when set (e.g. ``engineering_v1``), require all
+            profile families or return ``incomplete`` with ``score=None``
+            instead of silently renormalizing a partial family set as a full score.
+    """
     from app.scoring.semantics import classify_metric
 
     classify = family_of or classify_metric
@@ -146,9 +171,18 @@ def build_composite(
     for fam, vals in by_family_units.items():
         family_scores[fam] = round(sum(vals) / len(vals), 4) if vals else None
 
-    # Renormalize weights over families that have data
+    profile_id = str(composite_profile_id or "").strip() or None
+    required_families = _COMPOSITE_PROFILES.get(profile_id or "", ())
+    incomplete = False
+    missing_families: List[str] = []
+    if required_families:
+        missing_families = [f for f in required_families if family_scores.get(f) is None]
+        incomplete = bool(missing_families)
+
+    # Renormalize weights over families that have data (legacy default path).
+    # Profile path: incomplete → no score (not a silent partial as "full").
     active = {f: w for f, w in _FAMILY_WEIGHTS.items() if family_scores.get(f) is not None}
-    if not active:
+    if incomplete or not active:
         composite = None
         used_weights: Dict[str, float] = {}
     else:
@@ -168,6 +202,9 @@ def build_composite(
         "weights_used": used_weights,
         "scored_metrics": scored,
         "report_only_metrics": report_only,
+        "composite_profile_id": profile_id,
+        "incomplete": incomplete,
+        "missing_families": missing_families,
         "policy": {
             "scored": sorted(k for k, r in _METRIC_ROLE.items() if r == "scored"),
             "report_only": sorted(k for k, r in _METRIC_ROLE.items() if r == "report_only"),
@@ -183,6 +220,8 @@ def build_composite(
             "safety_keyword_smoke": True,
             "safety_family_weight": False,
             "unknown_metric_default": "report_only",
+            "engineering_gate_paths": ["package_build_composite", "build_composite"],
+            "legacy_7dim_gate": False,
         },
     }
 

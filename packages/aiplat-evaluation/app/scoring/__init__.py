@@ -1,7 +1,7 @@
 """P1 scoring semantics — metric families + engineering composite; accuracy gated until G2b."""
 from __future__ import annotations
 
-from app.scoring.composite import build_composite, metric_role
+from app.scoring.composite import build_composite, engineering_score_accepted, metric_role
 from app.scoring.g2b_accuracy import build_gold, wilson_ci
 from app.scoring.report_compare import compare_reports, extract_composite_version
 from app.scoring.report_stamp import (
@@ -25,6 +25,7 @@ __all__ = [
     "build_scoring_block",
     "classify_metric",
     "compare_reports",
+    "engineering_score_accepted",
     "enrich_runner_result",
     "ensure_report_meta",
     "ensure_report_scoring",

@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -125,8 +125,29 @@ def compute_skill_compat(
     else:
         execution_surface = "none"
 
-    schedulable = tier in _SCHEDULABLE
-    upgrade = "enable_handler" if has_draft and not has_handler else ("none" if schedulable else "needs_handler")
+    # A-P5 P6 依赖语义 v0：dependencies.required；缺失→issues；环→blocked（无版本范围）
+    dep_info = _evaluate_skill_dependencies(root, fm, skill_name=str(fm.get("name") or root.name or ""))
+    if dep_info.get("cycle"):
+        tier = TIER_BLOCKED
+        issues.append({
+            "code": "dependency_cycle",
+            "severity": "error",
+            "message": "skill dependency cycle: " + " → ".join(dep_info.get("cycle_path") or []),
+        })
+    elif dep_info.get("missing"):
+        issues.append({
+            "code": "missing_dependencies",
+            "severity": "warning",
+            "message": "required dependencies not installed: "
+            + ", ".join(str(x) for x in (dep_info.get("missing") or [])[:8]),
+        })
+
+    schedulable = tier in _SCHEDULABLE and not dep_info.get("missing") and not dep_info.get("cycle")
+    if dep_info.get("missing") and tier != TIER_BLOCKED:
+        # 缺依赖仍可读 compat，但不可默认可调度
+        upgrade = "bind_dependencies"
+    else:
+        upgrade = "enable_handler" if has_draft and not has_handler else ("none" if schedulable else "needs_handler")
     out: Dict[str, Any] = {
         "schema": COMPAT_SCHEMA,
         "asset_kind": "skill",
@@ -135,9 +156,15 @@ def compute_skill_compat(
         "schedulable": schedulable,
         "issues": issues,
         "mappings": [],
-        "missing_critical": [str(x) for x in missing],
+        "dependencies": {
+            "required": dep_info.get("required") or [],
+            "missing": dep_info.get("missing") or [],
+            "cycle": bool(dep_info.get("cycle")),
+        },
+        "missing_critical": [str(x) for x in missing] + list(dep_info.get("missing") or []),
         "upgrade": {"recommended": upgrade, "auto_generated_artifacts": [HANDLER_DRAFT] if has_draft else []},
         "ui_state": "现在就能用" if schedulable else ("不能用" if tier == TIER_BLOCKED else "还差几步"),
+        "handler_sandbox": handler_sandbox_status(),
     }
     if source:
         out["source"] = source
@@ -192,6 +219,94 @@ def read_skill_compat(skill_dir: Path | str) -> Optional[Dict[str, Any]]:
         return data if isinstance(data, dict) else None
     except Exception:
         return None
+
+
+def handler_sandbox_status() -> Dict[str, Any]:
+    """A-P4：第三方 handler 运行时沙箱状态（诚实声明）。
+
+    Returns:
+        默认 ``declared_unavailable``；仅当 ``AIPLAT_HANDLER_SANDBOX=1`` 时标记
+        ``opt_in_stub``（仍非生产沙箱完备）。**未宣称** handler 已沙箱。
+    """
+    flag = str(os.getenv("AIPLAT_HANDLER_SANDBOX", "") or "").strip().lower()
+    if flag in {"1", "true", "yes", "on"}:
+        return {
+            "status": "opt_in_stub",
+            "production_ready": False,
+            "note": "env opt-in stub only; not a certified sandbox",
+        }
+    return {
+        "status": "declared_unavailable",
+        "production_ready": False,
+        "note": "third-party handler runs as workspace user; PolicyGate≠code review",
+    }
+
+
+def _skill_required_deps(fm: Mapping[str, Any]) -> List[str]:
+    """Parse ``dependencies.required`` (list) from skill frontmatter."""
+    deps = fm.get("dependencies")
+    if isinstance(deps, dict):
+        raw = deps.get("required")
+    else:
+        raw = fm.get("required_dependencies")
+    if not isinstance(raw, list):
+        return []
+    return [str(x).strip() for x in raw if str(x).strip()]
+
+
+def _evaluate_skill_dependencies(
+    root: Path,
+    fm: Mapping[str, Any],
+    *,
+    skill_name: str,
+) -> Dict[str, Any]:
+    """P6 v0：required 列表缺失检测 + 简单环检测（DFS）。
+
+    Args:
+        root: skill 目录。
+        fm: SKILL.md frontmatter。
+        skill_name: 当前 skill id/name。
+    """
+    required = _skill_required_deps(fm)
+    missing: List[str] = []
+    for sid in required:
+        if resolve_skill_dir(sid) is None:
+            missing.append(sid)
+
+    cycle = False
+    cycle_path: List[str] = []
+    if required and not missing:
+        # 仅当依赖均可解析时做环检测
+        visiting: List[str] = []
+        visited: set = set()
+
+        def _dfs(name: str) -> bool:
+            if name in visiting:
+                cycle_path.extend(visiting + [name])
+                return True
+            if name in visited:
+                return False
+            visiting.append(name)
+            visited.add(name)
+            sdir = resolve_skill_dir(name) if name != skill_name else root
+            if sdir is None:
+                visiting.pop()
+                return False
+            child_fm = _read_frontmatter(Path(sdir))
+            for child in _skill_required_deps(child_fm):
+                if _dfs(child):
+                    return True
+            visiting.pop()
+            return False
+
+        cycle = _dfs(skill_name)
+
+    return {
+        "required": required,
+        "missing": missing,
+        "cycle": cycle,
+        "cycle_path": cycle_path[:16],
+    }
 
 
 def finalize_skill_compat(
@@ -485,6 +600,8 @@ def enable_handler_draft(
         "draft_sha256": draft_sha,
         "permissions_at_enable": [str(p) for p in perms],
         "permissions_updated": permissions is not None,
+        # A-P4 诚实戳：启用≠沙箱完备
+        "handler_sandbox": compat.get("handler_sandbox") or handler_sandbox_status(),
     }
 
 
