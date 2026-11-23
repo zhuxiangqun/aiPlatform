@@ -55,7 +55,7 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -m pytest \
 
 ## 明确未做
 
-- ingest / object-sync / 索引重建 SLI
+- ingest / object-sync / 索引重建 SLI（默认 deepen 已冻结，见 `phase2-slo-telemetry-freeze-evidence.md`）
 - 生产告警 / Grafana / PagerDuty
 - 用接线冒充生产达标或清除 Full `conditional`
 - 准确率宣称
