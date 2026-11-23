@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T23:13:30+08:00",
+  "reviewed_at": "2026-11-23T23:26:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "bf1f9981bda5bba6bf3b29de9294c28fcdc2d7e8",
-  "diff_sha256": "4ea56a546ba54e82962af980679fec97b41482081a5058fc532c2e5b10728b0e",
-  "head_sha": "efa2604bc3b5298ae705953a7a315c0f502bc840",
+  "diff_sha256": "581e31b00a5081bea0fc94c0ac737ef188ae2d365576bbdc1d5fcba5dbae0a7e",
+  "head_sha": "5f824455653c7bd65d0eae757b8cc58ebab65e38",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Replay #903 pre-commit exit honor + #218 adhd_v2; kept private-control frontmatter; no docs/manuals resurrection."
+  "note": "Replay #903/#218 + clause-sync system contract for contracts-guard; no manuals resurrection."
 }
