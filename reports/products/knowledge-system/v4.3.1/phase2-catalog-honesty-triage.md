@@ -31,7 +31,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 |----|-------------------|------|------|
 | N02 | ObjectType 人审发布 deepen + 管理端薄门户已接线；多域批量/种子替换仍缺 | **并入既有刀**（deepen+薄门户）+ **仍开放**（多域批量） | deepen/门户见 ADR N02 + `phase2-object-type-publish-evidence.md` + `phase2-n02-object-type-publish-portal-evidence.md`；多域批量仍开放 |
 | N05 | Wiki 有条件重建 deepen 已接线；wiki_engine/FTS 全量仍缺 | **并入既有刀**（deepen）+ **仍开放**（全量引擎） | deepen 见 ADR N05 + `phase2-wiki-rebuild-evidence.md`；全量仍开放 |
-| N10 | Exact-match gold 流水线已接线；LLM judge/准确率宣称仍缺 | **并入既有刀**（deepen）+ **仍开放**（准确率） | deepen 见 ADR N10 + `phase2-knowledge-gold-eval-evidence.md`；准确率宣称仍开放 |
+| N10 | Exact-match gold 流水线已接线；LLM judge opt-in residual 已落地；准确率宣称仍缺 | **并入既有刀**（deepen + residual）+ **仍开放**（准确率/certified） | deepen 见 ADR N10 + `phase2-knowledge-gold-eval-evidence.md`；residual 见 `phase2-n10-llm-judge-residual-evidence.md`；准确率宣称仍开放 |
 | N15 | 标准包 schema 已发布 | **已过时**（无 deepen 债） | 保持 exists；无单独 deepen todo |
 | N16 | phase0 schema validate | **已过时**（无 deepen 债） | 同上 |
 | N17 | 记录级语义运行时权威 deepen 已接线；非 RBAC 真源 / 非全量 cases | **并入既有刀**（deepen）+ **仍开放**（全量） | deepen 见 ADR N17 + `phase2-record-semantics-evidence.md`；全量仍开放 |
