@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T08:10:00+08:00",
+  "reviewed_at": "2026-11-23T08:41:45+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4fb71f2ae76cf8ba32c66423efd33e61b2721411",
-  "diff_sha256": "675b38605cff3bbc455813e663eef563bfc28003b33c2cb131c9cd841cdd4d22",
-  "head_sha": "61327793f31dae0cc9dd9db87d079dfc6eeb0073",
+  "merge_base": "3b79ac669c91100109fc5dfb88544a32d15dda46",
+  "diff_sha256": "2ef4ad4c5abe44fa065e92fc94d28173fd6b107e7342417fd5419326a5d39ff0",
+  "head_sha": "2aae560efac94406bdab253f2dec2131120f5ef3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Synced depth-28 from main into $nor/$all/$elemMatch tip; depth +1 deepen remains stopped. Residual: full expr / certified."
+  "note": "A+B bounded expr slice; residual C=$field-level $not / certified. Local lock only."
 }
