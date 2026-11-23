@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4146
+total_capabilities: 4147
 last_updated: 2026-11-22
 version: "30.14"
 auto_sync: true
@@ -1237,6 +1237,7 @@ scan_hash: 8f9548ec24f4
 | **迁移切写授权（v4.3.1 N11/N14 deepen）** | `authorize_migration_cutover` / `request_write_cutover` / suite/gate + Facade | ✅ | token+actor+reason+对账；作业级授权≠生产认证；certified 恒 false。证据 `phase2-migration-cutover-auth-evidence.md`。**未宣称** 生产切写 / N11/N14 certified。生成物适用：已接线 | 本批 |
 | **ABox 角色×动作轴（v4.3.1 N07/N22 deepen）** | `load_role_action_matrix` / `role_action_allowed` / suite/gate + Facade；`check_entity_acl` 接线 | ✅ | 配置驱动任意角色×动作；未知角色拒绝；certified 恒 false。证据 `phase2-role-action-matrix-evidence.md`。**未宣称** 部署 RBAC 真源 / Wiki·KB 全入口 / N07/N22 certified。生成物适用：已接线 | 本批 |
 | **ObjectSet 嵌套 filter（v4.3.1 N07/N22 deepen）** | `match_filter_expr` / `run_object_set_filter_suite` / `evaluate_object_set_filter_gate` + Facade | ✅ | `$and`/`$or`/`$not` + `$eq`/`$ne`/`$in`/`$exists`；深度上限 4；certified 恒 false。证据 `phase2-objectset-filter-evidence.md`。**未宣称** Wiki/KB 全入口 ACL / N07/N22 certified。生成物适用：已接线 | 本批 |
+| **ObjectSet `$where`/`$expr` residual（v4.3.1 N07/N22）** | `match_filter_expr` + `_eval_bounded_expr` + suite/gate | ✅ | `$where`→`where_unavailable`（禁 JS）；`$expr` 有界二元比较；freeze 仍 true。证据 `phase2-objectset-where-expr-residual-evidence.md`。**未宣称** 完整表达式语言 / N07/N22 certified。生成物适用：已接线 | 本批 |
 | **跨租户 Wiki/KB（v4.3.1 N09 K2）** | 同上套件增 `kb_retrieve_no_leak` / `wiki_retrieve_no_leak` | ✅ | KB per-tenant sqlite 路径 + Wiki retriever/query tenant mismatch 硬门；八探针；certified 恒 false。证据 `phase2-cross-tenant-wiki-kb-evidence.md`。**未宣称** GraphRAG/Wiki collection ACL / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **跨租户 GraphRAG（v4.3.1 N09 K3）** | `GraphRAGRetriever.retrieve/_vector_search(tenant_id=)` + 套件 `graphrag_no_leak` | ✅ | 显式 tenant 只查该租户 KB，禁 default/wiki 回退；九探针；certified 恒 false。证据 `phase2-cross-tenant-graphrag-evidence.md`。**未宣称** GraphIndex 租户/调用方全量透传 / N09 certified。生成物适用：已接线（经 Facade 套件） | 本批 |
 | **跨租户 GraphRAG caller 透传（v4.3.1 N09 K4）** | `sys_crag_retrieve` / `locate_via_ontology_async` / `governance_locate_view` / HTTP locate → `retrieve(tenant_id=)` + 套件 `graphrag_caller_passthrough` | ✅ | CRAG/治理入口透传租户到 GraphRAG 向量层；十探针；certified 恒 false。证据 `phase2-cross-tenant-graphrag-caller-evidence.md`。**未宣称** GraphIndex 图节点租户 / N09 certified。生成物适用：已接线（经 Facade） | 本批 |
@@ -5047,7 +5048,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 787 | 1 | 788 |
+| Harness 执行引擎 | 788 | 1 | 789 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 827 | 9 | 836 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5092,7 +5093,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4135** | **11** | **4146** |
+| **总计** | **4136** | **11** | **4147** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
