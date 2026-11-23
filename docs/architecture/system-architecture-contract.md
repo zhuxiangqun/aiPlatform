@@ -131,6 +131,7 @@ review_cycle: 90d
 > 2026-11-20：知识系统 v4.3.1 N07/N22 deepen ABox ACL preview-as-role（preview_abox_acl + POST graph/acl/preview；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-20：知识系统 v4.3.1 N07/N22 deepen ABox ACL H.1 condition 等值匹配（match_abox_condition + ObjectSet/link.traverse attrs；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL H.1 矩阵配置轴（h1_matrix_axes + crud_matrix.h1_matrix_* → AboxAclPanel；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-23：知识系统 v4.3.1 N07/N22 deepen ABox ACL H.1 有界表达式切片 A+B（嵌套 $elemMatch≤2 + 布尔谓词 + 点号路径 + $size/$type；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL condition $and/$or 深度 2（_BOOL_MAX_DEPTH=2；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL $not 否定字段或纯字段 $and/$or（禁 $not→$not / 子树再嵌布尔；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-22：知识系统 v4.3.1 N07/N22 deepen ABox ACL $not→$not（正规求值再取反；certified 恒 false）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

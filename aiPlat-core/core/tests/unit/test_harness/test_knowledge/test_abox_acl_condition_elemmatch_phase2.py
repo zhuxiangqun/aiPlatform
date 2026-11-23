@@ -35,23 +35,9 @@ def test_match_condition_elemmatch():
     # 标量元素：值算子
     assert match_abox_condition({"tags": {"$elemMatch": {"$eq": "b"}}}, docs) is True
     assert match_abox_condition({"tags": {"$elemMatch": {"$eq": "z"}}}, docs) is False
-    # 拒配：非数组 / 空谓词 / 布尔算子 / 嵌套 $elemMatch
+    # 拒配：非数组 / 空谓词（布尔谓词 + 嵌套 $elemMatch → 见 expr_lang_ab）
     assert match_abox_condition({"status": {"$elemMatch": {"$eq": "x"}}}, {"status": "x"}) is False
     assert match_abox_condition({"tags": {"$elemMatch": {}}}, docs) is False
-    assert (
-        match_abox_condition(
-            {"items": {"$elemMatch": {"$or": [{"status": "open"}]}}},
-            docs,
-        )
-        is False
-    )
-    assert (
-        match_abox_condition(
-            {"items": {"$elemMatch": {"child": {"$elemMatch": {"$eq": 1}}}}},
-            docs,
-        )
-        is False
-    )
     # $all 回归
     assert match_abox_condition({"tags": {"$all": ["a", "b"]}}, docs) is True
 

@@ -635,7 +635,7 @@ const AboxAclPanel: React.FC = () => {
             />
           </label>
           <label className="text-[11px] text-gray-400 space-y-1 sm:col-span-2">
-            condition（H.1：标量等值 / $eq / $ne / $in / $nin / $all / $elemMatch / $exists / $gt / $gte / $lt / $lte（数值或 str 字典序） / $regex（$options 仅 i） / $and|$or|$nor|$not（深度≤28；$nor≡¬∨；$not 可否定字段/$and|$or|$nor/$not，正规求值再取反，每层≤8）；空=`{}` 清除；非表达式语言）
+            condition（H.1 有界表达式切片：标量等值 / 点号路径（段≤8） / $eq / $ne / $in / $nin / $all / $elemMatch（nest≤2；谓词可含 $and|$or|$nor|$not） / $exists / $size / $type / $gt / $gte / $lt / $lte（数值或 str 字典序） / $regex（$options 仅 i） / $and|$or|$nor|$not（深度≤28；$nor≡¬∨；每层≤8）；空=`{}` 清除；非表达式语言 / 非 $where/$expr / 非 certified）
             <input
               className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono"
               value={conditionRaw}
