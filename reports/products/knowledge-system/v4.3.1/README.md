@@ -136,6 +136,7 @@ authority: supporting
 | [phase2-abox-acl-h1-condition-freeze-evidence.md](./phase2-abox-acl-h1-condition-freeze-evidence.md) | N07/N22：H.1 有界条件面冻结（Extended-sufficient / 非 certified / ADR 例外行保留） |
 | [phase2-n08-action-policy-freeze-evidence.md](./phase2-n08-action-policy-freeze-evidence.md) | N08：Action Policy 面冻结（Extended-sufficient / 非全量 Lv4 / 非 certified / ADR 例外行保留） |
 | [phase2-n24-unified-audit-freeze-evidence.md](./phase2-n24-unified-audit-freeze-evidence.md) | N24：统一审计/Revision 面冻结（Operational-sufficient / 非全量运维台 / 非 certified / ADR 例外行保留） |
+| [phase2-slo-telemetry-freeze-evidence.md](./phase2-slo-telemetry-freeze-evidence.md) | SLO：遥测面冻结（Operational-sufficient / wiring≠attainment / 非达标宣称 / ADR 例外行保留） |
 | [phase2-abox-acl-h1-matrix-thin-evidence.md](./phase2-abox-acl-h1-matrix-thin-evidence.md) | N07/N22 deepen：H.1 薄矩阵回退（共享 actions / 非 certified） |
 | [phase2-abox-acl-h1-matrix-per-role-evidence.md](./phase2-abox-acl-h1-matrix-per-role-evidence.md) | N07/N22 deepen：H.1 per-role 矩阵（role_actions / 固定轴 / 非任意 RBAC / 非 certified） |
 | [phase2-abox-acl-h1-matrix-config-axes-evidence.md](./phase2-abox-acl-h1-matrix-config-axes-evidence.md) | N07/N22 deepen：H.1 矩阵配置轴（crud_matrix.h1_matrix_* ← role×action SSOT / 非任意 RBAC / 非 certified） |
