@@ -73,8 +73,11 @@ async def ledger(tmp_path):
 def test_suite_and_gate_honesty():
     suite = core_suite()
     assert suite["ok"] is True
-    assert suite["passed"] == 5
+    assert suite["passed"] == 7
     assert suite["certified"] is False
+    assert suite.get("where_js_eval") is False
+    assert suite["checks"].get("where_unavailable") is True
+    assert suite["checks"].get("expr_bounded") is True
     gate = core_gate(suite)
     assert gate["ok"] is True
     bad = dict(suite)
@@ -82,6 +85,20 @@ def test_suite_and_gate_honesty():
     honesty = core_gate(bad)
     assert honesty["ok"] is False
     assert "honesty_certified_flag_forbidden" in honesty["issues"]
+
+
+def test_where_declared_unavailable():
+    with pytest.raises(ObjectSetFilterError, match="where_unavailable"):
+        match_filter_expr({"status": "open"}, {"$where": "this.status=='open'"})
+
+
+def test_expr_bounded_compare():
+    item = {"status": "open", "n": 3}
+    assert match_filter_expr(item, {"$expr": {"$eq": ["$status", "open"]}})
+    assert match_filter_expr(item, {"$expr": {"$gt": ["$n", 2]}})
+    assert not match_filter_expr(item, {"$expr": {"$lt": ["$n", 1]}})
+    with pytest.raises(ObjectSetFilterError, match="unsupported"):
+        match_filter_expr(item, {"$expr": {"$regex": ["$status", "o"]}})
 
 
 def test_facade_suite():

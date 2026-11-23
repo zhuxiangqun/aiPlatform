@@ -23,7 +23,7 @@ core_minimum_ids:
 n09_core_probe_freeze: true
 n09_core_probe_note: "Cross-tenant isolation suite probes are Core-sufficient; no further default-literal mop for Core."
 n07_n22_h1_condition_freeze: true
-n07_n22_h1_condition_note: "H.1 bounded condition surface (ops through expr-lang A+B+C) is Extended-sufficient; stop further default condition-op deepen. Residual: certified / $where|$expr / arbitrary RBAC."
+n07_n22_h1_condition_note: "H.1 bounded condition surface (ops through expr-lang A+B+C) is Extended-sufficient; stop further default condition-op deepen. Residual: certified / arbitrary RBAC; $where declared_unavailable (no JS); $expr bounded compare landed (phase2-objectset-where-expr-residual-evidence.md) — still not full expression language."
 n08_action_policy_freeze: true
 n08_action_policy_note: "N08 Policy/Approval/Audit + kill switch + Lv4 FP gate v2 is Extended-sufficient; stop further default N08 deepen. Residual: certified / full Action Lv4 auto-close."
 n24_unified_audit_freeze: true

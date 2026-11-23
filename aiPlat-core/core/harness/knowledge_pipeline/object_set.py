@@ -4,7 +4,8 @@
 经 ``role`` 应用实例级拒绝与字段脱敏（附录 H.1）；
 N07/N22 deepen：嵌套布尔 filter（``$and``/``$or``/``$not`` + 字段算子）。
 非目标：不实现写路径、Scenario/Package、Wiki/KB 全入口字段 ACL（SDK 见 sdk_generator）；
-不宣称完整表达式语言产品 / N07·N22 certified。
+不宣称完整表达式语言产品 / N07·N22 certified；
+``$where`` 永不 JS eval（declared_unavailable）；``$expr`` 仅有界字段/字面量二元比较。
 """
 from __future__ import annotations
 
@@ -27,6 +28,9 @@ logger = logging.getLogger(__name__)
 _MAX_FILTER_DEPTH = 4
 _FIELD_OPS = frozenset({"$eq", "$ne", "$in", "$exists"})
 _BOOL_OPS = frozenset({"$and", "$or", "$not"})
+# residual：$expr 有界二元比较；$where 显式不可用（禁 JS）
+_EXPR_OPS = frozenset({"$eq", "$ne", "$gt", "$gte", "$lt", "$lte"})
+_TOP_LEVEL_SPECIAL = frozenset({"$where", "$expr"})
 
 
 class ObjectSetFilterError(ValueError):
@@ -161,6 +165,57 @@ def _match_field_ops(item: Dict[str, Any], field: str, ops: Dict[str, Any]) -> b
     return True
 
 
+def _resolve_expr_operand(item: Dict[str, Any], operand: Any) -> Any:
+    """解析 ``$expr`` 操作数：``$field`` → item[field]，其它为字面量。
+
+    Args:
+        item: 对象行。
+        operand: ``$field`` 引用或字面量。
+    """
+    if isinstance(operand, str) and operand.startswith("$") and len(operand) > 1:
+        # 为什么：禁止 ``$`` 空名；仅一层字段引用，不做路径点号展开
+        return item.get(operand[1:])
+    return operand
+
+
+def _eval_bounded_expr(item: Dict[str, Any], expr: Any) -> bool:
+    """有界 ``$expr``：单算子 + 二元比较（字段/字面量）。
+
+    Args:
+        item: 对象行。
+        expr: ``{$op: [left, right]}``。
+
+    Raises:
+        ObjectSetFilterError: 非法 / 不支持的表达式。
+    """
+    if not isinstance(expr, dict) or len(expr) != 1:
+        raise ObjectSetFilterError("$expr requires single-op object")
+    op, args = next(iter(expr.items()))
+    if op not in _EXPR_OPS:
+        raise ObjectSetFilterError(f"unsupported $expr op: {op}")
+    if not isinstance(args, list) or len(args) != 2:
+        raise ObjectSetFilterError("$expr op requires 2-arg list")
+    left = _resolve_expr_operand(item, args[0])
+    right = _resolve_expr_operand(item, args[1])
+    if op == "$eq":
+        return left == right
+    if op == "$ne":
+        return left != right
+    # 有序比较：None 与不可比类型 → False（不抛，避免半匹配炸查询）
+    try:
+        if op == "$gt":
+            return left > right  # type: ignore[operator]
+        if op == "$gte":
+            return left >= right  # type: ignore[operator]
+        if op == "$lt":
+            return left < right  # type: ignore[operator]
+        if op == "$lte":
+            return left <= right  # type: ignore[operator]
+    except TypeError:
+        return False
+    raise ObjectSetFilterError(f"unsupported $expr op: {op}")
+
+
 def match_filter_expr(
     item: Dict[str, Any],
     filt: Any,
@@ -168,10 +223,11 @@ def match_filter_expr(
     depth: int = 0,
     max_depth: int = _MAX_FILTER_DEPTH,
 ) -> bool:
-    """匹配嵌套布尔 filter（N07/N22 deepen）。
+    """匹配嵌套布尔 filter（N07/N22 deepen + where/expr residual）。
 
     兼容附录 E 扁平等值 ``{k: v}``（隐式 ``$and``）；支持
-    ``$and`` / ``$or`` / ``$not`` 与字段 ``$eq``/``$ne``/``$in``/``$exists``。
+    ``$and`` / ``$or`` / ``$not`` 与字段 ``$eq``/``$ne``/``$in``/``$exists``；
+    residual：``$expr`` 有界二元比较；``$where`` → ``where_unavailable``。
 
     Args:
         item: 对象行。
@@ -192,13 +248,29 @@ def match_filter_expr(
     if not isinstance(filt, dict):
         raise ObjectSetFilterError("filter must be object")
 
-    # 布尔算子优先（不可与字段键混用同一层，除隐式扁平 AND）
-    bool_keys = [k for k in filt if k in _BOOL_OPS]
-    field_keys = [k for k in filt if k not in _BOOL_OPS]
-    if bool_keys and field_keys:
+    # 为什么：$where 永不 JS eval——产品 residual 诚实拒绝，避免假安全
+    if "$where" in filt:
         raise ObjectSetFilterError(
-            "cannot mix boolean ops with field keys at same level"
+            "where_unavailable: $where is declared_unavailable (no JS eval)"
         )
+
+    # 布尔 / 特殊算子优先（不可与字段键混用同一层，除隐式扁平 AND）
+    bool_keys = [k for k in filt if k in _BOOL_OPS]
+    special_keys = [k for k in filt if k in _TOP_LEVEL_SPECIAL]
+    field_keys = [
+        k for k in filt if k not in _BOOL_OPS and k not in _TOP_LEVEL_SPECIAL
+    ]
+    if (bool_keys or special_keys) and field_keys:
+        raise ObjectSetFilterError(
+            "cannot mix boolean/special ops with field keys at same level"
+        )
+    if len(special_keys) > 1 or (special_keys and bool_keys):
+        raise ObjectSetFilterError(
+            "cannot mix $expr/$where with each other or boolean ops at same level"
+        )
+
+    if "$expr" in filt:
+        return _eval_bounded_expr(item, filt["$expr"])
 
     if "$and" in filt:
         clauses = filt["$and"]
@@ -448,7 +520,23 @@ def run_object_set_filter_suite() -> Dict[str, Any]:
     except ObjectSetFilterError:
         checks["depth_cap"] = True
 
-    # 5) 诚实锁
+    # 5) residual：$where 诚实不可用（禁 JS）
+    try:
+        match_filter_expr(item, {"$where": "this.status == 'open'"})
+        checks["where_unavailable"] = False
+    except ObjectSetFilterError as exc:
+        checks["where_unavailable"] = "where_unavailable" in str(exc)
+
+    # 6) residual：$expr 有界二元比较
+    checks["expr_bounded"] = match_filter_expr(
+        item, {"$expr": {"$eq": ["$status", "open"]}}
+    ) and match_filter_expr(
+        item, {"$expr": {"$ne": ["$priority", "low"]}}
+    ) and not match_filter_expr(
+        item, {"$expr": {"$eq": ["$status", "closed"]}}
+    )
+
+    # 7) 诚实锁
     checks["honesty_certified_false"] = True
 
     passed = sum(1 for v in checks.values() if v)
@@ -461,9 +549,10 @@ def run_object_set_filter_suite() -> Dict[str, Any]:
         "n07_full_conformance": False,
         "n22_full_conformance": False,
         "wiki_kb_full_acl": False,
+        "where_js_eval": False,
         "note": (
-            "ObjectSet nested filter deepen; not Wiki/KB full ACL; "
-            "not N07/N22 certified"
+            "ObjectSet nested filter + $expr residual; $where declared_unavailable; "
+            "not Wiki/KB full ACL; not N07/N22 certified"
         ),
     }
 
@@ -488,11 +577,15 @@ def evaluate_object_set_filter_gate(
         issues.append("honesty_n22_full_forbidden")
     if s.get("wiki_kb_full_acl") is True:
         issues.append("honesty_wiki_kb_full_acl_forbidden")
+    if s.get("where_js_eval") is True:
+        issues.append("honesty_where_js_eval_forbidden")
     required = (
         "flat_equality",
         "nested_boolean",
         "field_ops",
         "depth_cap",
+        "where_unavailable",
+        "expr_bounded",
         "honesty_certified_false",
     )
     checks = s.get("checks") if isinstance(s.get("checks"), dict) else {}
@@ -503,5 +596,8 @@ def evaluate_object_set_filter_gate(
         "ok": not issues,
         "issues": issues,
         "certified": False,
-        "note": "ObjectSet nested filter deepen; not N07/N22 certified",
+        "note": (
+            "ObjectSet nested filter + $expr residual; $where unavailable; "
+            "not N07/N22 certified"
+        ),
     }
