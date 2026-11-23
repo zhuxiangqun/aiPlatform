@@ -33,7 +33,7 @@ _ALL_MAX_ITEMS = 32
 _ELEMMATCH_MAX_ITEMS = 64
 # 为什么：有界 $and/$or/$nor/$not 限制深度与子句数，避免把 condition 做成任意表达式引擎
 _BOOL_MAX_CLAUSES = 8
-_BOOL_MAX_DEPTH = 27  # 顶层=1；允许再嵌26层（深度 27）；更深拒配
+_BOOL_MAX_DEPTH = 28  # 顶层=1；允许再嵌27层（深度 28）；更深拒配
 _BOOL_OPS = frozenset({"$and", "$or", "$nor", "$not"})
 
 # Identity / PolicyGate role → ABox ACL role (T9 productization)
@@ -487,7 +487,7 @@ def match_abox_condition(
     每键支持标量等值，或 ``{$eq|$ne|$in|$nin|$all|$elemMatch|$exists|$gt|$gte|$lt|$lte|$regex: …}``
     （``$regex`` 可附 ``$options:"i"``；比较支持 int/float 或两端均为 str 的字典序）。
     顶层可单独使用 ``{$and|$or|$nor: [...]}`` / ``{$not: {…}}``
-    （深度 ≤27：``$and``/``$or``/``$nor``/``$not`` 可再嵌同族；``$not`` 可否定字段、
+    （深度 ≤28：``$and``/``$or``/``$nor``/``$not`` 可再嵌同族；``$not`` 可否定字段、
     纯字段 ``$and``/``$or``/``$nor`` 或另一 ``$not``（正规求值再取反，禁 fail-open）；
     ``$nor`` ≡ ¬(∨)；每层子句 ≤8；非完整表达式语言）。
 
