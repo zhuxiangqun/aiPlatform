@@ -189,9 +189,9 @@ def test_wrap_untrusted_mcp_tool_description_truncates():
     assert "Ignore previous instructions" in out
 
 
-def test_register_server_tools_empty_allowlist_registers_zero():
+@pytest.mark.asyncio
+async def test_register_server_tools_empty_allowlist_registers_zero():
     """最小权限：空 allowlist 不得注册全部工具。"""
-    import asyncio
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
@@ -205,15 +205,11 @@ def test_register_server_tools_empty_allowlist_registers_zero():
     registry = MagicMock()
     registry.register = MagicMock()
 
-    n = asyncio.get_event_loop().run_until_complete(
-        wrapper.register_server_tools("svc", registry, allowed_tools=[])
-    )
+    n = await wrapper.register_server_tools("svc", registry, allowed_tools=[])
     assert n == 0
     registry.register.assert_not_called()
 
-    n2 = asyncio.get_event_loop().run_until_complete(
-        wrapper.register_server_tools("svc", registry, allowed_tools=["a"])
-    )
+    n2 = await wrapper.register_server_tools("svc", registry, allowed_tools=["a"])
     assert n2 == 1
     assert registry.register.call_count == 1
 
