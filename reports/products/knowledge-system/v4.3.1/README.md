@@ -151,6 +151,7 @@ authority: supporting
 | [phase2-datasource-process-raw-evidence.md](./phase2-datasource-process-raw-evidence.md) | N01 deepen：process_from_datasource → Raw ingest opt-in（非默认强制/非 certified） |
 | [phase2-datasource-process-raw-default-force-evidence.md](./phase2-datasource-process-raw-default-force-evidence.md) | N01 deepen：process Raw 默认强制（可 opt-out / 非 certified） |
 | [phase2-datasource-connector-matrix-evidence.md](./phase2-datasource-connector-matrix-evidence.md) | N01 deepen：Core file/sql/api 连接器矩阵 + hash 强制快照（非 vendor / 非 certified） |
+| [phase2-n01-vendor-driver-matrix-evidence.md](./phase2-n01-vendor-driver-matrix-evidence.md) | N01 residual：SQL vendor 软依赖探测矩阵（oracle declared_unavailable；非生产验收 / 非 certified） |
 | [phase2-fact-revision-evidence.md](./phase2-fact-revision-evidence.md) | Batch G2 N24 Fact Revision 归档/抬号（非回滚 UI/非 certified） |
 | [phase2-claim-revision-evidence.md](./phase2-claim-revision-evidence.md) | Batch H1 N24 Claim Revision 归档/抬号（非 Source/回滚 UI/非 certified） |
 | [phase2-source-revision-evidence.md](./phase2-source-revision-evidence.md) | Batch H2 N24 Source Revision 归档/抬号（非回滚 UI/非 certified） |

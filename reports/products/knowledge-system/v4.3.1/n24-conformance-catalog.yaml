@@ -94,6 +94,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-datasource-process-raw-default-force-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-datasource-connector-matrix-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-n01-raw-integrity-freeze-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-n01-vendor-driver-matrix-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/harness/ontology_engine/data_source.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_raw_integrity_phase2.py
@@ -101,7 +102,8 @@ items:
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_process_raw_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_process_raw_default_force_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_connector_matrix_phase2.py
-    note: "Core-scoped exists (附录 N.2); 读时验+DataSourceConfig content_hash→FactLedger ingest+process Raw 默认强制（可 opt-out）+ Core file/sql/api 连接器矩阵；n01_raw_integrity_freeze=true 停止默认 N01 deepen；非 vendor 驱动矩阵/非 N01 certified"
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_datasource_vendor_matrix_phase2.py
+    note: "Core-scoped exists (附录 N.2); 读时验+DataSourceConfig content_hash→FactLedger ingest+process Raw 默认强制（可 opt-out）+ Core file/sql/api 连接器矩阵 + SQL vendor 软依赖探测（sqlite/postgresql/mysql；oracle declared_unavailable）；n01_raw_integrity_freeze=true 停止默认 N01 deepen；非生产连库验收/非 N01 certified"
   - id: N02
     level: core
     title: 语义模型版本化

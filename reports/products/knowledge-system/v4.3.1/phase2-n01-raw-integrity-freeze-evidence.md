@@ -10,7 +10,7 @@ pilot_domain: lock-service
 # Phase 2 / N01 Raw 完整性面冻结
 
 > 实施权威：附录 N.2 N01；仿 N09 / N07 / N08 / N24 / SLO freeze。  
-> **未宣称** N01 certified / vendor 驱动全量矩阵 / 关闭 ADR 例外行。
+> **未宣称** N01 certified / 生产 vendor 连库验收 / 关闭 ADR 例外行（软依赖探测见 `phase2-n01-vendor-driver-matrix-evidence.md`）。
 
 ## 检查表
 
@@ -40,6 +40,6 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest \
 ## 明确未做
 
 - N01 certified 或删除 ADR 例外行
-- PG/MySQL/Oracle 等 vendor 驱动全量矩阵
+- 生产连真实 PG/MySQL/Oracle 集群验收（软依赖探测矩阵另见 vendor-driver-matrix 证据）
 - 取消 process Raw opt-out 逃生舱
 - 恢复默认 N01 deepen mop

@@ -17093,6 +17093,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     evaluate_revision_action_bridge_gate,
     evaluate_cross_tenant_gate,
     evaluate_datasource_connector_matrix_gate,
+    evaluate_datasource_vendor_matrix_gate,
     evaluate_datasource_raw_gate,
     evaluate_fact_revision_gate,
     evaluate_gateway_contract_gate,
@@ -17112,6 +17113,7 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
     run_revision_action_bridge_suite,
     run_cross_tenant_isolation_suite,
     run_datasource_connector_matrix_suite,
+    run_datasource_vendor_matrix_suite,
     run_datasource_raw_suite,
     run_fact_revision_suite,
     run_unified_query_gateway_suite,
@@ -17121,6 +17123,8 @@ from core.harness.knowledge_pipeline.fact_ledger import (  # noqa: boundary
 )
 from core.harness.ontology_engine.data_source import (  # noqa: boundary
     datasource_raw_connector_matrix,
+    datasource_vendor_driver_matrix,
+    probe_vendor_driver,
     require_datasource_raw_connector,
 )
 from core.harness.knowledge_pipeline.unified_audit_view import (  # noqa: boundary
@@ -17303,6 +17307,42 @@ def evaluate_fact_datasource_connector_matrix_gate(suite: dict | None = None) ->
         suite: 套件回执。
     """
     return evaluate_datasource_connector_matrix_gate(suite)
+
+
+def get_datasource_vendor_driver_matrix() -> dict:
+    """CoreFacade：N01 SQL vendor 驱动矩阵 + 软依赖探测（certified 恒 false）。
+
+    Returns:
+        vendors / probes；非生产连库验收 / 非 N01 certified。
+    """
+    return datasource_vendor_driver_matrix()
+
+
+def probe_datasource_vendor_driver(vendor: str) -> dict:
+    """CoreFacade：探测单个 SQL vendor 驱动软依赖。
+
+    Args:
+        vendor: sqlite / postgresql / mysql / oracle。
+    """
+    return probe_vendor_driver(vendor)
+
+
+def fact_ledger_run_datasource_vendor_matrix_suite() -> dict:
+    """CoreFacade：N01 SQL vendor 驱动矩阵套件（certified 恒 false）。
+
+    Returns:
+        套件回执；缺驱动不假绿。
+    """
+    return run_datasource_vendor_matrix_suite()
+
+
+def evaluate_fact_datasource_vendor_matrix_gate(suite: dict | None = None) -> dict:
+    """CoreFacade：N01 vendor 驱动矩阵门槛门（certified 恒 false）。
+
+    Args:
+        suite: 套件回执。
+    """
+    return evaluate_datasource_vendor_matrix_gate(suite)
 
 
 async def fact_ledger_query_gateway(

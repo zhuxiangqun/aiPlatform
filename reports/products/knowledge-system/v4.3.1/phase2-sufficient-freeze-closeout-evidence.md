@@ -31,5 +31,5 @@ PYTHONPATH=aiPlat-platform:aiPlat-core:aiPlat-infra .venv/bin/python -m pytest a
 ## 明确未做
 
 - 置 `certified` / 删除 ADR 例外
-- 消费 residual（全量门户 / vendor 矩阵 / `$where` / 生产切写 / 准确率等）
+- 消费 residual（全量门户 / 生产 vendor 连库验收 / `$where` / 生产切写 / 准确率等；vendor 软依赖探测见 `phase2-n01-vendor-driver-matrix-evidence.md`）
 - 恢复默认 deepen mop

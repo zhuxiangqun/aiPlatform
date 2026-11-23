@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3204
+total_capabilities: 3212
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2815,7 +2815,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 735
+    caps_count: 743
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3278,6 +3278,38 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "evaluate_fact_datasource_connector_matrix_gate(suite)→gate (certified=false)"
+      - symbol: "probe_vendor_driver"
+        module: core/harness/ontology_engine/data_source.py
+        type: function
+        signature: "probe_vendor_driver(vendor)→probe (certified=false)"
+      - symbol: "datasource_vendor_driver_matrix"
+        module: core/harness/ontology_engine/data_source.py
+        type: function
+        signature: "datasource_vendor_driver_matrix()→matrix (certified=false)"
+      - symbol: "run_datasource_vendor_matrix_suite"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "run_datasource_vendor_matrix_suite()→suite (certified=false)"
+      - symbol: "evaluate_datasource_vendor_matrix_gate"
+        module: core/harness/knowledge_pipeline/fact_ledger.py
+        type: function
+        signature: "evaluate_datasource_vendor_matrix_gate(suite)→gate (certified=false)"
+      - symbol: "get_datasource_vendor_driver_matrix"
+        module: core/api/core_facade.py
+        type: function
+        signature: "get_datasource_vendor_driver_matrix()→matrix (certified=false)"
+      - symbol: "probe_datasource_vendor_driver"
+        module: core/api/core_facade.py
+        type: function
+        signature: "probe_datasource_vendor_driver(vendor)→probe (certified=false)"
+      - symbol: "fact_ledger_run_datasource_vendor_matrix_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "fact_ledger_run_datasource_vendor_matrix_suite()→suite (certified=false)"
+      - symbol: "evaluate_fact_datasource_vendor_matrix_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "evaluate_fact_datasource_vendor_matrix_gate(suite)→gate (certified=false)"
       - symbol: "run_fact_revision_suite"
         module: core/harness/knowledge_pipeline/fact_ledger.py
         type: function
