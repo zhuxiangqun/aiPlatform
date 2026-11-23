@@ -70,9 +70,13 @@ grep -c '_guard_messages\|injection.*detect' aiPlat-core/core/harness/syscalls/l
 ### L7: 动态扫描 (DAST, CI 自动)
 
 ```bash
-# OWASP ZAP baseline (已在 CI)
+# OWASP ZAP full active scan (CI main → dast job; continue-on-error)
+# 规则覆盖：`.zap/rules.tsv`（见 `.zap/README.md`）
 # 手动: docker run -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:8000
 ```
+
+`90005`（Sec-Fetch-* 请求头缺失）为 **Informational / request-side**，已 `IGNORE`——
+ZAP spider 不发浏览器 Fetch Metadata，不等于服务端缺响应头。
 
 ## 外部渗透测试建议
 

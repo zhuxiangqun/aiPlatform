@@ -1,0 +1,4 @@
+# ZAP full-scan rule overrides (tab-separated: id ACTION comment)
+# Sec-Fetch-* are browser request headers; ZAP spider/clients often omit them.
+# Alert 90005 is Informational (alpha) — not a server response-header defect.
+90005	IGNORE	(Fetch Metadata Request Headers — request-side; DAST spider noise)
