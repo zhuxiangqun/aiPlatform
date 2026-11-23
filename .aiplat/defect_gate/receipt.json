@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-23T08:41:45+08:00",
+  "reviewed_at": "2026-11-23T09:11:10+08:00",
   "base_ref": "origin/main",
   "merge_base": "3b79ac669c91100109fc5dfb88544a32d15dda46",
-  "diff_sha256": "2ef4ad4c5abe44fa065e92fc94d28173fd6b107e7342417fd5419326a5d39ff0",
-  "head_sha": "2aae560efac94406bdab253f2dec2131120f5ef3",
+  "diff_sha256": "2f1a3e378f146ae46796b7066a0321ff5a844ec5f33da2dfdf36835ee7ad0af0",
+  "head_sha": "975788a7890f1c8f9fd6c7fb9f6f21b8adcb92bb",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A+B bounded expr slice; residual C=$field-level $not / certified. Local lock only."
+  "note": "Slice C field $not; morph None no fail-open. Includes A+B. Local lock only."
 }
