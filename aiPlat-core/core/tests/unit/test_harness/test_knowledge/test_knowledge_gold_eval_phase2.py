@@ -7,11 +7,13 @@ import pytest
 
 from core.api.core_facade import (
     evaluate_knowledge_gold_eval_gate,
+    llm_judge_object_equiv as facade_llm_judge,
     run_knowledge_gold_eval_suite,
 )
 from core.harness.knowledge_pipeline.knowledge_gold_eval import (
     KnowledgeGoldEvalError,
     evaluate_knowledge_gold_eval_gate as core_gate,
+    llm_judge_object_equiv,
     register_gold_dataset,
     run_knowledge_gold_eval_suite as core_suite,
 )
@@ -23,10 +25,14 @@ ROOT = Path(__file__).resolve().parents[6]
 async def test_suite_and_gate_honesty():
     suite = await core_suite()
     assert suite["ok"] is True
-    assert suite["passed"] == 6
+    assert suite["passed"] == 8
     assert suite["certified"] is False
     assert suite["n10_full_conformance"] is False
     assert suite["accuracy_claim"] is False
+    assert suite.get("n10_gold_eval_freeze") is True
+    ids = {c["id"] for c in suite["cases"]}
+    assert "llm_judge_opt_in" in ids
+    assert "llm_judge_unavailable" in ids
     gate = core_gate(suite)
     assert gate["ok"] is True
     bad = dict(suite)
@@ -34,6 +40,18 @@ async def test_suite_and_gate_honesty():
     honesty = core_gate(bad)
     assert honesty["ok"] is False
     assert "honesty_accuracy_claim_forbidden" in honesty["issues"]
+
+
+@pytest.mark.asyncio
+async def test_llm_judge_unavailable_default():
+    r = await llm_judge_object_equiv(expected="opened", actual="open")
+    assert r["status"] == "llm_judge_unavailable"
+    assert r["matched"] is False
+    assert r["accuracy_claim"] is False
+    assert r["certified"] is False
+    fr = await facade_llm_judge(expected="a", actual="b")
+    assert fr["status"] == "llm_judge_unavailable"
+    assert fr["certified"] is False
 
 
 @pytest.mark.asyncio

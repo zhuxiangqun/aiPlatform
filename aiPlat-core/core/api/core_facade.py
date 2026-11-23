@@ -18632,18 +18632,49 @@ async def run_knowledge_gold_eval_pipeline(
     *,
     tenant_id: str,
     domain_ids: Optional[List[str]] = None,
+    judge_mode: str = "exact",
 ) -> dict:
     """CoreFacade：跨域 gold 评测流水线（N10；accuracy/certified 恒 false）。
 
     Args:
         tenant_id: 租户。
         domain_ids: 可选域列表；默认 DomainRouter。
+        judge_mode: ``exact`` 或 ``llm``（residual opt-in；无准确率宣称）。
     """
     from core.harness.knowledge_pipeline.knowledge_gold_eval import (
         run_knowledge_gold_eval_pipeline as _run,
     )
 
-    return await _run(tenant_id=tenant_id, domain_ids=domain_ids)
+    return await _run(
+        tenant_id=tenant_id, domain_ids=domain_ids, judge_mode=judge_mode
+    )
+
+
+async def llm_judge_object_equiv(
+    *,
+    expected: str,
+    actual: str,
+    subject: str = "",
+    predicate: str = "",
+) -> dict:
+    """CoreFacade：N10 residual 有界 LLM object 等价判定（certified 恒 false）。
+
+    Args:
+        expected: gold 期望 object。
+        actual: 实际 object。
+        subject: 可选 subject。
+        predicate: 可选 predicate。
+    """
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        llm_judge_object_equiv as _judge,
+    )
+
+    return await _judge(
+        expected=expected,
+        actual=actual,
+        subject=subject,
+        predicate=predicate,
+    )
 
 
 async def run_knowledge_gold_eval_suite() -> dict:

@@ -22,6 +22,10 @@ class GoldPipelineBody(BaseModel):
     """跨域 gold 评测。"""
 
     domain_ids: Optional[List[str]] = None
+    judge_mode: str = Field(
+        "exact",
+        description="exact（默认）或 llm（N10 residual；无准确率宣称）",
+    )
 
 
 class GoldGateBody(BaseModel):
@@ -72,6 +76,7 @@ async def run_knowledge_gold_eval_pipeline_route(
         return await run_knowledge_gold_eval_pipeline(
             tenant_id=tenant_id,
             domain_ids=body.domain_ids,
+            judge_mode=body.judge_mode,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
