@@ -8,7 +8,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3269 capabilities (caps_count) | 3269 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3276 capabilities (caps_count) | 3276 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -30,7 +30,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 791 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 798 | FDE 能力自描述 |
 
 ### aiPlat-platform/apps/fde/api/router.py
 
@@ -42,7 +42,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 791 | N02 ObjectType publish Facade 入口 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 798 | N02 ObjectType publish Facade 入口 |
 | skill-system | §六 Skill 系统 | 217 | CoreFacade 暴露 skill compat |
 | evaluation-system | §十三 评估系统 | 646 | CoreFacade 暴露 m2 deferred estimate |
 | diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
@@ -84,14 +84,14 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 791 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 798 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
 
 ### core/api/routers/wiki_ontology_engine.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 791 | 本体引擎 REST API |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 798 | 本体引擎 REST API |
 
 ### core/api/routers/workspace_tools.py
 
@@ -158,19 +158,19 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 791 | 10层上下文注入 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 798 | 10层上下文注入 |
 
 ### core/harness/knowledge/domain_maturity.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 791 | 域成熟度评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 798 | 域成熟度评分 |
 
 ### core/harness/knowledge/ontology_completeness.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 791 | OCS 本体完整性六维评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 798 | OCS 本体完整性六维评分 |
 
 ### core/harness/maintenance/asset_compat.py
 
@@ -357,7 +357,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/harness/utils/model_injection.py** — ModelManager 缓存
 - **aiPlat-infra/infra/management/model/config_loader.py** — adapters 发现与 CredentialPool 共用 DB 路径
 
-### §三 知识引擎（本体） (791 caps)
+### §三 知识引擎（本体） (798 caps)
 
 - **core/api/routers/wiki.py** — Wiki CRUD + index + ingest 端点
 - **core/api/routers/wiki_ontology_engine.py** — 本体引擎 REST API

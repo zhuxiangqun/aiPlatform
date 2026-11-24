@@ -131,6 +131,7 @@ review_cycle: 90d
 > 2026-11-24：知识系统 N24 运维台产品面第一刀（`build_ops_console_product_snapshot` + schema JSON + 浏览器导出；默认可用；full_ops_console=true；certified 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N24 运维台 Schema 表单字段编辑器（`normalize_ops_console_schema_form` / save `form=` + 管理端字段表；schema_form_editor=true；certified 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N08 有界 Lv4 auto-close 显式 residual（`evaluate_bounded_lv4_auto_close`；不可用诚实上报；freeze 仍 true；certified/full_action_lv4 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-24：知识系统 N08 有界 Lv4 auto-close 产品面第一刀（`evaluate_bounded_lv4_auto_close_product`；默认可用；lv4_product_surface=true；仍仅 low；certified/full_action_lv4 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威覆盖显式 residual（`apply_published_seed_authority`；不改写 workspace_seeds；不可用诚实上报；freeze 仍 true；certified/seed_replacement_complete 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威产品面第一刀（`list_object_type_seed_catalog` + `apply_published_seed_authority_product`；默认可用；不改写 workspace_seeds；seed_product_surface=true；certified/seed_replacement_complete 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 W6 Knowledge SDK 最小切片（ObjectType→Client 表面/源码经 Facade；L1 kb:read）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

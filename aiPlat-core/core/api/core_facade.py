@@ -19987,6 +19987,67 @@ def evaluate_bounded_lv4_auto_close_gate(suite: Optional[dict] = None) -> dict:
 
     return _gate(suite)
 
+
+def evaluate_bounded_lv4_auto_close_product(
+    *,
+    action_id: str,
+    total: int,
+    false_positives: int,
+    rollback_action_id: str = "",
+    risk_level: str = "low",
+    action_level: str = "lv4_auto_close",
+    fp_rate_max: float = 0.005,
+    min_samples: Optional[int] = None,
+) -> dict:
+    """CoreFacade：N08 有界 Lv4 auto-close 产品面评估（默认可用；非全量）。
+
+    Args:
+        action_id: 动作 id。
+        total: 历史执行条数。
+        false_positives: 误报条数。
+        rollback_action_id: 回滚动作。
+        risk_level: 风险（有界仅 low）。
+        action_level: 阶梯（须 lv4_auto_close）。
+        fp_rate_max: 误报率上限。
+        min_samples: 最小样本。
+    """
+    from core.harness.knowledge_pipeline.lv4_bounded_auto_close import (
+        evaluate_bounded_lv4_auto_close_product as _eval,
+    )
+
+    return _eval(
+        action_id=action_id,
+        total=total,
+        false_positives=false_positives,
+        rollback_action_id=rollback_action_id,
+        risk_level=risk_level,
+        action_level=action_level,
+        fp_rate_max=fp_rate_max,
+        min_samples=min_samples,
+    )
+
+
+def run_bounded_lv4_auto_close_product_suite() -> dict:
+    """CoreFacade：N08 有界 Lv4 auto-close 产品面套件。"""
+    from core.harness.knowledge_pipeline.lv4_bounded_auto_close import (
+        run_bounded_lv4_auto_close_product_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_bounded_lv4_auto_close_product_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N08 有界 Lv4 auto-close 产品面门槛门。
+
+    Args:
+        suite: ``run_bounded_lv4_auto_close_product_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.lv4_bounded_auto_close import (
+        evaluate_bounded_lv4_auto_close_product_gate as _gate,
+    )
+
+    return _gate(suite)
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 

@@ -25,7 +25,7 @@ n09_core_probe_note: "Cross-tenant isolation suite probes are Core-sufficient; n
 n07_n22_h1_condition_freeze: true
 n07_n22_h1_condition_note: "H.1 bounded condition surface (ops through expr-lang A+B+C) is Extended-sufficient; stop further default condition-op deepen. Residual: certified / arbitrary RBAC; $where declared_unavailable (no JS); $expr bounded compare landed (phase2-objectset-where-expr-residual-evidence.md) — still not full expression language."
 n08_action_policy_freeze: true
-n08_action_policy_note: "N08 Policy/Approval/Audit + kill switch + Lv4 FP gate v2 is Extended-sufficient; stop further default N08 deepen. Residual: certified / full Action Lv4 productization; bounded auto-close opt-in landed (evaluate_bounded_lv4_auto_close; unavailable when AIPLAT_KNOWLEDGE_LV4_AUTO_CLOSE off — phase2-n08-lv4-autoclose-residual-evidence.md) — still not full Action Lv4 / not certified."
+n08_action_policy_note: "N08 Policy/Approval/Audit + kill switch + Lv4 FP gate v2 is Extended-sufficient; stop further default N08 deepen. Residual: certified / full Action Lv4 productization; bounded auto-close opt-in landed (evaluate_bounded_lv4_auto_close; unavailable when AIPLAT_KNOWLEDGE_LV4_AUTO_CLOSE off — phase2-n08-lv4-autoclose-residual-evidence.md); bounded auto-close product surface slice-1 landed (evaluate_bounded_lv4_auto_close_product; default-on; lv4_product_surface=true; still not full_action_lv4 — phase2-n08-lv4-autoclose-product-evidence.md) — still not full Action Lv4 / not certified."
 n24_unified_audit_freeze: true
 n24_unified_audit_note: "N24 revision + unified audit bus/UI surface is Operational-sufficient; stop further default N24 deepen. Residual: certified / free-form visual designer / Full unconditional; ops console shell+bounded export residuals landed; product surface landed (snapshot + schema JSON + schema form field editor + browser export; full_ops_console=true; schema_form_editor=true; certified=false — phase2-n24-ops-console-product-evidence.md + phase2-n24-ops-console-schema-form-evidence.md)."
 slo_telemetry_freeze: true
@@ -266,10 +266,12 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-lv4-false-positive-gate-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-n08-action-policy-freeze-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-n08-lv4-autoclose-residual-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-n08-lv4-autoclose-product-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/lv4_false_positive_gate.py
       - aiPlat-core/core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_lv4_bounded_auto_close_residual_phase2.py
-    note: "Extended-scoped exists (附录 N.3); Registry 裸 bypass 拒绝；require_approval 强制入队；kill switch；Lv4 误报门 v2 + **显式 residual** 有界 auto-close（opt-in；不可用诚实上报）；n08_action_policy_freeze=true 停止默认 N08 deepen；非全量 Action Lv4 / 非 certified"
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_lv4_auto_close_product_phase2.py
+    note: "Extended-scoped exists (附录 N.3); Registry 裸 bypass 拒绝；require_approval 强制入队；kill switch；Lv4 误报门 v2 + **显式 residual** 有界 auto-close + **产品面第一刀** evaluate_bounded_lv4_auto_close_product（默认可用；lv4_product_surface=true；仍仅 low）；n08_action_policy_freeze=true 停止默认 N08 deepen；非 full_action_lv4 / 非 certified"
   - id: N09
     level: core
     title: 跨租户 0 泄漏
