@@ -74,3 +74,70 @@ async def evaluate_lv4_false_positive_gate_route(
     if suite is None:
         suite = run_lv4_false_positive_gate_suite()
     return evaluate_lv4_false_positive_gate(suite)
+
+
+class BoundedAutoCloseBody(BaseModel):
+    """N08 residual：有界 Lv4 auto-close 评估。"""
+
+    action_id: str = Field(..., min_length=1)
+    total: int = Field(..., ge=0)
+    false_positives: int = Field(..., ge=0)
+    rollback_action_id: str = ""
+    risk_level: str = "low"
+    action_level: str = "lv4_auto_close"
+    fp_rate_max: float = Field(0.005, gt=0.0, le=1.0)
+    min_samples: Optional[int] = Field(None, ge=1)
+
+
+@router.post("/lv4-auto-close/evaluate")
+async def evaluate_bounded_lv4_auto_close_route(
+    body: BoundedAutoCloseBody = Body(...),
+):
+    """N08 residual：有界 Lv4 auto-close（非全量；certified 恒假）。
+
+    Args:
+        body: 样本与风险/阶梯约束。
+    """
+    from core.api.core_facade import evaluate_bounded_lv4_auto_close
+
+    out = evaluate_bounded_lv4_auto_close(
+        action_id=body.action_id,
+        total=body.total,
+        false_positives=body.false_positives,
+        rollback_action_id=body.rollback_action_id,
+        risk_level=body.risk_level,
+        action_level=body.action_level,
+        fp_rate_max=body.fp_rate_max,
+        min_samples=body.min_samples,
+    )
+    if out.get("status") == "invalid":
+        raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
+    return out
+
+
+@router.post("/lv4-auto-close/suite")
+async def run_bounded_lv4_auto_close_suite_route():
+    """N08 residual：有界 Lv4 auto-close 套件。"""
+    from core.api.core_facade import run_bounded_lv4_auto_close_suite
+
+    return run_bounded_lv4_auto_close_suite()
+
+
+@router.post("/lv4-auto-close/gate")
+async def evaluate_bounded_lv4_auto_close_gate_route(
+    body: GateBody = Body(default_factory=GateBody),
+):
+    """N08 residual：有界 Lv4 auto-close 门槛门。
+
+    Args:
+        body: 可选 suite 回执。
+    """
+    from core.api.core_facade import (
+        evaluate_bounded_lv4_auto_close_gate,
+        run_bounded_lv4_auto_close_suite,
+    )
+
+    suite = body.suite
+    if suite is None:
+        suite = run_bounded_lv4_auto_close_suite()
+    return evaluate_bounded_lv4_auto_close_gate(suite)

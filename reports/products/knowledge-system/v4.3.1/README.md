@@ -141,6 +141,7 @@ authority: supporting
 | [phase2-abox-acl-condition-expr-lang-c-evidence.md](./phase2-abox-acl-condition-expr-lang-c-evidence.md) | N07/N22 deepen：H.1 有界表达式切片 C（字段级 $not 正规求值再取反 / 禁 fail-open / 非 certified） |
 | [phase2-abox-acl-h1-condition-freeze-evidence.md](./phase2-abox-acl-h1-condition-freeze-evidence.md) | N07/N22：H.1 有界条件面冻结（Extended-sufficient / 非 certified / ADR 例外行保留） |
 | [phase2-n08-action-policy-freeze-evidence.md](./phase2-n08-action-policy-freeze-evidence.md) | N08：Action Policy 面冻结（Extended-sufficient / 非全量 Lv4 / 非 certified / ADR 例外行保留） |
+| [phase2-n08-lv4-autoclose-residual-evidence.md](./phase2-n08-lv4-autoclose-residual-evidence.md) | N08 residual：有界 Lv4 auto-close（opt-in low 风险+FP 门；不可用诚实上报；非全量 Action Lv4/非 certified） |
 | [phase2-n24-unified-audit-freeze-evidence.md](./phase2-n24-unified-audit-freeze-evidence.md) | N24：统一审计/Revision 面冻结（Operational-sufficient / 非全量运维台 / 非 certified / ADR 例外行保留） |
 | [phase2-n24-ops-console-residual-evidence.md](./phase2-n24-ops-console-residual-evidence.md) | N24 residual：运维台薄壳（opt-in 聚合审计近窗+SLO；不可用诚实上报；非全量运维台/非 certified） |
 | [phase2-slo-telemetry-freeze-evidence.md](./phase2-slo-telemetry-freeze-evidence.md) | SLO：遥测面冻结（Operational-sufficient / wiring≠attainment / 非达标宣称 / ADR 例外行保留） |
