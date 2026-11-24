@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T09:48:30+08:00",
+  "reviewed_at": "2026-11-24T09:51:20+08:00",
   "base_ref": "origin/main",
   "merge_base": "520ab35159c81e883d39f3e1dba7c82501f3ff9d",
-  "diff_sha256": "fc405c2edb164ba2e96d73457be58b77b69396894bfa951f9c32ac0efc8cb284",
-  "head_sha": "2f0ad039bcee707ab1cf2619d9769b5355a8b4cd",
+  "diff_sha256": "5c48aa556239b427379561bd26fe03abdfb781fe84f66577f2713cdf6992a071",
+  "head_sha": "b0996195843d45914e60c67d6b555b6e62362c3a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N24 ops console shell residual only; freeze stays true; certified/full_ops_console false. Local lock only."
+  "note": "N24 ops console shell residual + whitepaper stamp refresh; freeze stays true. Local lock only."
 }
