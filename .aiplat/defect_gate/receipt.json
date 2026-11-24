@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T18:33:18+08:00",
+  "reviewed_at": "2026-11-24T19:08:10+08:00",
   "base_ref": "origin/main",
-  "merge_base": "fd719d3ed943a695ed0a789496bf0cc06c334872",
-  "diff_sha256": "ec15ff75ce8243d59a8678ede0722fd448717a008772435b659b7097fa62dc3e",
-  "head_sha": "d731a0795ea8f982c0f1123892c86b4730ada33e",
+  "merge_base": "bf1b1206a1a60edc29723f857159c0e8dc1ad890",
+  "diff_sha256": "54bf2186c7f9fe2106e4f5b20ca43180553c1f133b0f18c4fae5d768be51a77b",
+  "head_sha": "6ad146c806f97a328e05a39b88c2a3dc579def88",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N08 Lv4 auto-close product slice-1; lv4_product_surface true; certified/full_action_lv4 false; residual opt-in retained. Local lock only."
+  "note": "N11 production attest product slice-1; prod_attest_product_surface true; certified/production_cutover_certified false; residual opt-in retained. Local lock only."
 }
