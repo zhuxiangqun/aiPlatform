@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4208
+total_capabilities: 4215
 last_updated: 2026-11-24
 version: "30.14"
 auto_sync: true
@@ -1242,6 +1242,7 @@ scan_hash: 8f9548ec24f4
 | **Lv4 有界 auto-close 产品面第一刀（N08）** | `evaluate_bounded_lv4_auto_close_product` + `/lv4-auto-close/product*` + `Lv4AutoClosePanel` | ✅ | 默认可用（无 residual env）；仍仅 low + FP 门；`lv4_product_surface=true`；certified/`full_action_lv4` 恒 false；freeze 仍 true。证据 `phase2-n08-lv4-autoclose-product-evidence.md`。**未宣称** full_action_lv4 / certified。生成物适用：已接线（管理端） | 本批 |
 | **迁移切写授权（v4.3.1 N11/N14 deepen）** | `authorize_migration_cutover` / `request_write_cutover` / suite/gate + Facade | ✅ | token+actor+reason+对账；作业级授权≠生产认证；certified 恒 false。证据 `phase2-migration-cutover-auth-evidence.md`。**`n11_n14_migration_freeze` 停止默认 deepen**。**显式 residual**：opt-in `attest_production_cutover_readiness`（默认/失败 → `production_attestation_unavailable`；证据 `phase2-n11-production-attest-residual-evidence.md`）。**未宣称** 生产切写认证 / N11/N14 certified。生成物适用：已接线 | 本批 |
 | **生产切写就绪回执 residual（N11/N14）** | `attest_production_cutover_readiness` + Facade/HTTP `production-attest` | ✅ | 有界就绪回执（授权+对账哈希）；`AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST=1` 实网；suite `prod_attest_opt_in`/`prod_attest_unavailable`；freeze 仍 true；production_cutover_certified/certified 恒 false。生成物适用：已接线（经 Facade） | 本批 |
+| **生产切写就绪产品面第一刀（N11/N14）** | `attest_production_cutover_readiness_product` + `/knowledge-migrations/product*` + `ProductionAttestPanel` | ✅ | 默认可用（无 residual env）；仍须作业授权+对账；`prod_attest_product_surface=true`；certified/`production_cutover_certified` 恒 false；freeze 仍 true。证据 `phase2-n11-production-attest-product-evidence.md`。**未宣称** 生产认证 / certified。生成物适用：已接线（管理端） | 本批 |
 | **ABox 角色×动作轴（v4.3.1 N07/N22 deepen）** | `load_role_action_matrix` / `role_action_allowed` / suite/gate + Facade；`check_entity_acl` 接线 | ✅ | 配置驱动任意角色×动作；未知角色拒绝；certified 恒 false。证据 `phase2-role-action-matrix-evidence.md`。**未宣称** 部署 RBAC 真源 / Wiki·KB 全入口 / N07/N22 certified。生成物适用：已接线 | 本批 |
 | **ObjectSet 嵌套 filter（v4.3.1 N07/N22 deepen）** | `match_filter_expr` / `run_object_set_filter_suite` / `evaluate_object_set_filter_gate` + Facade | ✅ | `$and`/`$or`/`$not` + `$eq`/`$ne`/`$in`/`$exists`；深度上限 4；certified 恒 false。证据 `phase2-objectset-filter-evidence.md`。**未宣称** Wiki/KB 全入口 ACL / N07/N22 certified。生成物适用：已接线 | 本批 |
 | **ObjectSet `$where`/`$expr` residual（v4.3.1 N07/N22）** | `match_filter_expr` + `_eval_bounded_expr` + suite/gate | ✅ | `$where`→`where_unavailable`（禁 JS）；`$expr` 有界二元比较；freeze 仍 true。证据 `phase2-objectset-where-expr-residual-evidence.md`。**未宣称** 完整表达式语言 / N07/N22 certified。生成物适用：已接线 | 本批 |
@@ -1666,6 +1667,12 @@ scan_hash: 8f9548ec24f4
 | request_write_cutover | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 请求切写阶段（须已授权） | 本批 |
 | revoke_migration_cutover | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 撤销切写授权 | 本批 |
 | attest_production_cutover_readiness | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 residual 生产就绪回执（非 certified） | 本批 |
+| attest_production_cutover_readiness_product | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 产品面生产就绪回执（默认可用；非 certified） | 本批 |
+| run_production_attest_product_suite | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 产品面生产就绪套件 | 本批 |
+| evaluate_production_attest_product_gate | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 产品面生产就绪门槛门 | 本批 |
+| attest_knowledge_production_cutover_readiness_product | `core/api/core_facade.py` | ✅ | CoreFacade：N11/N14 产品面生产就绪 | 本批 |
+| run_knowledge_production_attest_product_suite | `core/api/core_facade.py` | ✅ | CoreFacade：N11/N14 产品面套件 | 本批 |
+| evaluate_knowledge_production_attest_product_gate | `core/api/core_facade.py` | ✅ | CoreFacade：N11/N14 产品面门槛门 | 本批 |
 | evaluate_role_action_matrix_gate | `core/policy/graph_abox_acl.py` | ✅ | N07/N22 角色×动作轴门槛门；certified 恒 false | 本批 |
 | run_role_action_matrix_suite | `core/policy/graph_abox_acl.py` | ✅ | N07/N22 角色×动作轴套件；certified 恒 false | 本批 |
 | role_action_allowed | `core/policy/graph_abox_acl.py` | ✅ | N07/N22 角色×动作允许检查 | 本批 |
@@ -5109,9 +5116,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 801 | 1 | 802 |
+| Harness 执行引擎 | 802 | 1 | 803 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 875 | 9 | 884 |
+| 知识引擎（本体） | 881 | 9 | 890 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5154,7 +5161,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4197** | **11** | **4208** |
+| **总计** | **4204** | **11** | **4215** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

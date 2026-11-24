@@ -7174,6 +7174,60 @@ def attest_knowledge_production_cutover_readiness(
     )
 
 
+def attest_knowledge_production_cutover_readiness_product(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    raw_fact_index_ok: Optional[bool] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N11/N14 产品面生产切写就绪回执（默认可用；certified 恒 false）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 签署人。
+        reason: 签署理由。
+        raw_fact_index_ok: 可选 Raw↔Fact↔Index 对账结果。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        attest_production_cutover_readiness_product,
+    )
+
+    return attest_production_cutover_readiness_product(
+        job_id,
+        tenant_id=tenant_id,
+        actor=actor,
+        reason=reason,
+        raw_fact_index_ok=raw_fact_index_ok,
+    )
+
+
+def run_knowledge_production_attest_product_suite() -> Dict[str, Any]:
+    """CoreFacade：N11/N14 产品面生产就绪套件。"""
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        run_production_attest_product_suite,
+    )
+
+    return run_production_attest_product_suite()
+
+
+def evaluate_knowledge_production_attest_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N11/N14 产品面生产就绪门槛门。
+
+    Args:
+        suite: 可选套件回执。
+    """
+    from core.harness.knowledge_pipeline.knowledge_migration import (
+        evaluate_production_attest_product_gate,
+    )
+
+    return evaluate_production_attest_product_gate(suite)
+
+
 def run_migration_cutover_auth_suite() -> Dict[str, Any]:
     """N11/N14 deepen：切写授权套件（certified 恒 false）。"""
     from core.harness.knowledge_pipeline.knowledge_migration import (

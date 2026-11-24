@@ -3,11 +3,12 @@
 职责：登记迁移作业；双写 source+target；按 key/hash 对账并可修复；
 记录读指针与回滚演练。source 在切写前始终权威。
 N11/N14 deepen：显式切写授权（token+actor+reason+对账干净）；
-显式 residual：``attest_production_cutover_readiness`` 有界就绪回执（opt-in）。
+显式 residual：``attest_production_cutover_readiness`` 有界就绪回执（opt-in）；
+产品面：``attest_production_cutover_readiness_product``（默认可用；无 env 门）。
 ``process_cutover_authorized`` / 生产 certified 恒 false。
 
 非目标：不做真实生产回填；不自动切写；不宣称 N11/N14/N24 certified；
-不可用时诚实上报 ``production_attestation_unavailable``，不冒充生产认证。
+residual 不可用时诚实上报 ``production_attestation_unavailable``，不冒充生产认证。
 """
 from __future__ import annotations
 
@@ -978,6 +979,158 @@ def request_write_cutover(
     }
 
 
+_PROD_ATTEST_PRODUCT_CASES = (
+    "prod_attest_product_eval",
+    "prod_attest_product_blocked_unauthorized",
+    "honesty_product_certified_false",
+)
+
+
+def _attest_production_cutover_readiness_impl(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    raw_fact_index_ok: Optional[bool],
+    db_path: Optional[str],
+    via: str,
+    product_surface: bool,
+) -> Dict[str, Any]:
+    """生产切写就绪回执共享实现（residual / 产品面共用）。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 签署人。
+        reason: 签署理由。
+        raw_fact_index_ok: 可选 Raw↔Fact↔Index 对账结果。
+        db_path: 可选库路径。
+        via: ``opt_in`` 或 ``product``。
+        product_surface: 是否产品面回执。
+    """
+    tid = (tenant_id or "").strip()
+    jid = (job_id or "").strip()
+    act = (actor or "").strip()
+    why = (reason or "").strip()
+    base = {
+        "job_id": jid,
+        "tenant_id": tid,
+        "actor": act,
+        "reason": why,
+        "process_cutover_authorized": False,
+        "production_cutover_certified": False,
+        "certified": False,
+        "n11_full_conformance": False,
+        "n14_full_conformance": False,
+        "accuracy_claim": False,
+        "prod_attest_product_surface": bool(product_surface),
+    }
+    if not tid or not jid or not act or not why:
+        return {
+            **base,
+            "status": "invalid",
+            "error": "job_tenant_actor_reason_required",
+            "via": via,
+        }
+
+    with _connect(db_path) as conn:
+        job = _job_row(conn, jid, tid)
+        if not job:
+            return {
+                **base,
+                "status": "not_found",
+                "error": "job_not_found",
+                "via": via,
+            }
+        job_d = _job_to_dict(job)
+
+    if not bool(job_d.get("cutover_authorized")):
+        return {
+            **base,
+            **{k: job_d[k] for k in ("phase", "cutover_authorized", "domain") if k in job_d},
+            "status": "blocked",
+            "error": "cutover_not_authorized",
+            "via": via,
+        }
+
+    recon = reconcile_migration(
+        jid, tenant_id=tid, repair=False, db_path=db_path
+    )
+    if not recon.get("ok"):
+        return {
+            **base,
+            "status": "blocked",
+            "error": "reconcile_not_ok",
+            "reconcile": recon,
+            "via": via,
+        }
+
+    if raw_fact_index_ok is False:
+        return {
+            **base,
+            "status": "blocked",
+            "error": "raw_fact_index_not_ok",
+            "via": via,
+        }
+
+    evidence = {
+        "job_id": jid,
+        "tenant_id": tid,
+        "domain": job_d.get("domain"),
+        "phase": job_d.get("phase"),
+        "cutover_authorized": True,
+        "reconcile_ok": True,
+        "raw_fact_index_ok": raw_fact_index_ok,
+        "actor": act,
+        "reason": why,
+        "measured_at": time.time(),
+        "via": via,
+    }
+    digest = hashlib.sha256(
+        json.dumps(evidence, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    attestation_id = f"att-{digest[:16]}"
+
+    with _connect(db_path) as conn:
+        _append_event(
+            conn,
+            job_id=jid,
+            tenant_id=tid,
+            event_type="production_cutover_attestation",
+            detail={
+                "attestation_id": attestation_id,
+                "digest": digest,
+                "actor": act,
+                "reason": why,
+                "raw_fact_index_ok": raw_fact_index_ok,
+                "via": via,
+                "prod_attest_product_surface": bool(product_surface),
+            },
+        )
+        conn.commit()
+
+    return {
+        **base,
+        "status": "ok",
+        "via": via,
+        "attestation_id": attestation_id,
+        "evidence_digest": digest,
+        "evidence": evidence,
+        "phase": job_d.get("phase"),
+        "cutover_authorized": True,
+        "note": (
+            "production attest product surface; readiness receipt only; "
+            "not production cutover certified / not N11/N14 full"
+            if product_surface
+            else (
+                "readiness receipt only; not production cutover certified / "
+                "not N11/N14 full conformance"
+            )
+        ),
+    }
+
+
 def attest_production_cutover_readiness(
     job_id: str,
     *,
@@ -1016,11 +1169,12 @@ def attest_production_cutover_readiness(
         "n11_full_conformance": False,
         "n14_full_conformance": False,
         "accuracy_claim": False,
+        "prod_attest_product_surface": False,
     }
     if not tid or not jid or not act or not why:
         return {**base, "status": "invalid", "error": "job_tenant_actor_reason_required"}
 
-    # 为什么：默认关闭「生产就绪回执」，避免 CI/本地误把作业授权当生产认证
+    # 为什么：residual 默认关闭，避免 CI/本地误把作业授权当生产认证
     if os.environ.get("AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST", "").strip().lower() not in {
         "1",
         "true",
@@ -1033,84 +1187,222 @@ def attest_production_cutover_readiness(
             "note": "set AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST=1 to enable readiness receipt",
         }
 
-    with _connect(db_path) as conn:
-        job = _job_row(conn, jid, tid)
-        if not job:
-            return {**base, "status": "not_found", "error": "job_not_found"}
-        job_d = _job_to_dict(job)
-
-    if not bool(job_d.get("cutover_authorized")):
-        return {
-            **base,
-            **{k: job_d[k] for k in ("phase", "cutover_authorized", "domain") if k in job_d},
-            "status": "blocked",
-            "error": "cutover_not_authorized",
-        }
-
-    recon = reconcile_migration(
-        jid, tenant_id=tid, repair=False, db_path=db_path
+    return _attest_production_cutover_readiness_impl(
+        jid,
+        tenant_id=tid,
+        actor=act,
+        reason=why,
+        raw_fact_index_ok=raw_fact_index_ok,
+        db_path=db_path,
+        via="opt_in",
+        product_surface=False,
     )
-    if not recon.get("ok"):
-        return {
-            **base,
-            "status": "blocked",
-            "error": "reconcile_not_ok",
-            "reconcile": recon,
-        }
 
-    if raw_fact_index_ok is False:
-        return {
-            **base,
-            "status": "blocked",
-            "error": "raw_fact_index_not_ok",
-        }
 
-    evidence = {
-        "job_id": jid,
-        "tenant_id": tid,
-        "domain": job_d.get("domain"),
-        "phase": job_d.get("phase"),
-        "cutover_authorized": True,
-        "reconcile_ok": True,
-        "raw_fact_index_ok": raw_fact_index_ok,
-        "actor": act,
-        "reason": why,
-        "measured_at": time.time(),
-    }
-    digest = hashlib.sha256(
-        json.dumps(evidence, sort_keys=True, ensure_ascii=False).encode("utf-8")
-    ).hexdigest()
-    attestation_id = f"att-{digest[:16]}"
+def attest_production_cutover_readiness_product(
+    job_id: str,
+    *,
+    tenant_id: str,
+    actor: str,
+    reason: str,
+    raw_fact_index_ok: Optional[bool] = None,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N11/N14 产品面：生产切写就绪回执（默认可用；非生产认证）。
 
-    with _connect(db_path) as conn:
-        _append_event(
-            conn,
-            job_id=jid,
-            tenant_id=tid,
-            event_type="production_cutover_attestation",
-            detail={
-                "attestation_id": attestation_id,
-                "digest": digest,
-                "actor": act,
-                "reason": why,
-                "raw_fact_index_ok": raw_fact_index_ok,
-            },
+    无 residual env 门；仍要求作业已授权且对账干净。
+    ``production_cutover_certified`` / ``certified`` 恒 false。
+
+    Args:
+        job_id: 作业 id。
+        tenant_id: 租户。
+        actor: 签署人。
+        reason: 签署理由。
+        raw_fact_index_ok: 可选 Raw↔Fact↔Index 对账结果。
+        db_path: 可选库路径。
+    """
+    return _attest_production_cutover_readiness_impl(
+        job_id,
+        tenant_id=tenant_id,
+        actor=actor,
+        reason=reason,
+        raw_fact_index_ok=raw_fact_index_ok,
+        db_path=db_path,
+        via="product",
+        product_surface=True,
+    )
+
+
+def run_production_attest_product_suite(
+    *,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N11/N14 产品面套件：默认可用；certified / production_cutover_certified 恒 false。
+
+    Args:
+        db_path: 可选临时库。
+    """
+    import tempfile
+
+    cases: List[Dict[str, Any]] = []
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    path = db_path
+    if not path:
+        tmp = tempfile.TemporaryDirectory(prefix="n11-prod-attest-product-")
+        path = str(Path(tmp.name) / "mig.db")
+
+    prev_token = os.environ.get("AIPLAT_KNOWLEDGE_CUTOVER_TOKEN")
+    prev_attest = os.environ.get("AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST")
+    os.environ["AIPLAT_KNOWLEDGE_CUTOVER_TOKEN"] = "n11-product-token"
+    # 为什么：产品面无 env 门——显式清掉 residual 开关仍应可用
+    os.environ.pop("AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST", None)
+    try:
+        job = start_migration_job(
+            tenant_id="n11-product-t", domain="n11-product-domain", db_path=path
         )
-        conn.commit()
+        jid = job["job_id"]
+        dual_write_record(
+            jid,
+            tenant_id="n11-product-t",
+            record_key="k1",
+            payload={"v": 1},
+            db_path=path,
+        )
+        authorize_migration_cutover(
+            jid,
+            tenant_id="n11-product-t",
+            actor="ops",
+            reason="product-lab",
+            token="n11-product-token",
+            db_path=path,
+        )
 
+        blocked = attest_production_cutover_readiness_product(
+            "missing-job",
+            tenant_id="n11-product-t",
+            actor="ops",
+            reason="no-auth-check",
+            db_path=path,
+        )
+        # 未授权作业：另起未授权 job
+        job2 = start_migration_job(
+            tenant_id="n11-product-t", domain="n11-product-domain", db_path=path
+        )
+        unauth = attest_production_cutover_readiness_product(
+            job2["job_id"],
+            tenant_id="n11-product-t",
+            actor="ops",
+            reason="unauthorized",
+            db_path=path,
+        )
+        cases.append(
+            {
+                "id": "prod_attest_product_blocked_unauthorized",
+                "ok": unauth.get("status") == "blocked"
+                and unauth.get("error") == "cutover_not_authorized"
+                and unauth.get("via") == "product"
+                and unauth.get("prod_attest_product_surface") is True
+                and unauth.get("production_cutover_certified") is False
+                and blocked.get("status") in ("not_found", "blocked", "invalid"),
+            }
+        )
+
+        att = attest_production_cutover_readiness_product(
+            jid,
+            tenant_id="n11-product-t",
+            actor="ops",
+            reason="product-attest",
+            raw_fact_index_ok=True,
+            db_path=path,
+        )
+        cases.append(
+            {
+                "id": "prod_attest_product_eval",
+                "ok": att.get("status") == "ok"
+                and att.get("via") == "product"
+                and bool(att.get("attestation_id"))
+                and att.get("prod_attest_product_surface") is True
+                and att.get("production_cutover_certified") is False
+                and att.get("certified") is False,
+            }
+        )
+        cases.append(
+            {
+                "id": "honesty_product_certified_false",
+                "ok": att.get("certified") is False
+                and att.get("production_cutover_certified") is False
+                and att.get("n11_full_conformance") is False
+                and att.get("n14_full_conformance") is False,
+            }
+        )
+    finally:
+        if prev_token is None:
+            os.environ.pop("AIPLAT_KNOWLEDGE_CUTOVER_TOKEN", None)
+        else:
+            os.environ["AIPLAT_KNOWLEDGE_CUTOVER_TOKEN"] = prev_token
+        if prev_attest is None:
+            os.environ.pop("AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST", None)
+        else:
+            os.environ["AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST"] = prev_attest
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok"))
     return {
-        **base,
-        "status": "ok",
-        "via": "opt_in",
-        "attestation_id": attestation_id,
-        "evidence_digest": digest,
-        "evidence": evidence,
-        "phase": job_d.get("phase"),
-        "cutover_authorized": True,
+        "ok": passed == len(_PROD_ATTEST_PRODUCT_CASES)
+        and len(cases) == len(_PROD_ATTEST_PRODUCT_CASES),
+        "passed": passed,
+        "total": len(_PROD_ATTEST_PRODUCT_CASES),
+        "cases": cases,
+        "certified": False,
+        "n11_full_conformance": False,
+        "n14_full_conformance": False,
+        "production_cutover_certified": False,
+        "n11_n14_migration_freeze": True,
+        "prod_attest_product_surface": True,
         "note": (
-            "readiness receipt only; not production cutover certified / "
-            "not N11/N14 full conformance"
+            "Production attest product surface suite; "
+            "not production cutover certified / not N11/N14 full"
         ),
+    }
+
+
+def evaluate_production_attest_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N11/N14 产品面门槛门：要求 prod_attest_product_surface；禁止 certified。
+
+    Args:
+        suite: ``run_production_attest_product_suite`` 回执。
+    """
+    s = suite if isinstance(suite, dict) else run_production_attest_product_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    if s.get("certified") is True or s.get("production_cutover_certified") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("n11_full_conformance") is True or s.get("n14_full_conformance") is True:
+        issues.append("honesty_full_conformance_forbidden")
+    if s.get("prod_attest_product_surface") is not True:
+        issues.append("product_prod_attest_surface_required")
+    ids = {
+        c.get("id")
+        for c in (s.get("cases") or [])
+        if isinstance(c, dict) and c.get("ok")
+    }
+    for need in _PROD_ATTEST_PRODUCT_CASES:
+        if need not in ids:
+            issues.append(f"missing_or_failed:{need}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "n11_full_conformance": False,
+        "n14_full_conformance": False,
+        "production_cutover_certified": False,
+        "n11_n14_migration_freeze": True,
+        "prod_attest_product_surface": True,
+        "note": "Production attest product gate; not N11/N14 certified",
     }
 
 

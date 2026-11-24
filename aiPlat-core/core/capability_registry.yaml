@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3276
+total_capabilities: 3282
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2835,7 +2835,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 798
+    caps_count: 804
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4506,6 +4506,30 @@ domains:
         type: "function"
         signature: "N11/N14 residual: production readiness receipt (certified=false)"
         module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "attest_production_cutover_readiness_product"
+        type: "function"
+        signature: "N11/N14 product: production readiness receipt (default-on; certified=false)"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "run_production_attest_product_suite"
+        type: "function"
+        signature: "N11/N14 product: production attest suite"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "evaluate_production_attest_product_gate"
+        type: "function"
+        signature: "N11/N14 product: production attest gate"
+        module: "core/harness/knowledge_pipeline/knowledge_migration.py"
+      - symbol: "attest_knowledge_production_cutover_readiness_product"
+        type: "function"
+        signature: "CoreFacade: N11/N14 product production readiness"
+        module: "core/api/core_facade.py"
+      - symbol: "run_knowledge_production_attest_product_suite"
+        type: "function"
+        signature: "CoreFacade: N11/N14 product attest suite"
+        module: "core/api/core_facade.py"
+      - symbol: "evaluate_knowledge_production_attest_product_gate"
+        type: "function"
+        signature: "CoreFacade: N11/N14 product attest gate"
+        module: "core/api/core_facade.py"
       - symbol: "request_write_cutover"
         type: "function"
         signature: "N11/N14: request cutover phase if authorized"

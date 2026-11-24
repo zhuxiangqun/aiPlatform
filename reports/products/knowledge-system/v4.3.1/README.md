@@ -44,6 +44,7 @@ authority: supporting
 | [phase2-knowledge-gold-eval-evidence.md](./phase2-knowledge-gold-eval-evidence.md) | N10 deepen：域级 Exact-match gold 流水线（非准确率宣称/非 certified） |
 | [phase2-n10-llm-judge-residual-evidence.md](./phase2-n10-llm-judge-residual-evidence.md) | N10 residual：opt-in LLM object 等价（不可用诚实上报；非准确率/非 certified） |
 | [phase2-n11-production-attest-residual-evidence.md](./phase2-n11-production-attest-residual-evidence.md) | N11/N14 residual：opt-in 生产切写就绪回执（不可用诚实上报；非生产认证/非 certified） |
+| [phase2-n11-production-attest-product-evidence.md](./phase2-n11-production-attest-product-evidence.md) | N11/N14 产品面第一刀：生产切写就绪回执（默认可用；非生产认证/非 certified） |
 | [phase2-record-semantics-evidence.md](./phase2-record-semantics-evidence.md) | N17 deepen：记录级语义运行时权威（非 RBAC 真源/非 certified） |
 | [phase2-deployed-rbac-evidence.md](./phase2-deployed-rbac-evidence.md) | N18 deepen：部署侧 RBAC 真源（禁 reference_policy 权威；非全路径/非 certified） |
 | [phase2-fact-query-audit-evidence.md](./phase2-fact-query-audit-evidence.md) | N19 deepen：Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve/wiki_context 热路径（非全部旁路/非 certified） |
