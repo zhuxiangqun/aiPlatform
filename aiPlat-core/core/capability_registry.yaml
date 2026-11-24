@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3269
+total_capabilities: 3276
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2835,7 +2835,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 791
+    caps_count: 798
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4130,6 +4130,34 @@ domains:
         module: core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
         type: function
         signature: "N08 residual: bounded Lv4 auto-close gate (certified=false)"
+      - symbol: "evaluate_bounded_lv4_auto_close_product"
+        module: core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
+        type: function
+        signature: "N08 product: bounded Lv4 auto-close (lv4_product_surface; certified=false)"
+      - symbol: "run_bounded_lv4_auto_close_product_suite"
+        module: core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
+        type: function
+        signature: "N08 product: bounded Lv4 auto-close suite"
+      - symbol: "evaluate_bounded_lv4_auto_close_product_gate"
+        module: core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
+        type: function
+        signature: "N08 product: bounded Lv4 auto-close gate"
+      - symbol: "evaluate_bounded_lv4_auto_close_product"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: N08 product bounded Lv4 evaluate"
+      - symbol: "run_bounded_lv4_auto_close_product_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: N08 product bounded Lv4 suite"
+      - symbol: "evaluate_bounded_lv4_auto_close_product_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: N08 product bounded Lv4 gate"
+      - symbol: "Lv4AutoClosePanel"
+        module: aiPlat-management/frontend/src/pages/KnowledgeFactory/Lv4AutoClosePanel.tsx
+        type: component
+        signature: "N08 product: management thin UI for bounded Lv4 auto-close"
       - symbol: "project_facts_to_wiki"
         module: core/harness/knowledge_pipeline/wiki_rebuild.py
         type: function

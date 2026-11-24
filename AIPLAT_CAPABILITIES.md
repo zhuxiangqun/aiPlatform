@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4201
+total_capabilities: 4208
 last_updated: 2026-11-24
 version: "30.14"
 auto_sync: true
@@ -1239,6 +1239,7 @@ scan_hash: 8f9548ec24f4
 | **Action Policy/Approval/Audit（v4.3.1 N08 deepen）** | `action_kill_switch_active` + require_approval 无 threshold 强制入队 + suite/gate + Facade | ✅ | kill switch；Policy 拒审计；审批入队；**`n08_action_policy_freeze` 停止默认 N08 deepen**；certified 恒 false。证据 `phase2-action-policy-audit-evidence.md` + `phase2-n08-action-policy-freeze-evidence.md`。**未宣称** 全量 Action Lv4 / N08 certified。生成物适用：已接线 | 本批 |
 | **Lv4 误报门 v2（v4.3.1 N08 deepen）** | `lv4_false_positive_gate.py` + Registry 委托 + Facade + FDE `/lv4-false-positive*` | ✅ | 禁 0 样本假绿；要求 rollback；suite/gate certified 恒 false；`lv4_gate_redesigned=true`；纳入 N08 freeze。证据 `phase2-lv4-false-positive-gate-evidence.md`。**显式 residual**：opt-in `evaluate_bounded_lv4_auto_close`（证据 `phase2-n08-lv4-autoclose-residual-evidence.md`）。**未宣称** 全量 Action Lv4 / N08 certified。生成物适用：已接线 | 本批 |
 | **Lv4 有界 auto-close residual（N08）** | `evaluate_bounded_lv4_auto_close` + Facade/HTTP `/lv4-auto-close*` | ✅ | 仅 low 风险 + Lv4 阶梯 + FP 门 v2；`AIPLAT_KNOWLEDGE_LV4_AUTO_CLOSE=1`；suite `lv4_auto_close_opt_in`/`lv4_auto_close_unavailable`；freeze 仍 true；certified/full_action_lv4 恒 false。生成物适用：已接线（经 Facade） | 本批 |
+| **Lv4 有界 auto-close 产品面第一刀（N08）** | `evaluate_bounded_lv4_auto_close_product` + `/lv4-auto-close/product*` + `Lv4AutoClosePanel` | ✅ | 默认可用（无 residual env）；仍仅 low + FP 门；`lv4_product_surface=true`；certified/`full_action_lv4` 恒 false；freeze 仍 true。证据 `phase2-n08-lv4-autoclose-product-evidence.md`。**未宣称** full_action_lv4 / certified。生成物适用：已接线（管理端） | 本批 |
 | **迁移切写授权（v4.3.1 N11/N14 deepen）** | `authorize_migration_cutover` / `request_write_cutover` / suite/gate + Facade | ✅ | token+actor+reason+对账；作业级授权≠生产认证；certified 恒 false。证据 `phase2-migration-cutover-auth-evidence.md`。**`n11_n14_migration_freeze` 停止默认 deepen**。**显式 residual**：opt-in `attest_production_cutover_readiness`（默认/失败 → `production_attestation_unavailable`；证据 `phase2-n11-production-attest-residual-evidence.md`）。**未宣称** 生产切写认证 / N11/N14 certified。生成物适用：已接线 | 本批 |
 | **生产切写就绪回执 residual（N11/N14）** | `attest_production_cutover_readiness` + Facade/HTTP `production-attest` | ✅ | 有界就绪回执（授权+对账哈希）；`AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST=1` 实网；suite `prod_attest_opt_in`/`prod_attest_unavailable`；freeze 仍 true；production_cutover_certified/certified 恒 false。生成物适用：已接线（经 Facade） | 本批 |
 | **ABox 角色×动作轴（v4.3.1 N07/N22 deepen）** | `load_role_action_matrix` / `role_action_allowed` / suite/gate + Facade；`check_entity_acl` 接线 | ✅ | 配置驱动任意角色×动作；未知角色拒绝；certified 恒 false。证据 `phase2-role-action-matrix-evidence.md`。**未宣称** 部署 RBAC 真源 / Wiki·KB 全入口 / N07/N22 certified。生成物适用：已接线 | 本批 |
@@ -1556,6 +1557,12 @@ scan_hash: 8f9548ec24f4
 | run_lv4_false_positive_gate_suite | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_lv4_fp_gate | `core/harness/knowledge_pipeline/lv4_false_positive_gate.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_bounded_lv4_auto_close | `core/harness/knowledge_pipeline/lv4_bounded_auto_close.py` | ✅ | N08 residual 有界 Lv4 auto-close（非全量/非 certified） | 本批 |
+| evaluate_bounded_lv4_auto_close_product | `core/harness/knowledge_pipeline/lv4_bounded_auto_close.py` | ✅ | N08 产品面有界 Lv4 auto-close（默认可用；非 full_action_lv4） | 本批 |
+| run_bounded_lv4_auto_close_product_suite | `core/harness/knowledge_pipeline/lv4_bounded_auto_close.py` | ✅ | N08 产品面 Lv4 auto-close 套件 | 本批 |
+| evaluate_bounded_lv4_auto_close_product_gate | `core/harness/knowledge_pipeline/lv4_bounded_auto_close.py` | ✅ | N08 产品面 Lv4 auto-close 门槛门 | 本批 |
+| evaluate_bounded_lv4_auto_close_product | `core/api/core_facade.py` | ✅ | CoreFacade：N08 产品面有界 Lv4 | 本批 |
+| run_bounded_lv4_auto_close_product_suite | `core/api/core_facade.py` | ✅ | CoreFacade：N08 产品面套件 | 本批 |
+| evaluate_bounded_lv4_auto_close_product_gate | `core/api/core_facade.py` | ✅ | CoreFacade：N08 产品面门槛门 | 本批 |
 | run_raw_fact_index_reconcile_suite_route | `aiPlat-platform/apps/fde/api/raw_fact_index_reconcile_routes.py` | ✅ | 自动同步 | 已合入 |
 | reconcile_raw_fact_index_route | `aiPlat-platform/apps/fde/api/raw_fact_index_reconcile_routes.py` | ✅ | 自动同步 | 已合入 |
 | reconcile_raw_fact_index_chain | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5102,9 +5109,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 800 | 1 | 801 |
+| Harness 执行引擎 | 801 | 1 | 802 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 869 | 9 | 878 |
+| 知识引擎（本体） | 875 | 9 | 884 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5147,7 +5154,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4190** | **11** | **4201** |
+| **总计** | **4197** | **11** | **4208** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
