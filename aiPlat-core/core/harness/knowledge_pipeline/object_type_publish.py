@@ -5,6 +5,7 @@
   - publish 须 actor/reason + 配置角色门（上游注入 role）
   - 仅 published 可作为 active 定义；可选拦截 Package schema 发布
   - 显式 residual：opt-in ``bulk_transition_object_types`` 有界多租户批量转换
+  - 产品面第一刀：默认可用 ``bulk_transition_object_types_product``（无 residual env）
   - 显式 residual：opt-in ``apply_published_seed_authority`` 有界种子权威覆盖
   - 产品面第一刀：默认可用种子目录 + published-over-seed（不改写 workspace_seeds）
 
@@ -466,6 +467,11 @@ def assert_schema_object_types_published(
 
 
 _BULK_MAX_ITEMS = 20
+_BULK_PRODUCT_CASES = (
+    "bulk_product_default_on",
+    "bulk_product_multi_tenant",
+    "honesty_bulk_product_certified_false",
+)
 
 _N02_CASES = (
     "draft_submit_ok",
@@ -480,31 +486,30 @@ _N02_CASES = (
 )
 
 
-def bulk_transition_object_types(
+def _bulk_transition_object_types_impl(
     items: Sequence[Dict[str, Any]],
     *,
     actor: str,
     reason: str,
     role: str = "",
     db_path: Optional[str] = None,
+    via: str,
+    product_surface: bool,
 ) -> Dict[str, Any]:
-    """N02 residual：有界多租户 ObjectType 批量状态转换（非种子替换）。
-
-    每项须含 ``tenant_id`` / ``object_type_id`` / ``version`` / ``to_status``。
-    默认关闭（无 ``AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1`` →
-    ``object_type_bulk_unavailable``）。逐项回执；任一项失败不回滚已成功项。
-    ``certified`` / ``n02_full_conformance`` 恒 false。
+    """有界多租户批量转换核心（residual / 产品面共用）。
 
     Args:
-        items: 批量项列表（最多 ``_BULK_MAX_ITEMS``）。
+        items: 批量项列表。
         actor: 操作人。
         reason: 理由。
         role: publish 时角色。
         db_path: 可选库路径。
+        via: ``opt_in`` 或 ``product``。
+        product_surface: 是否产品面回执标记。
     """
     act = (actor or "").strip()
     why = (reason or "").strip()
-    base = {
+    base: Dict[str, Any] = {
         "actor": act,
         "reason": why,
         "role": (role or "").strip(),
@@ -515,22 +520,10 @@ def bulk_transition_object_types(
         "n02_full_conformance": False,
         "n02_object_type_freeze": True,
         "seed_replacement": False,
+        "bulk_product_surface": bool(product_surface),
     }
     if not act or not why:
         return {**base, "status": "invalid", "error": "actor_reason_required"}
-
-    # 为什么：默认关闭批量，避免 CI/门户误把单域薄门户当多域产品完备
-    if os.environ.get("AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK", "").strip().lower() not in {
-        "1",
-        "true",
-        "yes",
-    }:
-        return {
-            **base,
-            "status": "object_type_bulk_unavailable",
-            "via": "env_disabled",
-            "note": "set AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1 to enable multi-tenant bulk",
-        }
 
     raw_items = list(items or [])
     if not raw_items:
@@ -587,18 +580,296 @@ def bulk_transition_object_types(
                 }
             )
 
+    note = (
+        "bounded multi-tenant bulk product surface; "
+        "not seed replacement / not N02 certified"
+        if product_surface
+        else (
+            "bounded multi-tenant bulk transition residual; "
+            "not seed replacement / not N02 certified"
+        )
+    )
     return {
         **base,
         "status": "ok",
-        "via": "opt_in",
+        "via": via,
         "results": results,
         "ok_count": ok_n,
         "fail_count": fail_n,
         "total": len(results),
+        "note": note,
+    }
+
+
+def bulk_transition_object_types(
+    items: Sequence[Dict[str, Any]],
+    *,
+    actor: str,
+    reason: str,
+    role: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N02 residual：有界多租户 ObjectType 批量状态转换（非种子替换）。
+
+    每项须含 ``tenant_id`` / ``object_type_id`` / ``version`` / ``to_status``。
+    默认关闭（无 ``AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1`` →
+    ``object_type_bulk_unavailable``）。逐项回执；任一项失败不回滚已成功项。
+    ``certified`` / ``n02_full_conformance`` 恒 false。
+
+    Args:
+        items: 批量项列表（最多 ``_BULK_MAX_ITEMS``）。
+        actor: 操作人。
+        reason: 理由。
+        role: publish 时角色。
+        db_path: 可选库路径。
+    """
+    act = (actor or "").strip()
+    why = (reason or "").strip()
+    base = {
+        "actor": act,
+        "reason": why,
+        "role": (role or "").strip(),
+        "results": [],
+        "ok_count": 0,
+        "fail_count": 0,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement": False,
+        "bulk_product_surface": False,
+    }
+    if not act or not why:
+        return {**base, "status": "invalid", "error": "actor_reason_required"}
+
+    # 为什么：默认关闭批量 residual，避免误把单域薄门户当多域产品完备
+    if os.environ.get("AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+    }:
+        return {
+            **base,
+            "status": "object_type_bulk_unavailable",
+            "via": "env_disabled",
+            "note": "set AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1 to enable multi-tenant bulk",
+        }
+
+    return _bulk_transition_object_types_impl(
+        items,
+        actor=act,
+        reason=why,
+        role=role,
+        db_path=db_path,
+        via="opt_in",
+        product_surface=False,
+    )
+
+
+def bulk_transition_object_types_product(
+    items: Sequence[Dict[str, Any]],
+    *,
+    actor: str,
+    reason: str,
+    role: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N02 产品面：默认可用有界多租户批量转换（无 residual env 门）。
+
+    与 residual 同界（≤``_BULK_MAX_ITEMS``、逐项回执）。
+    ``bulk_product_surface=true``；``certified`` / ``seed_replacement`` 恒 false。
+
+    Args:
+        items: 批量项列表。
+        actor: 操作人。
+        reason: 理由。
+        role: publish 时角色。
+        db_path: 可选库路径。
+    """
+    return _bulk_transition_object_types_impl(
+        items,
+        actor=actor,
+        reason=reason,
+        role=role,
+        db_path=db_path,
+        via="product",
+        product_surface=True,
+    )
+
+
+def run_bulk_portal_product_suite(
+    *,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N02 产品面：多租户 bulk 套件（certified 恒 false）。
+
+    Args:
+        db_path: 可选库路径。
+    """
+    cases: List[Dict[str, Any]] = []
+    prev_bulk = os.environ.get("AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK")
+    # 为什么：产品面无 env 门——显式清掉 residual 开关仍应可用
+    os.environ.pop("AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK", None)
+    own_tmp: Optional[tempfile.TemporaryDirectory] = None
+    if db_path:
+        path = db_path
+    else:
+        own_tmp = tempfile.TemporaryDirectory(prefix="n02-bulk-product-")
+        path = str(Path(own_tmp.name) / "ot.sqlite3")
+    try:
+        # residual 仍关闭；产品面无 env 也可达（空 items → empty_items，非 env_disabled）
+        residual = bulk_transition_object_types(
+            [
+                {
+                    "tenant_id": "n02-bulk-prod-a",
+                    "object_type_id": "BulkProd",
+                    "version": "1.0.0",
+                    "to_status": "in_review",
+                }
+            ],
+            actor="suite_author",
+            reason="residual-check",
+            db_path=path,
+        )
+        empty_prod = bulk_transition_object_types_product(
+            [],
+            actor="suite_author",
+            reason="product-empty",
+            db_path=path,
+        )
+        cases.append(
+            {
+                "id": "bulk_product_default_on",
+                "ok": residual.get("status") == "object_type_bulk_unavailable"
+                and residual.get("via") == "env_disabled"
+                and residual.get("bulk_product_surface") is False
+                and empty_prod.get("status") == "object_type_bulk_unavailable"
+                and empty_prod.get("via") == "empty_items"
+                and empty_prod.get("bulk_product_surface") is True,
+            }
+        )
+
+        for tid in ("n02-bulk-prod-a", "n02-bulk-prod-b"):
+            submit_object_type_draft(
+                tenant_id=tid,
+                object_type_id="BulkProd",
+                version="1.0.0",
+                definition={
+                    "object_type_id": "BulkProd",
+                    "label": "bulk-product",
+                    "primary_key": "id",
+                },
+                actor="suite_author",
+                reason="bulk-product-draft",
+                db_path=path,
+            )
+
+        product = bulk_transition_object_types_product(
+            [
+                {
+                    "tenant_id": "n02-bulk-prod-a",
+                    "object_type_id": "BulkProd",
+                    "version": "1.0.0",
+                    "to_status": "in_review",
+                },
+                {
+                    "tenant_id": "n02-bulk-prod-b",
+                    "object_type_id": "BulkProd",
+                    "version": "1.0.0",
+                    "to_status": "in_review",
+                },
+            ],
+            actor="suite_author",
+            reason="bulk-product-review",
+            db_path=path,
+        )
+        tenants_ok = {
+            (r.get("item") or {}).get("tenant_id")
+            for r in (product.get("results") or [])
+            if r.get("status") == "ok"
+        }
+        cases.append(
+            {
+                "id": "bulk_product_multi_tenant",
+                "ok": product.get("status") == "ok"
+                and product.get("via") == "product"
+                and product.get("bulk_product_surface") is True
+                and int(product.get("ok_count") or 0) == 2
+                and tenants_ok >= {"n02-bulk-prod-a", "n02-bulk-prod-b"}
+                and product.get("certified") is False
+                and product.get("seed_replacement") is False,
+            }
+        )
+        cases.append(
+            {
+                "id": "honesty_bulk_product_certified_false",
+                "ok": product.get("certified") is False
+                and product.get("n02_object_type_freeze") is True
+                and product.get("seed_replacement") is False
+                and product.get("bulk_product_surface") is True,
+            }
+        )
+    finally:
+        if prev_bulk is None:
+            os.environ.pop("AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK", None)
+        else:
+            os.environ["AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK"] = prev_bulk
+        if own_tmp is not None:
+            own_tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok"))
+    return {
+        "ok": passed == len(_BULK_PRODUCT_CASES)
+        and len(cases) == len(_BULK_PRODUCT_CASES),
+        "passed": passed,
+        "total": len(_BULK_PRODUCT_CASES),
+        "cases": cases,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement": False,
+        "bulk_product_surface": True,
         "note": (
-            "bounded multi-tenant bulk transition residual; "
+            "Bulk portal product surface suite; "
             "not seed replacement / not N02 certified"
         ),
+    }
+
+
+def evaluate_bulk_portal_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N02 产品面 bulk 门槛门；禁止 certified / seed_replacement。
+
+    Args:
+        suite: ``run_bulk_portal_product_suite`` 回执。
+    """
+    s = suite if isinstance(suite, dict) else run_bulk_portal_product_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    if s.get("certified") is True or s.get("n02_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("seed_replacement") is True:
+        issues.append("honesty_seed_replacement_forbidden")
+    if s.get("bulk_product_surface") is not True:
+        issues.append("product_bulk_surface_required")
+    ids = {
+        c.get("id")
+        for c in (s.get("cases") or [])
+        if isinstance(c, dict) and c.get("ok")
+    }
+    for need in _BULK_PRODUCT_CASES:
+        if need not in ids:
+            issues.append(f"missing_or_failed:{need}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement": False,
+        "bulk_product_surface": True,
+        "note": "Bulk portal product gate; not N02 certified",
     }
 
 

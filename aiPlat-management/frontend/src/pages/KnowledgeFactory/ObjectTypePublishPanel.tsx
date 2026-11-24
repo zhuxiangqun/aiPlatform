@@ -2,7 +2,7 @@
  * ObjectTypePublishPanel — N02 ObjectType 人审发布管理端薄门户。
  *
  * 经 FDE `/object-types*` → CoreFacade；产品面种子目录 + published-over-seed；
- * residual：有界多租户 bulk（AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1）。
+ * 产品面有界多租户 bulk（`/object-types/product/bulk-transition`，无 residual env）。
  * 不宣称 seed_replacement_complete / certified。
  */
 import React, { useCallback, useEffect, useState } from 'react';
@@ -115,7 +115,7 @@ const ObjectTypePublishPanel: React.FC = () => {
     setLoading(true);
     setBulkNote('');
     try {
-      const r = await fetch(API('/object-types/bulk-transition'), {
+      const r = await fetch(API('/object-types/product/bulk-transition'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -129,7 +129,8 @@ const ObjectTypePublishPanel: React.FC = () => {
       if (!r.ok) throw new Error(detailMessage(d.detail));
       const status = String(d.status || '');
       setBulkNote(
-        `${status} · ok=${d.ok_count ?? 0} fail=${d.fail_count ?? 0}` +
+        `${status} · via=${String(d.via)} · ok=${d.ok_count ?? 0} fail=${d.fail_count ?? 0}` +
+          ` · product=${String(d.bulk_product_surface)}` +
           (d.note ? ` · ${d.note}` : '') +
           (d.certified === false ? ' · certified=false' : ''),
       );
@@ -142,13 +143,47 @@ const ObjectTypePublishPanel: React.FC = () => {
           String(d.note || d.error || `${status} fail=${d.fail_count ?? 0}`),
         );
       } else if (status === 'ok') {
-        toast?.success?.(`bulk ${status}`);
+        toast?.success?.(`bulk product ${status}`);
         await reload();
       } else {
         toast?.error?.(String(d.note || d.error || status || 'bulk 失败'));
       }
     } catch (e: unknown) {
       toast?.error?.((e as Error)?.message || 'bulk 失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runBulkProductGate = async () => {
+    setLoading(true);
+    setBulkNote('');
+    try {
+      const suiteRes = await fetch(API('/object-types/product/bulk-transition/suite'), {
+        method: 'POST',
+      });
+      const suite = await suiteRes.json().catch(() => ({}));
+      if (!suiteRes.ok) throw new Error(detailMessage(suite.detail));
+      const gateRes = await fetch(API('/object-types/product/bulk-transition/gate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ suite }),
+      });
+      const gate = await gateRes.json().catch(() => ({}));
+      if (!gateRes.ok) throw new Error(detailMessage(gate.detail));
+      const certified = gate.certified === true;
+      setBulkNote(
+        `bulk-product suite ok=${Boolean(suite.ok)} · gate certified=${certified} · surface=${String(gate.bulk_product_surface)}（须 certified=false）`,
+      );
+      if (suite.ok && gate.ok && !certified) {
+        toast?.success?.('bulk product gate ok');
+      } else {
+        toast?.error?.(
+          `bulk product gate fail · ${((gate.issues as string[]) || []).join(',') || 'unknown'}`,
+        );
+      }
+    } catch (e: unknown) {
+      toast?.error?.((e as Error)?.message || 'bulk product gate 失败');
     } finally {
       setLoading(false);
     }
@@ -500,7 +535,7 @@ const ObjectTypePublishPanel: React.FC = () => {
 
         <div className="rounded border border-gray-800 bg-gray-950/40 px-3 py-3 space-y-2">
           <div className="text-[12px] text-gray-300">
-            多租户批量转换 residual（须服务端开启 AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK）
+            多租户批量转换产品面（默认可用；bulk_product_surface=true；非 certified / 非种子替换）
           </div>
           <label className="text-[11px] text-gray-400 space-y-1 block">
             items JSON
@@ -515,9 +550,20 @@ const ObjectTypePublishPanel: React.FC = () => {
               {bulkNote}
             </div>
           )}
-          <Button type="button" size="sm" disabled={loading} onClick={() => void runBulk()}>
-            批量转换
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" disabled={loading} onClick={() => void runBulk()}>
+              批量转换（产品面）
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={loading}
+              onClick={() => void runBulkProductGate()}
+            >
+              跑 bulk 产品门槛
+            </Button>
+          </div>
         </div>
 
         <div>
