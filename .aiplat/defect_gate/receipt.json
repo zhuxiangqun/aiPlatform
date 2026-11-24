@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T16:47:46+08:00",
+  "reviewed_at": "2026-11-24T18:33:18+08:00",
   "base_ref": "origin/main",
-  "merge_base": "cf5244b048ba5d1dedf50d69e4efc1cefaec3fad",
-  "diff_sha256": "e1a389d67a37a805d6b6628e9fee4f23aff9fde9cfd6641e99901446fa84e32c",
-  "head_sha": "3054a33d17fb160e81925dac6092e717f3d4ebaf",
+  "merge_base": "fd719d3ed943a695ed0a789496bf0cc06c334872",
+  "diff_sha256": "ec15ff75ce8243d59a8678ede0722fd448717a008772435b659b7097fa62dc3e",
+  "head_sha": "d731a0795ea8f982c0f1123892c86b4730ada33e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N02 seed authority product slice-1; seed_product_surface true; certified/complete/mutated false; residual opt-in retained. Local lock only."
+  "note": "N08 Lv4 auto-close product slice-1; lv4_product_surface true; certified/full_action_lv4 false; residual opt-in retained. Local lock only."
 }
