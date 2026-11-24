@@ -19281,6 +19281,55 @@ async def llm_judge_object_equiv(
     )
 
 
+async def llm_judge_object_equiv_product(
+    *,
+    expected: str,
+    actual: str,
+    subject: str = "",
+    predicate: str = "",
+) -> dict:
+    """CoreFacade：N10 产品面 LLM object 等价（默认可用；certified 恒 false）。
+
+    Args:
+        expected: gold 期望 object。
+        actual: 实际 object。
+        subject: 可选 subject。
+        predicate: 可选 predicate。
+    """
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        llm_judge_object_equiv_product as _judge,
+    )
+
+    return await _judge(
+        expected=expected,
+        actual=actual,
+        subject=subject,
+        predicate=predicate,
+    )
+
+
+async def run_llm_judge_product_suite() -> dict:
+    """CoreFacade：N10 产品面 LLM judge 套件。"""
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        run_llm_judge_product_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_llm_judge_product_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N10 产品面 LLM judge 门槛门。
+
+    Args:
+        suite: ``run_llm_judge_product_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.knowledge_gold_eval import (
+        evaluate_llm_judge_product_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 async def run_knowledge_gold_eval_suite() -> dict:
     """CoreFacade：N10 gold 评测套件（certified/accuracy 恒 false）。"""
     from core.harness.knowledge_pipeline.knowledge_gold_eval import (

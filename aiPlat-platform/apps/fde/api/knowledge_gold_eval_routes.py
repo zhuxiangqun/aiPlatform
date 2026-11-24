@@ -34,6 +34,15 @@ class GoldGateBody(BaseModel):
     suite: Optional[Dict[str, Any]] = None
 
 
+class LlmJudgeProductBody(BaseModel):
+    """N10 产品面 LLM judge 请求体。"""
+
+    expected: str = Field(..., min_length=1)
+    actual: str = Field(..., min_length=1)
+    subject: str = Field(default="")
+    predicate: str = Field(default="")
+
+
 @router.post("/knowledge-gold/datasets")
 async def register_knowledge_gold_dataset_route(
     body: GoldDatasetBody = Body(...),
@@ -108,3 +117,50 @@ async def evaluate_knowledge_gold_eval_gate_route(
     if suite is None:
         suite = await run_knowledge_gold_eval_suite()
     return evaluate_knowledge_gold_eval_gate(suite)
+
+
+@router.post("/knowledge-gold/product/llm-judge")
+async def knowledge_gold_llm_judge_product_route(
+    body: LlmJudgeProductBody = Body(...),
+) -> Dict[str, Any]:
+    """N10 产品面：有界 LLM object 等价（默认可用；非准确率宣称）。
+
+    Args:
+        body: expected/actual 对。
+    """
+    from core.api.core_facade import llm_judge_object_equiv_product
+
+    return await llm_judge_object_equiv_product(
+        expected=body.expected,
+        actual=body.actual,
+        subject=body.subject,
+        predicate=body.predicate,
+    )
+
+
+@router.post("/knowledge-gold/product/suite")
+async def knowledge_gold_llm_judge_product_suite_route() -> Dict[str, Any]:
+    """N10 产品面：LLM judge 套件。"""
+    from core.api.core_facade import run_llm_judge_product_suite
+
+    return await run_llm_judge_product_suite()
+
+
+@router.post("/knowledge-gold/product/gate")
+async def knowledge_gold_llm_judge_product_gate_route(
+    body: GoldGateBody = Body(default_factory=GoldGateBody),
+) -> Dict[str, Any]:
+    """N10 产品面：LLM judge 门槛门。
+
+    Args:
+        body: 可选 suite 回执。
+    """
+    from core.api.core_facade import (
+        evaluate_llm_judge_product_gate,
+        run_llm_judge_product_suite,
+    )
+
+    suite = body.suite
+    if suite is None:
+        suite = await run_llm_judge_product_suite()
+    return evaluate_llm_judge_product_gate(suite)
