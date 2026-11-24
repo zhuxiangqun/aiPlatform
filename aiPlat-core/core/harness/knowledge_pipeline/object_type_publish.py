@@ -4,11 +4,13 @@
   - ObjectType 定义 draft → in_review → published | rejected
   - publish 须 actor/reason + 配置角色门（上游注入 role）
   - 仅 published 可作为 active 定义；可选拦截 Package schema 发布
+  - 显式 residual：opt-in ``bulk_transition_object_types`` 有界多租户批量转换
 
 非目标：
-  - 不做全量 UI / 多租户产品化发布门户
   - 不替换 workspace_seeds JSON 为唯一真源
+  - 不做无限批量/工作流编排产品
   - 不宣称 N02 certified / 关闭 ADR 例外
+  - 批量不可用时诚实上报 ``object_type_bulk_unavailable``
 """
 from __future__ import annotations
 
@@ -462,6 +464,8 @@ def assert_schema_object_types_published(
         )
 
 
+_BULK_MAX_ITEMS = 20
+
 _N02_CASES = (
     "draft_submit_ok",
     "publish_role_allowed",
@@ -470,7 +474,131 @@ _N02_CASES = (
     "active_only_when_published",
     "package_schema_gate_blocks",
     "honesty_certified_false",
+    "bulk_opt_in",
+    "bulk_unavailable",
 )
+
+
+def bulk_transition_object_types(
+    items: Sequence[Dict[str, Any]],
+    *,
+    actor: str,
+    reason: str,
+    role: str = "",
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N02 residual：有界多租户 ObjectType 批量状态转换（非种子替换）。
+
+    每项须含 ``tenant_id`` / ``object_type_id`` / ``version`` / ``to_status``。
+    默认关闭（无 ``AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1`` →
+    ``object_type_bulk_unavailable``）。逐项回执；任一项失败不回滚已成功项。
+    ``certified`` / ``n02_full_conformance`` 恒 false。
+
+    Args:
+        items: 批量项列表（最多 ``_BULK_MAX_ITEMS``）。
+        actor: 操作人。
+        reason: 理由。
+        role: publish 时角色。
+        db_path: 可选库路径。
+    """
+    act = (actor or "").strip()
+    why = (reason or "").strip()
+    base = {
+        "actor": act,
+        "reason": why,
+        "role": (role or "").strip(),
+        "results": [],
+        "ok_count": 0,
+        "fail_count": 0,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement": False,
+    }
+    if not act or not why:
+        return {**base, "status": "invalid", "error": "actor_reason_required"}
+
+    # 为什么：默认关闭批量，避免 CI/门户误把单域薄门户当多域产品完备
+    if os.environ.get("AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+    }:
+        return {
+            **base,
+            "status": "object_type_bulk_unavailable",
+            "via": "env_disabled",
+            "note": "set AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1 to enable multi-tenant bulk",
+        }
+
+    raw_items = list(items or [])
+    if not raw_items:
+        return {
+            **base,
+            "status": "object_type_bulk_unavailable",
+            "via": "empty_items",
+            "note": "need at least one transition item",
+        }
+    if len(raw_items) > _BULK_MAX_ITEMS:
+        return {
+            **base,
+            "status": "invalid",
+            "error": f"bulk_too_large:{len(raw_items)}>{_BULK_MAX_ITEMS}",
+        }
+
+    results: List[Dict[str, Any]] = []
+    ok_n = 0
+    fail_n = 0
+    for idx, raw in enumerate(raw_items):
+        if not isinstance(raw, dict):
+            fail_n += 1
+            results.append(
+                {
+                    "index": idx,
+                    "status": "failed",
+                    "error": "item_not_object",
+                }
+            )
+            continue
+        try:
+            out = transition_object_type(
+                tenant_id=str(raw.get("tenant_id") or ""),
+                object_type_id=str(raw.get("object_type_id") or ""),
+                version=str(raw.get("version") or ""),
+                to_status=str(raw.get("to_status") or ""),
+                actor=act,
+                reason=why,
+                role=role,
+                db_path=db_path,
+            )
+            ok_n += 1
+            results.append({"index": idx, "status": "ok", "item": out})
+        except Exception as exc:  # noqa: BLE001
+            fail_n += 1
+            results.append(
+                {
+                    "index": idx,
+                    "status": "failed",
+                    "error": str(exc),
+                    "tenant_id": str(raw.get("tenant_id") or ""),
+                    "object_type_id": str(raw.get("object_type_id") or ""),
+                    "version": str(raw.get("version") or ""),
+                }
+            )
+
+    return {
+        **base,
+        "status": "ok",
+        "via": "opt_in",
+        "results": results,
+        "ok_count": ok_n,
+        "fail_count": fail_n,
+        "total": len(results),
+        "note": (
+            "bounded multi-tenant bulk transition residual; "
+            "not seed replacement / not N02 certified"
+        ),
+    }
 
 
 def run_object_type_publish_suite(
@@ -655,6 +783,90 @@ def run_object_type_publish_suite(
             }
         )
 
+        # residual：默认无 env → unavailable
+        prev_bulk = os.environ.get("AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK")
+        os.environ.pop("AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK", None)
+        try:
+            unavail = bulk_transition_object_types(
+                [
+                    {
+                        "tenant_id": tenant_id,
+                        "object_type_id": "InstallOrder",
+                        "version": "1.0.0",
+                        "to_status": "published",
+                    }
+                ],
+                actor="suite_reviewer",
+                reason="bulk-check",
+                role="reviewer",
+                db_path=path,
+            )
+            cases.append(
+                {
+                    "id": "bulk_unavailable",
+                    "ok": unavail.get("status") == "object_type_bulk_unavailable"
+                    and unavail.get("certified") is False,
+                    "detail": "",
+                }
+            )
+
+            # residual：两租户各一份草稿 → in_review 批量
+            for t_extra in ("n02-bulk-a", "n02-bulk-b"):
+                submit_object_type_draft(
+                    tenant_id=t_extra,
+                    object_type_id="BulkProbe",
+                    version="1.0.0",
+                    definition={
+                        "object_type_id": "BulkProbe",
+                        "label": "bulk",
+                        "primary_key": "id",
+                    },
+                    actor="suite_author",
+                    reason="bulk-draft",
+                    db_path=path,
+                )
+            os.environ["AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK"] = "1"
+            bulk = bulk_transition_object_types(
+                [
+                    {
+                        "tenant_id": "n02-bulk-a",
+                        "object_type_id": "BulkProbe",
+                        "version": "1.0.0",
+                        "to_status": "in_review",
+                    },
+                    {
+                        "tenant_id": "n02-bulk-b",
+                        "object_type_id": "BulkProbe",
+                        "version": "1.0.0",
+                        "to_status": "in_review",
+                    },
+                ],
+                actor="suite_author",
+                reason="bulk-review",
+                db_path=path,
+            )
+            tenants_ok = {
+                (r.get("item") or {}).get("tenant_id")
+                for r in (bulk.get("results") or [])
+                if r.get("status") == "ok"
+            }
+            cases.append(
+                {
+                    "id": "bulk_opt_in",
+                    "ok": bulk.get("status") == "ok"
+                    and int(bulk.get("ok_count") or 0) == 2
+                    and tenants_ok >= {"n02-bulk-a", "n02-bulk-b"}
+                    and bulk.get("certified") is False
+                    and bulk.get("seed_replacement") is False,
+                    "detail": "" if bulk.get("status") == "ok" else "bulk_failed",
+                }
+            )
+        finally:
+            if prev_bulk is None:
+                os.environ.pop("AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK", None)
+            else:
+                os.environ["AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK"] = prev_bulk
+
         cases.append(
             {
                 "id": "honesty_certified_false",
@@ -686,8 +898,9 @@ def run_object_type_publish_suite(
         "cases": cases,
         "certified": False,
         "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
         "note": (
-            "ObjectType human-review publish deepen; "
+            "ObjectType human-review publish + multi-tenant bulk residual; "
             "not N02 certified / not seed replacement"
         ),
     }

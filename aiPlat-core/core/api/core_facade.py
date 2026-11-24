@@ -5601,6 +5601,28 @@ def list_object_type_versions(
     )
 
 
+def bulk_transition_object_types(
+    items: List[Dict[str, Any]],
+    *,
+    actor: str,
+    reason: str,
+    role: str = "",
+) -> Dict[str, Any]:
+    """CoreFacade：N02 residual 多租户批量状态转换（certified 恒 false）。
+
+    Args:
+        items: 批量项（tenant_id/object_type_id/version/to_status）。
+        actor: 操作人。
+        reason: 理由。
+        role: publish 时角色。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        bulk_transition_object_types as _bulk,
+    )
+
+    return _bulk(items, actor=actor, reason=reason, role=role)
+
+
 def run_object_type_publish_suite() -> Dict[str, Any]:
     """N02 deepen：ObjectType 人审发布套件（certified 恒 false）。"""
     from core.harness.knowledge_pipeline.object_type_publish import (
