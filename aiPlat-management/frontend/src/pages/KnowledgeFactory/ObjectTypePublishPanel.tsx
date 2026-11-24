@@ -1,8 +1,9 @@
 /**
  * ObjectTypePublishPanel — N02 ObjectType 人审发布管理端薄门户。
  *
- * 经 FDE `/object-types*` → CoreFacade；显式 residual：有界多租户 bulk-transition
- *（须服务端 AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1）。不宣称种子替换 / certified。
+ * 经 FDE `/object-types*` → CoreFacade；产品面种子目录 + published-over-seed；
+ * residual：有界多租户 bulk（AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1）。
+ * 不宣称 seed_replacement_complete / certified。
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
@@ -18,6 +19,12 @@ type ObjectTypeVersion = {
   reason?: string;
   role?: string;
   updated_at?: string;
+};
+
+type SeedCatalogItem = {
+  name?: string;
+  path?: string;
+  object_type_count?: number;
 };
 
 const TRANSITIONS: Record<string, string[]> = {
@@ -52,6 +59,10 @@ const ObjectTypePublishPanel: React.FC = () => {
   const [items, setItems] = useState<ObjectTypeVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [gateNote, setGateNote] = useState('');
+  const [seedItems, setSeedItems] = useState<SeedCatalogItem[]>([]);
+  const [seedName, setSeedName] = useState('');
+  const [seedNote, setSeedNote] = useState('');
+  const [seedApplying, setSeedApplying] = useState(false);
 
   const q = (extra: Record<string, string> = {}) => {
     const p = new URLSearchParams({ tenant_id: tenantId.trim(), ...extra });
@@ -80,6 +91,10 @@ const ObjectTypePublishPanel: React.FC = () => {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    void loadSeedCatalog();
+  }, [loadSeedCatalog]);
 
   const runBulk = async () => {
     if (!actor.trim() || !reason.trim()) {
@@ -224,13 +239,63 @@ const ObjectTypePublishPanel: React.FC = () => {
     }
   };
 
+  const loadSeedCatalog = useCallback(async () => {
+    try {
+      const r = await fetch(API('/object-types/product/seed-files'));
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(body.detail));
+      const list = Array.isArray(body.items) ? (body.items as SeedCatalogItem[]) : [];
+      setSeedItems(list);
+      setSeedName((prev) => prev || String(list[0]?.name || ''));
+      setSeedNote(
+        `catalog ok · total=${String(body.total ?? list.length)} · mutated=${String(body.workspace_seeds_mutated)} · complete=${String(body.seed_replacement_complete)}`,
+      );
+    } catch (e: unknown) {
+      setSeedItems([]);
+      setSeedNote((e as Error)?.message || '种子目录加载失败');
+    }
+  }, []);
+
+  const runSeedAuthority = async () => {
+    if (!tenantId.trim()) {
+      toast?.error?.('tenant_id 必填');
+      return;
+    }
+    setSeedApplying(true);
+    try {
+      const r = await fetch(API('/object-types/product/seed-authority'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_id: tenantId.trim(),
+          seed_path: seedName.trim(),
+          write: true,
+        }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(body.detail));
+      setSeedNote(
+        `${String(body.status)} · via=${String(body.via)} · published=${String(body.published_count)} · seed=${String(body.seed_count)} · wrote=${String(body.wrote)} · complete=${String(body.seed_replacement_complete)}`,
+      );
+      if (body.status === 'ok') toast?.success?.('种子权威解析已写入 allowlist');
+      else toast?.error?.(String(body.note || body.error || body.status));
+    } catch (e: unknown) {
+      setSeedNote((e as Error)?.message || '种子权威解析失败');
+      toast?.error?.((e as Error)?.message || '种子权威解析失败');
+    } finally {
+      setSeedApplying(false);
+    }
+  };
+
   const runGate = async () => {
     setLoading(true);
     try {
-      const suiteRes = await fetch(API('/object-types/suite'), { method: 'POST' });
+      const suiteRes = await fetch(API('/object-types/product/seed-authority/suite'), {
+        method: 'POST',
+      });
       const suite = await suiteRes.json().catch(() => ({}));
       if (!suiteRes.ok) throw new Error(detailMessage(suite.detail));
-      const gateRes = await fetch(API('/object-types/gate'), {
+      const gateRes = await fetch(API('/object-types/product/seed-authority/gate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ suite }),
@@ -239,12 +304,12 @@ const ObjectTypePublishPanel: React.FC = () => {
       if (!gateRes.ok) throw new Error(detailMessage(gate.detail));
       const certified = Boolean(gate.certified);
       setGateNote(
-        `suite ok=${Boolean(suite.ok)} · gate certified=${certified}（N02 诚实锁：须为 false）`,
+        `seed-product suite ok=${Boolean(suite.ok)} · gate certified=${certified} · surface=${String(gate.seed_product_surface)}（须 certified=false）`,
       );
       if (certified) {
         toast?.error?.('gate.certified 为 true — 违反诚实锁');
       } else {
-        toast?.success?.('门槛门诚实：certified=false');
+        toast?.success?.('种子产品门槛门诚实：certified=false');
       }
     } catch (e: unknown) {
       toast?.error?.((e as Error)?.message || 'suite/gate 失败');
@@ -258,9 +323,9 @@ const ObjectTypePublishPanel: React.FC = () => {
       <CardHeader className="flex flex-row items-center justify-between gap-2 py-3 px-4">
         <div className="flex items-center gap-2 text-sm text-gray-200">
           <FileStack className="h-4 w-4 text-sky-300/90" />
-          <span>ObjectType 人审发布（N02 薄门户）</span>
+          <span>ObjectType 人审发布（N02）</span>
           <span className="text-[11px] text-gray-500 font-normal">
-            经 HTTP→Facade · 非 certified · 非多域批量
+            产品面种子权威 · 非 certified · 不改写 workspace_seeds
           </span>
         </div>
         <div className="flex gap-2">
@@ -269,21 +334,71 @@ const ObjectTypePublishPanel: React.FC = () => {
             variant="ghost"
             size="sm"
             disabled={loading}
-            onClick={() => void reload()}
+            onClick={() => {
+              void reload();
+              void loadSeedCatalog();
+            }}
           >
             <RefreshCw className={`h-3.5 w-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
             刷新
           </Button>
           <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={() => void runGate()}>
-            suite/gate
+            seed suite/gate
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 px-4 pb-4">
         <p className="text-[11px] text-gray-500 leading-relaxed">
           draft → in_review → published|rejected；publish 须配置角色（默认 reviewer）。
-          本面板不替换种子真源，也不宣称 N02 全量门户认证。
+          产品面可解析 workspace_seeds 只读目录并写 allowlist 权威快照；不宣称
+          seed_replacement_complete / N02 certified。
         </p>
+
+        <div className="rounded border border-emerald-900/40 bg-emerald-950/20 px-3 py-3 space-y-2">
+          <div className="text-[12px] text-emerald-200/90">种子权威产品面（默认可用）</div>
+          <label className="text-[11px] text-gray-400 space-y-1 block">
+            seed file
+            <select
+              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+              value={seedName}
+              onChange={(e) => setSeedName(e.target.value)}
+            >
+              {seedItems.length === 0 ? (
+                <option value="">（无 *-object-types.json）</option>
+              ) : (
+                seedItems.map((it) => (
+                  <option key={String(it.name)} value={String(it.name)}>
+                    {String(it.name)} · types={String(it.object_type_count ?? 0)}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+          {seedNote ? (
+            <div className="text-[11px] text-gray-500 border border-gray-800 rounded px-2 py-1.5 font-mono">
+              {seedNote}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={loading}
+              onClick={() => void loadSeedCatalog()}
+            >
+              刷新目录
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={seedApplying || !tenantId.trim() || !seedName.trim()}
+              onClick={() => void runSeedAuthority()}
+            >
+              解析并写 allowlist
+            </Button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <label className="text-[11px] text-gray-400 space-y-1">

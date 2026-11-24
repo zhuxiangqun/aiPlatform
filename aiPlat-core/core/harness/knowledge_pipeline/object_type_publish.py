@@ -6,12 +6,12 @@
   - 仅 published 可作为 active 定义；可选拦截 Package schema 发布
   - 显式 residual：opt-in ``bulk_transition_object_types`` 有界多租户批量转换
   - 显式 residual：opt-in ``apply_published_seed_authority`` 有界种子权威覆盖
+  - 产品面第一刀：默认可用种子目录 + published-over-seed（不改写 workspace_seeds）
 
 非目标：
-  - 不把 workspace_seeds JSON 改写为唯一真源 / 不全量种子替换产品化
-  - 不做无限批量/工作流编排产品
-  - 不宣称 N02 certified / 关闭 ADR 例外
-  - 批量/种子覆盖不可用时诚实上报 unavailable
+  - 不原地改写 / 删除 ``workspace_seeds/**-object-types.json``
+  - 不宣称 seed_replacement_complete / N02 certified / 关闭 ADR 例外
+  - 批量 residual 不可用时诚实上报 unavailable
 """
 from __future__ import annotations
 
@@ -608,6 +608,11 @@ _SEED_REPLACE_CASES = (
     "seed_replacement_opt_in",
     "honesty_certified_false",
 )
+_SEED_PRODUCT_CASES = (
+    "seed_authority_product_catalog",
+    "seed_authority_product_apply",
+    "honesty_product_certified_false",
+)
 
 
 def resolve_seed_authority_output_root(
@@ -638,7 +643,110 @@ def resolve_seed_authority_output_root(
     return {"ok": True, "output_root": str(allow), "allowlist": str(allow)}
 
 
-def apply_published_seed_authority(
+def workspace_object_type_seed_root() -> Path:
+    """返回仓库内 ObjectType 种子目录（``aiPlat-core/workspace_seeds/ontologies``）。"""
+    # object_type_publish.py → knowledge_pipeline → harness → core → aiPlat-core
+    return (
+        Path(__file__).resolve().parents[3] / "workspace_seeds" / "ontologies"
+    ).resolve()
+
+
+def list_object_type_seed_catalog() -> Dict[str, Any]:
+    """N02 产品面：列举 workspace_seeds 下 ``*-object-types.json``（只读）。
+
+    Returns:
+        ``{status, items:[{name,path,object_type_count}], ...}``；certified 恒 false。
+    """
+    root = workspace_object_type_seed_root()
+    items: List[Dict[str, Any]] = []
+    if root.is_dir():
+        for path in sorted(root.glob("*-object-types.json")):
+            count = 0
+            try:
+                from core.harness.knowledge_pipeline.fact_ledger import (
+                    load_object_type_bindings,
+                )
+
+                count = len(load_object_type_bindings(path))
+            except Exception:  # noqa: BLE001
+                count = 0
+            items.append(
+                {
+                    "name": path.name,
+                    "path": str(path),
+                    "object_type_count": count,
+                }
+            )
+    return {
+        "status": "ok",
+        "via": "product",
+        "root": str(root),
+        "items": items,
+        "total": len(items),
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "workspace_seeds_mutated": False,
+        "seed_product_surface": True,
+        "note": (
+            "object-type seed catalog (read-only workspace_seeds); "
+            "not seed_replacement_complete / not N02 certified"
+        ),
+    }
+
+
+def resolve_workspace_object_type_seed_path(seed_path: str) -> Dict[str, Any]:
+    """将产品面种子路径解析并限制在 workspace_seeds 目录内。
+
+    Args:
+        seed_path: 绝对路径、相对路径或仅文件名（如 ``lock-service-object-types.json``）。
+    """
+    raw = (seed_path or "").strip()
+    root = workspace_object_type_seed_root()
+    if not raw:
+        return {
+            "ok": False,
+            "reason": "seed_path_required",
+            "allowlist": str(root),
+        }
+    cand = Path(raw)
+    if not cand.is_absolute():
+        cand = root / cand.name
+    try:
+        resolved = cand.resolve()
+    except OSError:
+        return {
+            "ok": False,
+            "reason": "seed_path_unresolvable",
+            "allowlist": str(root),
+            "seed_path": raw,
+        }
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return {
+            "ok": False,
+            "reason": "seed_path_not_in_workspace_seeds",
+            "allowlist": str(root),
+            "seed_path": str(resolved),
+        }
+    if not resolved.is_file() or not resolved.name.endswith("-object-types.json"):
+        return {
+            "ok": False,
+            "reason": "seed_path_missing_or_not_object_types",
+            "allowlist": str(root),
+            "seed_path": str(resolved),
+        }
+    return {
+        "ok": True,
+        "seed_path": str(resolved),
+        "allowlist": str(root),
+        "name": resolved.name,
+    }
+
+
+def _apply_published_seed_authority_impl(
     *,
     tenant_id: str,
     seed_path: str,
@@ -646,25 +754,24 @@ def apply_published_seed_authority(
     output_root: Optional[str] = None,
     write: bool = False,
     db_path: Optional[str] = None,
+    via: str,
+    product_surface: bool,
 ) -> Dict[str, Any]:
-    """N02 residual：有界「published 覆盖 seed」权威解析（非全量种子替换）。
-
-    默认关闭（无 ``AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE=1`` →
-    ``seed_replacement_unavailable``）。不改写 ``workspace_seeds``；可选写盘仅落
-    allowlist（``AIPLAT_HOME/data/knowledge_object_type_authority``）。
-    ``certified`` / ``seed_replacement_complete`` 恒 false。
+    """published-over-seed 核心实现（residual / 产品面共用）。
 
     Args:
         tenant_id: 租户。
-        seed_path: 种子 JSON 路径（只读）。
-        object_type_ids: 可选类型列表；缺省取种子内全部（上限 ``_SEED_REPLACE_MAX``）。
-        output_root: 可选写盘根（须 allowlist）。
-        write: 是否写盘合并结果。
-        db_path: 可选发布库路径。
+        seed_path: 已存在的种子 JSON（只读）。
+        object_type_ids: 可选类型列表。
+        output_root: 可选写盘根。
+        write: 是否写盘。
+        db_path: 可选发布库。
+        via: ``opt_in`` 或 ``product``。
+        product_surface: 是否产品面回执标记。
     """
     tid = (tenant_id or "").strip()
     sp = (seed_path or "").strip()
-    base = {
+    base: Dict[str, Any] = {
         "tenant_id": tid,
         "seed_path": sp,
         "items": [],
@@ -675,23 +782,10 @@ def apply_published_seed_authority(
         "n02_object_type_freeze": True,
         "seed_replacement_complete": False,
         "workspace_seeds_mutated": False,
+        "seed_product_surface": bool(product_surface),
     }
     if not tid or not sp:
         return {**base, "status": "invalid", "error": "tenant_seed_path_required"}
-
-    # 为什么：默认关闭种子权威覆盖，避免把 seed JSON 误当已人审真源被覆盖产品化
-    if os.environ.get(
-        "AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE", ""
-    ).strip().lower() not in {"1", "true", "yes"}:
-        return {
-            **base,
-            "status": "seed_replacement_unavailable",
-            "via": "env_disabled",
-            "note": (
-                "set AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE=1 "
-                "to enable bounded published-over-seed authority"
-            ),
-        }
 
     seed_file = Path(sp)
     if not seed_file.is_file():
@@ -723,7 +817,7 @@ def apply_published_seed_authority(
         return {
             **base,
             "status": "seed_replacement_unavailable",
-            "via": "empty_types",
+            "via": via,
             "note": "need at least one object_type_id",
         }
     if len(wanted) > _SEED_REPLACE_MAX:
@@ -786,7 +880,7 @@ def apply_published_seed_authority(
             return {
                 **base,
                 "status": "denied",
-                "via": "opt_in",
+                "via": via,
                 "reason": root_info.get("reason") or "output_root_denied",
                 "items": items,
                 "published_count": pub_n,
@@ -801,6 +895,7 @@ def apply_published_seed_authority(
             "object_types": merged,
             "seed_replacement_complete": False,
             "certified": False,
+            "seed_product_surface": bool(product_surface),
         }
         target.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
@@ -808,21 +903,168 @@ def apply_published_seed_authority(
         )
         out_path = str(target)
 
+    note = (
+        "seed authority product surface; workspace_seeds read-only; "
+        "not seed_replacement_complete / not N02 certified"
+        if product_surface
+        else (
+            "bounded published-over-seed authority residual; "
+            "not full seed replacement productization / not N02 certified"
+        )
+    )
     return {
         **base,
         "status": "ok",
-        "via": "opt_in",
+        "via": via,
         "items": items,
         "published_count": pub_n,
         "seed_count": seed_n,
         "total": len(items),
         "output_path": out_path,
         "wrote": bool(out_path),
-        "note": (
-            "bounded published-over-seed authority residual; "
-            "not full seed replacement productization / not N02 certified"
-        ),
+        "note": note,
     }
+
+
+def apply_published_seed_authority(
+    *,
+    tenant_id: str,
+    seed_path: str,
+    object_type_ids: Optional[Sequence[str]] = None,
+    output_root: Optional[str] = None,
+    write: bool = False,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N02 residual：有界「published 覆盖 seed」权威解析（非全量种子替换）。
+
+    默认关闭（无 ``AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE=1`` →
+    ``seed_replacement_unavailable``）。不改写 ``workspace_seeds``；可选写盘仅落
+    allowlist（``AIPLAT_HOME/data/knowledge_object_type_authority``）。
+    ``certified`` / ``seed_replacement_complete`` 恒 false。
+
+    Args:
+        tenant_id: 租户。
+        seed_path: 种子 JSON 路径（只读）。
+        object_type_ids: 可选类型列表；缺省取种子内全部（上限 ``_SEED_REPLACE_MAX``）。
+        output_root: 可选写盘根（须 allowlist）。
+        write: 是否写盘合并结果。
+        db_path: 可选发布库路径。
+    """
+    tid = (tenant_id or "").strip()
+    sp = (seed_path or "").strip()
+    base = {
+        "tenant_id": tid,
+        "seed_path": sp,
+        "items": [],
+        "published_count": 0,
+        "seed_count": 0,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "workspace_seeds_mutated": False,
+        "seed_product_surface": False,
+    }
+    if not tid or not sp:
+        return {**base, "status": "invalid", "error": "tenant_seed_path_required"}
+
+    # 为什么：默认关闭种子权威覆盖，避免把 seed JSON 误当已人审真源被覆盖产品化
+    if os.environ.get(
+        "AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE", ""
+    ).strip().lower() not in {"1", "true", "yes"}:
+        return {
+            **base,
+            "status": "seed_replacement_unavailable",
+            "via": "env_disabled",
+            "note": (
+                "set AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE=1 "
+                "to enable bounded published-over-seed authority"
+            ),
+        }
+
+    return _apply_published_seed_authority_impl(
+        tenant_id=tid,
+        seed_path=sp,
+        object_type_ids=object_type_ids,
+        output_root=output_root,
+        write=write,
+        db_path=db_path,
+        via="opt_in",
+        product_surface=False,
+    )
+
+
+def apply_published_seed_authority_product(
+    *,
+    tenant_id: str,
+    seed_path: str = "",
+    object_type_ids: Optional[Sequence[str]] = None,
+    output_root: Optional[str] = None,
+    write: bool = False,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N02 产品面：默认可用 published-over-seed（种子须在 workspace_seeds）。
+
+    无 residual env 门。永不改写 ``workspace_seeds``；写盘仅 allowlist。
+    ``certified`` / ``seed_replacement_complete`` 恒 false。
+
+    Args:
+        tenant_id: 租户。
+        seed_path: 种子文件名或 workspace_seeds 内路径；空则取目录首个。
+        object_type_ids: 可选类型列表。
+        output_root: 可选写盘根。
+        write: 是否写盘。
+        db_path: 可选发布库。
+    """
+    tid = (tenant_id or "").strip()
+    base = {
+        "tenant_id": tid,
+        "seed_path": str(seed_path or "").strip(),
+        "items": [],
+        "published_count": 0,
+        "seed_count": 0,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "workspace_seeds_mutated": False,
+        "seed_product_surface": True,
+    }
+    if not tid:
+        return {**base, "status": "invalid", "error": "tenant_required"}
+
+    sp = str(seed_path or "").strip()
+    if not sp:
+        catalog = list_object_type_seed_catalog()
+        items = catalog.get("items") or []
+        if not items:
+            return {
+                **base,
+                "status": "invalid",
+                "error": "no_workspace_object_type_seeds",
+            }
+        sp = str(items[0].get("path") or "")
+
+    resolved = resolve_workspace_object_type_seed_path(sp)
+    if not resolved.get("ok"):
+        return {
+            **base,
+            "status": "denied",
+            "via": "product",
+            "reason": resolved.get("reason") or "seed_path_denied",
+            "allowlist": resolved.get("allowlist"),
+        }
+
+    return _apply_published_seed_authority_impl(
+        tenant_id=tid,
+        seed_path=str(resolved["seed_path"]),
+        object_type_ids=object_type_ids,
+        output_root=output_root,
+        write=write,
+        db_path=db_path,
+        via="product",
+        product_surface=True,
+    )
 
 
 def run_seed_replacement_suite(
@@ -1011,6 +1253,207 @@ def evaluate_seed_replacement_gate(
         "n02_object_type_freeze": True,
         "seed_replacement_complete": False,
         "note": "Bounded seed authority residual gate; not N02 certified",
+    }
+
+
+def run_seed_authority_product_suite(
+    *,
+    tenant_id: str = "n02-seed-product-tenant",
+) -> Dict[str, Any]:
+    """N02 产品面：种子目录 + published-over-seed 套件（certified 恒 false）。
+
+    Args:
+        tenant_id: 套件租户。
+    """
+    cases: List[Dict[str, Any]] = []
+    prev = os.environ.get("AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE")
+    prev_home = os.environ.get("AIPLAT_HOME")
+    # 为什么：产品面无 env 门——显式清掉 residual 开关仍应可用
+    os.environ.pop("AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE", None)
+    tmp = tempfile.TemporaryDirectory(prefix="n02-seed-product-")
+    try:
+        root = Path(tmp.name)
+        db = str(root / "ot.sqlite3")
+        home = root / "home"
+        home.mkdir()
+        os.environ["AIPLAT_HOME"] = str(home)
+
+        catalog = list_object_type_seed_catalog()
+        first = (catalog.get("items") or [None])[0]
+        cases.append(
+            {
+                "id": "seed_authority_product_catalog",
+                "ok": catalog.get("status") == "ok"
+                and catalog.get("seed_product_surface") is True
+                and catalog.get("certified") is False
+                and catalog.get("workspace_seeds_mutated") is False
+                and isinstance(first, dict)
+                and bool(first.get("path")),
+            }
+        )
+
+        seed_path = str((first or {}).get("path") or "")
+        seed_name = str((first or {}).get("name") or "")
+        # 发布一个与种子重叠的类型（若种子为空则用 DemoProduct）
+        probe_oid = "DemoProduct"
+        try:
+            from core.harness.knowledge_pipeline.fact_ledger import (
+                load_object_type_bindings,
+            )
+
+            bindings = load_object_type_bindings(Path(seed_path)) if seed_path else []
+            if bindings:
+                probe_oid = str(bindings[0].get("object_type_id") or probe_oid)
+        except Exception:  # noqa: BLE001
+            pass
+
+        submit_object_type_draft(
+            tenant_id=tenant_id,
+            object_type_id=probe_oid,
+            version="1.0.0",
+            definition={
+                "object_type_id": probe_oid,
+                "label": "published-product-label",
+                "primary_key": "id",
+            },
+            actor="author",
+            reason="draft",
+            db_path=db,
+        )
+        transition_object_type(
+            tenant_id=tenant_id,
+            object_type_id=probe_oid,
+            version="1.0.0",
+            to_status="in_review",
+            actor="author",
+            reason="review",
+            db_path=db,
+        )
+        prev_rbac = os.environ.get("AIPLAT_OBJECT_TYPE_PUBLISH_RBAC")
+        os.environ["AIPLAT_OBJECT_TYPE_PUBLISH_RBAC"] = "0"
+        try:
+            transition_object_type(
+                tenant_id=tenant_id,
+                object_type_id=probe_oid,
+                version="1.0.0",
+                to_status="published",
+                actor="reviewer",
+                reason="publish",
+                role="reviewer",
+                db_path=db,
+            )
+        finally:
+            if prev_rbac is None:
+                os.environ.pop("AIPLAT_OBJECT_TYPE_PUBLISH_RBAC", None)
+            else:
+                os.environ["AIPLAT_OBJECT_TYPE_PUBLISH_RBAC"] = prev_rbac
+
+        applied = apply_published_seed_authority_product(
+            tenant_id=tenant_id,
+            seed_path=seed_name or seed_path,
+            object_type_ids=[probe_oid],
+            write=True,
+            db_path=db,
+        )
+        items = applied.get("items") or []
+        first_item = items[0] if items else {}
+        label = (
+            (first_item.get("definition") or {}).get("label")
+            if isinstance(first_item, dict)
+            else None
+        )
+        cases.append(
+            {
+                "id": "seed_authority_product_apply",
+                "ok": applied.get("status") == "ok"
+                and applied.get("via") == "product"
+                and applied.get("seed_product_surface") is True
+                and first_item.get("authority") == "published"
+                and label == "published-product-label"
+                and applied.get("wrote") is True
+                and applied.get("workspace_seeds_mutated") is False
+                and applied.get("seed_replacement_complete") is False
+                and applied.get("certified") is False,
+            }
+        )
+        cases.append(
+            {
+                "id": "honesty_product_certified_false",
+                "ok": applied.get("certified") is False
+                and applied.get("n02_object_type_freeze") is True
+                and applied.get("seed_replacement_complete") is False
+                and catalog.get("seed_replacement_complete") is False,
+            }
+        )
+    finally:
+        if prev is None:
+            os.environ.pop("AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE", None)
+        else:
+            os.environ["AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE"] = prev
+        if prev_home is None:
+            os.environ.pop("AIPLAT_HOME", None)
+        else:
+            os.environ["AIPLAT_HOME"] = prev_home
+        tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok"))
+    return {
+        "ok": passed == len(_SEED_PRODUCT_CASES)
+        and len(cases) == len(_SEED_PRODUCT_CASES),
+        "passed": passed,
+        "total": len(_SEED_PRODUCT_CASES),
+        "cases": cases,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "seed_product_surface": True,
+        "workspace_seeds_mutated": False,
+        "note": (
+            "Seed authority product surface suite; "
+            "not seed_replacement_complete / not N02 certified"
+        ),
+    }
+
+
+def evaluate_seed_authority_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N02 产品面种子权威门槛门；禁止 certified / complete。
+
+    Args:
+        suite: ``run_seed_authority_product_suite`` 回执。
+    """
+    s = suite if isinstance(suite, dict) else run_seed_authority_product_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    if s.get("certified") is True or s.get("n02_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("seed_replacement_complete") is True:
+        issues.append("honesty_seed_replacement_complete_forbidden")
+    if s.get("seed_product_surface") is not True:
+        issues.append("product_seed_surface_required")
+    if s.get("workspace_seeds_mutated") is True:
+        issues.append("honesty_workspace_seeds_mutated_forbidden")
+    ids = {
+        c.get("id")
+        for c in (s.get("cases") or [])
+        if isinstance(c, dict) and c.get("ok")
+    }
+    for need in _SEED_PRODUCT_CASES:
+        if need not in ids:
+            issues.append(f"missing_or_failed:{need}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "seed_product_surface": True,
+        "workspace_seeds_mutated": False,
+        "note": "Seed authority product gate; not N02 certified",
     }
 
 
