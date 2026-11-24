@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T15:09:17+08:00",
+  "reviewed_at": "2026-11-24T15:47:13+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1fa5c27a69cdc16d4e214a2635bef1b82c144033",
-  "diff_sha256": "499cc8f096fe8078a821f44c464b333cd29683944b65db7c793518df60bab0c5",
-  "head_sha": "79f42d566d7624d928a2617d6f1552d6ea77f737",
+  "merge_base": "056374217a78287ce941f0b2adfc818696b45cbf",
+  "diff_sha256": "5d51b18ea45e690ff79f3a1282b8149245f4a9fa19e2a8b8f66784130ccc9624",
+  "head_sha": "4165b246f6f49962c33f4afa15d358f4de014be6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N24 ops console product; CAPS AUTO-STATS 4189 + whitepaper sync after contracts-guard. Local lock only."
+  "note": "N24 ops console schema form editor; certified false; freeze true; no free-layout designer. Local lock only."
 }
