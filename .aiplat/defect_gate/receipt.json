@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T15:47:13+08:00",
+  "reviewed_at": "2026-11-24T16:47:46+08:00",
   "base_ref": "origin/main",
-  "merge_base": "056374217a78287ce941f0b2adfc818696b45cbf",
-  "diff_sha256": "5d51b18ea45e690ff79f3a1282b8149245f4a9fa19e2a8b8f66784130ccc9624",
-  "head_sha": "4165b246f6f49962c33f4afa15d358f4de014be6",
+  "merge_base": "cf5244b048ba5d1dedf50d69e4efc1cefaec3fad",
+  "diff_sha256": "e1a389d67a37a805d6b6628e9fee4f23aff9fde9cfd6641e99901446fa84e32c",
+  "head_sha": "3054a33d17fb160e81925dac6092e717f3d4ebaf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N24 ops console schema form editor; certified false; freeze true; no free-layout designer. Local lock only."
+  "note": "N02 seed authority product slice-1; seed_product_surface true; certified/complete/mutated false; residual opt-in retained. Local lock only."
 }
