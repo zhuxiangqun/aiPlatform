@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3257
+total_capabilities: 3261
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2835,7 +2835,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 779
+    caps_count: 783
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4674,14 +4674,30 @@ domains:
         module: core/harness/knowledge_pipeline/ops_console.py
         type: function
         signature: "N24 product: ops console snapshot (full_ops_console=true; certified=false)"
+      - symbol: "normalize_ops_console_schema_form"
+        module: core/harness/knowledge_pipeline/ops_console.py
+        type: function
+        signature: "N24 product: ObjectType definition → schema form fields"
+      - symbol: "definition_from_ops_console_schema_form"
+        module: core/harness/knowledge_pipeline/ops_console.py
+        type: function
+        signature: "N24 product: schema form fields → ObjectType definition"
       - symbol: "get_ops_console_schema"
         module: core/harness/knowledge_pipeline/ops_console.py
         type: function
-        signature: "N24 product: ObjectType schema read"
+        signature: "N24 product: ObjectType schema read (+ form view)"
       - symbol: "save_ops_console_schema"
         module: core/harness/knowledge_pipeline/ops_console.py
         type: function
-        signature: "N24 product: ObjectType schema save draft"
+        signature: "N24 product: ObjectType schema save draft (definition or form)"
+      - symbol: "normalize_knowledge_ops_console_schema_form"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: N24 schema form normalize"
+      - symbol: "definition_from_knowledge_ops_console_schema_form"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: N24 schema form → definition"
       - symbol: "export_ops_console_product"
         module: core/harness/knowledge_pipeline/ops_console.py
         type: function

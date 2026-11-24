@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[6]
 def test_product_suite_and_gate_honesty():
     suite = run_ops_console_product_suite()
     assert suite["ok"] is True
-    assert suite["passed"] == 4
+    assert suite["passed"] == 5
     assert suite["certified"] is False
     assert suite["n24_full_conformance"] is False
     assert suite["full_ops_console"] is True
@@ -33,6 +33,7 @@ def test_product_suite_and_gate_honesty():
     ids = {c["id"] for c in suite["cases"] if c.get("ok")}
     assert "ops_console_product_snapshot" in ids
     assert "ops_console_product_schema" in ids
+    assert "ops_console_product_schema_form" in ids
     assert "ops_console_product_export" in ids
     assert "honesty_product_certified_false" in ids
     gate = evaluate_ops_console_product_gate(suite)
@@ -66,6 +67,7 @@ def test_product_snapshot_without_residual_env():
     assert r["full_ops_console"] is True
     assert r["certified"] is False
     assert (r.get("panels") or {}).get("schema_editor") is True
+    assert (r.get("panels") or {}).get("schema_form_editor") is True
     fr = build_knowledge_ops_console_product_snapshot("t-product", include_live=False)
     assert fr["status"] == "ok"
     assert fr["full_ops_console"] is True
@@ -90,6 +92,35 @@ def test_schema_roundtrip_and_product_export(tmp_path, monkeypatch):
     )
     assert loaded["status"] == "ok"
     assert isinstance(loaded.get("definition"), dict)
+    assert isinstance(loaded.get("form"), dict)
+    assert loaded.get("schema_form_editor") is True
+
+    form_saved = save_knowledge_ops_console_schema(
+        tenant_id="t-schema",
+        object_type_id="FormWidget",
+        form={
+            "object_type_id": "FormWidget",
+            "label": "fw",
+            "fields": [
+                {"name": "a", "type": "string", "required": True, "description": "x"},
+            ],
+        },
+        actor="test",
+        reason="form-roundtrip",
+        db_path=ot_db,
+    )
+    assert form_saved["status"] == "ok"
+    assert form_saved.get("via_form") is True
+    form_loaded = get_knowledge_ops_console_schema(
+        tenant_id="t-schema",
+        object_type_id="FormWidget",
+        db_path=ot_db,
+    )
+    fields = (form_loaded.get("form") or {}).get("fields") or []
+    assert len(fields) == 1
+    assert fields[0]["name"] == "a"
+    assert fields[0]["required"] is True
+
     exported = export_knowledge_ops_console_product(
         "t-schema",
         include_live=False,
@@ -135,4 +166,7 @@ def test_docs_and_wiring_state():
         / "KnowledgeFactory"
         / "OpsConsolePanel.tsx"
     )
-    assert "ops-console/product/snapshot" in panel.read_text(encoding="utf-8")
+    panel_text = panel.read_text(encoding="utf-8")
+    assert "ops-console/product/snapshot" in panel_text
+    assert "schema_form" in panel_text or "字段表单" in panel_text
+    assert "form:" in panel_text or '"form"' in panel_text or "formPayload" in panel_text
