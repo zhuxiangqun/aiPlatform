@@ -1,14 +1,31 @@
 /**
- * OpsConsolePanel — N24 运维台产品面第一刀管理端 UI。
+ * OpsConsolePanel — N24 运维台产品面管理端 UI。
  *
- * 默认走 `/ops-console/product/*`（无 residual env 门）：概览 / Schema / 导出。
+ * 默认走 `/ops-console/product/*`：概览 / Schema 表单+JSON / 导出。
  * full_ops_console=true；certified 恒 false。
  */
 import React, { useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
-import { Download, Gauge, RefreshCw, Save } from 'lucide-react';
+import { Download, Gauge, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
+
+const FIELD_TYPES = ['string', 'number', 'boolean', 'object', 'array'] as const;
+
+type FieldType = (typeof FIELD_TYPES)[number];
+
+type SchemaField = {
+  name: string;
+  type: FieldType;
+  required: boolean;
+  description: string;
+};
+
+type SchemaForm = {
+  object_type_id: string;
+  label: string;
+  fields: SchemaField[];
+};
 
 type OpsSnapshot = {
   status?: string;
@@ -46,6 +63,35 @@ function detailMessage(detail: unknown): string {
   return detail ? JSON.stringify(detail) : '请求失败';
 }
 
+function emptyForm(objectTypeId: string): SchemaForm {
+  return { object_type_id: objectTypeId, label: '', fields: [] };
+}
+
+function coerceForm(raw: unknown, objectTypeId: string): SchemaForm {
+  const body = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const fieldsIn = Array.isArray(body.fields) ? body.fields : [];
+  const fields: SchemaField[] = [];
+  for (const item of fieldsIn) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const name = String(row.name || '').trim();
+    if (!name) continue;
+    const t = String(row.type || 'string').toLowerCase();
+    const type = (FIELD_TYPES.includes(t as FieldType) ? t : 'string') as FieldType;
+    fields.push({
+      name,
+      type,
+      required: Boolean(row.required),
+      description: String(row.description || ''),
+    });
+  }
+  return {
+    object_type_id: String(body.object_type_id || objectTypeId).trim() || objectTypeId,
+    label: String(body.label || ''),
+    fields,
+  };
+}
+
 const OpsConsolePanel: React.FC = () => {
   const [tenantId, setTenantId] = useState('lock-service');
   const [domainId, setDomainId] = useState('');
@@ -59,9 +105,15 @@ const OpsConsolePanel: React.FC = () => {
   const [exportNote, setExportNote] = useState('');
   const [schemaNote, setSchemaNote] = useState('');
   const [objectTypeId, setObjectTypeId] = useState('OpsProbeType');
+  const [schemaForm, setSchemaForm] = useState<SchemaForm>(() => emptyForm('OpsProbeType'));
   const [schemaText, setSchemaText] = useState(
     '{\n  "object_type_id": "OpsProbeType",\n  "label": "",\n  "fields": []\n}\n',
   );
+  const [showJson, setShowJson] = useState(false);
+
+  const syncJsonFromForm = useCallback((form: SchemaForm) => {
+    setSchemaText(JSON.stringify(form, null, 2) + '\n');
+  }, []);
 
   const reload = useCallback(async () => {
     if (!tenantId.trim()) return;
@@ -117,29 +169,34 @@ const OpsConsolePanel: React.FC = () => {
       const r = await fetch(API(`/ops-console/product/schema?${p.toString()}`));
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(detailMessage(body.detail));
-      const defn = body.definition;
-      if (defn && typeof defn === 'object') {
-        setSchemaText(JSON.stringify(defn, null, 2) + '\n');
+      const form = coerceForm(body.form || body.definition, objectTypeId.trim());
+      setSchemaForm(form);
+      syncJsonFromForm(form);
+      if (body.definition || body.form) {
         setSchemaNote(
-          `loaded · status=${String(body.status)} · items=${String((body.items || []).length)}`,
+          `loaded · form_fields=${String(form.fields.length)} · items=${String((body.items || []).length)}`,
         );
       } else {
-        setSchemaNote('no current definition; edit JSON then save as draft');
+        setSchemaNote('no current definition; edit form then save as draft');
       }
     } catch (e: unknown) {
       setSchemaNote((e as Error)?.message || 'schema 加载失败');
     }
-  }, [tenantId, objectTypeId]);
+  }, [tenantId, objectTypeId, syncJsonFromForm]);
 
   const saveSchema = useCallback(async () => {
     if (!tenantId.trim() || !objectTypeId.trim()) return;
     setSavingSchema(true);
     try {
-      let definition: Record<string, unknown>;
-      try {
-        definition = JSON.parse(schemaText) as Record<string, unknown>;
-      } catch {
-        throw new Error('schema JSON 无法解析');
+      let formPayload = schemaForm;
+      if (showJson) {
+        try {
+          const parsed = JSON.parse(schemaText) as Record<string, unknown>;
+          formPayload = coerceForm(parsed, objectTypeId.trim());
+          setSchemaForm(formPayload);
+        } catch {
+          throw new Error('schema JSON 无法解析');
+        }
       }
       const r = await fetch(API('/ops-console/product/schema'), {
         method: 'PUT',
@@ -147,22 +204,66 @@ const OpsConsolePanel: React.FC = () => {
         body: JSON.stringify({
           tenant_id: tenantId.trim(),
           object_type_id: objectTypeId.trim(),
-          definition,
+          form: {
+            object_type_id: objectTypeId.trim(),
+            label: formPayload.label,
+            fields: formPayload.fields,
+          },
           actor: 'ops-console-ui',
-          reason: 'ops console product schema save',
+          reason: 'ops console product schema form save',
         }),
       });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(detailMessage(body.detail));
+      const next = coerceForm(body.form || body.definition, objectTypeId.trim());
+      setSchemaForm(next);
+      syncJsonFromForm(next);
       setSchemaNote(
-        `saved draft · version=${String(body.version || body.draft?.version || '—')}`,
+        `saved draft · via_form=${String(body.via_form)} · version=${String(body.version || body.draft?.version || '—')}`,
       );
     } catch (e: unknown) {
       setSchemaNote((e as Error)?.message || 'schema 保存失败');
     } finally {
       setSavingSchema(false);
     }
-  }, [tenantId, objectTypeId, schemaText]);
+  }, [tenantId, objectTypeId, schemaForm, schemaText, showJson, syncJsonFromForm]);
+
+  const updateField = useCallback(
+    (index: number, patch: Partial<SchemaField>) => {
+      setSchemaForm((prev) => {
+        const fields = prev.fields.map((f, i) => (i === index ? { ...f, ...patch } : f));
+        const next = { ...prev, fields };
+        syncJsonFromForm(next);
+        return next;
+      });
+    },
+    [syncJsonFromForm],
+  );
+
+  const addField = useCallback(() => {
+    setSchemaForm((prev) => {
+      const next = {
+        ...prev,
+        fields: [
+          ...prev.fields,
+          { name: `field_${prev.fields.length + 1}`, type: 'string' as FieldType, required: false, description: '' },
+        ],
+      };
+      syncJsonFromForm(next);
+      return next;
+    });
+  }, [syncJsonFromForm]);
+
+  const removeField = useCallback(
+    (index: number) => {
+      setSchemaForm((prev) => {
+        const next = { ...prev, fields: prev.fields.filter((_, i) => i !== index) };
+        syncJsonFromForm(next);
+        return next;
+      });
+    },
+    [syncJsonFromForm],
+  );
 
   const runExport = useCallback(async () => {
     if (!tenantId.trim()) return;
@@ -212,7 +313,7 @@ const OpsConsolePanel: React.FC = () => {
       <CardHeader className="flex flex-row items-center justify-between gap-2 py-3">
         <div className="flex items-center gap-2 text-[13px] text-gray-200">
           <Gauge className="h-4 w-4 text-emerald-400/80" />
-          <span>运维台产品面（N24 第一刀）</span>
+          <span>运维台产品面（N24）</span>
         </div>
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" variant="ghost" onClick={() => void runGate()}>
@@ -232,8 +333,8 @@ const OpsConsolePanel: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-3 text-[12px] text-gray-400">
         <p className="text-gray-500">
-          默认可用：概览 + ObjectType schema JSON 编辑 + 浏览器下载导出。
-          full_ops_console=true；非 certified / 非可视化表单设计器。
+          默认可用：概览 + Schema 表单字段编辑（可切 JSON）+ 浏览器下载导出。
+          full_ops_console=true；非 certified / 非自由布局设计器。
         </p>
         <div className="flex flex-wrap gap-2 items-end">
           <label className="flex flex-col gap-1">
@@ -326,7 +427,26 @@ const OpsConsolePanel: React.FC = () => {
                 <input
                   className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-gray-200"
                   value={objectTypeId}
-                  onChange={(e) => setObjectTypeId(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setObjectTypeId(v);
+                    setSchemaForm((prev) => ({ ...prev, object_type_id: v }));
+                  }}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>label</span>
+                <input
+                  className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-gray-200"
+                  value={schemaForm.label}
+                  onChange={(e) => {
+                    const label = e.target.value;
+                    setSchemaForm((prev) => {
+                      const next = { ...prev, label };
+                      syncJsonFromForm(next);
+                      return next;
+                    });
+                  }}
                 />
               </label>
               <Button type="button" size="sm" variant="ghost" onClick={() => void loadSchema()}>
@@ -342,12 +462,98 @@ const OpsConsolePanel: React.FC = () => {
                 <Save className="h-3.5 w-3.5 mr-1" />
                 保存 draft
               </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowJson((v) => !v)}
+              >
+                {showJson ? '表单模式' : 'JSON 高级'}
+              </Button>
             </div>
-            <textarea
-              className="w-full min-h-[180px] rounded border border-gray-700 bg-gray-900 px-2 py-1 font-mono text-[11px] text-gray-200"
-              value={schemaText}
-              onChange={(e) => setSchemaText(e.target.value)}
-            />
+
+            {!showJson ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">字段表单</span>
+                  <Button type="button" size="sm" variant="ghost" onClick={addField}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    添加字段
+                  </Button>
+                </div>
+                {schemaForm.fields.length === 0 ? (
+                  <p className="text-gray-600">暂无字段；点击添加字段或加载已有 schema。</p>
+                ) : (
+                  <div className="space-y-2">
+                    {schemaForm.fields.map((field, index) => (
+                      <div
+                        key={`f-${index}`}
+                        className="grid grid-cols-1 md:grid-cols-12 gap-2 rounded border border-gray-800 bg-black/20 p-2"
+                      >
+                        <label className="md:col-span-3 flex flex-col gap-1">
+                          <span>name</span>
+                          <input
+                            className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-gray-200"
+                            value={field.name}
+                            onChange={(e) => updateField(index, { name: e.target.value })}
+                          />
+                        </label>
+                        <label className="md:col-span-2 flex flex-col gap-1">
+                          <span>type</span>
+                          <select
+                            className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-gray-200"
+                            value={field.type}
+                            onChange={(e) =>
+                              updateField(index, { type: e.target.value as FieldType })
+                            }
+                          >
+                            {FIELD_TYPES.map((t) => (
+                              <option key={t} value={t}>
+                                {t}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="md:col-span-2 flex items-end gap-2 pb-1">
+                          <input
+                            type="checkbox"
+                            checked={field.required}
+                            onChange={(e) => updateField(index, { required: e.target.checked })}
+                          />
+                          <span>required</span>
+                        </label>
+                        <label className="md:col-span-4 flex flex-col gap-1">
+                          <span>description</span>
+                          <input
+                            className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-gray-200"
+                            value={field.description}
+                            onChange={(e) =>
+                              updateField(index, { description: e.target.value })
+                            }
+                          />
+                        </label>
+                        <div className="md:col-span-1 flex items-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeField(index)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <textarea
+                className="w-full min-h-[180px] rounded border border-gray-700 bg-gray-900 px-2 py-1 font-mono text-[11px] text-gray-200"
+                value={schemaText}
+                onChange={(e) => setSchemaText(e.target.value)}
+              />
+            )}
             {schemaNote ? <p className="text-gray-500">{schemaNote}</p> : null}
           </div>
         ) : null}

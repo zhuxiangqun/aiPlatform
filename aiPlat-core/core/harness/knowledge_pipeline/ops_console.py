@@ -1,13 +1,13 @@
-"""知识系统运维台（N24 residual + 产品面第一刀）。
+"""知识系统运维台（N24 residual + 产品面）。
 
 职责：
   - 聚合统一审计 bus 近窗计数 + SLO 快照达标概况
   - 显式 residual：opt-in ``build_ops_console_snapshot`` / ``export_ops_console_snapshot``
-  - 产品面第一刀：默认可用 ``build_ops_console_product_snapshot`` + schema JSON 编辑 + 浏览器导出
+  - 产品面：默认可用 snapshot + schema JSON/表单字段编辑 + 浏览器导出
 
 非目标：
   - 不宣称 N24 certified / Full unconditional / 关闭 ADR 例外
-  - 不做可视化表单式 schema 设计器
+  - 不做自由布局可视化设计器（Retool 级）；表单字段编辑器已落地
   - residual 路径不可用时诚实上报 ``ops_console_unavailable`` / ``ops_console_export_unavailable``
 """
 from __future__ import annotations
@@ -38,9 +38,122 @@ _OPS_EXPORT_CASES = (
 _OPS_PRODUCT_CASES = (
     "ops_console_product_snapshot",
     "ops_console_product_schema",
+    "ops_console_product_schema_form",
     "ops_console_product_export",
     "honesty_product_certified_false",
 )
+
+_SCHEMA_FIELD_TYPES = ("string", "number", "boolean", "object", "array")
+
+
+def normalize_ops_console_schema_form(
+    definition: Optional[Dict[str, Any]] = None,
+    *,
+    object_type_id: str = "",
+) -> Dict[str, Any]:
+    """将 ObjectType definition 规范为表单字段视图（产品面 schema 表单）。
+
+    Args:
+        definition: 原始类型定义；可空。
+        object_type_id: 缺省 object_type_id 回填。
+
+    Returns:
+        ``{object_type_id, label, fields:[{name,type,required,description}]}``。
+    """
+    defn = definition if isinstance(definition, dict) else {}
+    oid = str(
+        object_type_id or defn.get("object_type_id") or defn.get("id") or ""
+    ).strip()
+    label = str(defn.get("label") or defn.get("title") or "").strip()
+    raw_fields = defn.get("fields")
+    fields: List[Dict[str, Any]] = []
+    if isinstance(raw_fields, list):
+        for item in raw_fields:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("id") or "").strip()
+            if not name:
+                continue
+            ftype = str(item.get("type") or "string").strip().lower() or "string"
+            if ftype not in _SCHEMA_FIELD_TYPES:
+                ftype = "string"
+            fields.append(
+                {
+                    "name": name,
+                    "type": ftype,
+                    "required": bool(item.get("required")),
+                    "description": str(item.get("description") or "").strip(),
+                }
+            )
+    elif isinstance(raw_fields, dict):
+        # 为什么：兼容 properties 风格字典字段
+        for name, spec in raw_fields.items():
+            n = str(name or "").strip()
+            if not n:
+                continue
+            spec_d = spec if isinstance(spec, dict) else {}
+            ftype = str(spec_d.get("type") or "string").strip().lower() or "string"
+            if ftype not in _SCHEMA_FIELD_TYPES:
+                ftype = "string"
+            fields.append(
+                {
+                    "name": n,
+                    "type": ftype,
+                    "required": bool(spec_d.get("required")),
+                    "description": str(spec_d.get("description") or "").strip(),
+                }
+            )
+    return {
+        "object_type_id": oid,
+        "label": label,
+        "fields": fields,
+        "schema_form_editor": True,
+        "certified": False,
+    }
+
+
+def definition_from_ops_console_schema_form(
+    form: Dict[str, Any],
+    *,
+    object_type_id: str = "",
+) -> Dict[str, Any]:
+    """由表单字段视图重建 ObjectType definition（写入 draft 用）。
+
+    Args:
+        form: ``normalize_ops_console_schema_form`` 形态。
+        object_type_id: 缺省类型 id。
+
+    Returns:
+        可交给 ``save_ops_console_schema`` 的 definition。
+    """
+    body = form if isinstance(form, dict) else {}
+    oid = str(
+        object_type_id or body.get("object_type_id") or body.get("id") or ""
+    ).strip()
+    label = str(body.get("label") or "").strip()
+    fields_in = body.get("fields") if isinstance(body.get("fields"), list) else []
+    fields: List[Dict[str, Any]] = []
+    seen: set = set()
+    for item in fields_in:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        ftype = str(item.get("type") or "string").strip().lower() or "string"
+        if ftype not in _SCHEMA_FIELD_TYPES:
+            ftype = "string"
+        fields.append(
+            {
+                "name": name,
+                "type": ftype,
+                "required": bool(item.get("required")),
+                "description": str(item.get("description") or "").strip(),
+            }
+        )
+    out: Dict[str, Any] = {"object_type_id": oid, "label": label, "fields": fields}
+    return out
 
 
 def build_ops_console_snapshot(
@@ -741,9 +854,10 @@ def build_ops_console_product_snapshot(
             "slo_telemetry": True,
             "export_download": True,
             "schema_editor": True,
+            "schema_form_editor": True,
         },
         "note": (
-            "ops console product surface (slice-1); "
+            "ops console product surface (schema form + JSON); "
             "not N24 certified / Full remains conditional"
         ),
     }
@@ -776,6 +890,7 @@ def get_ops_console_schema(
         "n24_unified_audit_freeze": True,
         "full_ops_console": True,
         "schema_editor": True,
+        "schema_form_editor": True,
     }
     if not tid:
         return {**base, "status": "invalid", "error": "tenant_required"}
@@ -791,16 +906,24 @@ def get_ops_console_schema(
         # 为什么：优先 published，否则取最近一条供编辑器回填
         published = [i for i in items if i.get("status") == "published"]
         current = published[-1] if published else (items[-1] if items else None)
+    definition = (
+        (current or {}).get("definition") if isinstance(current, dict) else None
+    )
+    form = normalize_ops_console_schema_form(
+        definition if isinstance(definition, dict) else None,
+        object_type_id=oid,
+    )
     return {
         **base,
         "status": "ok",
         "via": "product",
         "items": items,
         "current": current,
-        "definition": (current or {}).get("definition")
-        if isinstance(current, dict)
-        else None,
-        "note": "ops console schema editor product surface; not certified",
+        "definition": definition,
+        "form": form,
+        "note": (
+            "ops console schema form+JSON product surface; not certified"
+        ),
     }
 
 
@@ -808,7 +931,8 @@ def save_ops_console_schema(
     *,
     tenant_id: str,
     object_type_id: str,
-    definition: Dict[str, Any],
+    definition: Optional[Dict[str, Any]] = None,
+    form: Optional[Dict[str, Any]] = None,
     actor: str = "ops-console-product",
     reason: str = "ops console schema editor save",
     version: str = "",
@@ -819,7 +943,8 @@ def save_ops_console_schema(
     Args:
         tenant_id: 租户。
         object_type_id: 类型 id。
-        definition: 类型定义 JSON。
+        definition: 类型定义 JSON；与 form 二选一（form 优先规范化）。
+        form: 表单字段视图；有则经 ``definition_from_ops_console_schema_form``。
         actor: 提交人。
         reason: 理由。
         version: 可选版本；缺省自动生成。
@@ -840,11 +965,21 @@ def save_ops_console_schema(
         "n24_unified_audit_freeze": True,
         "full_ops_console": True,
         "schema_editor": True,
+        "schema_form_editor": True,
     }
     if not tid or not oid:
         return {**base, "status": "invalid", "error": "tenant_object_type_required"}
-    if not isinstance(definition, dict) or not definition:
-        return {**base, "status": "invalid", "error": "definition_required"}
+
+    defn: Dict[str, Any]
+    via_form = isinstance(form, dict) and bool(form)
+    if via_form:
+        defn = definition_from_ops_console_schema_form(form, object_type_id=oid)
+    elif isinstance(definition, dict) and definition:
+        defn = dict(definition)
+        if not str(defn.get("object_type_id") or "").strip():
+            defn["object_type_id"] = oid
+    else:
+        return {**base, "status": "invalid", "error": "definition_or_form_required"}
 
     ver = str(version or "").strip() or f"ops-{uuid.uuid4().hex[:10]}"
     try:
@@ -852,7 +987,7 @@ def save_ops_console_schema(
             tenant_id=tid,
             object_type_id=oid,
             version=ver,
-            definition=definition,
+            definition=defn,
             actor=str(actor or "ops-console-product").strip() or "ops-console-product",
             reason=str(reason or "ops console schema editor save").strip()
             or "ops console schema editor save",
@@ -865,8 +1000,11 @@ def save_ops_console_schema(
         **base,
         "status": "ok",
         "via": "product",
+        "via_form": via_form,
         "draft": out,
         "version": ver,
+        "definition": defn,
+        "form": normalize_ops_console_schema_form(defn, object_type_id=oid),
         "note": "schema saved as draft via object_type_publish; not certified",
     }
 
@@ -975,6 +1113,7 @@ def export_ops_console_product(
             "slo_telemetry": True,
             "export_download": True,
             "schema_editor": True,
+            "schema_form_editor": True,
         },
         "note": (
             "ops console product export; browser download ready; "
@@ -1057,6 +1196,7 @@ def run_ops_console_product_suite(
                     and snap.get("full_ops_console") is True
                     and snap.get("certified") is False
                     and panels.get("schema_editor") is True
+                    and panels.get("schema_form_editor") is True
                     and panels.get("export_download") is True
                     and int((snap.get("audit") or {}).get("recent_count") or 0) >= 1,
                 }
@@ -1085,7 +1225,55 @@ def run_ops_console_product_suite(
                     "ok": saved.get("status") == "ok"
                     and loaded.get("status") == "ok"
                     and isinstance(loaded.get("definition"), dict)
-                    and loaded.get("schema_editor") is True,
+                    and loaded.get("schema_editor") is True
+                    and isinstance(loaded.get("form"), dict)
+                    and loaded.get("schema_form_editor") is True,
+                }
+            )
+
+            form_saved = save_ops_console_schema(
+                tenant_id=tenant_id,
+                object_type_id="OpsFormType",
+                form={
+                    "object_type_id": "OpsFormType",
+                    "label": "form probe",
+                    "fields": [
+                        {
+                            "name": "title",
+                            "type": "string",
+                            "required": True,
+                            "description": "title",
+                        },
+                        {
+                            "name": "count",
+                            "type": "number",
+                            "required": False,
+                            "description": "",
+                        },
+                    ],
+                },
+                actor="suite",
+                reason="product suite schema form",
+                db_path=ot_db,
+            )
+            form_loaded = get_ops_console_schema(
+                tenant_id=tenant_id,
+                object_type_id="OpsFormType",
+                db_path=ot_db,
+            )
+            form_view = form_loaded.get("form") or {}
+            form_fields = form_view.get("fields") or []
+            cases.append(
+                {
+                    "id": "ops_console_product_schema_form",
+                    "ok": form_saved.get("status") == "ok"
+                    and form_saved.get("via_form") is True
+                    and form_loaded.get("status") == "ok"
+                    and form_loaded.get("schema_form_editor") is True
+                    and len(form_fields) == 2
+                    and form_fields[0].get("name") == "title"
+                    and form_fields[0].get("required") is True
+                    and form_fields[1].get("type") == "number",
                 }
             )
 

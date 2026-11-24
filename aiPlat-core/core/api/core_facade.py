@@ -7807,11 +7807,54 @@ def get_knowledge_ops_console_schema(
     )
 
 
+def normalize_knowledge_ops_console_schema_form(
+    definition: Any = None,
+    *,
+    object_type_id: str = "",
+) -> Dict[str, Any]:
+    """CoreFacade：N24 运维台 schema 表单规范化。
+
+    Args:
+        definition: 原始类型定义。
+        object_type_id: 缺省类型 id。
+    """
+    from core.harness.knowledge_pipeline.ops_console import (
+        normalize_ops_console_schema_form,
+    )
+
+    return normalize_ops_console_schema_form(
+        definition if isinstance(definition, dict) else None,
+        object_type_id=object_type_id,
+    )
+
+
+def definition_from_knowledge_ops_console_schema_form(
+    form: Dict[str, Any],
+    *,
+    object_type_id: str = "",
+) -> Dict[str, Any]:
+    """CoreFacade：表单字段视图 → ObjectType definition。
+
+    Args:
+        form: 表单字段视图。
+        object_type_id: 缺省类型 id。
+    """
+    from core.harness.knowledge_pipeline.ops_console import (
+        definition_from_ops_console_schema_form,
+    )
+
+    return definition_from_ops_console_schema_form(
+        form,
+        object_type_id=object_type_id,
+    )
+
+
 def save_knowledge_ops_console_schema(
     *,
     tenant_id: str,
     object_type_id: str,
-    definition: Dict[str, Any],
+    definition: Any = None,
+    form: Any = None,
     actor: str = "ops-console-product",
     reason: str = "ops console schema editor save",
     version: str = "",
@@ -7822,7 +7865,8 @@ def save_knowledge_ops_console_schema(
     Args:
         tenant_id: 租户。
         object_type_id: 类型 id。
-        definition: 类型定义 JSON。
+        definition: 类型定义 JSON；与 form 二选一。
+        form: 表单字段视图（优先）。
         actor: 提交人。
         reason: 理由。
         version: 可选版本。
@@ -7833,7 +7877,8 @@ def save_knowledge_ops_console_schema(
     return save_ops_console_schema(
         tenant_id=tenant_id,
         object_type_id=object_type_id,
-        definition=definition,
+        definition=definition if isinstance(definition, dict) else None,
+        form=form if isinstance(form, dict) else None,
         actor=actor,
         reason=reason,
         version=version,

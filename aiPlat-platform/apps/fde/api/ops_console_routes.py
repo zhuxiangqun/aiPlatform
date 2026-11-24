@@ -55,6 +55,7 @@ class OpsConsoleSchemaSaveBody(BaseModel):
     tenant_id: str = Field(default="")
     object_type_id: str = Field(default="")
     definition: Dict[str, Any] = Field(default_factory=dict)
+    form: Optional[Dict[str, Any]] = Field(default=None)
     actor: str = Field(default="ops-console-product")
     reason: str = Field(default="ops console schema editor save")
     version: str = Field(default="")
@@ -260,6 +261,7 @@ async def ops_console_product_schema_put_route(
         tenant_id=tid,
         object_type_id=str(body.object_type_id or ""),
         definition=dict(body.definition or {}),
+        form=dict(body.form) if isinstance(body.form, dict) else None,
         actor=str(body.actor or "ops-console-product"),
         reason=str(body.reason or "ops console schema editor save"),
         version=str(body.version or ""),
