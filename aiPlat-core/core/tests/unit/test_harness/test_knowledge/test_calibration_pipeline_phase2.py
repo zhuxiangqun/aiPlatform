@@ -1,4 +1,4 @@
-"""N13 deepen：Operational 校准流水线（查询路径封顶）；certified 恒 false。"""
+"""N13 deepen + residual：Operational 校准流水线 / 样本 ECE；certified 恒 false。"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,11 +6,13 @@ from pathlib import Path
 import pytest
 
 from core.api.core_facade import (
+    compute_ece_from_samples as facade_ece,
     evaluate_calibration_pipeline_gate,
     run_calibration_pipeline_suite,
 )
 from core.harness.knowledge_pipeline.confidence_calibration import (
     apply_calibration_ceiling,
+    compute_ece_from_samples,
     evaluate_calibration_pipeline_gate as core_gate,
     publish_calibration_report,
     run_calibration_pipeline_suite as core_suite,
@@ -24,9 +26,14 @@ ROOT = Path(__file__).resolve().parents[6]
 async def test_suite_and_gate_honesty():
     suite = await core_suite()
     assert suite["ok"] is True
-    assert suite["passed"] == 4
+    assert suite["passed"] == 6
     assert suite["certified"] is False
     assert suite["n13_full_conformance"] is False
+    assert suite.get("n13_calibration_freeze") is True
+    assert suite.get("accuracy_claim") is False
+    ids = {c["id"] for c in suite["cases"]}
+    assert "ece_train_opt_in" in ids
+    assert "ece_train_unavailable" in ids
     gate = core_gate(suite)
     assert gate["ok"] is True
     assert gate["certified"] is False
@@ -44,6 +51,14 @@ async def test_facade_suite():
     gate = evaluate_calibration_pipeline_gate(suite)
     assert gate["ok"] is True
     assert gate["certified"] is False
+
+
+def test_ece_train_unavailable_default():
+    r = compute_ece_from_samples([{"confidence": 0.9, "correct": True}])
+    assert r["status"] == "ece_training_unavailable"
+    assert r["accuracy_claim"] is False
+    fr = facade_ece([{"confidence": 0.5, "correct": False}])
+    assert fr["status"] == "ece_training_unavailable"
 
 
 @pytest.mark.asyncio
@@ -147,6 +162,7 @@ def test_docs_and_wiring_state():
     )
     text = cal.read_text(encoding="utf-8")
     assert "apply_calibration_ceiling" in text
+    assert "compute_ece_from_samples" in text
     assert "run_calibration_pipeline_suite" in text
     fl = (
         ROOT
@@ -158,4 +174,6 @@ def test_docs_and_wiring_state():
     )
     assert "calibration_db_path" in fl.read_text(encoding="utf-8")
     facade = ROOT / "aiPlat-core" / "core" / "api" / "core_facade.py"
-    assert "run_calibration_pipeline_suite" in facade.read_text(encoding="utf-8")
+    ftext = facade.read_text(encoding="utf-8")
+    assert "run_calibration_pipeline_suite" in ftext
+    assert "compute_ece_from_samples" in ftext

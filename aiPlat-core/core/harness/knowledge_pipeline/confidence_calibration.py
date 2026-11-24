@@ -1,21 +1,24 @@
 """Confidence Calibration Report 最小切片（附录 O / W10 / N13）— 可复现校准门。
 
 职责：登记校准报告；校验必填与门槛；失败时 confidence 上限 medium；
-  Operational 查询路径封顶（``apply_calibration_ceiling``）+ 流水线套件。
-非目标：不做真实 ECE 训练；不宣称准确率；不替代 OCS；不做迁移双写；
-  不宣称 N13 certified。
+  Operational 查询路径封顶（``apply_calibration_ceiling``）+ 流水线套件；
+  显式 residual：opt-in ``compute_ece_from_samples`` 有界 ECE/Brier 计算。
+
+非目标：不宣称准确率达标；不替代 OCS；不做迁移双写；不宣称 N13 certified；
+  ECE 训练不可用时诚实上报 ``ece_training_unavailable``，不静默冒充手工 ece。
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import sqlite3
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -525,7 +528,113 @@ _N13_CALIBRATION_PIPELINE_CASES = (
     "approved_cal_allows_high",
     "missing_cal_caps_high",
     "honesty_certified_false",
+    "ece_train_opt_in",
+    "ece_train_unavailable",
 )
+
+
+def compute_ece_from_samples(
+    samples: Sequence[Dict[str, Any]],
+    *,
+    n_bins: int = 10,
+    high_threshold: float = 0.8,
+) -> Dict[str, Any]:
+    """N13 residual：从标注样本有界计算 ECE / Brier（非准确率宣称）。
+
+    每条样本需 ``confidence``∈[0,1] 与 ``correct`` bool。默认关闭实网训练
+    （无 ``AIPLAT_KNOWLEDGE_ECE_TRAIN=1`` → ``ece_training_unavailable``）。
+    即使计算成功，``accuracy_claim`` / ``certified`` 仍恒 false。
+
+    Args:
+        samples: 标注样本列表。
+        n_bins: ECE 等宽分箱数（1–50）。
+        high_threshold: high 档精度阈值。
+    """
+    base = {
+        "accuracy_claim": False,
+        "certified": False,
+        "n13_full_conformance": False,
+        "n13_calibration_freeze": True,
+    }
+    # 为什么：默认关闭 ECE 训练，避免 CI/离线把手工 ece 冒充样本训练结果
+    if os.environ.get("AIPLAT_KNOWLEDGE_ECE_TRAIN", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+    }:
+        return {
+            **base,
+            "status": "ece_training_unavailable",
+            "via": "env_disabled",
+            "note": "set AIPLAT_KNOWLEDGE_ECE_TRAIN=1 to enable sample ECE training",
+        }
+
+    rows: List[tuple] = []
+    for raw in samples or []:
+        if not isinstance(raw, dict):
+            continue
+        try:
+            conf = float(raw.get("confidence"))
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(conf) or conf < 0.0 or conf > 1.0:
+            continue
+        correct = bool(raw.get("correct"))
+        rows.append((conf, 1.0 if correct else 0.0))
+
+    if not rows:
+        return {
+            **base,
+            "status": "ece_training_unavailable",
+            "via": "empty_samples",
+            "note": "need labeled samples with confidence∈[0,1] and correct bool",
+        }
+
+    bins = max(1, min(int(n_bins or 10), 50))
+    bucket_sum = [0.0] * bins
+    bucket_conf = [0.0] * bins
+    bucket_n = [0] * bins
+    brier_acc = 0.0
+    high_n = 0
+    high_ok = 0
+    for conf, y in rows:
+        idx = min(bins - 1, int(conf * bins))
+        if conf >= 1.0:
+            idx = bins - 1
+        bucket_sum[idx] += y
+        bucket_conf[idx] += conf
+        bucket_n[idx] += 1
+        brier_acc += (conf - y) ** 2
+        if conf >= float(high_threshold):
+            high_n += 1
+            high_ok += int(y)
+
+    n = len(rows)
+    ece = 0.0
+    for i in range(bins):
+        if bucket_n[i] == 0:
+            continue
+        acc = bucket_sum[i] / bucket_n[i]
+        avg_conf = bucket_conf[i] / bucket_n[i]
+        ece += (bucket_n[i] / n) * abs(acc - avg_conf)
+
+    brier = brier_acc / n
+    high_precision = (high_ok / high_n) if high_n else 0.0
+    coverage = high_n / n
+
+    return {
+        **base,
+        "status": "ok",
+        "via": "samples",
+        "sample_size": n,
+        "n_bins": bins,
+        "ece": round(ece, 6),
+        "brier": round(brier, 6),
+        "high_precision": round(high_precision, 6),
+        "coverage": round(coverage, 6),
+        "high_threshold": float(high_threshold),
+        "note": "sample ECE residual only; not accuracy claim / not N13 certified",
+    }
 
 
 async def run_calibration_pipeline_suite(
@@ -719,6 +828,50 @@ async def run_calibration_pipeline_suite(
                 "detail": "" if honesty_ok else "honesty_gate_failed",
             }
         )
+
+        # residual：默认无 env → unavailable
+        prev_ece = os.environ.get("AIPLAT_KNOWLEDGE_ECE_TRAIN")
+        os.environ.pop("AIPLAT_KNOWLEDGE_ECE_TRAIN", None)
+        try:
+            unavail = compute_ece_from_samples(
+                [{"confidence": 0.9, "correct": True}]
+            )
+            cases.append(
+                {
+                    "id": "ece_train_unavailable",
+                    "ok": unavail.get("status") == "ece_training_unavailable"
+                    and unavail.get("accuracy_claim") is False
+                    and unavail.get("certified") is False,
+                    "detail": "",
+                }
+            )
+
+            # residual：opt-in 样本 ECE 仍非 certified
+            os.environ["AIPLAT_KNOWLEDGE_ECE_TRAIN"] = "1"
+            # 为什么：单箱 conf=acc=0.7 → ECE≈0，满足门槛但不宣称准确率
+            perfect = (
+                [{"confidence": 0.7, "correct": True}] * 70
+                + [{"confidence": 0.7, "correct": False}] * 30
+            )
+            trained = compute_ece_from_samples(perfect, n_bins=10)
+            ece_v = trained.get("ece")
+            ece_ok = isinstance(ece_v, (int, float)) and float(ece_v) <= DEFAULT_ECE_MAX
+            cases.append(
+                {
+                    "id": "ece_train_opt_in",
+                    "ok": trained.get("status") == "ok"
+                    and ece_ok
+                    and int(trained.get("sample_size") or 0) >= 100
+                    and trained.get("accuracy_claim") is False
+                    and trained.get("certified") is False,
+                    "detail": "" if trained.get("status") == "ok" and ece_ok else "ece_train_failed",
+                }
+            )
+        finally:
+            if prev_ece is None:
+                os.environ.pop("AIPLAT_KNOWLEDGE_ECE_TRAIN", None)
+            else:
+                os.environ["AIPLAT_KNOWLEDGE_ECE_TRAIN"] = prev_ece
     finally:
         if tmp is not None:
             tmp.cleanup()
@@ -737,9 +890,11 @@ async def run_calibration_pipeline_suite(
         "cases": cases,
         "certified": False,
         "n13_full_conformance": False,
+        "n13_calibration_freeze": True,
+        "accuracy_claim": False,
         "note": (
-            "Operational calibration ceiling on fact gateway; "
-            "not real ECE training / not N13 certified"
+            "Operational calibration ceiling + sample ECE residual; "
+            "not accuracy claim / not N13 certified"
         ),
     }
 
@@ -762,6 +917,9 @@ def evaluate_calibration_pipeline_gate(
         issues.append("missing_required_cases")
     if s.get("certified") is True or s.get("n13_full_conformance") is True:
         issues.append("honesty_certified_flag_forbidden")
+    # 为什么：样本 ECE residual ≠ 准确率宣称；禁止套件自签 accuracy_claim
+    if s.get("accuracy_claim") is True:
+        issues.append("honesty_accuracy_claim_forbidden")
     return {
         "gate": "calibration_pipeline",
         "ok": not issues,
@@ -771,5 +929,7 @@ def evaluate_calibration_pipeline_gate(
         "issues": issues,
         "certified": False,
         "n13_full_conformance": False,
-        "note": "Operational calibration pipeline; not N13 certified",
+        "n13_calibration_freeze": True,
+        "accuracy_claim": False,
+        "note": "Operational calibration + ECE residual; not N13 certified",
     }

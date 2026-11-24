@@ -6720,6 +6720,26 @@ async def run_calibration_pipeline_suite(
     return await _run(tenant_id=tenant_id, domain_id=domain_id)
 
 
+def compute_ece_from_samples(
+    samples: List[Dict[str, Any]],
+    *,
+    n_bins: int = 10,
+    high_threshold: float = 0.8,
+) -> Dict[str, Any]:
+    """CoreFacade：N13 residual 有界 ECE/Brier 样本训练（certified 恒 false）。
+
+    Args:
+        samples: 标注样本（``confidence`` + ``correct``）。
+        n_bins: ECE 分箱数。
+        high_threshold: high 档精度阈值。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        compute_ece_from_samples as _compute,
+    )
+
+    return _compute(samples, n_bins=n_bins, high_threshold=high_threshold)
+
+
 def evaluate_calibration_pipeline_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
