@@ -5,12 +5,13 @@
   - publish 须 actor/reason + 配置角色门（上游注入 role）
   - 仅 published 可作为 active 定义；可选拦截 Package schema 发布
   - 显式 residual：opt-in ``bulk_transition_object_types`` 有界多租户批量转换
+  - 显式 residual：opt-in ``apply_published_seed_authority`` 有界种子权威覆盖
 
 非目标：
-  - 不替换 workspace_seeds JSON 为唯一真源
+  - 不把 workspace_seeds JSON 改写为唯一真源 / 不全量种子替换产品化
   - 不做无限批量/工作流编排产品
   - 不宣称 N02 certified / 关闭 ADR 例外
-  - 批量不可用时诚实上报 ``object_type_bulk_unavailable``
+  - 批量/种子覆盖不可用时诚实上报 unavailable
 """
 from __future__ import annotations
 
@@ -598,6 +599,418 @@ def bulk_transition_object_types(
             "bounded multi-tenant bulk transition residual; "
             "not seed replacement / not N02 certified"
         ),
+    }
+
+
+_SEED_REPLACE_MAX = 20
+_SEED_REPLACE_CASES = (
+    "seed_replacement_unavailable",
+    "seed_replacement_opt_in",
+    "honesty_certified_false",
+)
+
+
+def resolve_seed_authority_output_root(
+    *,
+    output_root: Optional[str] = None,
+) -> Dict[str, Any]:
+    """解析种子权威覆盖写盘根（仅允许 ``AIPLAT_HOME/data/knowledge_object_type_authority``）。
+
+    Args:
+        output_root: 可选显式根；须落在 allowlist 下。
+    """
+    home = (os.environ.get("AIPLAT_HOME") or "").strip()
+    if not home:
+        home = str(Path.cwd() / ".aiplat-home")
+    allow = (Path(home).resolve() / "data" / "knowledge_object_type_authority").resolve()
+    if output_root:
+        cand = Path(output_root).resolve()
+        try:
+            cand.relative_to(allow)
+        except ValueError:
+            return {
+                "ok": False,
+                "reason": "output_root_not_allowlisted",
+                "allowlist": str(allow),
+                "output_root": str(cand),
+            }
+        return {"ok": True, "output_root": str(cand), "allowlist": str(allow)}
+    return {"ok": True, "output_root": str(allow), "allowlist": str(allow)}
+
+
+def apply_published_seed_authority(
+    *,
+    tenant_id: str,
+    seed_path: str,
+    object_type_ids: Optional[Sequence[str]] = None,
+    output_root: Optional[str] = None,
+    write: bool = False,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N02 residual：有界「published 覆盖 seed」权威解析（非全量种子替换）。
+
+    默认关闭（无 ``AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE=1`` →
+    ``seed_replacement_unavailable``）。不改写 ``workspace_seeds``；可选写盘仅落
+    allowlist（``AIPLAT_HOME/data/knowledge_object_type_authority``）。
+    ``certified`` / ``seed_replacement_complete`` 恒 false。
+
+    Args:
+        tenant_id: 租户。
+        seed_path: 种子 JSON 路径（只读）。
+        object_type_ids: 可选类型列表；缺省取种子内全部（上限 ``_SEED_REPLACE_MAX``）。
+        output_root: 可选写盘根（须 allowlist）。
+        write: 是否写盘合并结果。
+        db_path: 可选发布库路径。
+    """
+    tid = (tenant_id or "").strip()
+    sp = (seed_path or "").strip()
+    base = {
+        "tenant_id": tid,
+        "seed_path": sp,
+        "items": [],
+        "published_count": 0,
+        "seed_count": 0,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "workspace_seeds_mutated": False,
+    }
+    if not tid or not sp:
+        return {**base, "status": "invalid", "error": "tenant_seed_path_required"}
+
+    # 为什么：默认关闭种子权威覆盖，避免把 seed JSON 误当已人审真源被覆盖产品化
+    if os.environ.get(
+        "AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE", ""
+    ).strip().lower() not in {"1", "true", "yes"}:
+        return {
+            **base,
+            "status": "seed_replacement_unavailable",
+            "via": "env_disabled",
+            "note": (
+                "set AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE=1 "
+                "to enable bounded published-over-seed authority"
+            ),
+        }
+
+    seed_file = Path(sp)
+    if not seed_file.is_file():
+        return {**base, "status": "invalid", "error": "seed_path_missing"}
+
+    # 为什么：seed 只读；写盘只落 allowlist，永不改写 workspace_seeds
+    try:
+        seed_resolved = seed_file.resolve()
+    except OSError:
+        seed_resolved = seed_file
+
+    from core.harness.knowledge_pipeline.fact_ledger import load_object_type_bindings
+
+    try:
+        bindings = load_object_type_bindings(seed_file)
+    except Exception as exc:  # noqa: BLE001
+        return {**base, "status": "invalid", "error": f"seed_load_failed:{exc}"}
+
+    by_id = {
+        str(b.get("object_type_id") or "").strip(): b
+        for b in bindings
+        if str(b.get("object_type_id") or "").strip()
+    }
+    if object_type_ids is None:
+        wanted = list(by_id.keys())
+    else:
+        wanted = [str(x or "").strip() for x in object_type_ids if str(x or "").strip()]
+    if not wanted:
+        return {
+            **base,
+            "status": "seed_replacement_unavailable",
+            "via": "empty_types",
+            "note": "need at least one object_type_id",
+        }
+    if len(wanted) > _SEED_REPLACE_MAX:
+        return {
+            **base,
+            "status": "invalid",
+            "error": f"seed_replace_too_large:{len(wanted)}>{_SEED_REPLACE_MAX}",
+        }
+
+    items: List[Dict[str, Any]] = []
+    pub_n = 0
+    seed_n = 0
+    merged: List[Dict[str, Any]] = []
+    for oid in wanted:
+        seed_def = by_id.get(oid)
+        pub = get_published_object_type(
+            tenant_id=tid, object_type_id=oid, db_path=db_path
+        )
+        if pub is not None:
+            pub_n += 1
+            defn = dict(pub.get("definition") or {})
+            defn.setdefault("object_type_id", oid)
+            row = {
+                "object_type_id": oid,
+                "authority": "published",
+                "version": pub.get("version"),
+                "definition": defn,
+                "seed_present": seed_def is not None,
+            }
+            items.append(row)
+            merged.append(defn)
+        elif seed_def is not None:
+            seed_n += 1
+            defn = dict(seed_def)
+            row = {
+                "object_type_id": oid,
+                "authority": "seed",
+                "version": None,
+                "definition": defn,
+                "seed_present": True,
+            }
+            items.append(row)
+            merged.append(defn)
+        else:
+            items.append(
+                {
+                    "object_type_id": oid,
+                    "authority": "missing",
+                    "version": None,
+                    "definition": None,
+                    "seed_present": False,
+                    "error": "not_in_seed_or_published",
+                }
+            )
+
+    out_path = ""
+    if write:
+        root_info = resolve_seed_authority_output_root(output_root=output_root)
+        if not root_info.get("ok"):
+            return {
+                **base,
+                "status": "denied",
+                "via": "opt_in",
+                "reason": root_info.get("reason") or "output_root_denied",
+                "items": items,
+                "published_count": pub_n,
+                "seed_count": seed_n,
+            }
+        root = Path(str(root_info["output_root"]))
+        root.mkdir(parents=True, exist_ok=True)
+        target = root / f"{tid}-object-types.authority.json"
+        payload = {
+            "tenant_id": tid,
+            "source_seed_path": str(seed_resolved),
+            "object_types": merged,
+            "seed_replacement_complete": False,
+            "certified": False,
+        }
+        target.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        out_path = str(target)
+
+    return {
+        **base,
+        "status": "ok",
+        "via": "opt_in",
+        "items": items,
+        "published_count": pub_n,
+        "seed_count": seed_n,
+        "total": len(items),
+        "output_path": out_path,
+        "wrote": bool(out_path),
+        "note": (
+            "bounded published-over-seed authority residual; "
+            "not full seed replacement productization / not N02 certified"
+        ),
+    }
+
+
+def run_seed_replacement_suite(
+    *,
+    tenant_id: str = "n02-seed-replace-tenant",
+) -> Dict[str, Any]:
+    """N02 residual：种子权威覆盖套件（certified / complete 恒 false）。
+
+    Args:
+        tenant_id: 套件租户。
+    """
+    cases: List[Dict[str, Any]] = []
+    prev = os.environ.get("AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE")
+    prev_home = os.environ.get("AIPLAT_HOME")
+    os.environ.pop("AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE", None)
+    tmp = tempfile.TemporaryDirectory(prefix="n02-seed-replace-")
+    try:
+        root = Path(tmp.name)
+        db = str(root / "ot.sqlite3")
+        seed = root / "demo-object-types.json"
+        seed.write_text(
+            json.dumps(
+                {
+                    "object_types": [
+                        {
+                            "object_type_id": "DemoType",
+                            "label": "seed-label",
+                            "primary_key": "id",
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        home = root / "home"
+        home.mkdir()
+        os.environ["AIPLAT_HOME"] = str(home)
+
+        unavail = apply_published_seed_authority(
+            tenant_id=tenant_id,
+            seed_path=str(seed),
+            object_type_ids=["DemoType"],
+            db_path=db,
+        )
+        cases.append(
+            {
+                "id": "seed_replacement_unavailable",
+                "ok": unavail.get("status") == "seed_replacement_unavailable"
+                and unavail.get("certified") is False
+                and unavail.get("seed_replacement_complete") is False
+                and unavail.get("workspace_seeds_mutated") is False,
+            }
+        )
+
+        submit_object_type_draft(
+            tenant_id=tenant_id,
+            object_type_id="DemoType",
+            version="1.0.0",
+            definition={
+                "object_type_id": "DemoType",
+                "label": "published-label",
+                "primary_key": "id",
+            },
+            actor="author",
+            reason="draft",
+            db_path=db,
+        )
+        transition_object_type(
+            tenant_id=tenant_id,
+            object_type_id="DemoType",
+            version="1.0.0",
+            to_status="in_review",
+            actor="author",
+            reason="review",
+            db_path=db,
+        )
+        prev_rbac = os.environ.get("AIPLAT_OBJECT_TYPE_PUBLISH_RBAC")
+        os.environ["AIPLAT_OBJECT_TYPE_PUBLISH_RBAC"] = "0"
+        try:
+            transition_object_type(
+                tenant_id=tenant_id,
+                object_type_id="DemoType",
+                version="1.0.0",
+                to_status="published",
+                actor="reviewer",
+                reason="publish",
+                role="reviewer",
+                db_path=db,
+            )
+        finally:
+            if prev_rbac is None:
+                os.environ.pop("AIPLAT_OBJECT_TYPE_PUBLISH_RBAC", None)
+            else:
+                os.environ["AIPLAT_OBJECT_TYPE_PUBLISH_RBAC"] = prev_rbac
+
+        os.environ["AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE"] = "1"
+        applied = apply_published_seed_authority(
+            tenant_id=tenant_id,
+            seed_path=str(seed),
+            object_type_ids=["DemoType"],
+            write=True,
+            db_path=db,
+        )
+        items = applied.get("items") or []
+        first = items[0] if items else {}
+        label = ((first.get("definition") or {}).get("label") if isinstance(first, dict) else None)
+        cases.append(
+            {
+                "id": "seed_replacement_opt_in",
+                "ok": applied.get("status") == "ok"
+                and first.get("authority") == "published"
+                and label == "published-label"
+                and applied.get("published_count") == 1
+                and applied.get("wrote") is True
+                and applied.get("workspace_seeds_mutated") is False
+                and applied.get("seed_replacement_complete") is False
+                and applied.get("certified") is False,
+            }
+        )
+        cases.append(
+            {
+                "id": "honesty_certified_false",
+                "ok": applied.get("certified") is False
+                and applied.get("n02_object_type_freeze") is True
+                and applied.get("seed_replacement_complete") is False,
+            }
+        )
+    finally:
+        if prev is None:
+            os.environ.pop("AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE", None)
+        else:
+            os.environ["AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE"] = prev
+        if prev_home is None:
+            os.environ.pop("AIPLAT_HOME", None)
+        else:
+            os.environ["AIPLAT_HOME"] = prev_home
+        tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok"))
+    return {
+        "ok": passed == len(_SEED_REPLACE_CASES) and len(cases) == len(_SEED_REPLACE_CASES),
+        "passed": passed,
+        "total": len(_SEED_REPLACE_CASES),
+        "cases": cases,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "note": (
+            "Bounded published-over-seed authority residual; "
+            "not full seed replacement / not N02 certified"
+        ),
+    }
+
+
+def evaluate_seed_replacement_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N02 residual：种子权威覆盖门槛门；certified / complete 恒 false。
+
+    Args:
+        suite: ``run_seed_replacement_suite`` 回执。
+    """
+    s = suite if isinstance(suite, dict) else run_seed_replacement_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    if s.get("certified") is True or s.get("n02_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("seed_replacement_complete") is True:
+        issues.append("honesty_seed_replacement_complete_forbidden")
+    ids = {
+        c.get("id")
+        for c in (s.get("cases") or [])
+        if isinstance(c, dict) and c.get("ok")
+    }
+    for need in _SEED_REPLACE_CASES:
+        if need not in ids:
+            issues.append(f"missing_or_failed:{need}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "note": "Bounded seed authority residual gate; not N02 certified",
     }
 
 

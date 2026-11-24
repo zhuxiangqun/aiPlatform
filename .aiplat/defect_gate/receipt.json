@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T10:35:00+08:00",
+  "reviewed_at": "2026-11-24T12:37:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "5b894313a0a3323c001b35e1745a496b74aaa830",
-  "diff_sha256": "dffae02e09dc22a080d1ce583dd2c043b73948c003ff7ac0bef5663dc8a37ff2",
-  "head_sha": "acbe1c9ab04e7f067ea0d45d546aab67164ea489",
+  "merge_base": "406043869119db99f0258b27bd7f4a544868b216",
+  "diff_sha256": "cd4f69a2a682ba56c24db916e0031c438456c7fc405bc2e9b680db8743d9fb3b",
+  "head_sha": "b5096a1c579d459dbbfaa59835b4a62b8f1cc321",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N08 residual + CAPS/whitepaper stamp refresh. Local lock only."
+  "note": "N02 published-over-seed residual; freeze true; certified/complete false. CAPS/whitepaper sync after contracts-guard. Local lock only."
 }

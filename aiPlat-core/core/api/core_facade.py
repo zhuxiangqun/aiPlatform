@@ -5623,6 +5623,60 @@ def bulk_transition_object_types(
     return _bulk(items, actor=actor, reason=reason, role=role)
 
 
+def apply_published_seed_authority(
+    *,
+    tenant_id: str,
+    seed_path: str,
+    object_type_ids: Optional[List[str]] = None,
+    output_root: Optional[str] = None,
+    write: bool = False,
+) -> Dict[str, Any]:
+    """CoreFacade：N02 residual published-over-seed 权威覆盖（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        seed_path: 种子 JSON（只读）。
+        object_type_ids: 可选类型列表。
+        output_root: 可选写盘根（allowlist）。
+        write: 是否写盘。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        apply_published_seed_authority as _apply,
+    )
+
+    return _apply(
+        tenant_id=tenant_id,
+        seed_path=seed_path,
+        object_type_ids=object_type_ids,
+        output_root=output_root,
+        write=write,
+    )
+
+
+def run_seed_replacement_suite() -> Dict[str, Any]:
+    """CoreFacade：N02 residual 种子权威覆盖套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        run_seed_replacement_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_seed_replacement_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N02 residual 种子权威覆盖门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_seed_replacement_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        evaluate_seed_replacement_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def run_object_type_publish_suite() -> Dict[str, Any]:
     """N02 deepen：ObjectType 人审发布套件（certified 恒 false）。"""
     from core.harness.knowledge_pipeline.object_type_publish import (
