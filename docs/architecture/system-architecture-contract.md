@@ -121,6 +121,7 @@ review_cycle: 90d
 > 2026-11-23：`output_style` **adhd_v2** 硬约束（禁编造 ETA / 高风险旁支升级 / list_cap 仅呈现）+ `enterprise_deployment.md` 选型三问；pre-commit Phase 45 真阻断 arch-pattern。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：Interop S6 薄切片（A-P5 deps / A-P4 `declared_unavailable` / B-P3 gate / B-P5 `composite_profile_id`）；**未宣称** 生产沙箱完备。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N07/N22 ObjectSet `$where`/`$expr` 显式 residual（`$where` unavailable；`$expr` 有界二元比较；freeze 仍 true；certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-24：知识系统 N07/N22 ObjectSet `$where`/`$expr` 产品面第一刀（`evaluate_object_set_where_expr_product`；默认可用有界 `$expr`；`$where` 仍 unavailable；objectset_where_expr_product_surface=true；certified 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N10 gold LLM judge 显式 residual（`judge_mode=llm` / `llm_judge_object_equiv`；不可用诚实上报；freeze 仍 true；accuracy/certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N10 gold LLM judge 产品面第一刀（`llm_judge_object_equiv_product`；默认可用；llm_judge_product_surface=true；accuracy/certified 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N11/N14 生产切写就绪回执显式 residual（`attest_production_cutover_readiness`；不可用诚实上报；freeze 仍 true；production_cutover_certified/certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

@@ -5,7 +5,8 @@
 N07/N22 deepen：嵌套布尔 filter（``$and``/``$or``/``$not`` + 字段算子）。
 非目标：不实现写路径、Scenario/Package、Wiki/KB 全入口字段 ACL（SDK 见 sdk_generator）；
 不宣称完整表达式语言产品 / N07·N22 certified；
-``$where`` 永不 JS eval（declared_unavailable）；``$expr`` 仅有界字段/字面量二元比较。
+``$where`` 永不 JS eval（declared_unavailable）；``$expr`` 仅有界字段/字面量二元比较；
+产品面第一刀：``evaluate_object_set_where_expr_product``（默认可用结构化回执）。
 """
 from __future__ import annotations
 
@@ -599,5 +600,219 @@ def evaluate_object_set_filter_gate(
         "note": (
             "ObjectSet nested filter + $expr residual; $where unavailable; "
             "not N07/N22 certified"
+        ),
+    }
+
+
+_WHERE_EXPR_PRODUCT_CASES = (
+    "where_expr_product_eval",
+    "where_expr_product_where_unavailable",
+    "honesty_product_certified_false",
+)
+
+
+def evaluate_object_set_where_expr_product(
+    item: Dict[str, Any],
+    filt: Dict[str, Any],
+    *,
+    max_depth: int = _MAX_FILTER_DEPTH,
+) -> Dict[str, Any]:
+    """N07/N22 产品面：有界 `$expr` / `$where` 结构化回执（默认可用；非 certified）。
+
+    `$where` 仍诚实 unavailable（禁 JS）；`$expr` 走有界二元比较。
+    返回结构化回执，便于 HTTP/UI（不抛 residual 同款异常冒充成功）。
+
+    Args:
+        item: 对象行。
+        filt: filter 表达式（`$expr` 或 `$where` 等）。
+        max_depth: 嵌套深度上限。
+    """
+    base = {
+        "objectset_where_expr_product_surface": True,
+        "certified": False,
+        "n07_full_conformance": False,
+        "n22_full_conformance": False,
+        "where_js_eval": False,
+        "n07_n22_h1_condition_freeze": True,
+        "wiki_kb_full_acl": False,
+    }
+    if not isinstance(item, dict) or not isinstance(filt, dict):
+        return {
+            **base,
+            "status": "invalid",
+            "matched": False,
+            "error": "item_and_filter_required",
+        }
+
+    # 为什么：产品面仍拒绝 $where JS——与 residual 同诚实锁，仅改为结构化回执
+    if "$where" in filt:
+        return {
+            **base,
+            "status": "where_unavailable",
+            "matched": False,
+            "via": "product_where_denied",
+            "note": (
+                "$where declared_unavailable (no JS eval); "
+                "product surface still refuses"
+            ),
+        }
+
+    try:
+        matched = match_filter_expr(item, filt, max_depth=max_depth)
+        via = "product_expr" if "$expr" in filt else "product_filter"
+        return {
+            **base,
+            "status": "ok",
+            "matched": bool(matched),
+            "via": via,
+            "note": (
+                "ObjectSet where/expr product surface; "
+                "not full expression language / not N07/N22 certified"
+            ),
+        }
+    except ObjectSetFilterError as exc:
+        msg = str(exc)
+        status = (
+            "where_unavailable" if "where_unavailable" in msg else "filter_error"
+        )
+        return {
+            **base,
+            "status": status,
+            "matched": False,
+            "via": "product_error",
+            "error": msg,
+            "note": (
+                "ObjectSet where/expr product surface; "
+                "not full expression language / not N07/N22 certified"
+            ),
+        }
+
+
+def run_object_set_where_expr_product_suite() -> Dict[str, Any]:
+    """N07/N22 产品面套件：`$expr` 可用；`$where` unavailable；certified 恒 false。"""
+    cases: List[Dict[str, Any]] = []
+    item = {"status": "open", "priority": "high", "n": 3}
+
+    ok = evaluate_object_set_where_expr_product(
+        item, {"$expr": {"$eq": ["$status", "open"]}}
+    )
+    gt_ok = evaluate_object_set_where_expr_product(
+        item, {"$expr": {"$gt": ["$n", 2]}}
+    )
+    miss = evaluate_object_set_where_expr_product(
+        item, {"$expr": {"$eq": ["$status", "closed"]}}
+    )
+    cases.append(
+        {
+            "id": "where_expr_product_eval",
+            "ok": ok.get("status") == "ok"
+            and ok.get("matched") is True
+            and ok.get("via") == "product_expr"
+            and ok.get("objectset_where_expr_product_surface") is True
+            and gt_ok.get("matched") is True
+            and miss.get("matched") is False
+            and ok.get("certified") is False
+            and ok.get("where_js_eval") is False,
+        }
+    )
+
+    where_prod = evaluate_object_set_where_expr_product(
+        item, {"$where": "this.status=='open'"}
+    )
+    residual_where_ok = False
+    try:
+        match_filter_expr(item, {"$where": "this.status=='open'"})
+    except ObjectSetFilterError as exc:
+        residual_where_ok = "where_unavailable" in str(exc)
+    cases.append(
+        {
+            "id": "where_expr_product_where_unavailable",
+            "ok": where_prod.get("status") == "where_unavailable"
+            and where_prod.get("matched") is False
+            and where_prod.get("objectset_where_expr_product_surface") is True
+            and where_prod.get("where_js_eval") is False
+            and residual_where_ok,
+        }
+    )
+    cases.append(
+        {
+            "id": "honesty_product_certified_false",
+            "ok": ok.get("certified") is False
+            and ok.get("n07_full_conformance") is False
+            and ok.get("n22_full_conformance") is False
+            and where_prod.get("certified") is False
+            and where_prod.get("where_js_eval") is False,
+        }
+    )
+
+    passed = sum(1 for c in cases if c.get("ok"))
+    return {
+        "ok": passed == len(_WHERE_EXPR_PRODUCT_CASES)
+        and len(cases) == len(_WHERE_EXPR_PRODUCT_CASES),
+        "passed": passed,
+        "total": len(_WHERE_EXPR_PRODUCT_CASES),
+        "cases": cases,
+        "certified": False,
+        "n07_full_conformance": False,
+        "n22_full_conformance": False,
+        "where_js_eval": False,
+        "n07_n22_h1_condition_freeze": True,
+        "objectset_where_expr_product_surface": True,
+        "note": (
+            "ObjectSet where/expr product surface suite; "
+            "$where unavailable; not N07/N22 certified"
+        ),
+    }
+
+
+def evaluate_object_set_where_expr_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N07/N22 产品面门槛门：要求 objectset_where_expr_product_surface。
+
+    Args:
+        suite: ``run_object_set_where_expr_product_suite`` 回执；缺省时现场跑套件。
+    """
+    s = (
+        suite
+        if isinstance(suite, dict)
+        else run_object_set_where_expr_product_suite()
+    )
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    # 为什么：禁止套件自签 certified（产品面 ≠ N07/N22 全量）
+    if (
+        s.get("certified") is True
+        or s.get("n07_full_conformance") is True
+        or s.get("n22_full_conformance") is True
+    ):
+        issues.append("honesty_certified_flag_forbidden")
+    # 为什么：$where JS 永不放开
+    if s.get("where_js_eval") is True:
+        issues.append("honesty_where_js_eval_forbidden")
+    # 为什么：产品面门槛要求显式 surface 标记
+    if s.get("objectset_where_expr_product_surface") is not True:
+        issues.append("product_where_expr_surface_required")
+    ids = {
+        c.get("id")
+        for c in (s.get("cases") or [])
+        if isinstance(c, dict) and c.get("ok")
+    }
+    for need in _WHERE_EXPR_PRODUCT_CASES:
+        if need not in ids:
+            issues.append(f"missing_or_failed:{need}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "n07_full_conformance": False,
+        "n22_full_conformance": False,
+        "where_js_eval": False,
+        "n07_n22_h1_condition_freeze": True,
+        "objectset_where_expr_product_surface": True,
+        "note": (
+            "ObjectSet where/expr product gate; "
+            "$where unavailable; not N07/N22 certified"
         ),
     }

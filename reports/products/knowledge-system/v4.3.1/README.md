@@ -76,6 +76,8 @@ authority: supporting
 | [phase2-migration-cutover-auth-evidence.md](./phase2-migration-cutover-auth-evidence.md) | N11/N14 deepen：作业级切写授权（token；非生产认证/非 certified） |
 | [phase2-role-action-matrix-evidence.md](./phase2-role-action-matrix-evidence.md) | N07/N22 deepen：角色×动作轴（配置驱动；非部署 RBAC/非 certified） |
 | [phase2-objectset-filter-evidence.md](./phase2-objectset-filter-evidence.md) | N07/N22 deepen：ObjectSet 嵌套 filter（非 Wiki/KB 全入口/非 certified） |
+| [phase2-objectset-where-expr-residual-evidence.md](./phase2-objectset-where-expr-residual-evidence.md) | N07/N22 residual：`$where` unavailable / `$expr` 有界比较（不可用诚实上报；非完整表达式/非 certified） |
+| [phase2-objectset-where-expr-product-evidence.md](./phase2-objectset-where-expr-product-evidence.md) | N07/N22 产品面第一刀：有界 `$expr` 结构化回执（默认可用；`$where` 仍 unavailable；非 certified） |
 | [phase2-reviewer-rbac-evidence.md](./phase2-reviewer-rbac-evidence.md) | N04/N12 deepen：publish reviewer 角色门（配置驱动；非部署 RBAC/非 certified） |
 | [phase2-fact-state-evidence.md](./phase2-fact-state-evidence.md) | W3 N12 Fact 状态机（review/lifecycle/claim + 审计；非裸 put_fact 唯一强制） |
 | [phase2-claim-evidence-evidence.md](./phase2-claim-evidence-evidence.md) | Batch F2 N03 Claim 证据硬门+冲突记录（门槛门；非全量认证） |
