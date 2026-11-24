@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3232
+total_capabilities: 3235
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2835,7 +2835,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 754
+    caps_count: 757
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4118,6 +4118,18 @@ domains:
         module: aiPlat-platform/apps/fde/api/lv4_false_positive_routes.py
         type: function
         signature: "POST /fde/lv4-false-positive/evaluate via Facade"
+      - symbol: "evaluate_bounded_lv4_auto_close"
+        module: core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
+        type: function
+        signature: "N08 residual: bounded Lv4 auto-close (certified=false)"
+      - symbol: "run_bounded_lv4_auto_close_suite"
+        module: core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
+        type: function
+        signature: "N08 residual: bounded Lv4 auto-close suite (certified=false)"
+      - symbol: "evaluate_bounded_lv4_auto_close_gate"
+        module: core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
+        type: function
+        signature: "N08 residual: bounded Lv4 auto-close gate (certified=false)"
       - symbol: "project_facts_to_wiki"
         module: core/harness/knowledge_pipeline/wiki_rebuild.py
         type: function

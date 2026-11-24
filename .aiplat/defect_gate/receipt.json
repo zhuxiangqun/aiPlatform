@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T10:05:00+08:00",
+  "reviewed_at": "2026-11-24T10:35:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "520ab35159c81e883d39f3e1dba7c82501f3ff9d",
-  "diff_sha256": "b6c9efd1fb0aaae723810e466655b67d7493ec982ff8889de7da98bf36c68ff4",
-  "head_sha": "74789af525b47b951cf13457338623a9e0d8845c",
+  "merge_base": "5b894313a0a3323c001b35e1745a496b74aaa830",
+  "diff_sha256": "dffae02e09dc22a080d1ce583dd2c043b73948c003ff7ac0bef5663dc8a37ff2",
+  "head_sha": "acbe1c9ab04e7f067ea0d45d546aab67164ea489",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N24 ops console residual; CAPS stats regenerated; freeze stays true. Local lock only."
+  "note": "N08 residual + CAPS/whitepaper stamp refresh. Local lock only."
 }
