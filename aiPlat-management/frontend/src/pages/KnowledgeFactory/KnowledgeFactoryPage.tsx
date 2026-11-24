@@ -25,6 +25,7 @@ import ObjectTypePublishPanel from './ObjectTypePublishPanel';
 import FieldAclPanel from './FieldAclPanel';
 import AboxAclPanel from './AboxAclPanel';
 import UnifiedAuditPanel from './UnifiedAuditPanel';
+import OpsConsolePanel from './OpsConsolePanel';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
 const WIKI_DOMAINS_API = '/api/core/wiki/ontology/domains';
@@ -1482,6 +1483,7 @@ const KnowledgeFactoryPage: React.FC = () => {
           <FieldAclPanel />
           <AboxAclPanel />
           <UnifiedAuditPanel />
+          <OpsConsolePanel />
           <details className="rounded border border-gray-800/80">
             <summary className="cursor-pointer px-3 py-2 text-[12px] text-gray-500 hover:text-gray-300">
               对照材料仪表（可跳过）

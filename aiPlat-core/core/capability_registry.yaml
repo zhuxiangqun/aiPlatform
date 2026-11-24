@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3226
+total_capabilities: 3232
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2835,7 +2835,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 748
+    caps_count: 754
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4606,6 +4606,30 @@ domains:
         module: core/harness/knowledge_pipeline/slo_telemetry.py
         type: function
         signature: "SLO residual: alert candidates (no delivery; certified=false)"
+      - symbol: "build_ops_console_snapshot"
+        module: core/harness/knowledge_pipeline/ops_console.py
+        type: function
+        signature: "N24 residual: ops console shell snapshot (certified=false)"
+      - symbol: "run_ops_console_suite"
+        module: core/harness/knowledge_pipeline/ops_console.py
+        type: function
+        signature: "N24 residual: ops console shell suite (certified=false)"
+      - symbol: "evaluate_ops_console_gate"
+        module: core/harness/knowledge_pipeline/ops_console.py
+        type: function
+        signature: "N24 residual: ops console shell gate (certified=false)"
+      - symbol: "build_knowledge_ops_console_snapshot"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: N24 ops console shell snapshot"
+      - symbol: "run_knowledge_ops_console_suite"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: N24 ops console shell suite"
+      - symbol: "evaluate_knowledge_ops_console_gate"
+        module: core/api/core_facade.py
+        type: function
+        signature: "CoreFacade: N24 ops console shell gate"
       - symbol: "record_knowledge_slo_sample"
         module: core/api/core_facade.py
         type: function
