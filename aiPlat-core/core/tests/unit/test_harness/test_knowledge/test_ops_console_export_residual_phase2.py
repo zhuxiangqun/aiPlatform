@@ -88,7 +88,9 @@ def test_docs_and_wiring_state():
         / "api"
         / "ops_console_routes.py"
     )
-    assert "ops-console/export" in routes.read_text(encoding="utf-8")
+    routes_text = routes.read_text(encoding="utf-8")
+    assert '@router.post("/ops-console/export")' in routes_text
+    # 为什么：UI 默认走 product 导出；residual export 路由仍保留
     panel = (
         ROOT
         / "aiPlat-management"
@@ -98,4 +100,4 @@ def test_docs_and_wiring_state():
         / "KnowledgeFactory"
         / "OpsConsolePanel.tsx"
     )
-    assert "ops-console/export" in panel.read_text(encoding="utf-8")
+    assert "ops-console/product/export" in panel.read_text(encoding="utf-8")
