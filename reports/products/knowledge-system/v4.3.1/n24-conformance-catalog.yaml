@@ -33,7 +33,7 @@ slo_telemetry_note: "SLO target registry + telemetry wiring is Operational-suffi
 n01_raw_integrity_freeze: true
 n01_raw_integrity_note: "N01 Raw integrity + DataSource→Raw + Core file/sql/api connector matrix is Core-sufficient; stop further default N01 deepen. Residual: certified / production vendor 连库验收; SQL vendor soft-dep matrix landed (phase2-n01-vendor-driver-matrix-evidence.md) — still not N01 certified."
 n02_object_type_freeze: true
-n02_object_type_note: "N02 Package + ObjectType draft→human publish (role gate) + management thin portal is Core-sufficient; stop further default N02 deepen. Residual: certified / full seed-file productization; thin portal landed; multi-tenant bulk opt-in landed (phase2-n02-bulk-portal-residual-evidence.md); published-over-seed authority opt-in landed (apply_published_seed_authority; unavailable when AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE off — phase2-n02-seed-replace-residual-evidence.md; does not mutate workspace_seeds) — still not N02 certified."
+n02_object_type_note: "N02 Package + ObjectType draft→human publish (role gate) + management thin portal is Core-sufficient; stop further default N02 deepen. Residual: certified / seed_replacement_complete; thin portal landed; multi-tenant bulk opt-in landed (phase2-n02-bulk-portal-residual-evidence.md); published-over-seed authority opt-in landed (apply_published_seed_authority; unavailable when AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE off — phase2-n02-seed-replace-residual-evidence.md; does not mutate workspace_seeds); seed authority product surface slice-1 landed (list_object_type_seed_catalog + apply_published_seed_authority_product; default-on; workspace_seeds read-only — phase2-n02-seed-authority-product-evidence.md) — still not N02 certified."
 n03_claim_freeze: true
 n03_claim_note: "N03 Claim evidence+conflict+status write is Core-sufficient; stop further default N03 deepen. Residual: certified / full Claim lifecycle product."
 n04_n12_write_rbac_freeze: true
@@ -122,7 +122,7 @@ items:
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_object_type_publish_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_seed_replacement_residual_phase2.py
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/ObjectTypePublishPanel.tsx
-    note: "Core-scoped exists (附录 N.2); 域 YAML version + Package + ObjectType draft→人审发布（角色门；Package schema 门可选）+ 管理端薄门户 + 显式 residual 多租户批量 + **显式 residual** published-over-seed 权威覆盖（opt-in；不改写 workspace_seeds；不可用诚实上报）；n02_object_type_freeze=true 停止默认 N02 deepen；非全量种子文件产品化/非 N02 certified"
+    note: "Core-scoped exists (附录 N.2); 域 YAML version + Package + ObjectType draft→人审发布（角色门；Package schema 门可选）+ 管理端薄门户 + 显式 residual 多租户批量 + **显式 residual** published-over-seed + **产品面第一刀** list_object_type_seed_catalog / apply_published_seed_authority_product（默认可用；不改写 workspace_seeds；seed_product_surface=true）；n02_object_type_freeze=true 停止默认 N02 deepen；非 seed_replacement_complete / 非 N02 certified"
   - id: N03
     level: core
     title: Fact/Claim 有 evidence

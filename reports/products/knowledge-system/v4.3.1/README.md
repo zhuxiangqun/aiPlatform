@@ -39,6 +39,7 @@ authority: supporting
 | [phase2-n02-object-type-publish-portal-evidence.md](./phase2-n02-object-type-publish-portal-evidence.md) | N02 residual：管理端 ObjectType 发布薄门户（非种子替换 / 非 certified） |
 | [phase2-n02-bulk-portal-residual-evidence.md](./phase2-n02-bulk-portal-residual-evidence.md) | N02 residual：多租户有界 bulk-transition（不可用诚实上报；非种子替换/非 certified） |
 | [phase2-n02-seed-replace-residual-evidence.md](./phase2-n02-seed-replace-residual-evidence.md) | N02 residual：published-over-seed 权威覆盖（opt-in；不改写 workspace_seeds；非全量种子文件产品化/非 certified） |
+| [phase2-n02-seed-authority-product-evidence.md](./phase2-n02-seed-authority-product-evidence.md) | N02 产品面第一刀：种子目录 + published-over-seed（默认可用；不改写 workspace_seeds；非 complete/非 certified） |
 | [phase2-wiki-rebuild-evidence.md](./phase2-wiki-rebuild-evidence.md) | N05 deepen：Wiki 有条件重建派生页（非 wiki_engine 全量/非 certified） |
 | [phase2-knowledge-gold-eval-evidence.md](./phase2-knowledge-gold-eval-evidence.md) | N10 deepen：域级 Exact-match gold 流水线（非准确率宣称/非 certified） |
 | [phase2-n10-llm-judge-residual-evidence.md](./phase2-n10-llm-judge-residual-evidence.md) | N10 residual：opt-in LLM object 等价（不可用诚实上报；非准确率/非 certified） |

@@ -250,6 +250,75 @@ async def evaluate_seed_replacement_gate_route(
     return evaluate_seed_replacement_gate(suite)
 
 
+class ObjectTypeSeedAuthorityProductBody(BaseModel):
+    """N02 产品面：published-over-seed（种子须在 workspace_seeds）。"""
+
+    tenant_id: str = Field(..., min_length=1)
+    seed_path: str = Field(default="")
+    object_type_ids: Optional[List[str]] = None
+    output_root: Optional[str] = None
+    write: bool = False
+
+
+@router.get("/object-types/product/seed-files")
+async def list_object_type_seed_catalog_route() -> Dict[str, Any]:
+    """N02 产品面：列举 workspace_seeds ObjectType 种子（只读）。"""
+    from core.api.core_facade import list_knowledge_object_type_seed_catalog
+
+    return list_knowledge_object_type_seed_catalog()
+
+
+@router.post("/object-types/product/seed-authority")
+async def apply_published_seed_authority_product_route(
+    body: ObjectTypeSeedAuthorityProductBody = Body(...),
+) -> Dict[str, Any]:
+    """N02 产品面：默认可用 published-over-seed（非 certified）。
+
+    Args:
+        body: 租户 + 可选种子路径 / 类型列表。
+    """
+    from core.api.core_facade import apply_published_seed_authority_product
+
+    out = apply_published_seed_authority_product(
+        tenant_id=body.tenant_id,
+        seed_path=body.seed_path,
+        object_type_ids=body.object_type_ids,
+        output_root=body.output_root,
+        write=body.write,
+    )
+    if out.get("status") == "invalid":
+        raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
+    if out.get("status") == "denied":
+        raise HTTPException(status_code=403, detail=out.get("reason") or "denied")
+    return out
+
+
+@router.post("/object-types/product/seed-authority/suite")
+async def run_seed_authority_product_suite_route() -> Dict[str, Any]:
+    """N02 产品面：种子权威套件。"""
+    from core.api.core_facade import run_seed_authority_product_suite
+
+    return run_seed_authority_product_suite()
+
+
+@router.post("/object-types/product/seed-authority/gate")
+async def evaluate_seed_authority_product_gate_route(
+    body: ObjectTypeGateBody = Body(default_factory=ObjectTypeGateBody),
+) -> Dict[str, Any]:
+    """N02 产品面：种子权威门槛门。
+
+    Args:
+        body: 可选 suite 回执。
+    """
+    from core.api.core_facade import (
+        evaluate_seed_authority_product_gate,
+        run_seed_authority_product_suite,
+    )
+
+    suite = body.suite if body.suite is not None else run_seed_authority_product_suite()
+    return evaluate_seed_authority_product_gate(suite)
+
+
 @router.post("/object-types/suite")
 async def run_object_type_publish_suite_route():
     """运行 N02 ObjectType 人审发布套件。"""

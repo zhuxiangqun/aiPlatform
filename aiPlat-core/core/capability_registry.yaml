@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3261
+total_capabilities: 3269
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2835,7 +2835,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 783
+    caps_count: 791
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -5856,6 +5856,38 @@ domains:
         type: "function"
         signature: "N02 residual: seed authority gate (certified=false)"
         module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "list_object_type_seed_catalog"
+        type: "function"
+        signature: "N02 product: list workspace_seeds ObjectType seed files (read-only)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "apply_published_seed_authority_product"
+        type: "function"
+        signature: "N02 product: published-over-seed (no env; certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "run_seed_authority_product_suite"
+        type: "function"
+        signature: "N02 product: seed authority suite (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "evaluate_seed_authority_product_gate"
+        type: "function"
+        signature: "N02 product: seed authority gate (certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "list_knowledge_object_type_seed_catalog"
+        type: "function"
+        signature: "CoreFacade: N02 product seed catalog"
+        module: "core/api/core_facade.py"
+      - symbol: "apply_published_seed_authority_product"
+        type: "function"
+        signature: "CoreFacade: N02 product seed authority"
+        module: "core/api/core_facade.py"
+      - symbol: "run_seed_authority_product_suite"
+        type: "function"
+        signature: "CoreFacade: N02 product seed suite"
+        module: "core/api/core_facade.py"
+      - symbol: "evaluate_seed_authority_product_gate"
+        type: "function"
+        signature: "CoreFacade: N02 product seed gate"
+        module: "core/api/core_facade.py"
       - symbol: "get_published_object_type"
         type: "function"
         signature: "N02: read published ObjectType definition"

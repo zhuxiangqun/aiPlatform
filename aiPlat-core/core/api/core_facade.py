@@ -5677,6 +5677,69 @@ def evaluate_seed_replacement_gate(
     return _gate(suite)
 
 
+def list_knowledge_object_type_seed_catalog() -> Dict[str, Any]:
+    """CoreFacade：N02 产品面 ObjectType 种子目录（只读）。"""
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        list_object_type_seed_catalog as _list,
+    )
+
+    return _list()
+
+
+def apply_published_seed_authority_product(
+    *,
+    tenant_id: str,
+    seed_path: str = "",
+    object_type_ids: Optional[List[str]] = None,
+    output_root: Optional[str] = None,
+    write: bool = False,
+) -> Dict[str, Any]:
+    """CoreFacade：N02 产品面 published-over-seed（无 residual env；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        seed_path: 种子文件名或 workspace_seeds 路径。
+        object_type_ids: 可选类型列表。
+        output_root: 可选写盘根。
+        write: 是否写盘。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        apply_published_seed_authority_product as _apply,
+    )
+
+    return _apply(
+        tenant_id=tenant_id,
+        seed_path=seed_path,
+        object_type_ids=object_type_ids,
+        output_root=output_root,
+        write=write,
+    )
+
+
+def run_seed_authority_product_suite() -> Dict[str, Any]:
+    """CoreFacade：N02 产品面种子权威套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        run_seed_authority_product_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_seed_authority_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N02 产品面种子权威门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_seed_authority_product_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        evaluate_seed_authority_product_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def run_object_type_publish_suite() -> Dict[str, Any]:
     """N02 deepen：ObjectType 人审发布套件（certified 恒 false）。"""
     from core.harness.knowledge_pipeline.object_type_publish import (

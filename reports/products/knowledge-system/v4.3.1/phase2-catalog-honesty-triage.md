@@ -17,7 +17,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 >
 > 2026-11-23：剩余 ADR 例外面已批量冻结（`phase2-remaining-adr-freeze-evidence.md`）；本表 residual 列仍开放，不因 freeze 关闭。
 > 2026-11-23：Phase 2 sufficient-freeze 程序收口（`phase2-sufficient-freeze-closeout-evidence.md`）；仍不关闭 residual / certified。
-> 2026-11-24：产品完备面显式 residual 已合入（N02 bulk / N24 ops console 薄壳 / N08 有界 Lv4 auto-close / N02 published-over-seed / N24 ops console 有界导出）；N24 运维台**产品面**已落地（默认可用 + schema JSON + **表单字段编辑器** + 浏览器导出；`full_ops_console=true` / `schema_form_editor=true`）；**未**宣称 certified / 自由布局可视化设计器；freeze 仍 true。
+> 2026-11-24：产品完备面显式 residual 已合入（N02 bulk / N24 ops console 薄壳 / N08 有界 Lv4 auto-close / N02 published-over-seed / N24 ops console 有界导出）；N24 运维台**产品面**已落地（默认可用 + schema JSON + **表单字段编辑器** + 浏览器导出；`full_ops_console=true` / `schema_form_editor=true`）；N02 **种子权威产品面第一刀**已落地（workspace_seeds 目录 + published-over-seed；`seed_product_surface=true`；不改写 seeds）；**未**宣称 certified / seed_replacement_complete / 自由布局可视化设计器；freeze 仍 true。
 
 ## 本切片修复
 
@@ -26,13 +26,13 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 | N09 catalog YAML | **已过时（结构债）** | `note` 误嵌进 evidence 列表导致 `ScannerError`，conformance pack 无法加载；已回顶层 item `note` |
 | N11 note「切写未授权」 | **已过时** | 作业级切写授权已接线（`phase2-migration-cutover-auth-evidence.md`）；note 改为「非生产切写认证」 |
 | N02 多域批量 | **已过时（residual 已落地）** | opt-in `bulk_transition_object_types` 已合入（`phase2-n02-bulk-portal-residual-evidence.md`） |
-| N02 种子权威覆盖 | **已过时（residual 已落地）** | opt-in `apply_published_seed_authority` 已接线（`phase2-n02-seed-replace-residual-evidence.md`；不改写 workspace_seeds）；剩全量种子文件产品化 / certified |
+| N02 种子权威覆盖 | **已过时（residual + 产品面第一刀已落地）** | residual：`apply_published_seed_authority`；产品面：`list_object_type_seed_catalog` + `apply_published_seed_authority_product`（`phase2-n02-seed-authority-product-evidence.md`）；剩 seed_replacement_complete / certified |
 
 ## 未进 ADR 例外表的 exists 项
 
 | ID | catalog note 摘要 | 判定 | 后续 |
 |----|-------------------|------|------|
-| N02 | ObjectType 人审发布 deepen + 管理端薄门户 + 多租户有界 bulk + published-over-seed 权威 residual 已接线；全量种子文件产品化 / certified 仍缺 | **并入既有刀**（deepen+薄门户+bulk+seed authority residual）+ **仍开放**（全量种子文件产品化/certified） | deepen/门户见 ADR N02 + `phase2-object-type-publish-evidence.md` + `phase2-n02-object-type-publish-portal-evidence.md`；bulk 见 `phase2-n02-bulk-portal-residual-evidence.md`；seed authority 见 `phase2-n02-seed-replace-residual-evidence.md`；全量种子文件产品化仍开放 |
+| N02 | ObjectType 人审发布 deepen + 管理端薄门户 + 多租户有界 bulk + published-over-seed residual + **种子权威产品面第一刀**已接线；seed_replacement_complete / certified 仍缺 | **并入既有刀**（deepen+薄门户+bulk+seed residual+产品面）+ **仍开放**（complete/certified） | deepen/门户见 ADR N02 + `phase2-object-type-publish-evidence.md` + `phase2-n02-object-type-publish-portal-evidence.md`；bulk 见 `phase2-n02-bulk-portal-residual-evidence.md`；seed residual 见 `phase2-n02-seed-replace-residual-evidence.md`；产品面见 `phase2-n02-seed-authority-product-evidence.md`；complete/certified 仍开放 |
 | N05 | Wiki 有条件重建 deepen 已接线；wiki_engine/FTS 全量仍缺 | **并入既有刀**（deepen）+ **仍开放**（全量引擎） | deepen 见 ADR N05 + `phase2-wiki-rebuild-evidence.md`；全量仍开放 |
 | N10 | Exact-match gold 流水线已接线；LLM judge opt-in residual 已落地；准确率宣称仍缺 | **并入既有刀**（deepen + residual）+ **仍开放**（准确率/certified） | deepen 见 ADR N10 + `phase2-knowledge-gold-eval-evidence.md`；residual 见 `phase2-n10-llm-judge-residual-evidence.md`；准确率宣称仍开放 |
 | N15 | 标准包 schema 已发布 | **已过时**（无 deepen 债） | 保持 exists；无单独 deepen todo |
@@ -67,4 +67,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -c \
 ## 明确未做
 
 - 关闭任何 ADR 例外 / 置 `certified=true`
-- ObjectType 全量种子文件产品化、Wiki 全量引擎、gold 准确率宣称、N17 semantic_cases 全量对 Fact Store、N18 召回/聚合/导出全路径、N19 全部旁路强制落快照、N20 list→dict 改写/certified、N21 Wiki/KB list 主返回类型改写、N14 生产切写认证/自动修复写回、N08 全量 Action Lv4 产品化、N24 自由布局可视化设计器 / certified
+- ObjectType seed_replacement_complete / 原地改写 workspace_seeds、Wiki 全量引擎、gold 准确率宣称、N17 semantic_cases 全量对 Fact Store、N18 召回/聚合/导出全路径、N19 全部旁路强制落快照、N20 list→dict 改写/certified、N21 Wiki/KB list 主返回类型改写、N14 生产切写认证/自动修复写回、N08 全量 Action Lv4 产品化、N24 自由布局可视化设计器 / certified
