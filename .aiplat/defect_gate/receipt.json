@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T01:10:00+08:00",
+  "reviewed_at": "2026-11-24T10:05:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "7f4f14e3890bb4f88e56bfbbdcd3bcc260d59634",
-  "diff_sha256": "75aea6d76709c00c3a253eb62261f3e07bfa197dd06b81916959230b9eba6925",
-  "head_sha": "b044f927b282697904bd63cdb4de03fffcbbbf9f",
+  "merge_base": "520ab35159c81e883d39f3e1dba7c82501f3ff9d",
+  "diff_sha256": "b6c9efd1fb0aaae723810e466655b67d7493ec982ff8889de7da98bf36c68ff4",
+  "head_sha": "74789af525b47b951cf13457338623a9e0d8845c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "S6 thin: A-P5 deps/cycle, A-P4 declared_unavailable, B-P3 gate, B-P5 profile incomplete; no production sandbox claim."
+  "note": "N24 ops console residual; CAPS stats regenerated; freeze stays true. Local lock only."
 }

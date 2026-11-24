@@ -66,6 +66,7 @@ from .lv4_false_positive_routes import router as _lv4_false_positive_router
 from .revision_restore_routes import router as _revision_restore_router
 from .datasource_vendor_matrix_routes import router as _datasource_vendor_matrix_router
 from .unified_audit_routes import router as _unified_audit_router
+from .ops_console_routes import router as _ops_console_router
 from .rapid_insight import router as _rapid_insight_router
 from .fde_phase4 import router as _phase4_router
 from .fde_slice import router as _slice_router
@@ -128,6 +129,7 @@ router.include_router(_lv4_false_positive_router, prefix="/fde")
 router.include_router(_revision_restore_router, prefix="/fde")
 router.include_router(_datasource_vendor_matrix_router, prefix="/fde")
 router.include_router(_unified_audit_router, prefix="/fde")
+router.include_router(_ops_console_router, prefix="/fde")
 router.include_router(_rapid_insight_router, prefix="/fde")
 router.include_router(_phase4_router, prefix="/fde")
 router.include_router(_slice_router, prefix="/fde")
