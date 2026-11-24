@@ -42,6 +42,6 @@ python3 -c "import yaml; c=yaml.safe_load(open('reports/products/knowledge-syste
 
 ## 明确未做
 
-- 全量运维台 / schema 编辑器 / 导出下载产品化
+- 全量运维台 / schema 编辑器 / 通用下载产品化（有界导出见 `phase2-n24-ops-console-export-residual-evidence.md`）
 - N24 certified / Full unconditional
 - 恢复默认 N24 deepen mop

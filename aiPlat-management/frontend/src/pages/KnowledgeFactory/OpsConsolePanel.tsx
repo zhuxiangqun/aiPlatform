@@ -1,12 +1,13 @@
 /**
  * OpsConsolePanel — N24 运维台薄壳管理端 UI。
  *
- * 经 FDE `/ops-console*` → CoreFacade；聚合统一审计近窗 + SLO 概况。
- * 须服务端 AIPLAT_KNOWLEDGE_OPS_CONSOLE=1。不宣称全量运维台 / certified。
+ * 经 FDE `/ops-console*` → CoreFacade；聚合统一审计近窗 + SLO 概况；
+ * 可选有界导出（AIPLAT_KNOWLEDGE_OPS_CONSOLE_EXPORT=1）。
+ * 不宣称全量运维台 / 通用下载产品化 / certified。
  */
 import React, { useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
-import { Gauge, RefreshCw } from 'lucide-react';
+import { Download, Gauge, RefreshCw } from 'lucide-react';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
 
@@ -19,6 +20,9 @@ type OpsSnapshot = {
   n24_full_conformance?: boolean;
   n24_unified_audit_freeze?: boolean;
   full_ops_console?: boolean;
+  export_complete?: boolean;
+  wrote?: boolean;
+  output_path?: string | null;
   audit?: { recent_count?: number; listed?: number; window_hours?: number };
   slo?: {
     snapshot_status?: string;
@@ -41,8 +45,10 @@ const OpsConsolePanel: React.FC = () => {
   const [domainId, setDomainId] = useState('');
   const [windowHours, setWindowHours] = useState(24);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [snap, setSnap] = useState<OpsSnapshot | null>(null);
   const [gateNote, setGateNote] = useState('');
+  const [exportNote, setExportNote] = useState('');
 
   const reload = useCallback(async () => {
     if (!tenantId.trim()) return;
@@ -88,6 +94,37 @@ const OpsConsolePanel: React.FC = () => {
     }
   }, []);
 
+  const runExport = useCallback(async () => {
+    if (!tenantId.trim()) return;
+    setExporting(true);
+    try {
+      const r = await fetch(API('/ops-console/export'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_id: tenantId.trim(),
+          domain_id: domainId.trim(),
+          window_hours: windowHours || 24,
+          include_live: false,
+          write: true,
+        }),
+      });
+      const body = (await r.json().catch(() => ({}))) as OpsSnapshot & {
+        detail?: unknown;
+      };
+      if (!r.ok) throw new Error(detailMessage(body.detail));
+      setExportNote(
+        body.status === 'ok'
+          ? `export ok · wrote=${String(body.wrote)} · path=${String(body.output_path || '—')} · complete=${String(body.export_complete)}`
+          : `export ${String(body.status)} · ${body.note || ''}`,
+      );
+    } catch (e: unknown) {
+      setExportNote((e as Error)?.message || '导出失败');
+    } finally {
+      setExporting(false);
+    }
+  }, [tenantId, domainId, windowHours]);
+
   return (
     <Card className="border-gray-800 bg-gray-950/40">
       <CardHeader className="flex flex-row items-center justify-between gap-2 py-3">
@@ -107,6 +144,16 @@ const OpsConsolePanel: React.FC = () => {
           <Button
             type="button"
             size="sm"
+            variant="ghost"
+            disabled={exporting || !tenantId.trim()}
+            onClick={() => void runExport()}
+          >
+            <Download className={`h-3.5 w-3.5 mr-1 ${exporting ? 'animate-pulse' : ''}`} />
+            导出
+          </Button>
+          <Button
+            type="button"
+            size="sm"
             variant="outline"
             disabled={loading}
             onClick={() => void reload()}
@@ -118,8 +165,9 @@ const OpsConsolePanel: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-3 text-[12px] text-gray-400">
         <p className="text-gray-500">
-          聚合统一审计近窗计数与 SLO 达标概况；非全量运维台 / 非 certified。须服务端
-          AIPLAT_KNOWLEDGE_OPS_CONSOLE=1。
+          聚合统一审计近窗计数与 SLO 达标概况；可选有界 JSON 导出。非全量运维台 /
+          非通用下载产品化 / 非 certified。壳：AIPLAT_KNOWLEDGE_OPS_CONSOLE=1；导出：
+          AIPLAT_KNOWLEDGE_OPS_CONSOLE_EXPORT=1。
         </p>
         <div className="flex flex-wrap gap-2 items-end">
           <label className="flex flex-col gap-1">
@@ -151,6 +199,7 @@ const OpsConsolePanel: React.FC = () => {
           </label>
         </div>
         {gateNote ? <p className="text-gray-500">{gateNote}</p> : null}
+        {exportNote ? <p className="text-gray-500">{exportNote}</p> : null}
         {snap ? (
           <div className="rounded border border-gray-800 bg-black/30 p-3 space-y-2 font-mono text-[11px]">
             <div>
