@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T07:40:00+08:00",
+  "reviewed_at": "2026-11-25T07:45:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "50e0d24c6762b3c3e585b67b486ded5f15017b0b",
-  "diff_sha256": "22b49023a81d57b09b264f9cb3dde099dbf7953d09a031c7e1f4bf681ca9c4ec",
-  "head_sha": "2e86c1bd00cc3c2a21dae905c4c0d1340020665d",
+  "diff_sha256": "7def95d699b16c8cafab4ca43c9e55cc014b4a65e97bb52d64ec6163e23c1769",
+  "head_sha": "688b171a1adfec12677002d0744eb329e14e851c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N13 ECE product rebased + whitepaper sync; local lock only."
+  "note": "N13 after caps_count fix; CI truth gate pass locally. Local lock only."
 }
