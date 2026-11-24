@@ -43,7 +43,7 @@ n05_wiki_rebuild_note: "N05 rebuild taxonomy + Fact→Wiki conditional rebuild i
 n06_query_gateway_freeze: true
 n06_query_gateway_note: "N06 F.1 + unified query gateway (fact/object_set/wiki/index/materials_chat/graphrag) is Core-sufficient; stop further default N06 deepen. Residual: certified / all other app entrypoints."
 n10_gold_eval_freeze: true
-n10_gold_eval_note: "N10 appendix O thresholds + domain Exact-match gold pipeline is Operational-sufficient; stop further default N10 deepen. Residual: certified / accuracy claim; LLM judge opt-in landed (judge_mode=llm + llm_judge_object_equiv; unavailable when live LLM off — phase2-n10-llm-judge-residual-evidence.md) — still not accuracy certified."
+n10_gold_eval_note: "N10 appendix O thresholds + domain Exact-match gold pipeline is Operational-sufficient; stop further default N10 deepen. Residual: certified / accuracy claim; LLM judge opt-in landed (judge_mode=llm + llm_judge_object_equiv; unavailable when live LLM off — phase2-n10-llm-judge-residual-evidence.md); LLM judge product surface slice-1 landed (llm_judge_object_equiv_product; default-on — phase2-n10-llm-judge-product-evidence.md) — still not accuracy certified."
 n11_n14_migration_freeze: true
 n11_n14_migration_note: "N11/N14 dual-write reconcile + cutover token + Raw↔Fact↔Index chain is Operational-sufficient; stop further default N11/N14 deepen. Residual: certified; production readiness receipt opt-in landed (attest_production_cutover_readiness; unavailable when AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST off — phase2-n11-production-attest-residual-evidence.md); product surface slice-1 landed (attest_production_cutover_readiness_product; default-on; prod_attest_product_surface=true — phase2-n11-production-attest-product-evidence.md) — still not production cutover certified."
 n13_calibration_freeze: true
@@ -324,7 +324,7 @@ items:
       - aiPlat-core/core/harness/knowledge_pipeline/confidence_calibration.py
       - aiPlat-core/core/harness/knowledge_pipeline/knowledge_gold_eval.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_knowledge_gold_eval_phase2.py
-    note: "Operational-scoped exists (附录 N.4); 附录 O 校准门槛 + 域级 Exact-match gold 流水线 + 显式 residual opt-in LLM judge（judge_mode=llm；不可用诚实上报）；非准确率宣称/非 N10 certified；n10_gold_eval_freeze=true 停止默认 deepen"
+    note: "Operational-scoped exists (附录 N.4); 附录 O 校准门槛 + 域级 Exact-match gold 流水线 + 显式 residual opt-in LLM judge + **产品面第一刀** llm_judge_object_equiv_product（默认可用；llm_judge_product_surface=true）；非准确率宣称/非 N10 certified；n10_gold_eval_freeze=true 停止默认 deepen"
   - id: N11
     level: operational
     title: 迁移/回滚方案

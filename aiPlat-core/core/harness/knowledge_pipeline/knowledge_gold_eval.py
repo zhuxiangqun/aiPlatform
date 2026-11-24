@@ -4,6 +4,7 @@
   - 登记域级 gold 数据集（cases + 门槛）
   - 按 DomainRouter / 显式域列表跑 Exact-match 评测（FactLedger 对照）
   - 显式 residual：opt-in ``judge_mode=llm`` 有界 object 等价判定（可注入 judge_fn）
+  - 产品面：``llm_judge_object_equiv_product``（默认可用；无 residual env 门）
   - 套件/门槛门：``accuracy_claim`` / ``certified`` / ``n10_full`` 恒 false
 
 非目标：
@@ -38,6 +39,12 @@ _SUITE_CASES = (
     "llm_judge_unavailable",
 )
 
+_PRODUCT_SUITE_CASES = (
+    "llm_judge_product_eval",
+    "llm_judge_product_unavailable",
+    "honesty_product_certified_false",
+)
+
 LlmJudgeFn = Callable[..., Union[Dict[str, Any], Awaitable[Dict[str, Any]]]]
 
 
@@ -52,11 +59,12 @@ async def llm_judge_object_equiv(
     subject: str = "",
     predicate: str = "",
     judge_fn: Optional[LlmJudgeFn] = None,
+    product_surface: bool = False,
 ) -> Dict[str, Any]:
-    """N10 residual：有界 LLM object 字符串等价判定（非准确率宣称）。
+    """N10：有界 LLM object 字符串等价判定（非准确率宣称）。
 
-    仅比较单对 object 文本是否语义等价；默认经 ``sys_llm_generate``，
-    失败或未配置时返回 ``status=llm_judge_unavailable``。
+    residual：无 ``AIPLAT_KNOWLEDGE_GOLD_LLM_JUDGE`` 时实网不可用。
+    产品面（``product_surface=True``）：跳过 residual env 门，可注入或实网。
 
     Args:
         expected: gold 期望 object。
@@ -64,6 +72,7 @@ async def llm_judge_object_equiv(
         subject: 可选 subject（写入 judge prompt 上下文）。
         predicate: 可选 predicate。
         judge_fn: 可选注入判定函数（测试/离线）；返回 ``matched`` / ``status``。
+        product_surface: 是否产品面（跳过 residual env 门）。
     """
     exp = str(expected or "").strip()
     act = str(actual or "").strip()
@@ -75,9 +84,15 @@ async def llm_judge_object_equiv(
         "accuracy_claim": False,
         "certified": False,
         "n10_full_conformance": False,
+        "llm_judge_product_surface": bool(product_surface),
     }
     if exp == act:
-        return {**base, "status": "ok", "matched": True, "via": "exact"}
+        return {
+            **base,
+            "status": "ok",
+            "matched": True,
+            "via": "exact",
+        }
     if judge_fn is not None:
         try:
             raw = judge_fn(
@@ -89,7 +104,12 @@ async def llm_judge_object_equiv(
             if hasattr(raw, "__await__"):
                 raw = await raw  # type: ignore[misc]
             if not isinstance(raw, dict):
-                return {**base, "status": "llm_judge_unavailable", "matched": False}
+                return {
+                    **base,
+                    "status": "llm_judge_unavailable",
+                    "matched": False,
+                    "via": "injected",
+                }
             status = str(raw.get("status") or "ok").strip() or "ok"
             if status in {"unavailable", "llm_judge_unavailable"}:
                 return {
@@ -113,8 +133,10 @@ async def llm_judge_object_equiv(
                 "via": "injected_error",
             }
 
-    # 为什么：默认关闭实网 LLM，避免 CI/离线误把失败当 Exact-match；显式 opt-in 才打模型
-    if os.environ.get("AIPLAT_KNOWLEDGE_GOLD_LLM_JUDGE", "").strip() not in {
+    # 为什么：residual 默认关实网；产品面跳过 env 门但仍可能因模型不可用诚实失败
+    if not product_surface and os.environ.get(
+        "AIPLAT_KNOWLEDGE_GOLD_LLM_JUDGE", ""
+    ).strip() not in {
         "1",
         "true",
         "yes",
@@ -170,6 +192,170 @@ async def llm_judge_object_equiv(
             "matched": False,
             "via": "llm_error",
         }
+
+
+async def llm_judge_object_equiv_product(
+    *,
+    expected: str,
+    actual: str,
+    subject: str = "",
+    predicate: str = "",
+    judge_fn: Optional[LlmJudgeFn] = None,
+) -> Dict[str, Any]:
+    """N10 产品面：有界 LLM object 等价（无 residual env 门；非准确率宣称）。
+
+    Args:
+        expected: gold 期望 object。
+        actual: 实际 object。
+        subject: 可选 subject。
+        predicate: 可选 predicate。
+        judge_fn: 可选注入判定函数。
+    """
+    out = await llm_judge_object_equiv(
+        expected=expected,
+        actual=actual,
+        subject=subject,
+        predicate=predicate,
+        judge_fn=judge_fn,
+        product_surface=True,
+    )
+    out["via_product"] = "product"
+    out["llm_judge_product_surface"] = True
+    out["accuracy_claim"] = False
+    out["certified"] = False
+    out["n10_full_conformance"] = False
+    if not out.get("note"):
+        out["note"] = (
+            "llm judge product surface; not accuracy claim / not N10 certified"
+        )
+    return out
+
+
+async def run_llm_judge_product_suite() -> Dict[str, Any]:
+    """N10 产品面套件：默认可用；accuracy / certified 恒 false。"""
+    cases: List[Dict[str, Any]] = []
+    prev = os.environ.pop("AIPLAT_KNOWLEDGE_GOLD_LLM_JUDGE", None)
+    try:
+        # 为什么：产品面无 residual env 仍可注入成功
+        def _ok_judge(*, expected: str, actual: str, **_kw: Any) -> Dict[str, Any]:
+            return {
+                "status": "ok",
+                "matched": {str(expected), str(actual)} <= {"open", "opened"}
+                or expected == actual,
+            }
+
+        ok = await llm_judge_object_equiv_product(
+            expected="opened",
+            actual="open",
+            subject="InstallOrder:WO-N10P",
+            predicate="status",
+            judge_fn=_ok_judge,
+        )
+        cases.append(
+            {
+                "id": "llm_judge_product_eval",
+                "ok": ok.get("status") == "ok"
+                and ok.get("matched") is True
+                and ok.get("llm_judge_product_surface") is True
+                and ok.get("accuracy_claim") is False
+                and ok.get("certified") is False,
+            }
+        )
+
+        def _unavail(**_kw: Any) -> Dict[str, Any]:
+            return {"status": "llm_judge_unavailable", "matched": False}
+
+        un = await llm_judge_object_equiv_product(
+            expected="opened",
+            actual="closed",
+            judge_fn=_unavail,
+        )
+        residual = await llm_judge_object_equiv(
+            expected="opened",
+            actual="open",
+        )
+        cases.append(
+            {
+                "id": "llm_judge_product_unavailable",
+                "ok": un.get("status") == "llm_judge_unavailable"
+                and un.get("llm_judge_product_surface") is True
+                and residual.get("status") == "llm_judge_unavailable"
+                and residual.get("via") == "env_disabled"
+                and residual.get("llm_judge_product_surface") is False,
+            }
+        )
+        cases.append(
+            {
+                "id": "honesty_product_certified_false",
+                "ok": ok.get("certified") is False
+                and ok.get("n10_full_conformance") is False
+                and ok.get("accuracy_claim") is False
+                and un.get("certified") is False,
+            }
+        )
+    finally:
+        if prev is not None:
+            os.environ["AIPLAT_KNOWLEDGE_GOLD_LLM_JUDGE"] = prev
+
+    passed = sum(1 for c in cases if c.get("ok"))
+    return {
+        "ok": passed == len(_PRODUCT_SUITE_CASES) and len(cases) == len(
+            _PRODUCT_SUITE_CASES
+        ),
+        "passed": passed,
+        "total": len(_PRODUCT_SUITE_CASES),
+        "cases": cases,
+        "certified": False,
+        "n10_full_conformance": False,
+        "accuracy_claim": False,
+        "n10_gold_eval_freeze": True,
+        "llm_judge_product_surface": True,
+        "note": (
+            "LLM judge product surface suite; "
+            "not accuracy claim / not N10 certified"
+        ),
+    }
+
+
+def evaluate_llm_judge_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N10 产品面门槛门：要求 llm_judge_product_surface；禁止 accuracy/certified。
+
+    Args:
+        suite: ``run_llm_judge_product_suite`` 回执；缺省时需调用方先跑 async suite。
+    """
+    s = suite if isinstance(suite, dict) else {}
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    # 为什么：禁止套件自签 certified（产品面 ≠ N10 全量认证）
+    if s.get("certified") is True or s.get("n10_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    # 为什么：LLM object 等价 ≠ 准确率宣称
+    if s.get("accuracy_claim") is True:
+        issues.append("honesty_accuracy_claim_forbidden")
+    # 为什么：产品面门槛要求显式 surface 标记，防 residual 冒充
+    if s.get("llm_judge_product_surface") is not True:
+        issues.append("product_llm_judge_surface_required")
+    ids = {
+        c.get("id")
+        for c in (s.get("cases") or [])
+        if isinstance(c, dict) and c.get("ok")
+    }
+    for need in _PRODUCT_SUITE_CASES:
+        if need not in ids:
+            issues.append(f"missing_or_failed:{need}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "n10_full_conformance": False,
+        "accuracy_claim": False,
+        "n10_gold_eval_freeze": True,
+        "llm_judge_product_surface": True,
+        "note": "LLM judge product gate; not N10 certified / no accuracy claim",
+    }
 
 
 def _default_db_path() -> str:

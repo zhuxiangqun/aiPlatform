@@ -122,6 +122,7 @@ review_cycle: 90d
 > 2026-11-24：Interop S6 薄切片（A-P5 deps / A-P4 `declared_unavailable` / B-P3 gate / B-P5 `composite_profile_id`）；**未宣称** 生产沙箱完备。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N07/N22 ObjectSet `$where`/`$expr` 显式 residual（`$where` unavailable；`$expr` 有界二元比较；freeze 仍 true；certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N10 gold LLM judge 显式 residual（`judge_mode=llm` / `llm_judge_object_equiv`；不可用诚实上报；freeze 仍 true；accuracy/certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-24：知识系统 N10 gold LLM judge 产品面第一刀（`llm_judge_object_equiv_product`；默认可用；llm_judge_product_surface=true；accuracy/certified 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N11/N14 生产切写就绪回执显式 residual（`attest_production_cutover_readiness`；不可用诚实上报；freeze 仍 true；production_cutover_certified/certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N11/N14 生产切写就绪产品面第一刀（`attest_production_cutover_readiness_product`；默认可用；prod_attest_product_surface=true；certified/production_cutover_certified 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N13 样本 ECE 训练显式 residual（`compute_ece_from_samples`；不可用诚实上报；freeze 仍 true；accuracy/certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

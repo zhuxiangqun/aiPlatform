@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4215
+total_capabilities: 4222
 last_updated: 2026-11-24
 version: "30.14"
 auto_sync: true
@@ -1331,6 +1331,7 @@ scan_hash: 8f9548ec24f4
 | **Wiki 有条件重建（v4.3.1 N05 deepen）** | `wiki_rebuild.py` + Facade `fact_ledger_project_to_wiki` + FDE `/wiki-rebuild*` | ✅ | Fact→Wiki 派生页；复用三分类；non 不写；suite/gate certified 恒 false。证据 `phase2-wiki-rebuild-evidence.md`。**`n05_wiki_rebuild_freeze` 停止默认 deepen**；证据 `phase2-remaining-adr-freeze-evidence.md`。**未宣称** wiki_engine/FTS 全量 / N05 certified。生成物适用：已接线 | 本批 |
 | **知识域 Gold 评测（v4.3.1 N10 deepen）** | `knowledge_gold_eval.py` + Facade + FDE `/knowledge-gold*` | ✅ | 域级 Exact-match gold 登记/评测/跨域扫描；accuracy_claim/certified 恒 false。证据 `phase2-knowledge-gold-eval-evidence.md`。**`n10_gold_eval_freeze` 停止默认 deepen**；证据 `phase2-remaining-adr-freeze-evidence.md`。**显式 residual**：opt-in `judge_mode=llm` + `llm_judge_object_equiv`（默认/失败 → `llm_judge_unavailable`；证据 `phase2-n10-llm-judge-residual-evidence.md`）。**未宣称** 准确率达标 / N10 certified。生成物适用：已接线 | 本批 |
 | **知识域 Gold LLM judge residual（N10）** | `llm_judge_object_equiv` + `judge_mode=llm` | ✅ | 有界 object 语义等价；注入 judge_fn 或 `AIPLAT_KNOWLEDGE_GOLD_LLM_JUDGE=1` 实网；suite `llm_judge_opt_in`/`llm_judge_unavailable`；freeze 仍 true；accuracy/certified 恒 false。生成物适用：已接线（经 gold pipeline） | 本批 |
+| **知识域 Gold LLM judge 产品面第一刀（N10）** | `llm_judge_object_equiv_product` + `/knowledge-gold/product*` + `LlmJudgePanel` | ✅ | 默认可用（无 residual env）；`llm_judge_product_surface=true`；accuracy/certified 恒 false；freeze 仍 true。证据 `phase2-n10-llm-judge-product-evidence.md`。**未宣称** accuracy / certified。生成物适用：已接线（管理端） | 本批 |
 | **记录级语义校验（v4.3.1 N17 deepen）** | `record_semantics.py` + Facade + FDE `/record-semantics*` | ✅ | validate/transition/FactLedger scan；suite/gate certified 恒 false；runtime_authority。证据 `phase2-record-semantics-evidence.md`。**`n17_record_semantics_freeze` 停止默认 deepen**；证据 `phase2-remaining-adr-freeze-evidence.md`。**未宣称** reference_policy 替换 / semantic_cases 全量 / N17 certified。生成物适用：已接线 | 本批 |
 | **部署侧 RBAC 真源（v4.3.1 N18 deepen）** | `deployed_rbac_policy.py` + Facade + FDE `/deployed-rbac*` | ✅ | env/AIPLAT_HOME 加载；禁 reference_policy 作权威；permission+suite/gate certified 恒 false。证据 `phase2-deployed-rbac-evidence.md`。**`n18_deployed_rbac_freeze` 停止默认 deepen**；证据 `phase2-remaining-adr-freeze-evidence.md`。**未宣称** 召回/聚合/导出全路径 / N18 certified。生成物适用：已接线 | 本批 |
 | **Fact/Query 统一审计快照（v4.3.1 N19 deepen）** | `fact_query_audit.py` + Facade + FDE `/fact-query-audit*` | ✅ | 同表 before/after + runtime_authority；`put_fact`/`unified_query_gateway`/`query_facts_gateway`/`query_facts` list/`MaterialsChat`/GraphRAG/Wiki-KB/裸 list/`sys_crag_retrieve`·`kb_qa_retrieve`/`sys_knowledge_retrieve`/`sys_wiki_context`/`wiki_structured_query_api`/`wiki_search_pages_api`/`sys_ontology_context`（域版+URN syscall）/`ontology_routes`/`sys_graph_neighbors`/`sys_graph_query`/裸 `wiki_search_pages`/FDE clarify tenant/wiki_engine.search_pages(opt-in) 热路径 best-effort（`AIPLAT_FACT_QUERY_AUDIT_HOTPATH`；上层关下层防双写）；suite/gate certified 恒 false。证据 `phase2-fact-query-audit-evidence.md` + `phase2-fact-query-wiki-context-hotpath-evidence.md` + `phase2-fact-query-wiki-structured-hotpath-evidence.md` + `phase2-fact-query-ontology-context-hotpath-evidence.md` + `phase2-fact-query-ontology-urn-hotpath-evidence.md` + `phase2-fact-query-wiki-pages-hotpath-evidence.md` + `phase2-fact-query-graph-neighbors-hotpath-evidence.md` + `phase2-fact-query-graph-query-hotpath-evidence.md` + `phase2-fact-query-wiki-search-pages-bare-hotpath-evidence.md` + `phase2-fact-query-fde-clarify-tenant-hotpath-evidence.md` + `phase2-fact-query-wiki-engine-search-pages-hotpath-evidence.md`。**`n19_fact_query_audit_freeze` 停止默认 deepen**；证据 `phase2-remaining-adr-freeze-evidence.md`。**未宣称** 全部旁路强制落盘 / N24 总线全量 / N19 certified。生成物适用：已接线 | 本批 |
@@ -1667,6 +1668,12 @@ scan_hash: 8f9548ec24f4
 | request_write_cutover | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 请求切写阶段（须已授权） | 本批 |
 | revoke_migration_cutover | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 撤销切写授权 | 本批 |
 | attest_production_cutover_readiness | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 residual 生产就绪回执（非 certified） | 本批 |
+| llm_judge_object_equiv_product | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | N10 产品面 LLM object 等价（默认可用；非准确率） | 本批 |
+| run_llm_judge_product_suite | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | N10 产品面 LLM judge 套件 | 本批 |
+| evaluate_llm_judge_product_gate | `core/harness/knowledge_pipeline/knowledge_gold_eval.py` | ✅ | N10 产品面 LLM judge 门槛门 | 本批 |
+| llm_judge_object_equiv_product | `core/api/core_facade.py` | ✅ | CoreFacade：N10 产品面 LLM judge | 本批 |
+| run_llm_judge_product_suite | `core/api/core_facade.py` | ✅ | CoreFacade：N10 产品面套件 | 本批 |
+| evaluate_llm_judge_product_gate | `core/api/core_facade.py` | ✅ | CoreFacade：N10 产品面门槛门 | 本批 |
 | attest_production_cutover_readiness_product | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 产品面生产就绪回执（默认可用；非 certified） | 本批 |
 | run_production_attest_product_suite | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 产品面生产就绪套件 | 本批 |
 | evaluate_production_attest_product_gate | `core/harness/knowledge_pipeline/knowledge_migration.py` | ✅ | N11/N14 产品面生产就绪门槛门 | 本批 |
@@ -5116,9 +5123,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 802 | 1 | 803 |
+| Harness 执行引擎 | 803 | 1 | 804 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 881 | 9 | 890 |
+| 知识引擎（本体） | 887 | 9 | 896 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5161,7 +5168,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4204** | **11** | **4215** |
+| **总计** | **4211** | **11** | **4222** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
