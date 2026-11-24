@@ -29,7 +29,7 @@ n08_action_policy_note: "N08 Policy/Approval/Audit + kill switch + Lv4 FP gate v
 n24_unified_audit_freeze: true
 n24_unified_audit_note: "N24 revision + unified audit bus/UI surface is Operational-sufficient; stop further default N24 deepen. Residual: certified / free-form visual designer / Full unconditional; ops console shell+bounded export residuals landed; product surface landed (snapshot + schema JSON + schema form field editor + browser export; full_ops_console=true; schema_form_editor=true; certified=false — phase2-n24-ops-console-product-evidence.md + phase2-n24-ops-console-schema-form-evidence.md)."
 slo_telemetry_freeze: true
-slo_telemetry_note: "SLO target registry + telemetry wiring is Operational-sufficient; stop further default SLO wiring deepen. Residual: certified / Full unconditional; attainment window wired (evaluate_slo_attainment_window; attainment_ok≠certified); alerting opt-in landed (evaluate_slo_alert_candidates; unavailable when AIPLAT_KNOWLEDGE_SLO_ALERT off — phase2-slo-alerting-residual-evidence.md) — still not pager delivery / not certified."
+slo_telemetry_note: "SLO target registry + telemetry wiring is Operational-sufficient; stop further default SLO wiring deepen. Residual: certified / Full unconditional; attainment window wired (evaluate_slo_attainment_window; attainment_ok≠certified); alerting opt-in landed (evaluate_slo_alert_candidates; unavailable when AIPLAT_KNOWLEDGE_SLO_ALERT off — phase2-slo-alerting-residual-evidence.md); product surface slice-1 landed (evaluate_slo_alert_candidates_product; default-on; slo_alert_product_surface=true — phase2-slo-alert-product-evidence.md) — still not pager delivery / not certified."
 n01_raw_integrity_freeze: true
 n01_raw_integrity_note: "N01 Raw integrity + DataSource→Raw + Core file/sql/api connector matrix is Core-sufficient; stop further default N01 deepen. Residual: certified / production vendor 连库验收; SQL vendor soft-dep matrix landed (phase2-n01-vendor-driver-matrix-evidence.md) — still not N01 certified."
 n02_object_type_freeze: true
@@ -634,7 +634,7 @@ certification_slots:
   - id: slo
     title: SLO
     path: reports/products/knowledge-system/v4.3.1/phase2-slo-target-evidence.md
-    note: "Operational-scoped exists (附录 N.4); 目标登记 + 遥测接线（phase2-slo-telemetry-wiring-evidence.md）；slo_telemetry_freeze=true 停止默认 SLO wiring deepen；达标窗口 residual 已接线（phase2-slo-attainment-window-evidence.md；attainment_ok≠certified）；告警候选 residual 已接线（phase2-slo-alerting-residual-evidence.md；非 pager 投递）；非 Full unconditional / 非 certified；见 phase2-slo-telemetry-freeze-evidence.md"
+    note: "Operational-scoped exists (附录 N.4); 目标登记 + 遥测接线（phase2-slo-telemetry-wiring-evidence.md）；slo_telemetry_freeze=true 停止默认 SLO wiring deepen；达标窗口 residual 已接线（phase2-slo-attainment-window-evidence.md；attainment_ok≠certified）；告警候选 residual 已接线 + **产品面第一刀** evaluate_slo_alert_candidates_product（默认可用；slo_alert_product_surface=true；phase2-slo-alert-product-evidence.md；非 pager 投递）；非 Full unconditional / 非 certified；见 phase2-slo-telemetry-freeze-evidence.md"
   - id: exception_adr
     title: 例外 ADR
     path: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md

@@ -1,7 +1,8 @@
 """知识系统生产 SLO 遥测与达标窗口（F1 / 白皮书 §14；显式 residual）。
 
 职责：租户隔离样本记录、对标默认目标的快照、接线门、达标窗口评估；
-  显式 residual：opt-in ``evaluate_slo_alert_candidates`` 有界告警候选。
+  显式 residual：opt-in ``evaluate_slo_alert_candidates`` 有界告警候选；
+  产品面第一刀：``evaluate_slo_alert_candidates_product``（默认可用；跳过 residual env 门）。
 
 非目标：不升级 Full unconditional / n24_full_conformance；
 不采集 ingest/object-sync/索引重建（默认 deepen 仍冻结）；
@@ -652,11 +653,13 @@ def evaluate_slo_alert_candidates(
     window_hours: int = 24,
     db_path: Optional[str] = None,
     include_live: bool = True,
+    product_surface: bool = False,
 ) -> Dict[str, Any]:
-    """SLO residual：从快照生成告警候选（非投递、非 certified）。
+    """SLO：从快照生成告警候选（非投递、非 certified）。
 
-    指标未达标或无有效样本时产出候选；默认关闭
-    （无 ``AIPLAT_KNOWLEDGE_SLO_ALERT=1`` → ``slo_alerting_unavailable``）。
+    指标未达标或无有效样本时产出候选。
+    residual：无 ``AIPLAT_KNOWLEDGE_SLO_ALERT=1`` → ``slo_alerting_unavailable``。
+    产品面（``product_surface=True``）：跳过 residual env 门。
     即使有候选，``certified`` / ``n24_full_conformance`` / ``attainment_ok`` 仍恒 false。
 
     Args:
@@ -665,6 +668,7 @@ def evaluate_slo_alert_candidates(
         window_hours: 回溯窗口小时。
         db_path: 样本库。
         include_live: 是否计入 live 源。
+        product_surface: 是否产品面（跳过 residual env 门）。
     """
     tid = str(tenant_id or "").strip()
     base = {
@@ -678,12 +682,15 @@ def evaluate_slo_alert_candidates(
         "n24_full_conformance": False,
         "slo_telemetry_freeze": True,
         "accuracy_claim": False,
+        "slo_alert_product_surface": bool(product_surface),
     }
     if not tid:
         return {**base, "status": "invalid", "error": "tenant_required"}
 
-    # 为什么：默认关闭告警候选，避免 CI/本地把接线快照当生产告警投递
-    if os.environ.get("AIPLAT_KNOWLEDGE_SLO_ALERT", "").strip().lower() not in {
+    # 为什么：residual 默认关；产品面跳过 env 门，仍不投递 pager
+    if not product_surface and os.environ.get(
+        "AIPLAT_KNOWLEDGE_SLO_ALERT", ""
+    ).strip().lower() not in {
         "1",
         "true",
         "yes",
@@ -741,13 +748,18 @@ def evaluate_slo_alert_candidates(
     return {
         **base,
         "status": "ok",
-        "via": "opt_in",
+        "via": "product" if product_surface else "opt_in",
         "alerts": alerts,
         "alert_count": len(alerts),
         "snapshot": snap,
         "note": (
-            "alert candidates only (no pager/email delivery); "
+            "alert candidates product surface (no pager/email delivery); "
             "not attainment_ok / not certified / Full remains conditional"
+            if product_surface
+            else (
+                "alert candidates only (no pager/email delivery); "
+                "not attainment_ok / not certified / Full remains conditional"
+            )
         ),
     }
 
@@ -892,6 +904,204 @@ def evaluate_slo_alert_gate(
     }
 
 
+_SLO_ALERT_PRODUCT_CASES = (
+    "slo_alert_product_eval",
+    "slo_alert_product_unavailable",
+    "honesty_product_certified_false",
+)
+
+
+def evaluate_slo_alert_candidates_product(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    db_path: Optional[str] = None,
+    include_live: bool = True,
+) -> Dict[str, Any]:
+    """SLO 产品面：告警候选（无 residual env 门；非投递/非 certified）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 回溯窗口小时。
+        db_path: 样本库。
+        include_live: 是否计入 live 源。
+    """
+    out = evaluate_slo_alert_candidates(
+        tenant_id,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        db_path=db_path,
+        include_live=include_live,
+        product_surface=True,
+    )
+    out["slo_alert_product_surface"] = True
+    out["attainment_ok"] = False
+    out["certified"] = False
+    out["n24_full_conformance"] = False
+    out["slo_telemetry_freeze"] = True
+    out["accuracy_claim"] = False
+    if not out.get("note"):
+        out["note"] = (
+            "alert candidates product surface; not delivery / not certified"
+        )
+    return out
+
+
+def run_slo_alert_product_suite(*, db_path: Optional[str] = None) -> Dict[str, Any]:
+    """SLO 产品面套件：默认可用；certified / attainment_ok 恒 false。
+
+    Args:
+        db_path: 可选临时库。
+    """
+    import tempfile
+
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    path = db_path
+    if not path:
+        tmp = tempfile.TemporaryDirectory(prefix="slo-alert-product-")
+        path = str(Path(tmp.name) / "slo.db")
+
+    prev = os.environ.pop("AIPLAT_KNOWLEDGE_SLO_ALERT", None)
+    cases: List[Dict[str, Any]] = []
+    try:
+        # 为什么：产品面无 residual env 仍可出 misses_target 候选
+        record_slo_sample(
+            "action_success_rate",
+            0.0,
+            tenant_id="slo-alert-product-t",
+            ok=False,
+            db_path=path,
+        )
+        record_slo_sample(
+            "query_p95_ms",
+            50.0,
+            tenant_id="slo-alert-product-t",
+            ok=True,
+            db_path=path,
+        )
+        record_slo_sample(
+            "citation_coverage",
+            1.0,
+            tenant_id="slo-alert-product-t",
+            ok=True,
+            db_path=path,
+        )
+
+        ok = evaluate_slo_alert_candidates_product(
+            "slo-alert-product-t", db_path=path, include_live=False
+        )
+        alerts = ok.get("alerts") or []
+        has_miss = any(
+            a.get("metric") == "action_success_rate"
+            and a.get("severity") == "misses_target"
+            for a in alerts
+            if isinstance(a, dict)
+        )
+        cases.append(
+            {
+                "id": "slo_alert_product_eval",
+                "ok": ok.get("status") == "ok"
+                and has_miss
+                and int(ok.get("alert_count") or 0) >= 1
+                and ok.get("via") == "product"
+                and ok.get("slo_alert_product_surface") is True
+                and ok.get("certified") is False
+                and ok.get("attainment_ok") is False,
+            }
+        )
+
+        residual = evaluate_slo_alert_candidates(
+            "slo-alert-product-t", db_path=path, include_live=False
+        )
+        # 为什么：空租户仍 invalid；产品面标记保留
+        un = evaluate_slo_alert_candidates_product("", include_live=False)
+        cases.append(
+            {
+                "id": "slo_alert_product_unavailable",
+                "ok": residual.get("status") == "slo_alerting_unavailable"
+                and residual.get("via") == "env_disabled"
+                and residual.get("slo_alert_product_surface") is False
+                and un.get("status") == "invalid"
+                and un.get("slo_alert_product_surface") is True,
+            }
+        )
+        cases.append(
+            {
+                "id": "honesty_product_certified_false",
+                "ok": ok.get("certified") is False
+                and ok.get("n24_full_conformance") is False
+                and ok.get("attainment_ok") is False
+                and un.get("certified") is False,
+            }
+        )
+    finally:
+        if prev is not None:
+            os.environ["AIPLAT_KNOWLEDGE_SLO_ALERT"] = prev
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok"))
+    return {
+        "ok": passed == len(_SLO_ALERT_PRODUCT_CASES)
+        and len(cases) == len(_SLO_ALERT_PRODUCT_CASES),
+        "passed": passed,
+        "total": len(_SLO_ALERT_PRODUCT_CASES),
+        "cases": cases,
+        "certified": False,
+        "n24_full_conformance": False,
+        "attainment_ok": False,
+        "slo_telemetry_freeze": True,
+        "slo_alert_product_surface": True,
+        "note": (
+            "SLO alert product surface suite; "
+            "not certified / not Full unconditional / not pager delivery"
+        ),
+    }
+
+
+def evaluate_slo_alert_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SLO 产品面门槛门：要求 slo_alert_product_surface；禁止 certified。
+
+    Args:
+        suite: ``run_slo_alert_product_suite`` 回执；缺省时现场跑套件。
+    """
+    s = suite if isinstance(suite, dict) else run_slo_alert_product_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    # 为什么：禁止套件自签 certified（产品面 ≠ Full / certified）
+    if s.get("certified") is True or s.get("n24_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    # 为什么：告警候选 ≠ 达标窗口
+    if s.get("attainment_ok") is True:
+        issues.append("honesty_attainment_on_alert_forbidden")
+    # 为什么：产品面门槛要求显式 surface 标记，防 residual 冒充
+    if s.get("slo_alert_product_surface") is not True:
+        issues.append("product_slo_alert_surface_required")
+    ids = {
+        c.get("id")
+        for c in (s.get("cases") or [])
+        if isinstance(c, dict) and c.get("ok")
+    }
+    for need in _SLO_ALERT_PRODUCT_CASES:
+        if need not in ids:
+            issues.append(f"missing_or_failed:{need}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "n24_full_conformance": False,
+        "attainment_ok": False,
+        "slo_telemetry_freeze": True,
+        "slo_alert_product_surface": True,
+        "note": "SLO alert product gate; not certified / no pager delivery",
+    }
+
+
 __all__ = [
     "DEFAULT_SLO_TARGETS",
     "DEFAULT_ATTAINMENT_MIN_SAMPLES",
@@ -902,4 +1112,7 @@ __all__ = [
     "evaluate_slo_alert_candidates",
     "run_slo_alert_suite",
     "evaluate_slo_alert_gate",
+    "evaluate_slo_alert_candidates_product",
+    "run_slo_alert_product_suite",
+    "evaluate_slo_alert_product_gate",
 ]

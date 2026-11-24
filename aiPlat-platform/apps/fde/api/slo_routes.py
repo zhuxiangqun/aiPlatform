@@ -194,6 +194,82 @@ async def slo_evaluate_alerts_route(
     return out
 
 
+@router.post("/slo/product/evaluate-alerts")
+async def slo_product_evaluate_alerts_route(
+    request: Request,
+    x_aiplat_tenant_id: Optional[str] = Header(None, alias="X-AIPLAT-TENANT-ID"),
+) -> Dict[str, Any]:
+    """SLO 产品面：告警候选（默认可用；非投递；certified 恒假）。
+
+    Args:
+        request: FastAPI Request（JSON：tenant_id/domain_id/window_hours/include_live）。
+        x_aiplat_tenant_id: 租户 header。
+    """
+    from core.api.core_facade import evaluate_knowledge_slo_alert_candidates_product
+
+    body: Dict[str, Any] = {}
+    try:
+        raw = await request.json()
+        if isinstance(raw, dict):
+            body = raw
+    except Exception:
+        body = {}
+
+    tid = _tenant_from(
+        request, x_aiplat_tenant_id, str(body.get("tenant_id") or "")
+    )
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id_required")
+    window = int(body.get("window_hours") or 24)
+    include_live = body.get("include_live")
+    if include_live is None:
+        include_live = True
+    out = evaluate_knowledge_slo_alert_candidates_product(
+        tid,
+        domain_id=str(body.get("domain_id") or ""),
+        window_hours=window,
+        include_live=bool(include_live),
+    )
+    if out.get("status") == "invalid":
+        raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
+    return out
+
+
+@router.post("/slo/product/suite")
+async def slo_product_alert_suite_route() -> Dict[str, Any]:
+    """SLO 产品面告警套件。"""
+    from core.api.core_facade import run_knowledge_slo_alert_product_suite
+
+    return run_knowledge_slo_alert_product_suite()
+
+
+@router.post("/slo/product/gate")
+async def slo_product_alert_gate_route(
+    request: Request,
+) -> Dict[str, Any]:
+    """SLO 产品面告警门槛门。
+
+    Args:
+        request: 可选 JSON suite 回执；缺省现场跑套件。
+    """
+    from core.api.core_facade import (
+        evaluate_knowledge_slo_alert_product_gate,
+        run_knowledge_slo_alert_product_suite,
+    )
+
+    body: Dict[str, Any] = {}
+    try:
+        raw = await request.json()
+        if isinstance(raw, dict):
+            body = raw
+    except Exception:
+        body = {}
+    suite = body if body.get("cases") else None
+    if suite is None:
+        suite = run_knowledge_slo_alert_product_suite()
+    return evaluate_knowledge_slo_alert_product_gate(suite)
+
+
 @router.post("/slo/sample")
 async def slo_record_sample_route(
     request: Request,

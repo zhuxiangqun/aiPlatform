@@ -4706,6 +4706,18 @@ domains:
         module: core/harness/knowledge_pipeline/slo_telemetry.py
         type: function
         signature: "SLO residual: alert candidates (no delivery; certified=false)"
+      - symbol: "evaluate_slo_alert_candidates_product"
+        module: core/harness/knowledge_pipeline/slo_telemetry.py
+        type: function
+        signature: "SLO product: alert candidates (default-on; certified=false)"
+      - symbol: "run_slo_alert_product_suite"
+        module: core/harness/knowledge_pipeline/slo_telemetry.py
+        type: function
+        signature: "SLO product: alert suite"
+      - symbol: "evaluate_slo_alert_product_gate"
+        module: core/harness/knowledge_pipeline/slo_telemetry.py
+        type: function
+        signature: "SLO product: alert gate"
       - symbol: "build_ops_console_snapshot"
         module: core/harness/knowledge_pipeline/ops_console.py
         type: function
