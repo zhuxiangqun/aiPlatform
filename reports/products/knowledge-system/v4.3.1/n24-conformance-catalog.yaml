@@ -45,7 +45,7 @@ n06_query_gateway_note: "N06 F.1 + unified query gateway (fact/object_set/wiki/i
 n10_gold_eval_freeze: true
 n10_gold_eval_note: "N10 appendix O thresholds + domain Exact-match gold pipeline is Operational-sufficient; stop further default N10 deepen. Residual: certified / accuracy claim; LLM judge opt-in landed (judge_mode=llm + llm_judge_object_equiv; unavailable when live LLM off — phase2-n10-llm-judge-residual-evidence.md) — still not accuracy certified."
 n11_n14_migration_freeze: true
-n11_n14_migration_note: "N11/N14 dual-write reconcile + cutover token + Raw↔Fact↔Index chain is Operational-sufficient; stop further default N11/N14 deepen. Residual: certified; production readiness receipt opt-in landed (attest_production_cutover_readiness; unavailable when AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST off — phase2-n11-production-attest-residual-evidence.md) — still not production cutover certified."
+n11_n14_migration_note: "N11/N14 dual-write reconcile + cutover token + Raw↔Fact↔Index chain is Operational-sufficient; stop further default N11/N14 deepen. Residual: certified; production readiness receipt opt-in landed (attest_production_cutover_readiness; unavailable when AIPLAT_KNOWLEDGE_PRODUCTION_ATTEST off — phase2-n11-production-attest-residual-evidence.md); product surface slice-1 landed (attest_production_cutover_readiness_product; default-on; prod_attest_product_surface=true — phase2-n11-production-attest-product-evidence.md) — still not production cutover certified."
 n13_calibration_freeze: true
 n13_calibration_note: "N13 calibration ceiling on query path is Operational-sufficient; stop further default N13 deepen. Residual: certified / accuracy claim; sample ECE train opt-in landed (compute_ece_from_samples; unavailable when AIPLAT_KNOWLEDGE_ECE_TRAIN off — phase2-n13-ece-train-residual-evidence.md) — still not accuracy certified."
 n17_record_semantics_freeze: true
@@ -335,7 +335,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-knowledge-migration-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/knowledge_migration.py
       - reports/products/knowledge-system/v4.3.1/phase2-migration-cutover-auth-evidence.md
-    note: "Operational-scoped exists (附录 N.4); 双写/对账/回滚演练 + 作业级切写授权（token）+ 显式 residual 生产就绪回执（attest_production_cutover_readiness；不可用诚实上报）；非生产切写认证/非 certified；n11_n14_migration_freeze=true 停止默认 deepen"
+    note: "Operational-scoped exists (附录 N.4); 双写/对账/回滚演练 + 作业级切写授权（token）+ 显式 residual 生产就绪回执 + **产品面第一刀** attest_production_cutover_readiness_product（默认可用；prod_attest_product_surface=true）；非生产切写认证/非 certified；n11_n14_migration_freeze=true 停止默认 deepen"
   - id: N12
     level: core
     title: Fact 状态机
@@ -370,7 +370,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-migration-cutover-auth-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-raw-fact-index-reconcile-evidence.md
       - aiPlat-core/core/harness/knowledge_pipeline/raw_fact_index_reconcile.py
-    note: "Operational-scoped exists (附录 N.4); 迁移 job 对账 + 切写授权 + Raw↔Fact↔Index 全链路 deepen + 显式 residual 生产就绪回执；非生产切写认证/非 certified；n11_n14_migration_freeze=true 停止默认 deepen"
+    note: "Operational-scoped exists (附录 N.4); 迁移 job 对账 + 切写授权 + Raw↔Fact↔Index 全链路 deepen + 显式 residual 生产就绪回执 + **产品面第一刀**（默认可用；非生产认证）；非 production_cutover_certified/非 certified；n11_n14_migration_freeze=true 停止默认 deepen"
   - id: N15
     level: core
     title: JSON Schema 与附录一致

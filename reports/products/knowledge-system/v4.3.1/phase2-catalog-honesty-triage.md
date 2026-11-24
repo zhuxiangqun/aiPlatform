@@ -17,7 +17,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 >
 > 2026-11-23：剩余 ADR 例外面已批量冻结（`phase2-remaining-adr-freeze-evidence.md`）；本表 residual 列仍开放，不因 freeze 关闭。
 > 2026-11-23：Phase 2 sufficient-freeze 程序收口（`phase2-sufficient-freeze-closeout-evidence.md`）；仍不关闭 residual / certified。
-> 2026-11-24：产品完备面显式 residual 已合入（N02 bulk / N24 ops console 薄壳 / N08 有界 Lv4 auto-close / N02 published-over-seed / N24 ops console 有界导出）；N24 运维台**产品面**已落地（默认可用 + schema JSON + **表单字段编辑器** + 浏览器导出；`full_ops_console=true` / `schema_form_editor=true`）；N02 **种子权威产品面第一刀**已落地（workspace_seeds 目录 + published-over-seed；`seed_product_surface=true`；不改写 seeds）；N08 **有界 Lv4 auto-close 产品面第一刀**已落地（默认可用；`lv4_product_surface=true`；仍仅 low）；**未**宣称 certified / seed_replacement_complete / full_action_lv4 / 自由布局可视化设计器；freeze 仍 true。
+> 2026-11-24：产品完备面显式 residual 已合入（N02 bulk / N24 ops console 薄壳 / N08 有界 Lv4 auto-close / N02 published-over-seed / N24 ops console 有界导出）；N24 运维台**产品面**已落地（默认可用 + schema JSON + **表单字段编辑器** + 浏览器导出；`full_ops_console=true` / `schema_form_editor=true`）；N02 **种子权威产品面第一刀**已落地（workspace_seeds 目录 + published-over-seed；`seed_product_surface=true`；不改写 seeds）；N08 **有界 Lv4 auto-close 产品面第一刀**已落地（默认可用；`lv4_product_surface=true`；仍仅 low）；N11/N14 **生产切写就绪产品面第一刀**已落地（默认可用；`prod_attest_product_surface=true`）；**未**宣称 certified / seed_replacement_complete / full_action_lv4 / production_cutover_certified / 自由布局可视化设计器；freeze 仍 true。
 
 ## 本切片修复
 
@@ -42,7 +42,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 | N19 | Fact/Query 统一审计 + put_fact/unified/query_facts(_gateway)/MaterialsChat/GraphRAG/Wiki-KB/裸 list/KB Q&A·CRAG/统一 knowledge_retrieve/wiki_context/wiki_structured/wiki_search_pages_api/ontology_context(域)/URN+HTTP/`sys_graph_neighbors`/`sys_graph_query`/裸 `wiki_search_pages`/FDE clarify tenant/wiki_engine.search_pages(opt-in) 热路径 deepen 已接线；非全部旁路强制 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（旁路全量） | deepen 见 ADR N19 + `phase2-fact-query-wiki-engine-search-pages-hotpath-evidence.md`；旁路全量仍开放 |
 | N20 | 知识面 L1>L2>L3 + Gateway/put_fact/query_facts_gateway/MaterialsChat/GraphRAG/Wiki-KB/裸 list/`query_facts` list 热路径 deepen 已接线；非 list→dict 改写 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（list→dict / certified） | deepen 见 ADR N20 + `phase2-constraint-layers-evidence.md`；list→dict 仍开放 |
 | N21 | Fact/object_set + Wiki/KB + Materials RAG/trivial/cache_hit + GraphRAG + list n21_query 信封 deepen 已接线；非改写 list 主返回类型 / 非 certified | **并入既有刀**（deepen）+ **仍开放**（主返回类型改写） | deepen 见 ADR N21 + `phase2-query-abstain-citations-evidence.md`；list 主类型仍开放 |
-| N14 生产对账 | Raw↔Fact↔Index 全链路 deepen 已接线；生产就绪回执 opt-in residual 已落地；非生产切写认证 / 非 certified | **并入既有刀**（deepen + residual）+ **仍开放**（生产认证/certified） | deepen 见 ADR N14 + `phase2-raw-fact-index-reconcile-evidence.md`；residual 见 `phase2-n11-production-attest-residual-evidence.md`；生产认证仍开放 |
+| N14 生产对账 | Raw↔Fact↔Index 全链路 deepen 已接线；生产就绪 residual + **产品面第一刀**已落地；非生产切写认证 / 非 certified | **并入既有刀**（deepen + residual + 产品面）+ **仍开放**（生产认证/certified） | deepen 见 ADR N14 + `phase2-raw-fact-index-reconcile-evidence.md`；residual 见 `phase2-n11-production-attest-residual-evidence.md`；产品面见 `phase2-n11-production-attest-product-evidence.md`；生产认证仍开放 |
 
 ## 已在 ADR 例外表（本盘点不重复开刀）
 

@@ -235,6 +235,70 @@ async def attest_knowledge_production_cutover_route(
     return out
 
 
+class ProductionAttestProductBody(BaseModel):
+    """N11/N14 产品面：生产切写就绪回执。"""
+
+    job_id: str = Field(..., min_length=1)
+    tenant_id: str = Field(..., min_length=1)
+    actor: str = Field(..., min_length=1)
+    reason: str = Field(..., min_length=1)
+    raw_fact_index_ok: Optional[bool] = Field(
+        None,
+        description="可选 Raw↔Fact↔Index 对账结果；False 时阻断",
+    )
+
+
+@router.post("/knowledge-migrations/product/production-attest")
+async def attest_knowledge_production_cutover_product_route(
+    body: ProductionAttestProductBody = Body(...),
+):
+    """N11/N14 产品面：生产切写就绪回执（默认可用；非 certified）。
+
+    Args:
+        body: job/tenant/actor/reason。
+    """
+    from core.api.core_facade import (
+        attest_knowledge_production_cutover_readiness_product,
+    )
+
+    out = attest_knowledge_production_cutover_readiness_product(
+        body.job_id,
+        tenant_id=body.tenant_id,
+        actor=body.actor,
+        reason=body.reason,
+        raw_fact_index_ok=body.raw_fact_index_ok,
+    )
+    if out.get("status") in ("invalid", "not_found"):
+        raise HTTPException(
+            status_code=400 if out.get("status") == "invalid" else 404,
+            detail=out.get("error") or out.get("status"),
+        )
+    return out
+
+
+@router.post("/knowledge-migrations/product/suite")
+async def knowledge_production_attest_product_suite_route() -> Dict[str, Any]:
+    """N11/N14 产品面：生产就绪套件。"""
+    from core.api.core_facade import run_knowledge_production_attest_product_suite
+
+    return run_knowledge_production_attest_product_suite()
+
+
+@router.post("/knowledge-migrations/product/gate")
+async def knowledge_production_attest_product_gate_route(
+    body: Optional[Dict[str, Any]] = Body(default=None),
+) -> Dict[str, Any]:
+    """N11/N14 产品面：生产就绪门槛门。
+
+    Args:
+        body: 可选 ``{"suite": ...}``。
+    """
+    from core.api.core_facade import evaluate_knowledge_production_attest_product_gate
+
+    suite = (body or {}).get("suite") if isinstance(body, dict) else None
+    return evaluate_knowledge_production_attest_product_gate(suite)
+
+
 @router.get("/knowledge-migrations/{job_id}/events")
 async def list_knowledge_migration_events_route(
     job_id: str,
