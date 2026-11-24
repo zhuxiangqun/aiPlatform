@@ -1,7 +1,8 @@
 /**
  * ObjectTypePublishPanel — N02 ObjectType 人审发布管理端薄门户。
  *
- * 经 FDE `/object-types*` → CoreFacade；不宣称全量多域批量门户 / 种子替换 / certified。
+ * 经 FDE `/object-types*` → CoreFacade；显式 residual：有界多租户 bulk-transition
+ *（须服务端 AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1）。不宣称种子替换 / certified。
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
@@ -44,6 +45,10 @@ const ObjectTypePublishPanel: React.FC = () => {
   const [draftOid, setDraftOid] = useState('');
   const [draftVersion, setDraftVersion] = useState('1.0.0');
   const [draftDefJson, setDraftDefJson] = useState('{"name":"demo"}');
+  const [bulkJson, setBulkJson] = useState(
+    '[{"tenant_id":"tenant-a","object_type_id":"Demo","version":"1.0.0","to_status":"in_review"}]',
+  );
+  const [bulkNote, setBulkNote] = useState('');
   const [items, setItems] = useState<ObjectTypeVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [gateNote, setGateNote] = useState('');
@@ -75,6 +80,64 @@ const ObjectTypePublishPanel: React.FC = () => {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const runBulk = async () => {
+    if (!actor.trim() || !reason.trim()) {
+      toast?.error?.('actor / reason 必填');
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(bulkJson || '[]');
+    } catch {
+      toast?.error?.('bulk JSON 非法');
+      return;
+    }
+    if (!Array.isArray(parsed)) {
+      toast?.error?.('bulk JSON 须为数组');
+      return;
+    }
+    setLoading(true);
+    setBulkNote('');
+    try {
+      const r = await fetch(API('/object-types/bulk-transition'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: parsed,
+          actor: actor.trim(),
+          reason: reason.trim(),
+          role: role.trim(),
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(d.detail));
+      const status = String(d.status || '');
+      setBulkNote(
+        `${status} · ok=${d.ok_count ?? 0} fail=${d.fail_count ?? 0}` +
+          (d.note ? ` · ${d.note}` : '') +
+          (d.certified === false ? ' · certified=false' : ''),
+      );
+      if (
+        status === 'object_type_bulk_unavailable' ||
+        status === 'invalid' ||
+        Number(d.fail_count || 0) > 0
+      ) {
+        toast?.error?.(
+          String(d.note || d.error || `${status} fail=${d.fail_count ?? 0}`),
+        );
+      } else if (status === 'ok') {
+        toast?.success?.(`bulk ${status}`);
+        await reload();
+      } else {
+        toast?.error?.(String(d.note || d.error || status || 'bulk 失败'));
+      }
+    } catch (e: unknown) {
+      toast?.error?.((e as Error)?.message || 'bulk 失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const submitDraft = async () => {
     if (!draftOid.trim() || !draftVersion.trim() || !actor.trim() || !reason.trim()) {
@@ -317,6 +380,28 @@ const ObjectTypePublishPanel: React.FC = () => {
           </label>
           <Button type="button" size="sm" disabled={loading} onClick={() => void submitDraft()}>
             提交草稿
+          </Button>
+        </div>
+
+        <div className="rounded border border-gray-800 bg-gray-950/40 px-3 py-3 space-y-2">
+          <div className="text-[12px] text-gray-300">
+            多租户批量转换 residual（须服务端开启 AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK）
+          </div>
+          <label className="text-[11px] text-gray-400 space-y-1 block">
+            items JSON
+            <textarea
+              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 font-mono min-h-[72px]"
+              value={bulkJson}
+              onChange={(e) => setBulkJson(e.target.value)}
+            />
+          </label>
+          {bulkNote && (
+            <div className="text-[11px] text-amber-200/80 border border-amber-800/40 rounded px-2 py-1.5">
+              {bulkNote}
+            </div>
+          )}
+          <Button type="button" size="sm" disabled={loading} onClick={() => void runBulk()}>
+            批量转换
           </Button>
         </div>
 

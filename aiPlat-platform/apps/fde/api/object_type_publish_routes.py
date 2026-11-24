@@ -1,7 +1,7 @@
 """FDE N02 ObjectType 人审发布 — 薄路由，经 CoreFacade。"""
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -35,6 +35,27 @@ class ObjectTypeGateBody(BaseModel):
     """门槛门探针（可选附带 suite）。"""
 
     suite: Optional[Dict[str, Any]] = None
+
+
+class ObjectTypeBulkItem(BaseModel):
+    """批量转换单项。"""
+
+    tenant_id: str = Field(..., min_length=1)
+    object_type_id: str = Field(..., min_length=1)
+    version: str = Field(..., min_length=1)
+    to_status: str = Field(..., min_length=1)
+
+
+class ObjectTypeBulkBody(BaseModel):
+    """N02 residual：多租户批量状态转换（非种子替换）。"""
+
+    items: List[ObjectTypeBulkItem] = Field(default_factory=list)
+    actor: str = Field(..., min_length=1)
+    reason: str = Field(..., min_length=1)
+    role: str = Field(
+        "",
+        description="caller role for N02 publish RBAC (required when any item publishes)",
+    )
 
 
 @router.post("/object-types/drafts")
@@ -146,6 +167,28 @@ async def list_object_type_versions_route(
             limit=limit,
         )
     }
+
+
+@router.post("/object-types/bulk-transition")
+async def bulk_transition_object_types_route(
+    body: ObjectTypeBulkBody = Body(...),
+):
+    """N02 residual：多租户批量状态转换（非种子替换 / 非 certified）。
+
+    Args:
+        body: items + actor/reason/role。
+    """
+    from core.api.core_facade import bulk_transition_object_types
+
+    try:
+        return bulk_transition_object_types(
+            [item.model_dump() for item in body.items],
+            actor=body.actor,
+            reason=body.reason,
+            role=body.role,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/object-types/suite")

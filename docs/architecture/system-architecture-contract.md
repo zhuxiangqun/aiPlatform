@@ -125,6 +125,7 @@ review_cycle: 90d
 > 2026-11-24：知识系统 N11/N14 生产切写就绪回执显式 residual（`attest_production_cutover_readiness`；不可用诚实上报；freeze 仍 true；production_cutover_certified/certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N13 样本 ECE 训练显式 residual（`compute_ece_from_samples`；不可用诚实上报；freeze 仍 true；accuracy/certified 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 SLO 告警候选显式 residual（`evaluate_slo_alert_candidates`；不可用诚实上报；freeze 仍 true；certified/Full 恒 false；并同步 N01/N02 freeze note landed 文案）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-24：知识系统 N02 多租户批量发布显式 residual（`bulk_transition_object_types`；不可用诚实上报；freeze 仍 true；certified/seed_replacement 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 W6 Knowledge SDK 最小切片（ObjectType→Client 表面/源码经 Facade；L1 kb:read）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 F1 deepen 生产 SLO 遥测接线（三指标采集/快照/wiring 门经 Facade；attainment/certified 恒假）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 N07/N22 deepen Wiki/KB 统一检索字段 ACL（sys_knowledge_retrieve/KB/CRAG）；certified 恒 false；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
