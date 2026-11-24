@@ -27,7 +27,7 @@ n07_n22_h1_condition_note: "H.1 bounded condition surface (ops through expr-lang
 n08_action_policy_freeze: true
 n08_action_policy_note: "N08 Policy/Approval/Audit + kill switch + Lv4 FP gate v2 is Extended-sufficient; stop further default N08 deepen. Residual: certified / full Action Lv4 productization; bounded auto-close opt-in landed (evaluate_bounded_lv4_auto_close; unavailable when AIPLAT_KNOWLEDGE_LV4_AUTO_CLOSE off — phase2-n08-lv4-autoclose-residual-evidence.md) — still not full Action Lv4 / not certified."
 n24_unified_audit_freeze: true
-n24_unified_audit_note: "N24 revision + unified audit bus/UI surface is Operational-sufficient; stop further default N24 deepen. Residual: certified / full ops console productization; ops console shell opt-in landed (build_ops_console_snapshot; unavailable when AIPLAT_KNOWLEDGE_OPS_CONSOLE off — phase2-n24-ops-console-residual-evidence.md) — still not full ops console / not certified."
+n24_unified_audit_note: "N24 revision + unified audit bus/UI surface is Operational-sufficient; stop further default N24 deepen. Residual: certified / full ops console productization; ops console shell opt-in landed (build_ops_console_snapshot; unavailable when AIPLAT_KNOWLEDGE_OPS_CONSOLE off — phase2-n24-ops-console-residual-evidence.md); bounded export opt-in landed (export_ops_console_snapshot; unavailable when AIPLAT_KNOWLEDGE_OPS_CONSOLE_EXPORT off — phase2-n24-ops-console-export-residual-evidence.md) — still not full ops console / schema editor / not certified."
 slo_telemetry_freeze: true
 slo_telemetry_note: "SLO target registry + telemetry wiring is Operational-sufficient; stop further default SLO wiring deepen. Residual: certified / Full unconditional; attainment window wired (evaluate_slo_attainment_window; attainment_ok≠certified); alerting opt-in landed (evaluate_slo_alert_candidates; unavailable when AIPLAT_KNOWLEDGE_SLO_ALERT off — phase2-slo-alerting-residual-evidence.md) — still not pager delivery / not certified."
 n01_raw_integrity_freeze: true
@@ -580,6 +580,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-unified-audit-fact-query-bus-hotpath-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-n24-unified-audit-freeze-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-n24-ops-console-residual-evidence.md
+      - reports/products/knowledge-system/v4.3.1/phase2-n24-ops-console-export-residual-evidence.md
       - docs/contracts/knowledge/ONTOLOGY_COMPLETENESS.md
       - aiPlat-core/core/harness/knowledge_pipeline/fact_ledger.py
       - aiPlat-core/core/harness/knowledge_pipeline/unified_audit_view.py
@@ -598,6 +599,7 @@ items:
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_unified_audit_view_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_unified_audit_bus_phase2.py
       - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ops_console_residual_phase2.py
+      - aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ops_console_export_residual_phase2.py
       - aiPlat-platform/tests/test_revision_restore_http_phase2.py
       - aiPlat-platform/tests/test_unified_audit_http_phase2.py
       - aiPlat-platform/apps/fde/api/revision_restore_routes.py
@@ -606,7 +608,7 @@ items:
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/RevisionRestorePanel.tsx
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/UnifiedAuditPanel.tsx
       - aiPlat-management/frontend/src/pages/KnowledgeFactory/OpsConsolePanel.tsx
-    note: "Operational-scoped exists (附录 N.4); Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填 + Fact/Query 源流 fan-in + 总线热路径 + UI 流过滤 + UI materialize + UI bus suite/gate + UI 薄 append + UI append refs/payload + UI 事件详情/bus event_type 过滤 + **显式 residual** ops console 薄壳（opt-in；不可用诚实上报）；n24_unified_audit_freeze=true 停止默认 N24 deepen；非 N24 certified / 非全量运维台"
+    note: "Operational-scoped exists (附录 N.4); Package + Fact/Claim/Source revision + restore + audit + 审批式 restore + ActionExecution 桥接 + HTTP + 管理端薄 UI + 只读统一视图 + 统一审计 UI + 写总线 + Package/Action 热路径 + ActionStore 合流 + 物理 tenant_id + 存量回填 + Fact/Query 源流 fan-in + 总线热路径 + UI 流过滤 + UI materialize + UI bus suite/gate + UI 薄 append + UI append refs/payload + UI 事件详情/bus event_type 过滤 + **显式 residual** ops console 薄壳 + 有界导出（opt-in；不可用诚实上报）；n24_unified_audit_freeze=true 停止默认 N24 deepen；非 N24 certified / 非全量运维台 / 非 schema 编辑器"
 
 # §9.4 认证证据包槽位（路径或 explicit missing）
 certification_slots:

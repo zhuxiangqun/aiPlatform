@@ -145,6 +145,7 @@ authority: supporting
 | [phase2-n08-lv4-autoclose-residual-evidence.md](./phase2-n08-lv4-autoclose-residual-evidence.md) | N08 residual：有界 Lv4 auto-close（opt-in low 风险+FP 门；不可用诚实上报；非全量 Action Lv4/非 certified） |
 | [phase2-n24-unified-audit-freeze-evidence.md](./phase2-n24-unified-audit-freeze-evidence.md) | N24：统一审计/Revision 面冻结（Operational-sufficient / 非全量运维台 / 非 certified / ADR 例外行保留） |
 | [phase2-n24-ops-console-residual-evidence.md](./phase2-n24-ops-console-residual-evidence.md) | N24 residual：运维台薄壳（opt-in 聚合审计近窗+SLO；不可用诚实上报；非全量运维台/非 certified） |
+| [phase2-n24-ops-console-export-residual-evidence.md](./phase2-n24-ops-console-export-residual-evidence.md) | N24 residual：运维台有界导出（opt-in JSON 写盘；不可用诚实上报；非全量下载/非 schema 编辑器/非 certified） |
 | [phase2-slo-telemetry-freeze-evidence.md](./phase2-slo-telemetry-freeze-evidence.md) | SLO：遥测面冻结（Operational-sufficient / wiring≠attainment / 非达标宣称 / ADR 例外行保留） |
 | [phase2-slo-attainment-window-evidence.md](./phase2-slo-attainment-window-evidence.md) | SLO：生产达标窗口（显式 residual；窗口+非作者批准→attainment_ok；certified 恒假） |
 | [phase2-slo-alerting-residual-evidence.md](./phase2-slo-alerting-residual-evidence.md) | SLO residual：opt-in 告警候选（不可用诚实上报；非 pager 投递/非 certified） |

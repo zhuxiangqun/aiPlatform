@@ -7689,6 +7689,69 @@ def evaluate_knowledge_ops_console_gate(
     return evaluate_ops_console_gate(suite)
 
 
+def export_knowledge_ops_console_snapshot(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    audit_db_path: Any = None,
+    slo_db_path: Any = None,
+    include_live: bool = False,
+    output_root: Any = None,
+    write: bool = False,
+) -> Dict[str, Any]:
+    """CoreFacade：N24 运维台有界导出（非全量下载；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 回溯窗口小时。
+        audit_db_path: 可选统一审计 bus 库。
+        slo_db_path: 可选 SLO 样本库。
+        include_live: SLO 是否计入 live 源。
+        output_root: 可选写盘根（allowlist）。
+        write: 是否写盘。
+    """
+    from core.harness.knowledge_pipeline.ops_console import (
+        export_ops_console_snapshot,
+    )
+
+    return export_ops_console_snapshot(
+        tenant_id,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        audit_db_path=str(audit_db_path) if audit_db_path else None,
+        slo_db_path=str(slo_db_path) if slo_db_path else None,
+        include_live=include_live,
+        output_root=str(output_root) if output_root else None,
+        write=write,
+    )
+
+
+def run_knowledge_ops_console_export_suite() -> Dict[str, Any]:
+    """CoreFacade：N24 运维台导出套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.ops_console import (
+        run_ops_console_export_suite,
+    )
+
+    return run_ops_console_export_suite()
+
+
+def evaluate_knowledge_ops_console_export_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N24 运维台导出门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_ops_console_export_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.ops_console import (
+        evaluate_ops_console_export_gate,
+    )
+
+    return evaluate_ops_console_export_gate(suite)
+
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 
