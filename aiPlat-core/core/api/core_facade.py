@@ -7752,6 +7752,156 @@ def evaluate_knowledge_ops_console_export_gate(
     return evaluate_ops_console_export_gate(suite)
 
 
+def build_knowledge_ops_console_product_snapshot(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    audit_db_path: Any = None,
+    slo_db_path: Any = None,
+    include_live: bool = False,
+) -> Dict[str, Any]:
+    """CoreFacade：N24 运维台产品面快照（默认可用；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 回溯窗口小时。
+        audit_db_path: 可选统一审计 bus 库。
+        slo_db_path: 可选 SLO 样本库。
+        include_live: SLO 是否计入 live 源。
+    """
+    from core.harness.knowledge_pipeline.ops_console import (
+        build_ops_console_product_snapshot,
+    )
+
+    return build_ops_console_product_snapshot(
+        tenant_id,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        audit_db_path=str(audit_db_path) if audit_db_path else None,
+        slo_db_path=str(slo_db_path) if slo_db_path else None,
+        include_live=include_live,
+    )
+
+
+def get_knowledge_ops_console_schema(
+    *,
+    tenant_id: str,
+    object_type_id: str = "",
+    db_path: Any = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N24 运维台产品面 schema 读取。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 可选类型过滤。
+        db_path: 可选 ObjectType 发布库。
+    """
+    from core.harness.knowledge_pipeline.ops_console import get_ops_console_schema
+
+    return get_ops_console_schema(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        db_path=str(db_path) if db_path else None,
+    )
+
+
+def save_knowledge_ops_console_schema(
+    *,
+    tenant_id: str,
+    object_type_id: str,
+    definition: Dict[str, Any],
+    actor: str = "ops-console-product",
+    reason: str = "ops console schema editor save",
+    version: str = "",
+    db_path: Any = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N24 运维台产品面 schema 保存为 draft。
+
+    Args:
+        tenant_id: 租户。
+        object_type_id: 类型 id。
+        definition: 类型定义 JSON。
+        actor: 提交人。
+        reason: 理由。
+        version: 可选版本。
+        db_path: 可选 ObjectType 发布库。
+    """
+    from core.harness.knowledge_pipeline.ops_console import save_ops_console_schema
+
+    return save_ops_console_schema(
+        tenant_id=tenant_id,
+        object_type_id=object_type_id,
+        definition=definition,
+        actor=actor,
+        reason=reason,
+        version=version,
+        db_path=str(db_path) if db_path else None,
+    )
+
+
+def export_knowledge_ops_console_product(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    audit_db_path: Any = None,
+    slo_db_path: Any = None,
+    include_live: bool = False,
+    output_root: Any = None,
+    write: bool = False,
+) -> Dict[str, Any]:
+    """CoreFacade：N24 运维台产品面导出（浏览器下载；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 回溯窗口小时。
+        audit_db_path: 可选统一审计 bus 库。
+        slo_db_path: 可选 SLO 样本库。
+        include_live: SLO 是否计入 live 源。
+        output_root: 可选写盘根（allowlist）。
+        write: 是否顺带服务端写盘。
+    """
+    from core.harness.knowledge_pipeline.ops_console import export_ops_console_product
+
+    return export_ops_console_product(
+        tenant_id,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        audit_db_path=str(audit_db_path) if audit_db_path else None,
+        slo_db_path=str(slo_db_path) if slo_db_path else None,
+        include_live=include_live,
+        output_root=str(output_root) if output_root else None,
+        write=write,
+    )
+
+
+def run_knowledge_ops_console_product_suite() -> Dict[str, Any]:
+    """CoreFacade：N24 运维台产品面套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.ops_console import (
+        run_ops_console_product_suite,
+    )
+
+    return run_ops_console_product_suite()
+
+
+def evaluate_knowledge_ops_console_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N24 运维台产品面门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_ops_console_product_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.ops_console import (
+        evaluate_ops_console_product_gate,
+    )
+
+    return evaluate_ops_console_product_gate(suite)
+
+
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
     """Phase K2: open arbitration ticket; never writes cross-domain edge.
 

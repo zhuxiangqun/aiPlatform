@@ -17,7 +17,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 >
 > 2026-11-23：剩余 ADR 例外面已批量冻结（`phase2-remaining-adr-freeze-evidence.md`）；本表 residual 列仍开放，不因 freeze 关闭。
 > 2026-11-23：Phase 2 sufficient-freeze 程序收口（`phase2-sufficient-freeze-closeout-evidence.md`）；仍不关闭 residual / certified。
-> 2026-11-24：产品完备面显式 residual 已合入（N02 bulk / N24 ops console 薄壳 / N08 有界 Lv4 auto-close / N02 published-over-seed / N24 ops console 有界导出）；**未**宣称 certified / 全量产品化；freeze 仍 true。
+> 2026-11-24：产品完备面显式 residual 已合入（N02 bulk / N24 ops console 薄壳 / N08 有界 Lv4 auto-close / N02 published-over-seed / N24 ops console 有界导出）；N24 运维台**产品面第一刀**已落地（默认可用 + schema JSON + 浏览器导出；`full_ops_console=true`）；**未**宣称 certified / 可视化表单设计器；freeze 仍 true。
 
 ## 本切片修复
 
@@ -67,4 +67,4 @@ PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform python3 -c \
 ## 明确未做
 
 - 关闭任何 ADR 例外 / 置 `certified=true`
-- ObjectType 全量种子文件产品化、Wiki 全量引擎、gold 准确率宣称、N17 semantic_cases 全量对 Fact Store、N18 召回/聚合/导出全路径、N19 全部旁路强制落快照、N20 list→dict 改写/certified、N21 Wiki/KB list 主返回类型改写、N14 生产切写认证/自动修复写回、N08 全量 Action Lv4 产品化、N24 全量运维台 / schema 编辑器 / 通用下载产品化
+- ObjectType 全量种子文件产品化、Wiki 全量引擎、gold 准确率宣称、N17 semantic_cases 全量对 Fact Store、N18 召回/聚合/导出全路径、N19 全部旁路强制落快照、N20 list→dict 改写/certified、N21 Wiki/KB list 主返回类型改写、N14 生产切写认证/自动修复写回、N08 全量 Action Lv4 产品化、N24 可视化表单式 schema 设计器 / certified
