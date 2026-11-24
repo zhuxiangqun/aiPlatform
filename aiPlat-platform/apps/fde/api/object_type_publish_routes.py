@@ -191,6 +191,65 @@ async def bulk_transition_object_types_route(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+class ObjectTypeSeedAuthorityBody(BaseModel):
+    """N02 residual：published 覆盖 seed 权威解析。"""
+
+    tenant_id: str = Field(..., min_length=1)
+    seed_path: str = Field(..., min_length=1)
+    object_type_ids: Optional[List[str]] = None
+    output_root: Optional[str] = None
+    write: bool = False
+
+
+@router.post("/object-types/seed-authority")
+async def apply_published_seed_authority_route(
+    body: ObjectTypeSeedAuthorityBody = Body(...),
+):
+    """N02 residual：有界 published-over-seed（非全量种子替换 / 非 certified）。
+
+    Args:
+        body: 租户 + 种子路径 + 可选类型列表。
+    """
+    from core.api.core_facade import apply_published_seed_authority
+
+    out = apply_published_seed_authority(
+        tenant_id=body.tenant_id,
+        seed_path=body.seed_path,
+        object_type_ids=body.object_type_ids,
+        output_root=body.output_root,
+        write=body.write,
+    )
+    if out.get("status") == "invalid":
+        raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
+    return out
+
+
+@router.post("/object-types/seed-authority/suite")
+async def run_seed_replacement_suite_route():
+    """N02 residual：种子权威覆盖套件。"""
+    from core.api.core_facade import run_seed_replacement_suite
+
+    return run_seed_replacement_suite()
+
+
+@router.post("/object-types/seed-authority/gate")
+async def evaluate_seed_replacement_gate_route(
+    body: ObjectTypeGateBody = Body(default_factory=ObjectTypeGateBody),
+):
+    """N02 residual：种子权威覆盖门槛门。
+
+    Args:
+        body: 可选 suite 回执。
+    """
+    from core.api.core_facade import (
+        evaluate_seed_replacement_gate,
+        run_seed_replacement_suite,
+    )
+
+    suite = body.suite if body.suite is not None else run_seed_replacement_suite()
+    return evaluate_seed_replacement_gate(suite)
+
+
 @router.post("/object-types/suite")
 async def run_object_type_publish_suite_route():
     """运行 N02 ObjectType 人审发布套件。"""

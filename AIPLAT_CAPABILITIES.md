@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4167
+total_capabilities: 4169
 last_updated: 2026-11-24
 version: "30.14"
 auto_sync: true
@@ -1357,7 +1357,8 @@ scan_hash: 8f9548ec24f4
 | **Fact State Machine（v4.3.1 W3 / N12）** | `harness/knowledge_pipeline/fact_state_machine.py` + FactLedger `put_fact` 硬门/`get_fact` + CoreFacade review/lifecycle/claim/gate + FDE `/fact-state*` | ✅ | §7.5 + 写入硬门：禁直发 published；禁裸改状态；transition 审计；retracted 不删。证据 `phase2-fact-state-evidence.md` / `test_fact_write_gates_phase2.py`。**未宣称** 部署 RBAC 真源 / N12 全量。生成物适用：已接线（经 Facade） | 本批 |
 | **Fact publish reviewer 角色门（v4.3.1 N04/N12 deepen）** | `assert_reviewer_role` / `run_reviewer_rbac_suite` / `evaluate_reviewer_rbac_gate` + Facade + HTTP `role` | ✅ | publish transition 须配置角色；env 可 opt-out；certified 恒 false。证据 `phase2-reviewer-rbac-evidence.md`。**`n04_n12_write_rbac_freeze` 停止默认 deepen**；证据 `phase2-remaining-adr-freeze-evidence.md`。**未宣称** 部署 RBAC 真源 / N04/N12 certified。生成物适用：已接线 | 本批 |
 | **ObjectType 人审发布（v4.3.1 N02 deepen+薄门户）** | `object_type_publish.py` + CoreFacade + FDE `/object-types*` + `ObjectTypePublishPanel`；Package schema 可选门 | ✅ | draft→in_review→published；publish 角色门；知识工厂薄门户；**`n02_object_type_freeze` 停止默认 N02 deepen**；suite/gate certified 恒 false。证据 `phase2-object-type-publish-evidence.md` + `phase2-n02-object-type-freeze-evidence.md` + `phase2-n02-object-type-publish-portal-evidence.md`。**显式 residual**：opt-in `bulk_transition_object_types`（证据 `phase2-n02-bulk-portal-residual-evidence.md`）。**未宣称** 种子替换 / N02 certified。生成物适用：已接线 | 本批 |
-| **ObjectType 多租户批量 residual（N02）** | `bulk_transition_object_types` + Facade/HTTP `bulk-transition` + 门户批量区 | ✅ | ≤20 项逐项回执；`AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1`；suite `bulk_opt_in`/`bulk_unavailable`；freeze 仍 true；certified/seed_replacement 恒 false。生成物适用：已接线 | 本批 |
+| **ObjectType 多租户批量 residual（N02）** | `bulk_transition_object_types` + Facade/HTTP `bulk-transition` + 门户批量区 | ✅ | ≤20 项逐项回执；`AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1`；suite `bulk_opt_in`/`bulk_unavailable`；freeze 仍 true；certified/seed_replacement 恒 false。**显式 residual**：opt-in `apply_published_seed_authority`（证据 `phase2-n02-seed-replace-residual-evidence.md`）。生成物适用：已接线 | 本批 |
+| **ObjectType 种子权威覆盖 residual（N02）** | `apply_published_seed_authority` + Facade/HTTP `seed-authority` | ✅ | published 优先于 seed；不改写 `workspace_seeds`；可选写盘仅 allowlist；`AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE=1`；suite `seed_replacement_opt_in`/`seed_replacement_unavailable`；freeze 仍 true；certified/`seed_replacement_complete` 恒 false。生成物适用：已接线（经 Facade） | 本批 |
 | **Knowledge SDK（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/sdk_generator.py` + CoreFacade + `GET/POST …/fde/sdk/*` | ✅ | 附录 E.3；ObjectType→Client 表面/Python 源码仅经 Facade；`kb:read` L1。证据 `phase2-sdk-evidence.md`。**未宣称** 多语言包发布/字段 ACL/N24 | 本批 |
 | **Knowledge SDK 写盘安装（v4.3.1 显式 residual）** | `install_sdk_python` / `resolve_sdk_install_root` + Facade `install_knowledge_sdk` + `POST …/fde/sdk/install/{object_type}` | ✅ | allowlist `aiplat-sdk/aiplat/knowledge/`；path escape / 非 allowlist 拒绝；仍要 `kb:read`。证据 `phase2-sdk-write-install-evidence.md`。**未宣称** 多语言/PyPI/字段 ACL/N24 certified | 本批 |
 | **Knowledge SLO 遥测接线（v4.3.1 F1 deepen）** | `harness/knowledge_pipeline/slo_telemetry.py` + CoreFacade + `GET/POST …/fde/slo/*` | ✅ | 白皮书 §14 三指标采集/快照/接线门；wiring≠attainment；**`slo_telemetry_freeze` 停止默认 SLO wiring deepen**。证据 `phase2-slo-telemetry-wiring-evidence.md` + `phase2-slo-telemetry-freeze-evidence.md`。**未宣称** 生产达标/告警/Full unconditional | 本批 |
@@ -1474,6 +1475,8 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_seed_replacement_gate | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
+| run_seed_replacement_suite | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_bounded_lv4_auto_close_gate | `core/harness/knowledge_pipeline/lv4_bounded_auto_close.py` | ✅ | 自动同步 | 已合入 |
 | run_bounded_lv4_auto_close_suite | `core/harness/knowledge_pipeline/lv4_bounded_auto_close.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_knowledge_ops_console_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -1602,6 +1605,7 @@ scan_hash: 8f9548ec24f4
 | transition_object_type | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
 | submit_object_type_draft | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | 自动同步 | 已合入 |
 | bulk_transition_object_types | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 residual 多租户批量转换（非 certified） | 本批 |
+| apply_published_seed_authority | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 residual published-over-seed 权威覆盖（非全量替换/非 certified） | 本批 |
 | ObjectSetFilterError | `core/harness/knowledge_pipeline/object_set.py` | ✅ | 自动同步 | 已合入 |
 | allowed_reviewer_roles | `core/harness/knowledge_pipeline/fact_state_machine.py` | ✅ | 自动同步 | 已合入 |
 | require_unified_query_route | `core/harness/knowledge_pipeline/fact_ledger.py` | ✅ | 自动同步 | 已合入 |
@@ -5068,9 +5072,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 795 | 1 | 796 |
+| Harness 执行引擎 | 796 | 1 | 797 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 840 | 9 | 849 |
+| 知识引擎（本体） | 841 | 9 | 850 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5113,7 +5117,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4156** | **11** | **4167** |
+| **总计** | **4158** | **11** | **4169** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
