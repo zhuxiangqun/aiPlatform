@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T10:30:00+08:00",
+  "reviewed_at": "2026-11-24T10:35:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "5b894313a0a3323c001b35e1745a496b74aaa830",
-  "diff_sha256": "4d77517e30db8c6a02699579ee9eea1644699094ac253542aafd3ce8401e4c81",
-  "head_sha": "18a3908218569d15ea9d6e09f355307b75109700",
+  "diff_sha256": "dffae02e09dc22a080d1ce583dd2c043b73948c003ff7ac0bef5663dc8a37ff2",
+  "head_sha": "acbe1c9ab04e7f067ea0d45d546aab67164ea489",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N08 bounded Lv4 auto-close residual only; freeze stays true; certified/full_action_lv4 false. Local lock only."
+  "note": "N08 residual + CAPS/whitepaper stamp refresh. Local lock only."
 }
