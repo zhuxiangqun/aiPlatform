@@ -2,7 +2,8 @@
 
 职责：登记校准报告；校验必填与门槛；失败时 confidence 上限 medium；
   Operational 查询路径封顶（``apply_calibration_ceiling``）+ 流水线套件；
-  显式 residual：opt-in ``compute_ece_from_samples`` 有界 ECE/Brier 计算。
+  显式 residual：opt-in ``compute_ece_from_samples`` 有界 ECE/Brier 计算；
+  产品面：``compute_ece_from_samples_product``（默认可用；无 residual env 门）。
 
 非目标：不宣称准确率达标；不替代 OCS；不做迁移双写；不宣称 N13 certified；
   ECE 训练不可用时诚实上报 ``ece_training_unavailable``，不静默冒充手工 ece。
@@ -538,26 +539,32 @@ def compute_ece_from_samples(
     *,
     n_bins: int = 10,
     high_threshold: float = 0.8,
+    product_surface: bool = False,
 ) -> Dict[str, Any]:
-    """N13 residual：从标注样本有界计算 ECE / Brier（非准确率宣称）。
+    """N13：从标注样本有界计算 ECE / Brier（非准确率宣称）。
 
-    每条样本需 ``confidence``∈[0,1] 与 ``correct`` bool。默认关闭实网训练
-    （无 ``AIPLAT_KNOWLEDGE_ECE_TRAIN=1`` → ``ece_training_unavailable``）。
+    每条样本需 ``confidence``∈[0,1] 与 ``correct`` bool。
+    residual：无 ``AIPLAT_KNOWLEDGE_ECE_TRAIN=1`` → ``ece_training_unavailable``。
+    产品面（``product_surface=True``）：跳过 residual env 门。
     即使计算成功，``accuracy_claim`` / ``certified`` 仍恒 false。
 
     Args:
         samples: 标注样本列表。
         n_bins: ECE 等宽分箱数（1–50）。
         high_threshold: high 档精度阈值。
+        product_surface: 是否产品面（跳过 residual env 门）。
     """
     base = {
         "accuracy_claim": False,
         "certified": False,
         "n13_full_conformance": False,
         "n13_calibration_freeze": True,
+        "ece_train_product_surface": bool(product_surface),
     }
-    # 为什么：默认关闭 ECE 训练，避免 CI/离线把手工 ece 冒充样本训练结果
-    if os.environ.get("AIPLAT_KNOWLEDGE_ECE_TRAIN", "").strip().lower() not in {
+    # 为什么：residual 默认关；产品面跳过 env 门，避免 CI 冒充手工 ece 仍靠 empty/非法样本诚实失败
+    if not product_surface and os.environ.get(
+        "AIPLAT_KNOWLEDGE_ECE_TRAIN", ""
+    ).strip().lower() not in {
         "1",
         "true",
         "yes",
@@ -625,7 +632,7 @@ def compute_ece_from_samples(
     return {
         **base,
         "status": "ok",
-        "via": "samples",
+        "via": "product" if product_surface else "samples",
         "sample_size": n,
         "n_bins": bins,
         "ece": round(ece, 6),
@@ -633,7 +640,163 @@ def compute_ece_from_samples(
         "high_precision": round(high_precision, 6),
         "coverage": round(coverage, 6),
         "high_threshold": float(high_threshold),
-        "note": "sample ECE residual only; not accuracy claim / not N13 certified",
+        "note": (
+            "sample ECE product surface; not accuracy claim / not N13 certified"
+            if product_surface
+            else "sample ECE residual only; not accuracy claim / not N13 certified"
+        ),
+    }
+
+
+_ECE_TRAIN_PRODUCT_CASES = (
+    "ece_train_product_eval",
+    "ece_train_product_unavailable",
+    "honesty_product_certified_false",
+)
+
+
+def compute_ece_from_samples_product(
+    samples: Sequence[Dict[str, Any]],
+    *,
+    n_bins: int = 10,
+    high_threshold: float = 0.8,
+) -> Dict[str, Any]:
+    """N13 产品面：有界样本 ECE/Brier（无 residual env 门；非准确率宣称）。
+
+    Args:
+        samples: 标注样本列表。
+        n_bins: ECE 等宽分箱数（1–50）。
+        high_threshold: high 档精度阈值。
+    """
+    out = compute_ece_from_samples(
+        samples,
+        n_bins=n_bins,
+        high_threshold=high_threshold,
+        product_surface=True,
+    )
+    out["ece_train_product_surface"] = True
+    out["accuracy_claim"] = False
+    out["certified"] = False
+    out["n13_full_conformance"] = False
+    out["n13_calibration_freeze"] = True
+    if not out.get("note"):
+        out["note"] = (
+            "sample ECE product surface; not accuracy claim / not N13 certified"
+        )
+    return out
+
+
+def run_ece_train_product_suite() -> Dict[str, Any]:
+    """N13 产品面套件：默认可用；accuracy / certified 恒 false。"""
+    cases: List[Dict[str, Any]] = []
+    prev = os.environ.pop("AIPLAT_KNOWLEDGE_ECE_TRAIN", None)
+    try:
+        # 为什么：单箱 conf=acc=0.7 → ECE≈0；产品面无 residual env 仍可算
+        perfect = (
+            [{"confidence": 0.7, "correct": True}] * 70
+            + [{"confidence": 0.7, "correct": False}] * 30
+        )
+        ok = compute_ece_from_samples_product(perfect, n_bins=10)
+        ece_v = ok.get("ece")
+        ece_ok = isinstance(ece_v, (int, float)) and float(ece_v) <= DEFAULT_ECE_MAX
+        cases.append(
+            {
+                "id": "ece_train_product_eval",
+                "ok": ok.get("status") == "ok"
+                and ece_ok
+                and int(ok.get("sample_size") or 0) >= 100
+                and ok.get("ece_train_product_surface") is True
+                and ok.get("via") == "product"
+                and ok.get("accuracy_claim") is False
+                and ok.get("certified") is False,
+            }
+        )
+
+        un = compute_ece_from_samples_product([])
+        residual = compute_ece_from_samples(
+            [{"confidence": 0.9, "correct": True}]
+        )
+        cases.append(
+            {
+                "id": "ece_train_product_unavailable",
+                "ok": un.get("status") == "ece_training_unavailable"
+                and un.get("via") == "empty_samples"
+                and un.get("ece_train_product_surface") is True
+                and residual.get("status") == "ece_training_unavailable"
+                and residual.get("via") == "env_disabled"
+                and residual.get("ece_train_product_surface") is False,
+            }
+        )
+        cases.append(
+            {
+                "id": "honesty_product_certified_false",
+                "ok": ok.get("certified") is False
+                and ok.get("n13_full_conformance") is False
+                and ok.get("accuracy_claim") is False
+                and un.get("certified") is False,
+            }
+        )
+    finally:
+        if prev is not None:
+            os.environ["AIPLAT_KNOWLEDGE_ECE_TRAIN"] = prev
+
+    passed = sum(1 for c in cases if c.get("ok"))
+    return {
+        "ok": passed == len(_ECE_TRAIN_PRODUCT_CASES)
+        and len(cases) == len(_ECE_TRAIN_PRODUCT_CASES),
+        "passed": passed,
+        "total": len(_ECE_TRAIN_PRODUCT_CASES),
+        "cases": cases,
+        "certified": False,
+        "n13_full_conformance": False,
+        "accuracy_claim": False,
+        "n13_calibration_freeze": True,
+        "ece_train_product_surface": True,
+        "note": (
+            "ECE train product surface suite; "
+            "not accuracy claim / not N13 certified"
+        ),
+    }
+
+
+def evaluate_ece_train_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N13 产品面门槛门：要求 ece_train_product_surface；禁止 accuracy/certified。
+
+    Args:
+        suite: ``run_ece_train_product_suite`` 回执；缺省时现场跑套件。
+    """
+    s = suite if isinstance(suite, dict) else run_ece_train_product_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    # 为什么：禁止套件自签 certified（产品面 ≠ N13 全量认证）
+    if s.get("certified") is True or s.get("n13_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    # 为什么：样本 ECE ≠ 准确率宣称
+    if s.get("accuracy_claim") is True:
+        issues.append("honesty_accuracy_claim_forbidden")
+    # 为什么：产品面门槛要求显式 surface 标记，防 residual 冒充
+    if s.get("ece_train_product_surface") is not True:
+        issues.append("product_ece_train_surface_required")
+    ids = {
+        c.get("id")
+        for c in (s.get("cases") or [])
+        if isinstance(c, dict) and c.get("ok")
+    }
+    for need in _ECE_TRAIN_PRODUCT_CASES:
+        if need not in ids:
+            issues.append(f"missing_or_failed:{need}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "n13_full_conformance": False,
+        "accuracy_claim": False,
+        "n13_calibration_freeze": True,
+        "ece_train_product_surface": True,
+        "note": "ECE train product gate; not N13 certified / no accuracy claim",
     }
 
 

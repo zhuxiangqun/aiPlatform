@@ -6879,6 +6879,50 @@ def compute_ece_from_samples(
     return _compute(samples, n_bins=n_bins, high_threshold=high_threshold)
 
 
+def compute_ece_from_samples_product(
+    samples: List[Dict[str, Any]],
+    *,
+    n_bins: int = 10,
+    high_threshold: float = 0.8,
+) -> Dict[str, Any]:
+    """CoreFacade：N13 产品面有界 ECE/Brier（默认可用；certified 恒 false）。
+
+    Args:
+        samples: 标注样本（``confidence`` + ``correct``）。
+        n_bins: ECE 分箱数。
+        high_threshold: high 档精度阈值。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        compute_ece_from_samples_product as _compute,
+    )
+
+    return _compute(samples, n_bins=n_bins, high_threshold=high_threshold)
+
+
+def run_ece_train_product_suite() -> Dict[str, Any]:
+    """CoreFacade：N13 产品面 ECE 训练套件。"""
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        run_ece_train_product_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_ece_train_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N13 产品面 ECE 训练门槛门。
+
+    Args:
+        suite: ``run_ece_train_product_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.confidence_calibration import (
+        evaluate_ece_train_product_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def evaluate_calibration_pipeline_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
