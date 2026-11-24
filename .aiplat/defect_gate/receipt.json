@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T07:35:00+08:00",
+  "reviewed_at": "2026-11-25T07:40:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "50e0d24c6762b3c3e585b67b486ded5f15017b0b",
-  "diff_sha256": "6d30b966695392fad7e48aec43ca0bc7ce3f6a6e54c3f9323c012c9f10607e1a",
-  "head_sha": "24f0a44d4e93552dafd977d1d99010b5958746cc",
+  "diff_sha256": "22b49023a81d57b09b264f9cb3dde099dbf7953d09a031c7e1f4bf681ca9c4ec",
+  "head_sha": "2e86c1bd00cc3c2a21dae905c4c0d1340020665d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N13 ECE train product rebased onto main after #1050; residual env path retained; ece_train_product_surface=true; certified/accuracy false. Local lock only."
+  "note": "N13 ECE product rebased + whitepaper sync; local lock only."
 }
