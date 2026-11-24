@@ -1,9 +1,14 @@
 """知识系统生产 SLO 遥测与达标窗口（F1 / 白皮书 §14；显式 residual）。
 
-职责：租户隔离样本记录、对标默认目标的快照、接线门、达标窗口评估。
-非目标：不做告警/仪表盘；不升级 Full unconditional / n24_full_conformance；
-不采集 ingest/object-sync/索引重建（默认 deepen 仍冻结）。
-诚实锁：wiring≠attainment；attainment_ok 须窗口达标 + 非作者批准；certified 恒 false。
+职责：租户隔离样本记录、对标默认目标的快照、接线门、达标窗口评估；
+  显式 residual：opt-in ``evaluate_slo_alert_candidates`` 有界告警候选。
+
+非目标：不升级 Full unconditional / n24_full_conformance；
+不采集 ingest/object-sync/索引重建（默认 deepen 仍冻结）；
+不做外部 pager/邮件投递（仅结构化候选回执）。
+
+诚实锁：wiring≠attainment；attainment_ok 须窗口达标 + 非作者批准；
+告警不可用时诚实上报 ``slo_alerting_unavailable``；certified 恒 false。
 """
 from __future__ import annotations
 
@@ -640,6 +645,253 @@ def evaluate_slo_attainment_window(
     }
 
 
+def evaluate_slo_alert_candidates(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    db_path: Optional[str] = None,
+    include_live: bool = True,
+) -> Dict[str, Any]:
+    """SLO residual：从快照生成告警候选（非投递、非 certified）。
+
+    指标未达标或无有效样本时产出候选；默认关闭
+    （无 ``AIPLAT_KNOWLEDGE_SLO_ALERT=1`` → ``slo_alerting_unavailable``）。
+    即使有候选，``certified`` / ``n24_full_conformance`` / ``attainment_ok`` 仍恒 false。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 回溯窗口小时。
+        db_path: 样本库。
+        include_live: 是否计入 live 源。
+    """
+    tid = str(tenant_id or "").strip()
+    base = {
+        "tenant_id": tid,
+        "domain_id": str(domain_id or ""),
+        "window_hours": int(window_hours),
+        "alerts": [],
+        "alert_count": 0,
+        "attainment_ok": False,
+        "certified": False,
+        "n24_full_conformance": False,
+        "slo_telemetry_freeze": True,
+        "accuracy_claim": False,
+    }
+    if not tid:
+        return {**base, "status": "invalid", "error": "tenant_required"}
+
+    # 为什么：默认关闭告警候选，避免 CI/本地把接线快照当生产告警投递
+    if os.environ.get("AIPLAT_KNOWLEDGE_SLO_ALERT", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+    }:
+        return {
+            **base,
+            "status": "slo_alerting_unavailable",
+            "via": "env_disabled",
+            "note": "set AIPLAT_KNOWLEDGE_SLO_ALERT=1 to enable alert candidates",
+        }
+
+    snap = get_slo_snapshot(
+        tid,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        db_path=db_path,
+        include_live=include_live,
+    )
+    if snap.get("status") != "ok":
+        return {
+            **base,
+            "status": "slo_alerting_unavailable",
+            "via": "snapshot_unavailable",
+            "snapshot": snap,
+            "note": "snapshot unavailable; not alert delivery / not certified",
+        }
+
+    alerts: List[Dict[str, Any]] = []
+    for mid in _METRIC_IDS:
+        m = (snap.get("metrics") or {}).get(mid) or {}
+        n = int(m.get("effective_samples") or 0)
+        meets = m.get("meets_target")
+        if n <= 0 or m.get("effective") is None:
+            alerts.append(
+                {
+                    "metric": mid,
+                    "severity": "no_samples",
+                    "effective_samples": n,
+                    "computed": m.get("computed"),
+                    "target": (snap.get("targets") or {}).get(mid),
+                }
+            )
+        elif meets is not True:
+            alerts.append(
+                {
+                    "metric": mid,
+                    "severity": "misses_target",
+                    "effective_samples": n,
+                    "computed": m.get("computed"),
+                    "meets_target": meets,
+                    "target": (snap.get("targets") or {}).get(mid),
+                }
+            )
+
+    return {
+        **base,
+        "status": "ok",
+        "via": "opt_in",
+        "alerts": alerts,
+        "alert_count": len(alerts),
+        "snapshot": snap,
+        "note": (
+            "alert candidates only (no pager/email delivery); "
+            "not attainment_ok / not certified / Full remains conditional"
+        ),
+    }
+
+
+def run_slo_alert_suite(*, db_path: Optional[str] = None) -> Dict[str, Any]:
+    """SLO alerting residual 套件（certified 恒 false）。
+
+    Args:
+        db_path: 可选临时库。
+    """
+    import tempfile
+
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    path = db_path
+    if not path:
+        tmp = tempfile.TemporaryDirectory(prefix="slo-alert-")
+        path = str(Path(tmp.name) / "slo.db")
+
+    prev = os.environ.get("AIPLAT_KNOWLEDGE_SLO_ALERT")
+    os.environ.pop("AIPLAT_KNOWLEDGE_SLO_ALERT", None)
+    cases: List[Dict[str, Any]] = []
+    try:
+        # 为什么：action_success_rate 按 ok 标志聚合；ok=False 才能造 misses_target
+        record_slo_sample(
+            "action_success_rate",
+            0.0,
+            tenant_id="slo-alert-t",
+            ok=False,
+            db_path=path,
+        )
+        record_slo_sample(
+            "query_p95_ms",
+            50.0,
+            tenant_id="slo-alert-t",
+            ok=True,
+            db_path=path,
+        )
+        record_slo_sample(
+            "citation_coverage",
+            1.0,
+            tenant_id="slo-alert-t",
+            ok=True,
+            db_path=path,
+        )
+
+        unavail = evaluate_slo_alert_candidates(
+            "slo-alert-t", db_path=path, include_live=False
+        )
+        cases.append(
+            {
+                "id": "slo_alert_unavailable",
+                "ok": unavail.get("status") == "slo_alerting_unavailable"
+                and unavail.get("certified") is False
+                and unavail.get("attainment_ok") is False,
+            }
+        )
+
+        os.environ["AIPLAT_KNOWLEDGE_SLO_ALERT"] = "1"
+        fired = evaluate_slo_alert_candidates(
+            "slo-alert-t", db_path=path, include_live=False
+        )
+        alerts = fired.get("alerts") or []
+        has_miss = any(
+            a.get("metric") == "action_success_rate"
+            and a.get("severity") == "misses_target"
+            for a in alerts
+            if isinstance(a, dict)
+        )
+        cases.append(
+            {
+                "id": "slo_alert_opt_in",
+                "ok": fired.get("status") == "ok"
+                and has_miss
+                and int(fired.get("alert_count") or 0) >= 1
+                and fired.get("certified") is False
+                and fired.get("n24_full_conformance") is False
+                and fired.get("attainment_ok") is False,
+            }
+        )
+
+        cases.append(
+            {
+                "id": "honesty_certified_false",
+                "ok": fired.get("certified") is False
+                and fired.get("slo_telemetry_freeze") is True,
+            }
+        )
+    finally:
+        if prev is None:
+            os.environ.pop("AIPLAT_KNOWLEDGE_SLO_ALERT", None)
+        else:
+            os.environ["AIPLAT_KNOWLEDGE_SLO_ALERT"] = prev
+        if tmp is not None:
+            tmp.cleanup()
+
+    passed = sum(1 for c in cases if c.get("ok"))
+    return {
+        "ok": passed == len(cases) and len(cases) == 3,
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "certified": False,
+        "n24_full_conformance": False,
+        "attainment_ok": False,
+        "slo_telemetry_freeze": True,
+        "note": "SLO alert residual suite; not certified / not Full unconditional",
+    }
+
+
+def evaluate_slo_alert_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SLO alerting residual 门槛门；certified 恒 false。
+
+    Args:
+        suite: ``run_slo_alert_suite`` 回执。
+    """
+    s = suite if isinstance(suite, dict) else run_slo_alert_suite()
+    issues: List[str] = []
+    if not s.get("ok"):
+        issues.append("suite_not_ok")
+    if s.get("certified") is True or s.get("n24_full_conformance") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("attainment_ok") is True:
+        issues.append("honesty_attainment_on_alert_forbidden")
+    ids = {
+        c.get("id")
+        for c in (s.get("cases") or [])
+        if isinstance(c, dict) and c.get("ok")
+    }
+    for need in ("slo_alert_unavailable", "slo_alert_opt_in", "honesty_certified_false"):
+        if need not in ids:
+            issues.append(f"missing_or_failed:{need}")
+    return {
+        "ok": not issues,
+        "issues": issues,
+        "certified": False,
+        "n24_full_conformance": False,
+        "attainment_ok": False,
+        "slo_telemetry_freeze": True,
+        "note": "SLO alert residual gate; not certified",
+    }
+
+
 __all__ = [
     "DEFAULT_SLO_TARGETS",
     "DEFAULT_ATTAINMENT_MIN_SAMPLES",
@@ -647,4 +899,7 @@ __all__ = [
     "get_slo_snapshot",
     "evaluate_slo_wiring_gate",
     "evaluate_slo_attainment_window",
+    "evaluate_slo_alert_candidates",
+    "run_slo_alert_suite",
+    "evaluate_slo_alert_gate",
 ]
