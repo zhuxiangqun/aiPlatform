@@ -153,6 +153,47 @@ async def slo_evaluate_attainment_route(
     return out
 
 
+@router.post("/slo/evaluate-alerts")
+async def slo_evaluate_alerts_route(
+    request: Request,
+    x_aiplat_tenant_id: Optional[str] = Header(None, alias="X-AIPLAT-TENANT-ID"),
+) -> Dict[str, Any]:
+    """SLO residual：告警候选（非投递；certified 恒假）。
+
+    Args:
+        request: FastAPI Request（JSON：tenant_id/domain_id/window_hours/include_live）。
+        x_aiplat_tenant_id: 租户 header。
+    """
+    from core.api.core_facade import evaluate_knowledge_slo_alert_candidates
+
+    body: Dict[str, Any] = {}
+    try:
+        raw = await request.json()
+        if isinstance(raw, dict):
+            body = raw
+    except Exception:
+        body = {}
+
+    tid = _tenant_from(
+        request, x_aiplat_tenant_id, str(body.get("tenant_id") or "")
+    )
+    if not tid:
+        raise HTTPException(status_code=400, detail="tenant_id_required")
+    window = int(body.get("window_hours") or 24)
+    include_live = body.get("include_live")
+    if include_live is None:
+        include_live = True
+    out = evaluate_knowledge_slo_alert_candidates(
+        tid,
+        domain_id=str(body.get("domain_id") or ""),
+        window_hours=window,
+        include_live=bool(include_live),
+    )
+    if out.get("status") == "invalid":
+        raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
+    return out
+
+
 @router.post("/slo/sample")
 async def slo_record_sample_route(
     request: Request,
