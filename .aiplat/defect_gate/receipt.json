@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T14:43:53+08:00",
+  "reviewed_at": "2026-11-25T14:55:02+08:00",
   "base_ref": "origin/main",
   "merge_base": "4c060163673eb1865b176b48e64801817ce6507a",
-  "diff_sha256": "13a768e277d788c393b57fb01ff0f80287ba461b22326c9746429618bf6997d4",
-  "head_sha": "06d6742893dffad3614f544eefd802049eb1a7b3",
+  "diff_sha256": "f8e5fa8b519dc55525f0ca3fef6be84db79b9e606bd5071050fc06a9125bb3a6",
+  "head_sha": "b8125d976a3b882d119e863eeecdaec4077e3d96",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G0 foundation slice-1; phase0_complete/e2/certified false. Local lock only."
+  "note": "G0 CI fix: clause-sync + Report doc_type. Local lock only."
 }
