@@ -21163,6 +21163,71 @@ def evaluate_evo_compute_g2_slice2_gate(suite: Optional[dict] = None) -> dict:
     return _gate(suite)
 
 
+def run_evo_regression_gate(
+    *,
+    genome_id: str,
+    baseline_genes: dict,
+    challenger_genes: dict,
+    dataset_version: str = "regression_fixture_v1",
+    max_quality_drop: float = 0.02,
+    regression_set: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：冻结回归集自动回归门（分数不回流进化）。
+
+    Args:
+        genome_id: genome。
+        baseline_genes: 基线基因。
+        challenger_genes: 挑战者基因。
+        dataset_version: 数据集版本。
+        max_quality_drop: 允许最大质量下降。
+        regression_set: 可选外部集。
+    """
+    from core.harness.evo_compute.regression import run_regression_gate as _run
+
+    return _run(
+        genome_id=genome_id,
+        baseline_genes=baseline_genes,
+        challenger_genes=challenger_genes,
+        dataset_version=dataset_version,
+        max_quality_drop=max_quality_drop,
+        regression_set=regression_set,
+    )
+
+
+def get_evo_regression_set(
+    *,
+    genome_id: str = "timeout.retry.v1",
+    dataset_version: str = "regression_fixture_v1",
+) -> dict:
+    """CoreFacade：冻结回归集夹具。
+
+    Args:
+        genome_id: genome。
+        dataset_version: 版本。
+    """
+    from core.harness.evo_compute.regression import default_regression_set as _d
+
+    return _d(genome_id=genome_id, dataset_version=dataset_version)
+
+
+def run_evo_compute_g2_slice3_suite() -> dict:
+    """CoreFacade：G2 slice-3 套件（自动回归；g2_complete 恒 false）。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g2_slice3_suite as _run
+
+    return _run()
+
+
+def evaluate_evo_compute_g2_slice3_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：G2 slice-3 门槛门。
+
+    Args:
+        suite: ``run_evo_compute_g2_slice3_suite`` 回执。
+    """
+    from core.harness.evo_compute.suite import evaluate_evo_compute_g2_slice3_gate as _gate
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 

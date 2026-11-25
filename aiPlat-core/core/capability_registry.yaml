@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3426
+total_capabilities: 3436
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 758
+    caps_count: 768
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -3007,10 +3007,50 @@ domains:
         type: function
         signature: "CoreFacade evaluate_evo_compute_g2_slice2_gate"
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: default_adversarial_cases
+        type: function
+        signature: "default_adversarial_cases()→list"
+        module: aiPlat-core/core/harness/evo_compute/regression.py
+      - symbol: default_regression_set
+        type: function
+        signature: "default_regression_set(genome_id,dataset_version)"
+        module: aiPlat-core/core/harness/evo_compute/regression.py
+      - symbol: run_regression_gate
+        type: function
+        signature: "run_regression_gate(...); feeds_evolution=false"
+        module: aiPlat-core/core/harness/evo_compute/regression.py
+      - symbol: run_evo_compute_g2_slice3_suite
+        type: function
+        signature: "run_evo_compute_g2_slice3_suite()→dict; g2_complete=false"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: evaluate_evo_compute_g2_slice3_gate
+        type: function
+        signature: "evaluate_evo_compute_g2_slice3_gate(suite=None)"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: run_evo_regression_gate
+        type: function
+        signature: "CoreFacade run_evo_regression_gate"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: get_evo_regression_set
+        type: function
+        signature: "CoreFacade get_evo_regression_set"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_compute_g2_slice3_suite
+        type: function
+        signature: "CoreFacade run_evo_compute_g2_slice3_suite"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_compute_g2_slice3_gate
+        type: function
+        signature: "CoreFacade evaluate_evo_compute_g2_slice3_gate"
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: continuous_midpoints
         type: function
         signature: '非 int 字段取中点默认值。'
         module: aiPlat-core/core/harness/evo_compute/ga.py
+      - symbol: evaluate_regression_case
+        type: function
+        signature: '单条回归用例：代理适应度相对用例地板。'
+        module: aiPlat-core/core/harness/evo_compute/regression.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
