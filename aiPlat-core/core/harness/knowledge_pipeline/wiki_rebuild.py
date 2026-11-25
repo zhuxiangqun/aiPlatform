@@ -1,12 +1,13 @@
-"""Wiki 有条件重建（附录 N N05 deepen）。
+"""Wiki 有条件重建（附录 N N05 deepen + 产品面 slice-1）。
 
 职责：
   - 从 FactLedger 按租户/域生成 Wiki 派生页（SQLite 读模型视图）
   - 复用 Fact→Graph 三分类 ``rebuild_mode`` / ``rebuild_reason``
   - non_rebuildable 不写页；exact/semantic 写派生视图（非人工 Wiki HTTP）
+  - 产品面：默认可用投影 + 写页后有界 FTS upsert（``wiki_fts_product_sync``）
 
 非目标：
-  - 不替换 wiki_engine 全量索引 / FTS 热路径
+  - 不替换 wiki_engine 全量索引 / FTS 热路径（``wiki_engine_fts_full`` 恒 false）
   - 不开放人工写绕过读模型硬门
   - 不宣称 N05 certified / Wiki 全量认证
 """
@@ -46,6 +47,15 @@ _SUITE_CASES = (
     "gate_receipt_ok",
     "honesty_certified_false",
 )
+_PRODUCT_SUITE_CASES = (
+    "product_exact_writes_pages",
+    "product_non_skips_write",
+    "product_tenant_required",
+    "product_fts_sync_flags",
+    "product_fts_rebuild_honesty",
+    "product_honesty_certified_false",
+)
+_FTS_SYNC_MAX = 50
 
 
 class WikiRebuildError(ValueError):
@@ -570,3 +580,430 @@ async def run_wiki_rebuild_suite(
     finally:
         if tmp is not None:
             tmp.cleanup()
+
+
+def _product_honesty_flags() -> Dict[str, Any]:
+    """N05 产品面诚实锁（恒态）。"""
+    return {
+        "via": "product",
+        "wiki_rebuild_product_surface": True,
+        "wiki_fts_product_sync": True,
+        "wiki_engine_fts_full": False,
+        "certified": False,
+        "n05_full_conformance": False,
+        "wiki_full_certified": False,
+        "n05_wiki_rebuild_freeze": True,
+    }
+
+
+def _sync_pages_to_fts(
+    *,
+    pages: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """将派生页标题有界 upsert 到 wiki_fts（失败不阻断投影）。
+
+    Args:
+        pages: ``list_wiki_rebuild_pages`` 风格条目。
+    """
+    from core.harness.knowledge.wiki_fts import fts_upsert_page
+
+    synced = 0
+    errors: List[str] = []
+    for page in pages[:_FTS_SYNC_MAX]:
+        title = str(page.get("title") or "").strip()
+        if not title:
+            continue
+        body = page.get("body") if isinstance(page.get("body"), dict) else {}
+        summary = str((body or {}).get("status") or (body or {}).get("name") or "")
+        preview = json.dumps(body or {}, ensure_ascii=False)[:500]
+        try:
+            fts_upsert_page(
+                title=title,
+                tags=["wiki_rebuild_product"],
+                summary=summary,
+                body_preview=preview,
+            )
+            synced += 1
+        except Exception as exc:  # noqa: BLE001
+            # 为什么：FTS 同步失败不得伪装成投影成功，也不得回滚已写派生页
+            errors.append(f"{title}:{type(exc).__name__}")
+            logger.warning("wiki_rebuild product fts upsert failed title=%s", title)
+    return {
+        "fts_synced": synced,
+        "fts_sync_errors": errors,
+        "fts_sync_capped": len(pages) > _FTS_SYNC_MAX,
+    }
+
+
+async def project_facts_to_wiki_product(
+    *,
+    tenant_id: str,
+    domain_id: str,
+    ledger: Optional[FactLedger] = None,
+    clear_projected: bool = False,
+    rebuild_mode: Optional[str] = None,
+    rebuild_reason: str = "",
+    exact_capable: bool = True,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N05 产品面：默认可用 Fact→Wiki 派生重建 + 写页后有界 FTS sync。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 业务域。
+        ledger: 可选账本。
+        clear_projected: True 时先清该租户/域派生页。
+        rebuild_mode: 可选三分类。
+        rebuild_reason: 分类理由。
+        exact_capable: 是否可精确重放。
+        db_path: 可选派生库路径。
+    """
+    receipt = await project_facts_to_wiki(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        ledger=ledger,
+        clear_projected=clear_projected,
+        rebuild_mode=rebuild_mode,
+        rebuild_reason=rebuild_reason,
+        exact_capable=exact_capable,
+        db_path=db_path,
+    )
+    out = {**receipt, **_product_honesty_flags()}
+    out["note"] = (
+        "Wiki rebuild product surface; "
+        "not wiki_engine_fts_full / not N05 certified"
+    )
+    if out.get("written") is True:
+        pages = list_wiki_rebuild_pages(
+            tenant_id=str(tenant_id or "").strip(),
+            domain_id=str(domain_id or "").strip(),
+            limit=_FTS_SYNC_MAX,
+            db_path=db_path,
+        )
+        # 仅 sync 本轮 created/updated 对应页（按 page_id）
+        want = set(str(x) for x in (out.get("created") or []) + (out.get("updated") or []))
+        to_sync = [p for p in pages if str(p.get("page_id") or "") in want] or pages
+        sync = _sync_pages_to_fts(pages=to_sync)
+        out.update(sync)
+    else:
+        out["fts_synced"] = 0
+        out["fts_sync_errors"] = []
+        out["fts_sync_capped"] = False
+    return out
+
+
+def list_wiki_rebuild_pages_product(
+    *,
+    tenant_id: str,
+    domain_id: str = "",
+    limit: int = 200,
+    db_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N05 产品面：列举 Wiki 重建派生页（带诚实旗）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        limit: 最大条数。
+        db_path: 可选库路径。
+    """
+    tid = str(tenant_id or "").strip()
+    pages = list_wiki_rebuild_pages(
+        tenant_id=tid,
+        domain_id=domain_id,
+        limit=limit,
+        db_path=db_path,
+    )
+    base = {
+        "status": "ok" if tid else "invalid",
+        "tenant_id": tid,
+        "domain_id": str(domain_id or "").strip(),
+        "pages": pages,
+        "total": len(pages),
+        **_product_honesty_flags(),
+        "note": (
+            "Wiki rebuild product list; "
+            "not wiki_engine_fts_full / not N05 certified"
+        ),
+    }
+    if not tid:
+        base["error"] = "tenant_required"
+        base["pages"] = []
+        base["total"] = 0
+    return base
+
+
+def rebuild_wiki_fts_product() -> Dict[str, Any]:
+    """N05 产品面：有界 FTS 全盘重建（包装 ``fts_index_pages``；非认证全量）。
+
+    Returns:
+        含 ``indexed`` 与诚实旗的回执。
+    """
+    from core.harness.knowledge.wiki_fts import fts_index_pages
+
+    indexed = 0
+    err: Optional[str] = None
+    try:
+        indexed = int(fts_index_pages() or 0)
+    except Exception as exc:  # noqa: BLE001
+        err = f"{type(exc).__name__}:{exc}"
+        logger.warning("wiki_rebuild product fts_index_pages failed: %s", err)
+    out: Dict[str, Any] = {
+        "status": "ok" if err is None else "error",
+        "indexed": indexed,
+        "wiki_fts_product_rebuild": True,
+        **_product_honesty_flags(),
+        "note": (
+            "Wiki FTS product rebuild (bounded wiki_engine pages); "
+            "not wiki_engine_fts_full / not N05 certified"
+        ),
+    }
+    if err:
+        out["error"] = err
+    return out
+
+
+def evaluate_wiki_rebuild_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """N05 产品面门槛门：要求 product/FTS sync 旗；禁 certified / fts_full。
+
+    Args:
+        suite: ``run_wiki_rebuild_product_suite`` 回执。
+    """
+    s = suite or {}
+    issues: List[str] = []
+    if s.get("certified") is True:
+        issues.append("honesty_certified_flag_forbidden")
+    if s.get("n05_full_conformance") is True:
+        issues.append("honesty_n05_full_flag_forbidden")
+    if s.get("wiki_full_certified") is True:
+        issues.append("honesty_wiki_full_flag_forbidden")
+    if s.get("wiki_engine_fts_full") is True:
+        issues.append("honesty_wiki_engine_fts_full_forbidden")
+    if s.get("wiki_rebuild_product_surface") is not True:
+        issues.append("product_wiki_rebuild_product_surface_required")
+    if s.get("wiki_fts_product_sync") is not True:
+        issues.append("product_wiki_fts_product_sync_required")
+    cases = s.get("cases") or []
+    if cases:
+        failed = [c for c in cases if isinstance(c, dict) and not c.get("ok")]
+        if failed:
+            issues.append(f"suite_cases_failed:{len(failed)}")
+        ids = {str(c.get("id") or "") for c in cases if isinstance(c, dict)}
+        missing = [x for x in _PRODUCT_SUITE_CASES if x not in ids]
+        if missing:
+            issues.append(f"suite_cases_missing:{','.join(missing)}")
+    elif not s.get("ok"):
+        issues.append("suite_not_ok")
+    return {
+        "ok": not issues and bool(s.get("ok", True)),
+        "passed": int(s.get("passed") or 0),
+        "total": int(s.get("total") or 0),
+        "required": True,
+        "issues": issues,
+        **_product_honesty_flags(),
+        "note": (
+            "Wiki rebuild product gate; "
+            "not wiki_engine_fts_full / not N05 certified"
+        ),
+    }
+
+
+async def run_wiki_rebuild_product_suite(
+    *,
+    ledger: Any = None,
+    tenant_id: str = "n05-wiki-rebuild-product-tenant",
+    domain_id: str = "suite-domain",
+) -> Dict[str, Any]:
+    """N05 产品面套件（certified / wiki_engine_fts_full 恒 false）。
+
+    Args:
+        ledger: 可选 FactLedger。
+        tenant_id: 租户。
+        domain_id: 域。
+    """
+    own = ledger is None
+    tmp: Optional[tempfile.TemporaryDirectory] = None
+    fts_tmp: Optional[tempfile.TemporaryDirectory] = None
+    prev_fts = os.environ.get("AIPLAT_WIKI_FTS_PATH")
+    if own:
+        tmp = tempfile.TemporaryDirectory(prefix="n05-wiki-rebuild-product-")
+        root = Path(tmp.name)
+        lg = FactLedger(
+            db_path=str(root / "fact_ledger.sqlite3"),
+            raw_dir=root / "raw",
+        )
+        await lg.initialize()
+        wiki_db = str(root / "wiki_rebuild.sqlite3")
+        fts_tmp = tempfile.TemporaryDirectory(prefix="n05-wiki-fts-")
+        os.environ["AIPLAT_WIKI_FTS_PATH"] = str(Path(fts_tmp.name) / "fts.db")
+    else:
+        lg = ledger
+        await lg.initialize()
+        root = Path(tempfile.mkdtemp(prefix="n05-wiki-product-aux-"))
+        wiki_db = str(root / "wiki_rebuild.sqlite3")
+
+    cases: List[Dict[str, Any]] = []
+    try:
+        src = await lg.register_source(
+            tenant_id=tenant_id,
+            collection_id="n05-wiki-product",
+            kind="file",
+            uri="file://n05/wiki-product.txt",
+            content=b"n05-wiki-product",
+            connector="n05-product",
+            domain_id=domain_id,
+        )
+        evidence = [
+            {
+                "source_id": src["source_id"],
+                "locator": "1",
+                "quote": "ok",
+                "fetched_at": src["fetched_at"],
+            }
+        ]
+        await lg.put_fact(
+            tenant_id=tenant_id,
+            collection_id="n05-wiki-product",
+            subject="InstallOrder:WO-N05P",
+            predicate="status",
+            object="open",
+            evidence=evidence,
+            source_policy="n05-product",
+            extractor_version="n05-wiki-product",
+            review_status="published",
+            confidence=0.9,
+            allow_bootstrap_published=True,
+            domain_id=domain_id,
+        )
+
+        exact = await project_facts_to_wiki_product(
+            tenant_id=tenant_id,
+            domain_id=domain_id,
+            ledger=lg,
+            clear_projected=True,
+            rebuild_mode=REBUILD_MODE_EXACT,
+            db_path=wiki_db,
+        )
+        listed = list_wiki_rebuild_pages_product(
+            tenant_id=tenant_id, domain_id=domain_id, db_path=wiki_db
+        )
+        cases.append(
+            {
+                "id": "product_exact_writes_pages",
+                "ok": bool(exact.get("written"))
+                and int(listed.get("total") or 0) >= 1
+                and exact.get("wiki_rebuild_product_surface") is True,
+                "detail": "",
+            }
+        )
+
+        non = await project_facts_to_wiki_product(
+            tenant_id=tenant_id,
+            domain_id=domain_id,
+            ledger=lg,
+            clear_projected=True,
+            rebuild_mode=REBUILD_MODE_NON,
+            exact_capable=False,
+            db_path=wiki_db,
+        )
+        listed_non = list_wiki_rebuild_pages_product(
+            tenant_id=tenant_id, domain_id=domain_id, db_path=wiki_db
+        )
+        cases.append(
+            {
+                "id": "product_non_skips_write",
+                "ok": non.get("written") is False
+                and int(listed_non.get("total") or 0) == 0
+                and int(non.get("fts_synced") or 0) == 0,
+                "detail": "",
+            }
+        )
+
+        tenant_ok = False
+        try:
+            await project_facts_to_wiki_product(
+                tenant_id="",
+                domain_id=domain_id,
+                ledger=lg,
+                db_path=wiki_db,
+            )
+        except FactLedgerError:
+            tenant_ok = True
+        cases.append(
+            {
+                "id": "product_tenant_required",
+                "ok": tenant_ok,
+                "detail": "" if tenant_ok else "empty_tenant_accepted",
+            }
+        )
+
+        # 再投影一次以验证 FTS sync 旗（isolated FTS path）
+        exact2 = await project_facts_to_wiki_product(
+            tenant_id=tenant_id,
+            domain_id=domain_id,
+            ledger=lg,
+            clear_projected=True,
+            rebuild_mode=REBUILD_MODE_EXACT,
+            db_path=wiki_db,
+        )
+        cases.append(
+            {
+                "id": "product_fts_sync_flags",
+                "ok": exact2.get("wiki_fts_product_sync") is True
+                and exact2.get("wiki_engine_fts_full") is False
+                and int(exact2.get("fts_synced") or 0) >= 1
+                and exact2.get("fts_sync_errors") == [],
+                "detail": str(exact2.get("fts_sync_errors") or ""),
+            }
+        )
+
+        fts_rb = rebuild_wiki_fts_product()
+        cases.append(
+            {
+                "id": "product_fts_rebuild_honesty",
+                "ok": fts_rb.get("wiki_fts_product_rebuild") is True
+                and fts_rb.get("wiki_engine_fts_full") is False
+                and fts_rb.get("certified") is False
+                and fts_rb.get("status") == "ok",
+                "detail": str(fts_rb.get("error") or ""),
+            }
+        )
+
+        honesty = (
+            exact.get("certified") is False
+            and exact.get("wiki_engine_fts_full") is False
+            and exact.get("n05_wiki_rebuild_freeze") is True
+            and listed.get("certified") is False
+        )
+        cases.append(
+            {
+                "id": "product_honesty_certified_false",
+                "ok": honesty,
+                "detail": "" if honesty else "honesty_flags_leaked",
+            }
+        )
+
+        passed = sum(1 for c in cases if c.get("ok"))
+        return {
+            "ok": passed == len(_PRODUCT_SUITE_CASES),
+            "passed": passed,
+            "total": len(_PRODUCT_SUITE_CASES),
+            "cases": cases,
+            **_product_honesty_flags(),
+            "note": (
+                "Wiki rebuild product suite; "
+                "not wiki_engine_fts_full / not N05 certified"
+            ),
+        }
+    finally:
+        if prev_fts is None:
+            os.environ.pop("AIPLAT_WIKI_FTS_PATH", None)
+        else:
+            os.environ["AIPLAT_WIKI_FTS_PATH"] = prev_fts
+        if fts_tmp is not None:
+            fts_tmp.cleanup()
+        if tmp is not None:
+            tmp.cleanup()
+

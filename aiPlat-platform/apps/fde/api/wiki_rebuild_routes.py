@@ -102,3 +102,89 @@ async def evaluate_wiki_rebuild_gate_route(
     if suite is None:
         suite = await run_wiki_rebuild_suite()
     return evaluate_wiki_rebuild_gate(suite)
+
+
+@router.post("/wiki-rebuild/product")
+async def project_facts_to_wiki_product_route(
+    body: WikiRebuildBody = Body(default_factory=WikiRebuildBody),
+    tenant_id: str = Query(..., description="tenant id (required)"),
+    domain_id: str = Query(..., description="domain id (required)"),
+):
+    """N05 产品面：Fact→Wiki + 有界 FTS sync。
+
+    Args:
+        body: 重建参数。
+        tenant_id: 租户。
+        domain_id: 域。
+    """
+    from core.api.core_facade import project_facts_to_wiki_product
+
+    try:
+        return await project_facts_to_wiki_product(
+            tenant_id=tenant_id,
+            domain_id=domain_id,
+            clear_projected=body.clear_projected,
+            rebuild_mode=body.rebuild_mode,
+            rebuild_reason=body.rebuild_reason,
+            exact_capable=body.exact_capable,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/wiki-rebuild/product/pages")
+async def list_wiki_rebuild_pages_product_route(
+    tenant_id: str = Query(..., description="tenant id (required)"),
+    domain_id: Optional[str] = Query(None),
+    limit: int = Query(200, ge=1, le=1000),
+):
+    """N05 产品面：列出 Wiki 重建派生页。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        limit: 最大条数。
+    """
+    from core.api.core_facade import list_wiki_rebuild_pages_product
+
+    return list_wiki_rebuild_pages_product(
+        tenant_id=tenant_id,
+        domain_id=domain_id or "",
+        limit=limit,
+    )
+
+
+@router.post("/wiki-rebuild/product/fts")
+async def rebuild_wiki_fts_product_route():
+    """N05 产品面：有界 FTS 重建（非 wiki_engine_fts_full）。"""
+    from core.api.core_facade import rebuild_wiki_fts_product
+
+    return rebuild_wiki_fts_product()
+
+
+@router.post("/wiki-rebuild/product/suite")
+async def run_wiki_rebuild_product_suite_route():
+    """N05 产品面套件。"""
+    from core.api.core_facade import run_wiki_rebuild_product_suite
+
+    return await run_wiki_rebuild_product_suite()
+
+
+@router.post("/wiki-rebuild/product/gate")
+async def evaluate_wiki_rebuild_product_gate_route(
+    body: WikiRebuildGateBody = Body(default_factory=WikiRebuildGateBody),
+):
+    """N05 产品面门槛门。
+
+    Args:
+        body: 可选 suite 回执。
+    """
+    from core.api.core_facade import (
+        evaluate_wiki_rebuild_product_gate,
+        run_wiki_rebuild_product_suite,
+    )
+
+    suite = body.suite
+    if suite is None:
+        suite = await run_wiki_rebuild_product_suite()
+    return evaluate_wiki_rebuild_product_gate(suite)

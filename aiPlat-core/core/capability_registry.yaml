@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3309
+total_capabilities: 3315
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2835,7 +2835,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 831
+    caps_count: 837
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -4202,6 +4202,30 @@ domains:
         module: core/api/core_facade.py
         type: function
         signature: "N05: Facade Fact→Wiki rebuild (certified=false)"
+      - symbol: "project_facts_to_wiki_product"
+        module: core/harness/knowledge_pipeline/wiki_rebuild.py
+        type: function
+        signature: "N05 product: Fact→Wiki + bounded FTS sync (certified=false)"
+      - symbol: "list_wiki_rebuild_pages_product"
+        module: core/harness/knowledge_pipeline/wiki_rebuild.py
+        type: function
+        signature: "N05 product: list Wiki rebuild pages with honesty flags"
+      - symbol: "rebuild_wiki_fts_product"
+        module: core/harness/knowledge_pipeline/wiki_rebuild.py
+        type: function
+        signature: "N05 product: bounded FTS rebuild (wiki_engine_fts_full=false)"
+      - symbol: "run_wiki_rebuild_product_suite"
+        module: core/harness/knowledge_pipeline/wiki_rebuild.py
+        type: function
+        signature: "N05 product suite (certified=false)"
+      - symbol: "evaluate_wiki_rebuild_product_gate"
+        module: core/harness/knowledge_pipeline/wiki_rebuild.py
+        type: function
+        signature: "N05 product gate requires surface+fts_sync flags"
+      - symbol: "WikiRebuildPanel"
+        module: aiPlat-management/frontend/src/pages/KnowledgeFactory/WikiRebuildPanel.tsx
+        type: component
+        signature: "N05 product: management thin UI for Wiki rebuild + FTS"
       - symbol: "confirm_extraction_k1"
         module: core/apps/fde/service/k_wave_signal.py
         type: function
