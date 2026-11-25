@@ -6,13 +6,14 @@ authority: design-target
 language: zh-CN
 created: 2026-11-14
 doc_id: AIPLAT_EVOLUTIONARY_COMPUTATION_ARCHITECTURE_2D5403
-last_reviewed: 2026-11-15
+last_reviewed: 2026-11-25
 ---
 # aiPlat 演化计算架构
 
 > 本文是目标架构与实施框架，不是当前实现状态。  
 > 范围：为 aiPlat 的闭环系统增加**受控、可审计、可回滚**的演化计算能力。  
-> 非目标：让生产系统无人工门地自改代码。
+> 非目标：让生产系统无人工门地自改代码。  
+> 状态机与 `Candidate.status` 枚举以本文 §6 为 SSOT；实施方案必须对齐，禁止另起一套。
 
 ## 1. 目标与非目标
 
@@ -70,15 +71,22 @@ last_reviewed: 2026-11-15
                  ┌──────────▼───────────┐
                  │   Fitness Service     │
                  │ 多目标/约束/置信度    │
+                 │ Pareto → ranked 决策  │
                  └──────────┬───────────┘
                             │ ranked
                  ┌──────────▼───────────┐
                  │    Safety Gate        │
                  │ 策略/类型/测试/预算   │
                  └──────────┬───────────┘
+                            │ safety_passed
+                 ┌──────────▼───────────┐
+                 │     Human Gate        │
+                 │ 高风险 MUST；低风险可  │
+                 │ 记录 policy 豁免证据  │
+                 └──────────┬───────────┘
                             │ approved
                  ┌──────────▼───────────┐
-                 │ Canary + Human Gate   │
+                 │       Canary          │
                  └──────────┬───────────┘
                             │ deploy
                  ┌──────────▼───────────┐
@@ -173,13 +181,43 @@ hard_constraints: 安全/合规/策略一票否决
 soft_objectives: 质量/成本/延迟
 ```
 
-选择方式：
+选择方式（种群内）：
 
 ```text
-Pareto 非支配排序
-+ 约束支配
-+ 多样性保留
+1. 硬约束过滤（违规 → 淘汰，不计前沿）
+2. 约束支配 + Pareto 非支配排序
+3. 前沿内多样性保留（拥挤距离 / 网格）
 ```
+
+#### 4.3.1 Pareto 前沿 → ranked 列表（强制决策规则）
+
+Pareto 前沿上的解互相非支配，**天然不可全序**。要产出 `ranked candidates`，必须按下列固定管线（可复现、可审计）：
+
+```text
+A. 硬约束已通过的前沿成员
+B. 预注册标量化偏好（默认）：
+     score = w_q·quality − w_c·normalize(cost)
+             − w_l·normalize(latency_p95)
+             − w_s·safety_violations   # 应已为 0
+   权重在 evaluation_profile 中预注册并版本化；禁止事后改权抬名次
+C. 并列时：先更高 evidence_coverage，再更高 confidence，再更小 genome 字典序
+D. 可选 knee-point：仅当 profile 声明 use_knee=true 时，
+   在标量化之前用归一化前沿的最大边缘收益点插入 top；
+   仍须留下完整前沿快照
+E. 高风险 genome：排名仅供参考，最终上线人选由 HUMAN_GATE 人工挑选；
+   机器序不得绕过人工挑选
+```
+
+输出必须同时保留：
+
+```text
+pareto_frontier[]     # 未标量化的前沿成员
+ranked_candidates[]   # 按 A–E 得到的有序列表
+ranking_profile_id    # 权重/规则版本
+seed                  # 可复现
+```
+
+禁止：只用单一事后分数重排、不落盘前沿、改权重不升版本。
 
 ### 4.4 Evolution Sandbox
 
@@ -205,7 +243,7 @@ Pareto 非支配排序
 
 ### 4.5 Safety Gate
 
-上线前必须通过：
+自动化门（**不是**人工批准）：
 
 ```text
 策略门
@@ -213,12 +251,23 @@ Pareto 非支配排序
 单元/契约测试
 安全扫描
 预算检查
-人工门（高风险）
 ```
 
-### 4.6 Canary + 回滚
+通过后状态为 `SAFETY_PASSED`。人工批准见 §4.6 / §6 的 `HUMAN_GATE`。
+
+### 4.6 Human Gate
 
 ```text
+高风险变体：MUST 人工批准（状态 HUMAN_GATE → APPROVED|REJECTED）
+低风险变体：允许 policy 记录的自动通过，但仍写入 approver=system_policy
+             + 豁免证据；可随时收回
+禁止：把 Safety Gate 通过等同于 APPROVED
+```
+
+### 4.7 Canary + 回滚
+
+```text
+仅 APPROVED 之后进入 CANARY
 小流量
 指标对比
 自动回滚阈值
@@ -257,7 +306,7 @@ Pareto 非支配排序
 5. PSO      （仅基线/对照）
 ```
 
-## 6. 演化闭环状态机
+## 6. 演化闭环状态机（Candidate.status SSOT）
 
 ```text
 DRAFT
@@ -266,9 +315,13 @@ REGISTERED
   ↓
 EVALUATING
   ↓
-RANKED
+RANKED                 # 已按 §4.3.1 产出 ranked + 前沿快照
   ↓
-APPROVED / REJECTED
+SAFETY_PASSED / REJECTED   # 仅自动化 Safety Gate
+  ↓
+HUMAN_GATE             # 显式人工门（高风险不可跳过）
+  ↓
+APPROVED / REJECTED    # 仅人工（或低风险 policy 豁免证据）可进入 APPROVED
   ↓
 CANARY
   ↓
@@ -277,7 +330,25 @@ PRODUCTION
 RETIRED / ROLLED_BACK
 ```
 
-任何状态都必须有：
+合法 `Candidate.status` 枚举（实现与实施方案必须全集对齐）：
+
+```text
+draft | registered | evaluating | ranked
+| safety_passed | human_gate
+| approved | rejected | canary | production
+| retired | rolled_back
+```
+
+说明：
+
+```text
+evaluated 不是合法终态；评估中用 evaluating，评估完成进入 ranked 或 rejected
+APPROVED ≠ SAFETY_PASSED
+高风险：RANKED → SAFETY_PASSED → HUMAN_GATE → APPROVED → CANARY
+低风险：HUMAN_GATE 可记录 policy 自动批准，但状态仍须经过 human_gate 节点
+```
+
+任何状态变迁都必须有：
 
 ```text
 actor
@@ -328,8 +399,9 @@ GP 生成核心 Python 代码
 PolicyGate 检查
 租户隔离
 审计日志
-人工批准
+Human Gate 批准（高风险不可跳过；见 §4.6 / §6）
 可回滚
+Safety Gate 通过 ≠ 人工批准
 ```
 
 ## 9. 分阶段路线
@@ -407,8 +479,30 @@ Skill/Tool 组合
 | 安全门拦截率 | 被拦截高风险候选/高风险候选 | 100% |
 | Canary 回滚率 | 回滚/上线 | ≤5% |
 | 评估成本/候选 | 平均 token/费用 | 有上限 |
-| 进化增益 | 相对基线提升 | 按对象定义 |
-| 回归率 | 上线后回归/上线 | ≤5% |
+| 进化增益 | 相对基线提升 | 按对象预注册（见 §10.1） |
+| 回归率 | 上线后回归/上线 | ≤5%（相对冻结回归集） |
+
+### 10.1 数据集隔离与冻结（强制）
+
+每个 `evaluation_profile` 必须在 Registry 中声明并**冻结版本**：
+
+| 分区 | 用途 | 默认比例（可按对象覆盖，须预注册） |
+|---|---|---|
+| tune | 调参 / 进化搜索 | 60% |
+| validate | 选择与早停 | 20% |
+| holdout | 最终增益报告（进化过程不可见） | 15% |
+| regression | 上线前/后回归门 | 5% + 固定对抗集 |
+
+规则：
+
+```text
+进化循环禁止读取 holdout / regression 标签或分数
+增益只在 holdout 上报告；validate 只用于选型
+regression 集变更必须升版本；旧 Canary 对比绑定旧版本
+随机划分 seed 写入 lineage；禁止静默重划
+进化增益 = holdout(primary_metric_candidate) − holdout(primary_metric_baseline)
+  须带 CI；对象级 primary_metric 在 profile 预注册
+```
 
 ## 11. 反模式
 
