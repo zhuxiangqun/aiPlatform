@@ -20800,6 +20800,147 @@ def run_evo_compute_g0_slice2_suite() -> dict:
     return _run()
 
 
+def run_evo_de_es_offline(
+    *,
+    genome_id: str,
+    algorithm: str = "de",
+    population_size: int = 8,
+    generations: int = 5,
+    seed: int = 42,
+    F: float = 0.5,
+    CR: float = 0.7,
+    sigma: float = 0.08,
+    ranking_profile: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：离线 DE/ES 种群循环（不写生产）。
+
+    Args:
+        genome_id: 已登记 genome。
+        algorithm: ``de`` 或 ``es``。
+        population_size: 种群大小。
+        generations: 代数。
+        seed: 可复现种子。
+        F: DE 缩放因子。
+        CR: DE 交叉概率。
+        sigma: ES 噪声。
+        ranking_profile: 排名配置。
+    """
+    from core.harness.evo_compute.orchestrator import run_de_es_offline as _run
+
+    return _run(
+        genome_id=genome_id,
+        algorithm=algorithm,
+        population_size=population_size,
+        generations=generations,
+        seed=seed,
+        F=F,
+        CR=CR,
+        sigma=sigma,
+        ranking_profile=ranking_profile,
+    )
+
+
+def compare_evo_holdout(
+    *,
+    genome_id: str,
+    baseline_genes: dict,
+    challenger_genes: dict,
+    n_batches: int = 2,
+    alpha: float = 0.05,
+    min_effect: float = 0.02,
+    seed: int = 0,
+) -> dict:
+    """CoreFacade：holdout 确认对比（§10.2.1 最小）。
+
+    Args:
+        genome_id: genome。
+        baseline_genes: 基线基因。
+        challenger_genes: 挑战者基因。
+        n_batches: batch 数。
+        alpha: 显著性水平。
+        min_effect: 最小效应量。
+        seed: 种子。
+    """
+    from core.harness.evo_compute.holdout import compare_holdout as _cmp
+
+    return _cmp(
+        genome_id=genome_id,
+        baseline_genes=baseline_genes,
+        challenger_genes=challenger_genes,
+        n_batches=n_batches,
+        alpha=alpha,
+        min_effect=min_effect,
+        seed=seed,
+    )
+
+
+def run_evo_human_gate_canary_rollback_drill(
+    *,
+    candidate_id: str,
+    actor: str = "drill-operator",
+    evidence_ref: str = "g1-drill",
+) -> dict:
+    """CoreFacade：Human Gate / Canary / 回滚状态机演练。
+
+    Args:
+        candidate_id: 候选 id。
+        actor: 操作者。
+        evidence_ref: 证据前缀。
+    """
+    from core.harness.evo_compute.drill import run_human_gate_canary_rollback_drill as _drill
+
+    return _drill(candidate_id=candidate_id, actor=actor, evidence_ref=evidence_ref)
+
+
+def evaluate_evo_g1_exit_readiness(
+    *,
+    de_es_ok: bool = False,
+    lineage_rate: float = 0.0,
+    reproducible: bool = False,
+    hard_constraint_ok: bool = False,
+    holdout_significant: bool = False,
+    drill_ok: bool = False,
+) -> dict:
+    """CoreFacade：G1 出口就绪（certified/e2 恒 false）。
+
+    Args:
+        de_es_ok: DE/ES 是否成功。
+        lineage_rate: 血缘完整率。
+        reproducible: 可复现。
+        hard_constraint_ok: 硬约束零回归。
+        holdout_significant: holdout 显著。
+        drill_ok: 演练通过。
+    """
+    from core.harness.evo_compute.exit_readiness import evaluate_g1_exit_readiness as _r
+
+    return _r(
+        de_es_ok=de_es_ok,
+        lineage_rate=lineage_rate,
+        reproducible=reproducible,
+        hard_constraint_ok=hard_constraint_ok,
+        holdout_significant=holdout_significant,
+        drill_ok=drill_ok,
+    )
+
+
+def run_evo_compute_g1_suite() -> dict:
+    """CoreFacade：G1 最小套件（g1_complete 恒 false）。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g1_suite as _run
+
+    return _run()
+
+
+def evaluate_evo_compute_g1_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：G1 门槛门（g1_complete/certified/e2 恒 false）。
+
+    Args:
+        suite: ``run_evo_compute_g1_suite`` 回执。
+    """
+    from core.harness.evo_compute.suite import evaluate_evo_compute_g1_gate as _gate
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 

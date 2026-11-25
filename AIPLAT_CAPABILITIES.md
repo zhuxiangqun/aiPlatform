@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4296
+total_capabilities: 4301
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -570,6 +570,17 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_evo_g1_exit_readiness | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| run_evo_human_gate_canary_rollback_drill | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_evo_compute_g1_gate | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
+| needs_sum_to_one | `core/harness/evo_compute/de_es.py` | ✅ | 自动同步 | 已合入 |
+| repair_sum_to_one | `core/harness/evo_compute/de_es.py` | ✅ | 自动同步 | 已合入 |
+| clip_genes | `core/harness/evo_compute/de_es.py` | ✅ | 自动同步 | 已合入 |
+| surrogate_fitness | `core/harness/evo_compute/de_es.py` | ✅ | 自动同步 | 已合入 |
+| genes_fingerprint | `core/harness/evo_compute/de_es.py` | ✅ | 自动同步 | 已合入 |
+| es_mutate | `core/harness/evo_compute/de_es.py` | ✅ | 自动同步 | 已合入 |
+| de_mutate | `core/harness/evo_compute/de_es.py` | ✅ | 自动同步 | 已合入 |
+| init_individual | `core/harness/evo_compute/de_es.py` | ✅ | 自动同步 | 已合入 |
 | sign_evo_safety_boundary | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | get_evo_safety_boundary | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | approve_evo_budget | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -612,6 +623,11 @@ scan_hash: 8f9548ec24f4
 | replay_candidate_offline / aggregate_partition_metrics | `core/harness/evo_compute/replay.py` | ✅ | 夹具离线回放→fitness→沙箱；production_sample 恒 false；生成物适用：已接线 | 本批 |
 | evaluate_g0_exit_readiness | `core/harness/evo_compute/exit_readiness.py` | ✅ | G0 出口就绪；缺签字则 phase0_complete=false；生成物适用：已接线 | 本批 |
 | register_evo_pilot_genomes / replay_evo_candidate_offline / evaluate_evo_g0_exit_readiness | `core/api/core_facade.py` | ✅ | CoreFacade G0 slice-2 入口；生成物适用：已接线 | 本批 |
+| run_de_es_offline | `core/harness/evo_compute/orchestrator.py` | ✅ | DE/ES 离线种群循环；血缘/可复现/预算硬停；g1_complete 恒 false；生成物适用：已接线 | 本批 |
+| compare_holdout | `core/harness/evo_compute/holdout.py` | ✅ | §10.2.1 holdout 确认（代理指标）；不自动 E2；生成物适用：已接线 | 本批 |
+| run_human_gate_canary_rollback_drill | `core/harness/evo_compute/drill.py` | ✅ | Human Gate→Canary→回滚状态机演练；无生产写；生成物适用：已接线 | 本批 |
+| evaluate_g1_exit_readiness / run_evo_compute_g1_suite | `core/harness/evo_compute/exit_readiness.py` / `suite.py` | ✅ | G1 出口就绪与套件；套件绿≠宣称 g1_complete；生成物适用：已接线 | 本批 |
+| run_evo_de_es_offline / compare_evo_holdout / run_evo_compute_g1_suite | `core/api/core_facade.py` | ✅ | CoreFacade G1 入口；生成物适用：已接线 | 本批 |
 | secure_scan_zip | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | AssetSecureScanError | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | wrap_asset_install_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5197,7 +5213,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 853 | 1 | 854 |
+| Harness 执行引擎 | 858 | 1 | 859 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5242,7 +5258,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4285** | **11** | **4296** |
+| **总计** | **4290** | **11** | **4301** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
