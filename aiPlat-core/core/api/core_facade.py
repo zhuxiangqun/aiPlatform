@@ -20501,6 +20501,164 @@ def evaluate_bounded_lv4_auto_close_product_gate(suite: Optional[dict] = None) -
 
     return _gate(suite)
 
+
+# ── 受控演化计算 G0 底座（design-target Phase 0；非 E2/非生产自进化）──
+
+
+def register_evo_genome(genome: dict, *, persist: bool = True) -> dict:
+    """CoreFacade：登记可进化 genome（G0；不写生产配置）。
+
+    Args:
+        genome: genome 契约字典。
+        persist: 是否落盘到 AIPLAT_HOME。
+    """
+    from core.harness.evo_compute.genome_registry import register_genome as _reg
+
+    return _reg(genome, persist=persist)
+
+
+def get_evo_genome(genome_id: str) -> dict:
+    """CoreFacade：读取已登记 genome。
+
+    Args:
+        genome_id: genome id。
+    """
+    from core.harness.evo_compute.genome_registry import get_genome as _get
+
+    return _get(genome_id)
+
+
+def list_evo_genomes() -> dict:
+    """CoreFacade：列出已登记 genome。"""
+    from core.harness.evo_compute.genome_registry import list_genomes as _list
+
+    return _list()
+
+
+def rank_evo_candidates(
+    candidates: list,
+    *,
+    ranking_profile: Optional[dict] = None,
+    seed: int = 0,
+) -> dict:
+    """CoreFacade：Pareto→ranked（架构 §4.3.1）。
+
+    Args:
+        candidates: 候选列表（含 fitness）。
+        ranking_profile: 预注册排名配置。
+        seed: 可复现种子。
+    """
+    from core.harness.evo_compute.fitness import rank_candidates as _rank
+
+    return _rank(candidates, ranking_profile=ranking_profile, seed=seed)
+
+
+def advance_evo_candidate_status(
+    *,
+    candidate_id: str,
+    from_status: str,
+    to_status: str,
+    actor: str,
+    evidence_ref: str = "",
+    version: str = "1",
+) -> dict:
+    """CoreFacade：推进候选状态（含 HUMAN_GATE；禁 evaluated）。
+
+    Args:
+        candidate_id: 候选 id。
+        from_status: 当前状态。
+        to_status: 目标状态。
+        actor: 操作者。
+        evidence_ref: 证据引用。
+        version: 版本。
+    """
+    from core.harness.evo_compute.status import advance_candidate_status as _adv
+
+    return _adv(
+        candidate_id=candidate_id,
+        from_status=from_status,
+        to_status=to_status,
+        actor=actor,
+        evidence_ref=evidence_ref,
+        version=version,
+    )
+
+
+def evaluate_evo_candidate_offline(
+    *,
+    genome_id: str,
+    candidate_id: str = "",
+    genes: Optional[dict] = None,
+    fitness: Optional[dict] = None,
+    actor: str = "system_sandbox",
+    seed: int = 0,
+    ranking_profile: Optional[dict] = None,
+    persist_evidence: bool = True,
+) -> dict:
+    """CoreFacade：离线沙箱评估一个候选（预计算指标；无生产写）。
+
+    Args:
+        genome_id: 已登记 genome。
+        candidate_id: 候选 id。
+        genes: 基因。
+        fitness: 预计算适应度。
+        actor: 评估 actor。
+        seed: 种子。
+        ranking_profile: 排名配置。
+        persist_evidence: 是否落盘证据。
+    """
+    from core.harness.evo_compute.sandbox import evaluate_candidate_offline as _eval
+
+    return _eval(
+        genome_id=genome_id,
+        candidate_id=candidate_id,
+        genes=genes,
+        fitness=fitness,
+        actor=actor,
+        seed=seed,
+        ranking_profile=ranking_profile,
+        persist_evidence=persist_evidence,
+    )
+
+
+def measure_closed_loop_baseline(
+    *,
+    measured: Optional[dict] = None,
+    owner: str = "",
+    persist: bool = True,
+    as_of: Optional[str] = None,
+) -> dict:
+    """CoreFacade：闭环成熟度 KPI 基线落盘（工作假设 ≠ 已测）。
+
+    Args:
+        measured: 可选实测 KPI。
+        owner: 基线 owner。
+        persist: 是否落盘。
+        as_of: 日期标记。
+    """
+    from core.harness.evo_compute.baseline import measure_closed_loop_baseline as _m
+
+    return _m(measured=measured, owner=owner, persist=persist, as_of=as_of)
+
+
+def run_evo_compute_g0_suite() -> dict:
+    """CoreFacade：演化计算 G0 最小套件。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g0_suite as _run
+
+    return _run()
+
+
+def evaluate_evo_compute_g0_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：演化计算 G0 门槛门（phase0_complete/e2 恒 false）。
+
+    Args:
+        suite: ``run_evo_compute_g0_suite`` 回执。
+    """
+    from core.harness.evo_compute.suite import evaluate_evo_compute_g0_gate as _gate
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 

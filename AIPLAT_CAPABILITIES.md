@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4254
+total_capabilities: 4267
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -570,6 +570,19 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| advance_evo_candidate_status | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| rank_evo_candidates | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_evo_genomes | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| get_evo_genome | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_closed_loop_baseline_gate | `core/harness/evo_compute/baseline.py` | ✅ | 自动同步 | 已合入 |
+| run_closed_loop_baseline_suite | `core/harness/evo_compute/baseline.py` | ✅ | 自动同步 | 已合入 |
+| register_genome / get_genome / list_genomes | `core/harness/evo_compute/genome_registry.py` | ✅ | 受控演化 G0 Genome Registry；不写生产配置；生成物适用：已接线（CoreFacade） | 本批 |
+| rank_candidates | `core/harness/evo_compute/fitness.py` | ✅ | Pareto→ranked（§4.3.1）；硬约束过滤；生成物适用：已接线 | 本批 |
+| advance_candidate_status | `core/harness/evo_compute/status.py` | ✅ | Candidate.status SSOT；含 HUMAN_GATE；禁 evaluated；生成物适用：已接线 | 本批 |
+| evaluate_candidate_offline | `core/harness/evo_compute/sandbox.py` | ✅ | 离线沙箱评估（预计算指标）；production_write 恒 false；生成物适用：已接线 | 本批 |
+| measure_closed_loop_baseline | `core/harness/evo_compute/baseline.py` | ✅ | 五闭环 KPI 基线落盘；hypothesis≠measured；upgrade_claimed 恒 false；生成物适用：已接线 | 本批 |
+| run_evo_compute_g0_suite / evaluate_evo_compute_g0_gate | `core/harness/evo_compute/suite.py` | ✅ | Phase 0 G0 最小套件/门槛；phase0_complete/e2 恒 false；生成物适用：已接线 | 本批 |
+| register_evo_genome / evaluate_evo_candidate_offline / run_evo_compute_g0_suite | `core/api/core_facade.py` | ✅ | CoreFacade G0 入口；生成物适用：已接线 | 本批 |
 | secure_scan_zip | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | AssetSecureScanError | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | wrap_asset_install_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5155,7 +5168,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 811 | 1 | 812 |
+| Harness 执行引擎 | 824 | 1 | 825 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5200,7 +5213,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4243** | **11** | **4254** |
+| **总计** | **4256** | **11** | **4267** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

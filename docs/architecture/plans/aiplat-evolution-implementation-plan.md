@@ -17,7 +17,9 @@ last_reviewed: 2026-11-25
 > 本文是实施方案，不是当前实现状态，也不是认证结论。  
 > 目标周期：以 2026-12 为 T0，12 个月。  
 > 总原则：先补闭环，再做受控演化；不做生产环境无人工门的自主进化。  
-> **SSOT**：`Candidate.status` 与状态机以演化计算架构 §6 为准；Phase Gate 以本文 §12 / §15 **同一套 G0–G3** 为准（禁止第二套含义）。
+> **SSOT**：`Candidate.status` 与状态机以演化计算架构 §6 为准；Phase Gate 以本文 §12 / §15 **同一套 G0–G3** 为准（禁止第二套含义）。  
+> **2026-11-25**：G0 底座 **slice-1** 已接线（`core/harness/evo_compute/` + CoreFacade + 基线落盘）；证据 `reports/architecture/evo-compute/phase0-g0-foundation-slice1-evidence.md`。  
+> **未宣称** Phase 0 出口 / DE-ES / E2 / 闭环已测升级；`phase0_complete=false`。
 
 ## 0. 结论先行
 
@@ -550,6 +552,8 @@ owner 明确
 Registry / Fitness / Sandbox 最小可用（可注册 genome、评估 1 个候选、留证据）
 试点对象确定
 ```
+
+> slice-1 进度：Registry/Fitness/Sandbox/状态机/基线 **落盘能力** 已可用；预算上限批准、安全边界签字、三试点 genome 选型与真实回放仍属 Phase 0 剩余，**不得**因 slice-1 宣称 G0 通过。
 
 ### Phase 1：DE/ES 试点（M4–M6）
 
