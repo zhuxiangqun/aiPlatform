@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4249
+total_capabilities: 4253
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -1332,6 +1332,7 @@ scan_hash: 8f9548ec24f4
 | **Fact→Graph 投影 + Action L1（v4.3.1 Phase 2 G2）** | `fact_projector.py` + `action_registry` Step 3.25 + `POST …/extractions/facts/rebuild` | ✅ | `project_facts_to_graph`（`exact_replay_from_facts`）；`required_permissions` 缺省 → `policy_denied`；试点合同 `lock_service_accept_order.yaml`。证据 `phase2-g2-evidence.md`。**未宣称** Wiki 只读/ObjectSet/N24 | 已合入 |
 | **重建条件三分类（v4.3.1 N05 partial）** | `classify_rebuild` / `validate_rebuild_receipt` + Facade `validate_fact_rebuild_receipt` | ✅ | `rebuild_mode∈{exact,semantic,non}` + `rebuild_reason`；禁不可重建标 exact；certified 恒 false。证据 `phase2-rebuild-taxonomy-evidence.md`。**未宣称** Wiki 全量/N05 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Wiki 有条件重建（v4.3.1 N05 deepen）** | `wiki_rebuild.py` + Facade `fact_ledger_project_to_wiki` + FDE `/wiki-rebuild*` | ✅ | Fact→Wiki 派生页；复用三分类；non 不写；suite/gate certified 恒 false。证据 `phase2-wiki-rebuild-evidence.md`。**`n05_wiki_rebuild_freeze` 停止默认 deepen**；证据 `phase2-remaining-adr-freeze-evidence.md`。**未宣称** wiki_engine/FTS 全量 / N05 certified。生成物适用：已接线 | 本批 |
+| **Wiki 重建产品面（v4.3.1 N05 slice-1）** | `project_facts_to_wiki_product` / `rebuild_wiki_fts_product` + Facade + `/wiki-rebuild/product*` + `WikiRebuildPanel` | ✅ | 默认可用条件重建 + 写页后有界 FTS upsert；`wiki_rebuild_product_surface`/`wiki_fts_product_sync=true`；`wiki_engine_fts_full`/certified 恒 false。证据 `phase2-n05-wiki-rebuild-product-evidence.md`。**未宣称** wiki_engine/FTS 全量 / N05 certified。生成物适用：已接线 | 本批 |
 | **知识域 Gold 评测（v4.3.1 N10 deepen）** | `knowledge_gold_eval.py` + Facade + FDE `/knowledge-gold*` | ✅ | 域级 Exact-match gold 登记/评测/跨域扫描；accuracy_claim/certified 恒 false。证据 `phase2-knowledge-gold-eval-evidence.md`。**`n10_gold_eval_freeze` 停止默认 deepen**；证据 `phase2-remaining-adr-freeze-evidence.md`。**显式 residual**：opt-in `judge_mode=llm` + `llm_judge_object_equiv`（默认/失败 → `llm_judge_unavailable`；证据 `phase2-n10-llm-judge-residual-evidence.md`）。**未宣称** 准确率达标 / N10 certified。生成物适用：已接线 | 本批 |
 | **知识域 Gold LLM judge residual（N10）** | `llm_judge_object_equiv` + `judge_mode=llm` | ✅ | 有界 object 语义等价；注入 judge_fn 或 `AIPLAT_KNOWLEDGE_GOLD_LLM_JUDGE=1` 实网；suite `llm_judge_opt_in`/`llm_judge_unavailable`；freeze 仍 true；accuracy/certified 恒 false。生成物适用：已接线（经 gold pipeline） | 本批 |
 | **知识域 Gold LLM judge 产品面第一刀（N10）** | `llm_judge_object_equiv_product` + `/knowledge-gold/product*` + `LlmJudgePanel` | ✅ | 默认可用（无 residual env）；`llm_judge_product_surface=true`；accuracy/certified 恒 false；freeze 仍 true。证据 `phase2-n10-llm-judge-product-evidence.md`。**未宣称** accuracy / certified。生成物适用：已接线（管理端） | 本批 |
@@ -1488,6 +1489,9 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_wiki_rebuild_product_gate | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| run_wiki_rebuild_product_suite | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
+| list_wiki_rebuild_pages_product | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
 | definition_from_knowledge_ops_console_schema_form | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | normalize_knowledge_ops_console_schema_form | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_knowledge_ops_console_product_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5150,9 +5154,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 809 | 1 | 810 |
+| Harness 执行引擎 | 810 | 1 | 811 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 908 | 9 | 917 |
+| 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5195,7 +5199,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4238** | **11** | **4249** |
+| **总计** | **4242** | **11** | **4253** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

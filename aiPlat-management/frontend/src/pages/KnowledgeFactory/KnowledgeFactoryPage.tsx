@@ -32,6 +32,7 @@ import LlmJudgePanel from './LlmJudgePanel';
 import EceTrainPanel from './EceTrainPanel';
 import SloAlertPanel from './SloAlertPanel';
 import ObjectSetWhereExprPanel from './ObjectSetWhereExprPanel';
+import WikiRebuildPanel from './WikiRebuildPanel';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
 const WIKI_DOMAINS_API = '/api/core/wiki/ontology/domains';
@@ -1493,6 +1494,7 @@ const KnowledgeFactoryPage: React.FC = () => {
           <Lv4AutoClosePanel />
           <ProductionAttestPanel />
           <LlmJudgePanel />
+          <WikiRebuildPanel />
           <EceTrainPanel />
           <SloAlertPanel />
           <ObjectSetWhereExprPanel />

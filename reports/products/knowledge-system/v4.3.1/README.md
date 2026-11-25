@@ -42,6 +42,7 @@ authority: supporting
 | [phase2-n02-seed-replace-residual-evidence.md](./phase2-n02-seed-replace-residual-evidence.md) | N02 residual：published-over-seed 权威覆盖（opt-in；不改写 workspace_seeds；非全量种子文件产品化/非 certified） |
 | [phase2-n02-seed-authority-product-evidence.md](./phase2-n02-seed-authority-product-evidence.md) | N02 产品面第一刀：种子目录 + published-over-seed（默认可用；不改写 workspace_seeds；非 complete/非 certified） |
 | [phase2-wiki-rebuild-evidence.md](./phase2-wiki-rebuild-evidence.md) | N05 deepen：Wiki 有条件重建派生页（非 wiki_engine 全量/非 certified） |
+| [phase2-n05-wiki-rebuild-product-evidence.md](./phase2-n05-wiki-rebuild-product-evidence.md) | N05 产品面第一刀：条件重建默认可用 + 有界 FTS upsert/rebuild；wiki_rebuild_product_surface/wiki_fts_product_sync=true；非 wiki_engine_fts_full / 非 certified |
 | [phase2-knowledge-gold-eval-evidence.md](./phase2-knowledge-gold-eval-evidence.md) | N10 deepen：域级 Exact-match gold 流水线（非准确率宣称/非 certified） |
 | [phase2-n10-llm-judge-residual-evidence.md](./phase2-n10-llm-judge-residual-evidence.md) | N10 residual：opt-in LLM object 等价（不可用诚实上报；非准确率/非 certified） |
 | [phase2-n10-llm-judge-product-evidence.md](./phase2-n10-llm-judge-product-evidence.md) | N10 产品面第一刀：默认可用 LLM object 等价（非准确率/非 certified） |

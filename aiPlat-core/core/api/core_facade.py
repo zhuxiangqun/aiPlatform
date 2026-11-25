@@ -19462,6 +19462,90 @@ def evaluate_wiki_rebuild_gate(suite: Optional[dict] = None) -> dict:
     return _gate(suite)
 
 
+async def project_facts_to_wiki_product(
+    *,
+    tenant_id: str,
+    domain_id: str,
+    clear_projected: bool = False,
+    rebuild_mode: str = "",
+    rebuild_reason: str = "",
+    exact_capable: bool = True,
+) -> dict:
+    """CoreFacade：N05 产品面 Fact→Wiki + 有界 FTS sync（certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 域。
+        clear_projected: 是否先清除该域派生页。
+        rebuild_mode: 可选三分类 mode。
+        rebuild_reason: 分类理由。
+        exact_capable: 是否可精确重放。
+    """
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        project_facts_to_wiki_product as _project,
+    )
+
+    return await _project(
+        tenant_id=tenant_id,
+        domain_id=domain_id,
+        clear_projected=clear_projected,
+        rebuild_mode=rebuild_mode or None,
+        rebuild_reason=rebuild_reason or "",
+        exact_capable=exact_capable,
+    )
+
+
+def list_wiki_rebuild_pages_product(
+    *,
+    tenant_id: str,
+    domain_id: str = "",
+    limit: int = 200,
+) -> dict:
+    """CoreFacade：N05 产品面列举 Wiki 重建派生页。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        limit: 最大条数。
+    """
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        list_wiki_rebuild_pages_product as _list,
+    )
+
+    return _list(tenant_id=tenant_id, domain_id=domain_id, limit=limit)
+
+
+def rebuild_wiki_fts_product() -> dict:
+    """CoreFacade：N05 产品面有界 FTS 重建（非 wiki_engine_fts_full）。"""
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        rebuild_wiki_fts_product as _rebuild,
+    )
+
+    return _rebuild()
+
+
+async def run_wiki_rebuild_product_suite() -> dict:
+    """CoreFacade：N05 Wiki 重建产品面套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        run_wiki_rebuild_product_suite as _run,
+    )
+
+    return await _run()
+
+
+def evaluate_wiki_rebuild_product_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：N05 Wiki 重建产品面门槛门。
+
+    Args:
+        suite: ``run_wiki_rebuild_product_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.wiki_rebuild import (
+        evaluate_wiki_rebuild_product_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def register_knowledge_gold_dataset(
     *,
     tenant_id: str,
