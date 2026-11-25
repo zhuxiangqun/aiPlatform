@@ -1,15 +1,17 @@
 """N08 residual + 产品面：有界 Lv4 auto-close 评估（非全量 Action Lv4）。
 
 职责：
-  - residual：opt-in ``evaluate_bounded_lv4_auto_close``（env 门）
+  - residual：opt-in ``evaluate_bounded_lv4_auto_close``（env 门；仅 low）
   - 产品面：默认可用 ``evaluate_bounded_lv4_auto_close_product``（无 env 门）
-  - 仅 ``risk_level=low`` + ``action_level=lv4_auto_close`` + 误报门 v2
+  - slice-1：``risk_level=low`` + ``lv4_auto_close`` + 误报门 v2
+  - slice-2：产品面 ``medium`` 须 ``approval_attested`` + ``kill_switch_clear``
+    且 ``action_kill_switch_active()`` 为假；high 仍拒绝
   - suite/gate：``certified`` / ``full_action_lv4`` 恒 false；freeze 仍 true
 
 非目标：
   - 不宣称 N08 certified / 全量 Action Lv4 自动闭环产品化
-  - 不绕过 kill switch / require_approval 生产执行链
-  - 不做中高风险动作自动放行
+  - 不绕过 ActionRegistry 生产执行链（本模块仅评估）
+  - 不做 high/critical 风险自动放行
 """
 from __future__ import annotations
 
@@ -28,10 +30,28 @@ _CASES = (
 _PRODUCT_CASES = (
     "lv4_auto_close_product_eval",
     "lv4_auto_close_product_high_risk_denied",
+    "lv4_auto_close_product_medium_denied_without_approval",
+    "lv4_auto_close_product_medium_ok_with_gates",
+    "lv4_auto_close_product_medium_kill_switch_active",
     "honesty_product_certified_false",
 )
 
-_ALLOWED_RISK = frozenset({"low"})
+_RESIDUAL_ALLOWED_RISK = frozenset({"low"})
+_PRODUCT_ALLOWED_RISK = frozenset({"low", "medium"})
+
+
+def _product_honesty_flags() -> Dict[str, Any]:
+    """产品面诚实旗（slice-2 含 medium 审批产品路径）。"""
+    return {
+        "certified": False,
+        "n08_full_conformance": False,
+        "full_action_lv4": False,
+        "n08_action_policy_freeze": True,
+        "lv4_gate_redesigned": True,
+        "bounded": True,
+        "lv4_product_surface": True,
+        "lv4_medium_approval_product": True,
+    }
 
 
 def _evaluate_bounded_lv4_impl(
@@ -46,8 +66,10 @@ def _evaluate_bounded_lv4_impl(
     min_samples: Optional[int],
     via: str,
     product_surface: bool,
+    approval_attested: bool = False,
+    kill_switch_clear: bool = False,
 ) -> Dict[str, Any]:
-    """共享有界评估（residual / 产品面共用；不检查 env）。
+    """共享有界评估（residual / 产品面共用；不检查 residual env）。
 
     Args:
         action_id: 动作 id。
@@ -60,9 +82,11 @@ def _evaluate_bounded_lv4_impl(
         min_samples: 最小样本。
         via: ``opt_in`` 或 ``product``。
         product_surface: 是否产品面回执。
+        approval_attested: medium 须调用方声明已审批。
+        kill_switch_clear: medium 须调用方声明急停未启用。
     """
     aid = str(action_id or "").strip()
-    base = {
+    base: Dict[str, Any] = {
         "action_id": aid,
         "auto_close_allowed": False,
         "certified": False,
@@ -72,6 +96,9 @@ def _evaluate_bounded_lv4_impl(
         "lv4_gate_redesigned": True,
         "bounded": True,
         "lv4_product_surface": bool(product_surface),
+        "lv4_medium_approval_product": bool(product_surface),
+        "approval_attested": bool(approval_attested),
+        "kill_switch_clear": bool(kill_switch_clear),
     }
     if not aid:
         return {**base, "status": "invalid", "error": "action_id_required"}
@@ -86,14 +113,62 @@ def _evaluate_bounded_lv4_impl(
             "reason": f"action_level_not_lv4:{level or 'empty'}",
             "note": "bounded requires lv4_auto_close; not full Action Lv4",
         }
-    if risk not in _ALLOWED_RISK:
+
+    allowed_risk = (
+        _PRODUCT_ALLOWED_RISK if product_surface else _RESIDUAL_ALLOWED_RISK
+    )
+    if risk not in allowed_risk:
         return {
             **base,
             "status": "denied",
             "via": via,
             "reason": f"risk_not_bounded:{risk or 'empty'}",
-            "note": "bounded allows risk_level=low only; not full Action Lv4",
+            "note": (
+                "product allows low|medium(+approval/kill_switch); "
+                "residual low only; not full Action Lv4"
+                if product_surface
+                else "bounded residual allows risk_level=low only; not full Action Lv4"
+            ),
         }
+
+    # 为什么：medium 推进「中风险+审批/急停」产品路径，仍非 full_action_lv4
+    if risk == "medium":
+        if not product_surface:
+            return {
+                **base,
+                "status": "denied",
+                "via": via,
+                "reason": "risk_not_bounded:medium",
+                "note": "residual rejects medium; use product surface",
+            }
+        if not approval_attested:
+            return {
+                **base,
+                "status": "denied",
+                "via": via,
+                "reason": "approval_attested_required",
+                "note": "medium requires approval_attested; not full Action Lv4",
+            }
+        if not kill_switch_clear:
+            return {
+                **base,
+                "status": "denied",
+                "via": via,
+                "reason": "kill_switch_clear_required",
+                "note": "medium requires kill_switch_clear attestation",
+            }
+        from core.harness.ontology_engine.action_registry import (
+            action_kill_switch_active,
+        )
+
+        if action_kill_switch_active():
+            return {
+                **base,
+                "status": "denied",
+                "via": via,
+                "reason": "kill_switch_active",
+                "note": "global AIPLAT_ACTION_KILL_SWITCH engaged; auto-close denied",
+            }
 
     from core.harness.knowledge_pipeline.lv4_false_positive_gate import (
         evaluate_lv4_fp_gate,
@@ -118,7 +193,7 @@ def _evaluate_bounded_lv4_impl(
         "risk_level": risk,
         "action_level": level,
         "note": (
-            "bounded lv4 auto-close product surface; "
+            "bounded lv4 auto-close product surface (low|medium+approval); "
             "not full Action Lv4 / not N08 certified"
             if product_surface
             else "bounded lv4 auto-close residual only; "
@@ -164,6 +239,7 @@ def evaluate_bounded_lv4_auto_close(
         "lv4_gate_redesigned": True,
         "bounded": True,
         "lv4_product_surface": False,
+        "lv4_medium_approval_product": False,
     }
     if not aid:
         return {**base, "status": "invalid", "error": "action_id_required"}
@@ -205,20 +281,24 @@ def evaluate_bounded_lv4_auto_close_product(
     action_level: str = "lv4_auto_close",
     fp_rate_max: float = 0.005,
     min_samples: Optional[int] = None,
+    approval_attested: bool = False,
+    kill_switch_clear: bool = False,
 ) -> Dict[str, Any]:
-    """N08 产品面：有界 Lv4 auto-close 评估（默认可用；非全量 / 非 certified）。
+    """N08 产品面：有界 Lv4 auto-close（默认可用；非全量 / 非 certified）。
 
-    无 residual env 门。仍仅 low 风险 + lv4_auto_close + 误报门 v2。
+    无 residual env 门。low 直接进误报门；medium 须审批/急停声明且急停未启用。
 
     Args:
         action_id: 动作 id。
         total: 历史执行条数。
         false_positives: 误报条数。
         rollback_action_id: 回滚动作 id。
-        risk_level: 风险等级（有界：仅 low）。
+        risk_level: ``low`` 或 ``medium``（high 拒绝）。
         action_level: 阶梯等级（须 lv4_auto_close）。
         fp_rate_max: 误报率上限。
         min_samples: 最小样本。
+        approval_attested: medium 须 True。
+        kill_switch_clear: medium 须 True（调用方声明）。
     """
     return _evaluate_bounded_lv4_impl(
         action_id=action_id,
@@ -231,6 +311,8 @@ def evaluate_bounded_lv4_auto_close_product(
         min_samples=min_samples,
         via="product",
         product_surface=True,
+        approval_attested=approval_attested,
+        kill_switch_clear=kill_switch_clear,
     )
 
 
@@ -316,6 +398,7 @@ def run_bounded_lv4_auto_close_suite() -> Dict[str, Any]:
         "n08_action_policy_freeze": True,
         "lv4_gate_redesigned": True,
         "lv4_product_surface": False,
+        "lv4_medium_approval_product": False,
         "note": "Bounded Lv4 auto-close residual; not full Action Lv4 / not N08 certified",
     }
 
@@ -353,15 +436,17 @@ def evaluate_bounded_lv4_auto_close_gate(
         "n08_action_policy_freeze": True,
         "lv4_gate_redesigned": True,
         "lv4_product_surface": False,
+        "lv4_medium_approval_product": False,
         "note": "Bounded Lv4 auto-close residual gate; not N08 certified",
     }
 
 
 def run_bounded_lv4_auto_close_product_suite() -> Dict[str, Any]:
-    """N08 产品面套件：默认可用；certified / full_action_lv4 恒 false。"""
+    """N08 产品面套件：low + medium 审批门；certified / full_action_lv4 恒 false。"""
     cases: List[Dict[str, Any]] = []
     # 为什么：产品面无 env 门——显式清掉 residual 开关仍应可用
     prev = os.environ.pop("AIPLAT_KNOWLEDGE_LV4_AUTO_CLOSE", None)
+    prev_ks = os.environ.pop("AIPLAT_ACTION_KILL_SWITCH", None)
     try:
         healthy = evaluate_bounded_lv4_auto_close_product(
             action_id="n08-product-a1",
@@ -388,6 +473,7 @@ def run_bounded_lv4_auto_close_product_suite() -> Dict[str, Any]:
                 and healthy.get("via") == "product"
                 and healthy.get("auto_close_allowed") is True
                 and healthy.get("lv4_product_surface") is True
+                and healthy.get("lv4_medium_approval_product") is True
                 and healthy.get("full_action_lv4") is False
                 and residual.get("status") == "lv4_auto_close_unavailable",
             }
@@ -401,6 +487,8 @@ def run_bounded_lv4_auto_close_product_suite() -> Dict[str, Any]:
             risk_level="high",
             action_level="lv4_auto_close",
             min_samples=10,
+            approval_attested=True,
+            kill_switch_clear=True,
         )
         cases.append(
             {
@@ -410,18 +498,85 @@ def run_bounded_lv4_auto_close_product_suite() -> Dict[str, Any]:
                 and "risk_not_bounded" in str(high_risk.get("reason") or ""),
             }
         )
+
+        medium_bare = evaluate_bounded_lv4_auto_close_product(
+            action_id="n08-product-a1",
+            total=100,
+            false_positives=0,
+            rollback_action_id="rb-product",
+            risk_level="medium",
+            action_level="lv4_auto_close",
+            min_samples=10,
+        )
+        cases.append(
+            {
+                "id": "lv4_auto_close_product_medium_denied_without_approval",
+                "ok": medium_bare.get("auto_close_allowed") is False
+                and medium_bare.get("reason") == "approval_attested_required",
+            }
+        )
+
+        medium_ok = evaluate_bounded_lv4_auto_close_product(
+            action_id="n08-product-a1",
+            total=100,
+            false_positives=0,
+            rollback_action_id="rb-product",
+            risk_level="medium",
+            action_level="lv4_auto_close",
+            min_samples=10,
+            approval_attested=True,
+            kill_switch_clear=True,
+        )
+        cases.append(
+            {
+                "id": "lv4_auto_close_product_medium_ok_with_gates",
+                "ok": medium_ok.get("status") == "ok"
+                and medium_ok.get("auto_close_allowed") is True
+                and medium_ok.get("risk_level") == "medium"
+                and medium_ok.get("approval_attested") is True
+                and medium_ok.get("kill_switch_clear") is True
+                and medium_ok.get("full_action_lv4") is False,
+            }
+        )
+
+        os.environ["AIPLAT_ACTION_KILL_SWITCH"] = "1"
+        medium_ks = evaluate_bounded_lv4_auto_close_product(
+            action_id="n08-product-a1",
+            total=100,
+            false_positives=0,
+            rollback_action_id="rb-product",
+            risk_level="medium",
+            action_level="lv4_auto_close",
+            min_samples=10,
+            approval_attested=True,
+            kill_switch_clear=True,
+        )
+        os.environ.pop("AIPLAT_ACTION_KILL_SWITCH", None)
+        cases.append(
+            {
+                "id": "lv4_auto_close_product_medium_kill_switch_active",
+                "ok": medium_ks.get("auto_close_allowed") is False
+                and medium_ks.get("reason") == "kill_switch_active",
+            }
+        )
+
         cases.append(
             {
                 "id": "honesty_product_certified_false",
                 "ok": healthy.get("certified") is False
                 and healthy.get("n08_full_conformance") is False
                 and healthy.get("n08_action_policy_freeze") is True
-                and healthy.get("full_action_lv4") is False,
+                and healthy.get("full_action_lv4") is False
+                and healthy.get("lv4_medium_approval_product") is True,
             }
         )
     finally:
         if prev is not None:
             os.environ["AIPLAT_KNOWLEDGE_LV4_AUTO_CLOSE"] = prev
+        if prev_ks is not None:
+            os.environ["AIPLAT_ACTION_KILL_SWITCH"] = prev_ks
+        else:
+            os.environ.pop("AIPLAT_ACTION_KILL_SWITCH", None)
 
     passed = sum(1 for c in cases if c.get("ok"))
     return {
@@ -429,14 +584,9 @@ def run_bounded_lv4_auto_close_product_suite() -> Dict[str, Any]:
         "passed": passed,
         "total": len(_PRODUCT_CASES),
         "cases": cases,
-        "certified": False,
-        "n08_full_conformance": False,
-        "full_action_lv4": False,
-        "n08_action_policy_freeze": True,
-        "lv4_gate_redesigned": True,
-        "lv4_product_surface": True,
+        **_product_honesty_flags(),
         "note": (
-            "Bounded Lv4 auto-close product surface; "
+            "Bounded Lv4 auto-close product surface (medium+approval); "
             "not full Action Lv4 / not N08 certified"
         ),
     }
@@ -445,7 +595,7 @@ def run_bounded_lv4_auto_close_product_suite() -> Dict[str, Any]:
 def evaluate_bounded_lv4_auto_close_product_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """N08 产品面门槛门：要求 lv4_product_surface；禁止 certified / full_action_lv4。
+    """N08 产品面门槛门：要求 product/medium 旗；禁止 certified / full_action_lv4。
 
     Args:
         suite: ``run_bounded_lv4_auto_close_product_suite`` 回执。
@@ -464,6 +614,8 @@ def evaluate_bounded_lv4_auto_close_product_gate(
         issues.append("honesty_full_action_lv4_forbidden")
     if s.get("lv4_product_surface") is not True:
         issues.append("product_lv4_surface_required")
+    if s.get("lv4_medium_approval_product") is not True:
+        issues.append("product_lv4_medium_approval_required")
     ids = {
         c.get("id")
         for c in (s.get("cases") or [])
@@ -475,13 +627,11 @@ def evaluate_bounded_lv4_auto_close_product_gate(
     return {
         "ok": not issues,
         "issues": issues,
-        "certified": False,
-        "n08_full_conformance": False,
-        "full_action_lv4": False,
-        "n08_action_policy_freeze": True,
-        "lv4_gate_redesigned": True,
-        "lv4_product_surface": True,
-        "note": "Bounded Lv4 auto-close product gate; not N08 certified",
+        **_product_honesty_flags(),
+        "note": (
+            "Bounded Lv4 auto-close product gate (medium+approval); "
+            "not N08 certified"
+        ),
     }
 
 

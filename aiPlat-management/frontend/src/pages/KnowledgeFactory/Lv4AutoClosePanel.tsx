@@ -2,7 +2,8 @@
  * Lv4AutoClosePanel — N08 有界 Lv4 auto-close 产品面管理端 UI。
  *
  * 默认走 `/lv4-auto-close/product/*`（无 residual env 门）。
- * lv4_product_surface=true；full_action_lv4 / certified 恒 false。
+ * slice-2：medium 须审批/急停声明；lv4_medium_approval_product=true。
+ * full_action_lv4 / certified 恒 false。
  */
 import React, { useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
@@ -24,6 +25,8 @@ const Lv4AutoClosePanel: React.FC = () => {
   const [total, setTotal] = useState(100);
   const [falsePositives, setFalsePositives] = useState(0);
   const [riskLevel, setRiskLevel] = useState('low');
+  const [approvalAttested, setApprovalAttested] = useState(false);
+  const [killSwitchClear, setKillSwitchClear] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [gateNote, setGateNote] = useState('');
@@ -43,19 +46,29 @@ const Lv4AutoClosePanel: React.FC = () => {
           risk_level: riskLevel,
           action_level: 'lv4_auto_close',
           min_samples: 10,
+          approval_attested: approvalAttested,
+          kill_switch_clear: killSwitchClear,
         }),
       });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(detailMessage(body.detail));
       setNote(
-        `status=${String(body.status)} · via=${String(body.via)} · allowed=${String(body.auto_close_allowed)} · product=${String(body.lv4_product_surface)} · full_lv4=${String(body.full_action_lv4)} · certified=${String(body.certified)}${body.reason ? ` · reason=${body.reason}` : ''}`,
+        `status=${String(body.status)} · via=${String(body.via)} · allowed=${String(body.auto_close_allowed)} · product=${String(body.lv4_product_surface)} · medium=${String(body.lv4_medium_approval_product)} · full_lv4=${String(body.full_action_lv4)} · certified=${String(body.certified)}${body.reason ? ` · reason=${body.reason}` : ''}`,
       );
     } catch (e: unknown) {
       setNote((e as Error)?.message || '评估失败');
     } finally {
       setBusy(false);
     }
-  }, [actionId, rollbackId, total, falsePositives, riskLevel]);
+  }, [
+    actionId,
+    rollbackId,
+    total,
+    falsePositives,
+    riskLevel,
+    approvalAttested,
+    killSwitchClear,
+  ]);
 
   const runGate = useCallback(async () => {
     try {
@@ -68,7 +81,7 @@ const Lv4AutoClosePanel: React.FC = () => {
       if (!r.ok) throw new Error(detailMessage(body.detail));
       setGateNote(
         body.ok === true
-          ? `product gate ok · surface=${String(body.lv4_product_surface)} · full=${String(body.full_action_lv4)} · certified=${String(body.certified)}`
+          ? `product gate ok · surface=${String(body.lv4_product_surface)} · medium=${String(body.lv4_medium_approval_product)} · full=${String(body.full_action_lv4)} · certified=${String(body.certified)}`
           : `product gate fail · ${(body.issues || []).join(',') || 'unknown'}`,
       );
     } catch (e: unknown) {
@@ -89,8 +102,8 @@ const Lv4AutoClosePanel: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-3 text-[12px] text-gray-400">
         <p className="text-gray-500">
-          默认可用：仅 low 风险 + lv4_auto_close + 误报门 v2。lv4_product_surface=true；非
-          full_action_lv4 / 非 certified。
+          默认可用：low 直接评估；medium 须审批+急停声明且急停未启用。lv4_product_surface /
+          lv4_medium_approval_product=true；非 full_action_lv4 / 非 certified。
         </p>
         <div className="flex flex-wrap gap-2 items-end">
           <label className="flex flex-col gap-1">
@@ -140,6 +153,22 @@ const Lv4AutoClosePanel: React.FC = () => {
               <option value="medium">medium</option>
               <option value="high">high</option>
             </select>
+          </label>
+          <label className="flex items-center gap-1 pb-1">
+            <input
+              type="checkbox"
+              checked={approvalAttested}
+              onChange={(e) => setApprovalAttested(e.target.checked)}
+            />
+            <span>approval_attested</span>
+          </label>
+          <label className="flex items-center gap-1 pb-1">
+            <input
+              type="checkbox"
+              checked={killSwitchClear}
+              onChange={(e) => setKillSwitchClear(e.target.checked)}
+            />
+            <span>kill_switch_clear</span>
           </label>
           <Button
             type="button"

@@ -4157,7 +4157,7 @@ domains:
       - symbol: "evaluate_bounded_lv4_auto_close_product"
         module: core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
         type: function
-        signature: "N08 product: bounded Lv4 auto-close (lv4_product_surface; certified=false)"
+        signature: "N08 product: bounded Lv4 auto-close low|medium+approval (lv4_medium_approval_product; certified=false)"
       - symbol: "run_bounded_lv4_auto_close_product_suite"
         module: core/harness/knowledge_pipeline/lv4_bounded_auto_close.py
         type: function
@@ -4181,7 +4181,7 @@ domains:
       - symbol: "Lv4AutoClosePanel"
         module: aiPlat-management/frontend/src/pages/KnowledgeFactory/Lv4AutoClosePanel.tsx
         type: component
-        signature: "N08 product: management thin UI for bounded Lv4 auto-close"
+        signature: "N08 product: management thin UI for bounded Lv4 auto-close (medium+approval)"
       - symbol: "project_facts_to_wiki"
         module: core/harness/knowledge_pipeline/wiki_rebuild.py
         type: function
