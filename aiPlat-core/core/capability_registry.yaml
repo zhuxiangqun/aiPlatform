@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3341
+total_capabilities: 3370
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 673
+    caps_count: 702
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2671,6 +2671,122 @@ domains:
         type: function
         signature: '低风险试点默认幸福路径（含显式 human_gate）。'
         module: aiPlat-core/core/harness/evo_compute/status.py
+      - symbol: pilot_genome_specs
+        type: function
+        signature: "pilot_genome_specs()→list §9 three pilots"
+        module: aiPlat-core/core/harness/evo_compute/pilots.py
+      - symbol: list_pilot_genome_ids
+        type: function
+        signature: "list_pilot_genome_ids()→list"
+        module: aiPlat-core/core/harness/evo_compute/pilots.py
+      - symbol: register_pilot_genomes
+        type: function
+        signature: "register_pilot_genomes(persist=True)→dict"
+        module: aiPlat-core/core/harness/evo_compute/pilots.py
+      - symbol: default_budget_policy
+        type: function
+        signature: "default_budget_policy()→dict approved=false"
+        module: aiPlat-core/core/harness/evo_compute/budget.py
+      - symbol: get_budget_policy
+        type: function
+        signature: "get_budget_policy()→dict"
+        module: aiPlat-core/core/harness/evo_compute/budget.py
+      - symbol: set_budget_policy
+        type: function
+        signature: "set_budget_policy(policy=None, persist=True)→dict"
+        module: aiPlat-core/core/harness/evo_compute/budget.py
+      - symbol: check_budget
+        type: function
+        signature: "check_budget(usage=None)→dict hard stop"
+        module: aiPlat-core/core/harness/evo_compute/budget.py
+      - symbol: approve_budget
+        type: function
+        signature: "approve_budget(actor=...)→dict human only"
+        module: aiPlat-core/core/harness/evo_compute/budget.py
+      - symbol: clear_budget_for_tests
+        type: function
+        signature: "clear_budget_for_tests()"
+        module: aiPlat-core/core/harness/evo_compute/budget.py
+      - symbol: default_safety_boundary
+        type: function
+        signature: "default_safety_boundary()→dict signed=false"
+        module: aiPlat-core/core/harness/evo_compute/safety.py
+      - symbol: get_safety_boundary
+        type: function
+        signature: "get_safety_boundary()→dict"
+        module: aiPlat-core/core/harness/evo_compute/safety.py
+      - symbol: sign_safety_boundary
+        type: function
+        signature: "sign_safety_boundary(actor=...)→dict"
+        module: aiPlat-core/core/harness/evo_compute/safety.py
+      - symbol: evaluate_safety_readiness
+        type: function
+        signature: "evaluate_safety_readiness()→dict"
+        module: aiPlat-core/core/harness/evo_compute/safety.py
+      - symbol: clear_safety_for_tests
+        type: function
+        signature: "clear_safety_for_tests()"
+        module: aiPlat-core/core/harness/evo_compute/safety.py
+      - symbol: default_replay_fixture
+        type: function
+        signature: "default_replay_fixture(genome_id=...)→dict"
+        module: aiPlat-core/core/harness/evo_compute/replay.py
+      - symbol: aggregate_partition_metrics
+        type: function
+        signature: "aggregate_partition_metrics(fixture, partition=validate)→dict"
+        module: aiPlat-core/core/harness/evo_compute/replay.py
+      - symbol: replay_candidate_offline
+        type: function
+        signature: "replay_candidate_offline(...); fixture replay→sandbox"
+        module: aiPlat-core/core/harness/evo_compute/replay.py
+      - symbol: evaluate_g0_exit_readiness
+        type: function
+        signature: "evaluate_g0_exit_readiness(replay_ok=...); phase0_complete iff all"
+        module: aiPlat-core/core/harness/evo_compute/exit_readiness.py
+      - symbol: run_evo_compute_g0_slice2_suite
+        type: function
+        signature: "run_evo_compute_g0_slice2_suite()→dict; phase0_complete=false"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: register_evo_pilot_genomes
+        type: function
+        signature: "CoreFacade register_evo_pilot_genomes"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: get_evo_budget_policy
+        type: function
+        signature: "CoreFacade get_evo_budget_policy"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: set_evo_budget_policy
+        type: function
+        signature: "CoreFacade set_evo_budget_policy"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: check_evo_budget
+        type: function
+        signature: "CoreFacade check_evo_budget"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: approve_evo_budget
+        type: function
+        signature: "CoreFacade approve_evo_budget"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: get_evo_safety_boundary
+        type: function
+        signature: "CoreFacade get_evo_safety_boundary"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: sign_evo_safety_boundary
+        type: function
+        signature: "CoreFacade sign_evo_safety_boundary"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: replay_evo_candidate_offline
+        type: function
+        signature: "CoreFacade replay_evo_candidate_offline"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_g0_exit_readiness
+        type: function
+        signature: "CoreFacade evaluate_evo_g0_exit_readiness"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_compute_g0_slice2_suite
+        type: function
+        signature: "CoreFacade run_evo_compute_g0_slice2_suite"
+        module: aiPlat-core/core/api/core_facade.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
