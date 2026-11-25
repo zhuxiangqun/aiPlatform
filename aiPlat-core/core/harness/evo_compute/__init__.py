@@ -25,6 +25,7 @@ from core.harness.evo_compute.budget import (
     get_budget_policy,
     set_budget_policy,
 )
+from core.harness.evo_compute.battery import run_pilot_de_es_battery
 from core.harness.evo_compute.drill import run_human_gate_canary_rollback_drill
 from core.harness.evo_compute.exit_readiness import (
     evaluate_g0_exit_readiness,
@@ -63,6 +64,7 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_g0_gate,
     evaluate_evo_compute_g1_gate,
     run_evo_compute_g0_suite,
+    run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
 )
 
@@ -97,8 +99,10 @@ __all__ = [
     "run_closed_loop_baseline_suite",
     "run_de_es_offline",
     "run_evo_compute_g0_suite",
+    "run_evo_compute_g1_slice2_suite",
     "run_evo_compute_g1_suite",
     "run_human_gate_canary_rollback_drill",
+    "run_pilot_de_es_battery",
     "set_budget_policy",
     "sign_safety_boundary",
 ]

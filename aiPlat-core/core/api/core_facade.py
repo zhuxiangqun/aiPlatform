@@ -20941,6 +20941,44 @@ def evaluate_evo_compute_g1_gate(suite: Optional[dict] = None) -> dict:
     return _gate(suite)
 
 
+def run_evo_pilot_de_es_battery(
+    *,
+    algorithms: Optional[list] = None,
+    population_size: int = 6,
+    generations: int = 2,
+    seed: int = 42,
+    register_pilots: bool = True,
+    run_holdout: bool = True,
+) -> dict:
+    """CoreFacade：三试点 DE/ES 电池（汇总可复现/血缘/holdout）。
+
+    Args:
+        algorithms: 算法列表。
+        population_size: 种群大小。
+        generations: 代数。
+        seed: 种子。
+        register_pilots: 是否登记试点。
+        run_holdout: 是否跑 holdout 确认。
+    """
+    from core.harness.evo_compute.battery import run_pilot_de_es_battery as _bat
+
+    return _bat(
+        algorithms=algorithms,
+        population_size=population_size,
+        generations=generations,
+        seed=seed,
+        register_pilots=register_pilots,
+        run_holdout=run_holdout,
+    )
+
+
+def run_evo_compute_g1_slice2_suite() -> dict:
+    """CoreFacade：G1 slice-2 套件（三试点电池；g1_complete 恒 false）。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g1_slice2_suite as _run
+
+    return _run()
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
