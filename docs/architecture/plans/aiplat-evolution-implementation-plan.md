@@ -603,6 +603,9 @@ FDE 证据覆盖 ≥95%
 GA 试点无安全回归
 ```
 
+> slice-1 进度：离散 GA 离线循环（`run_ga_offline`）、评测/FDE 覆盖率诚实探针（缺测 `baseline_missing`）、G2 suite/gate **已可用**。  
+> **不得**因 slice-1 套件绿宣称 G2/E2 完成；实测覆盖 ≥ 阈值与生产回归仍属加深项。
+
 ### Phase 3：AIS + GP 受限（M10–M12）
 
 交付：

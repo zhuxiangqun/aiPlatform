@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4314
+total_capabilities: 4323
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -570,6 +570,11 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_evo_g2_exit_readiness | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| measure_evo_fde_evidence_coverage | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_evo_compute_g2_gate | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
+| init_discrete_individual | `core/harness/evo_compute/ga.py` | ✅ | 自动同步 | 已合入 |
+| discrete_fields | `core/harness/evo_compute/ga.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_evo_g1_exit_readiness | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | run_evo_human_gate_canary_rollback_drill | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_evo_compute_g1_gate | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
@@ -630,6 +635,10 @@ scan_hash: 8f9548ec24f4
 | run_evo_de_es_offline / compare_evo_holdout / run_evo_compute_g1_suite | `core/api/core_facade.py` | ✅ | CoreFacade G1 入口；生成物适用：已接线 | 本批 |
 | run_pilot_de_es_battery | `core/harness/evo_compute/battery.py` | ✅ | 三试点 DE/ES 电池；汇总可复现/血缘/holdout；g1_complete 恒 false；生成物适用：已接线 | 本批 |
 | run_evo_compute_g1_slice2_suite / run_evo_pilot_de_es_battery | `core/harness/evo_compute/suite.py` / `core/api/core_facade.py` | ✅ | G1 slice-2 套件与门面；套件绿≠宣称 G1/E2；生成物适用：已接线 | 本批 |
+| run_ga_offline / ga_crossover / ga_mutate | `core/harness/evo_compute/ga.py` | ✅ | 离散 GA 离线循环（int 字段）；无安全回归检查；g2_complete 恒 false；生成物适用：已接线 | 本批 |
+| measure_eval_coverage / measure_fde_evidence_coverage | `core/harness/evo_compute/coverage.py` | ✅ | 评测/FDE 覆盖率探针；缺测诚实 baseline_missing；生成物适用：已接线 | 本批 |
+| evaluate_g2_exit_readiness / run_evo_compute_g2_suite | `core/harness/evo_compute/exit_readiness.py` / `suite.py` | ✅ | G2 出口就绪与套件；缺测覆盖则 g2_complete=false；生成物适用：已接线 | 本批 |
+| run_evo_ga_offline / measure_evo_eval_coverage / run_evo_compute_g2_suite | `core/api/core_facade.py` | ✅ | CoreFacade G2 入口；套件绿≠宣称 G2/E2；生成物适用：已接线 | 本批 |
 | secure_scan_zip | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | AssetSecureScanError | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | wrap_asset_install_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5215,7 +5224,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 871 | 1 | 872 |
+| Harness 执行引擎 | 880 | 1 | 881 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5260,7 +5269,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4303** | **11** | **4314** |
+| **总计** | **4312** | **11** | **4323** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

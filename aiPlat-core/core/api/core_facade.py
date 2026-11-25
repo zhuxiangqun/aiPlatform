@@ -20979,6 +20979,102 @@ def run_evo_compute_g1_slice2_suite() -> dict:
     return _run()
 
 
+def run_evo_ga_offline(
+    *,
+    genome_id: str,
+    population_size: int = 8,
+    generations: int = 4,
+    seed: int = 42,
+    mutation_rate: float = 0.2,
+    ranking_profile: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：离散 GA 离线循环（不写生产）。
+
+    Args:
+        genome_id: 已登记 genome（须含 int 字段）。
+        population_size: 种群。
+        generations: 代数。
+        seed: 种子。
+        mutation_rate: 突变率。
+        ranking_profile: 排名配置。
+    """
+    from core.harness.evo_compute.ga import run_ga_offline as _run
+
+    return _run(
+        genome_id=genome_id,
+        population_size=population_size,
+        generations=generations,
+        seed=seed,
+        mutation_rate=mutation_rate,
+        ranking_profile=ranking_profile,
+    )
+
+
+def measure_evo_eval_coverage(measured: Optional[dict] = None) -> dict:
+    """CoreFacade：评测覆盖率探针（缺测诚实上报）。
+
+    Args:
+        measured: 可选实测 coverage。
+    """
+    from core.harness.evo_compute.coverage import measure_eval_coverage as _m
+
+    return _m(measured)
+
+
+def measure_evo_fde_evidence_coverage(measured: Optional[dict] = None) -> dict:
+    """CoreFacade：FDE 证据覆盖率探针（缺测诚实上报）。
+
+    Args:
+        measured: 可选实测 coverage。
+    """
+    from core.harness.evo_compute.coverage import measure_fde_evidence_coverage as _m
+
+    return _m(measured)
+
+
+def evaluate_evo_g2_exit_readiness(
+    *,
+    ga_ok: bool = False,
+    safety_regression_free: bool = False,
+    eval_coverage_ok: bool = False,
+    fde_coverage_ok: bool = False,
+) -> dict:
+    """CoreFacade：G2 出口就绪（缺测覆盖则 g2_complete=false）。
+
+    Args:
+        ga_ok: GA 是否成功。
+        safety_regression_free: 无安全回归。
+        eval_coverage_ok: 评测覆盖达标。
+        fde_coverage_ok: FDE 证据覆盖达标。
+    """
+    from core.harness.evo_compute.exit_readiness import evaluate_g2_exit_readiness as _r
+
+    return _r(
+        ga_ok=ga_ok,
+        safety_regression_free=safety_regression_free,
+        eval_coverage_ok=eval_coverage_ok,
+        fde_coverage_ok=fde_coverage_ok,
+    )
+
+
+def run_evo_compute_g2_suite() -> dict:
+    """CoreFacade：G2 最小套件（g2_complete 恒 false）。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g2_suite as _run
+
+    return _run()
+
+
+def evaluate_evo_compute_g2_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：G2 门槛门（g2_complete/certified/e2 恒 false）。
+
+    Args:
+        suite: ``run_evo_compute_g2_suite`` 回执。
+    """
+    from core.harness.evo_compute.suite import evaluate_evo_compute_g2_gate as _gate
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
