@@ -1,0 +1,77 @@
+{
+  "actor": "zhu-ying",
+  "actor_display": "朱莹",
+  "authority": "human_chat_approve",
+  "approved_at_iso": "2026-11-25",
+  "pilots": {
+    "ok": true,
+    "registered": [
+      "routing.weights.v1",
+      "retrieval.params.v1",
+      "timeout.retry.v1"
+    ],
+    "count": 3
+  },
+  "budget": {
+    "ok": true,
+    "approved": true,
+    "approver": "zhu-ying",
+    "policy_id": "evo_budget_g0_v1",
+    "evidence_ref": "chat:批准:2026-11-25",
+    "limits": {
+      "max_candidates": 50,
+      "max_generations": 10,
+      "max_llm_calls": 200,
+      "max_tokens": 500000,
+      "max_wall_time_sec": 3600,
+      "max_cost_usd": 25.0
+    }
+  },
+  "safety": {
+    "ok": true,
+    "signed": true,
+    "signer": "zhu-ying",
+    "boundary_id": "evo_safety_g0_v1",
+    "evidence_ref": "chat:批准:2026-11-25",
+    "rules": [
+      "sandbox_no_production_write",
+      "policy_gate_required",
+      "tenant_isolation",
+      "human_gate_before_approved",
+      "canary_before_production",
+      "rollback_plan_required",
+      "audit_trail_required"
+    ],
+    "excluded_targets": [
+      "prompt_full_text",
+      "policy_gate_rules",
+      "core_python_code",
+      "customer_contract_params"
+    ]
+  },
+  "replay": {
+    "ok": true,
+    "status": "ranked",
+    "candidate_id": "g0-signoff-replay-1",
+    "evidence_ref": "sandbox:g0-signoff-replay-1",
+    "source": "fixture",
+    "production_sample": false,
+    "production_write": false,
+    "evidence_note": "local AIPLAT_HOME/tmp evidence; not committed binary"
+  },
+  "exit_readiness": {
+    "ok": true,
+    "ready": true,
+    "checks": {
+      "baseline_ok": true,
+      "pilots_determined": true,
+      "budget_approved": true,
+      "safety_signed": true,
+      "replay_done": true
+    },
+    "missing": [],
+    "phase0_complete": true,
+    "certified": false,
+    "e2_claimed": false
+  }
+}

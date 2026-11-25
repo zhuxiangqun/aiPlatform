@@ -20,7 +20,8 @@ last_reviewed: 2026-11-25
 > **SSOT**：`Candidate.status` 与状态机以演化计算架构 §6 为准；Phase Gate 以本文 §12 / §15 **同一套 G0–G3** 为准（禁止第二套含义）。  
 > **2026-11-25**：G0 底座 **slice-1** 已接线（`core/harness/evo_compute/` + CoreFacade + 基线落盘）；证据 `reports/architecture/evo-compute/phase0-g0-foundation-slice1-evidence.md`。  
 > **2026-11-25**：G0 **slice-2** 已接线（三试点 genome + 预算硬上限 + 安全边界契约 + 夹具回放 + `evaluate_g0_exit_readiness`）；证据 `reports/architecture/evo-compute/phase0-g0-pilots-slice2-evidence.md`。  
-> **未宣称** Phase 0 出口已默认通过 / DE-ES / E2 / 生产流量回放 / 闭环已测升级；套件 `phase0_complete=false`（人工签批预算+安全且有回放后 readiness 才可为 true）。
+> **2026-11-25**：G0 **人工签批**（对话「批准」；actor=`zhu-ying`）— 预算上限 + 安全边界已签字；夹具回放齐备后 `evaluate_g0_exit_readiness.phase0_complete=true`；证据 `reports/architecture/evo-compute/phase0-g0-human-signoff-evidence.md`。  
+> **未宣称** DE-ES / E2 / 生产流量真实回放认证 / 闭环已测 L4；`certified`/`e2_claimed` 恒 false。
 
 ## 0. 结论先行
 
@@ -555,7 +556,8 @@ Registry / Fitness / Sandbox 最小可用（可注册 genome、评估 1 个候�
 ```
 
 > slice-1 进度：Registry/Fitness/Sandbox/状态机/基线 **落盘能力** 已可用。  
-> slice-2 进度：三试点已选型登记、预算/安全**契约与硬停**已可用、夹具回放链路已通；**人工**预算批准与安全签字、以及生产流量真实回放仍属 Phase 0 剩余操作，**不得**因 slice-2 套件绿而宣称 G0 默认通过。
+> slice-2 进度：三试点已选型登记、预算/安全**契约与硬停**已可用、夹具回放链路已通。  
+> 人工签批：预算上限与安全边界已由 `zhu-ying` 批准（2026-11-25）；Gate G0 出口就绪 `phase0_complete=true`（夹具回放）。生产流量真实回放认证仍属加深项，**不得**据此宣称 E2 / certified。
 
 ### Phase 1：DE/ES 试点（M4–M6）
 
