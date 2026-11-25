@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T19:37:14+08:00",
+  "reviewed_at": "2026-11-25T19:39:26+08:00",
   "base_ref": "origin/main",
   "merge_base": "6ec02cae84792f81d79766542ebbb9eddd6e859b",
-  "diff_sha256": "8bee8f4d4f226ec95e77e12ac5ca02d0d39cd66a397b8f7dbaf5d6405baa588a",
-  "head_sha": "538f8635b90b4fb4a012682b21f0477c21219700",
+  "diff_sha256": "578e895387153dfe4018cfe60e072c010b9e390b77a47968efefa1631a08b710",
+  "head_sha": "4289461a441dc2884e1fb933d7eaffdebe3fe9e9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G1 DE/ES slice-1: orchestrator/holdout/drill; suite g1_complete=false; zero findings on five checks"
+  "note": "G1 DE/ES slice-1 + whitepaper sync; zero findings"
 }
