@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T12:27:48+08:00",
+  "reviewed_at": "2026-11-25T12:54:34+08:00",
   "base_ref": "origin/main",
-  "merge_base": "b9c4e8e6684650051f714ca8568aa97b3fe5e22e",
-  "diff_sha256": "64576aa3dba4328f394ffe985beb38a5fbe64b7c426b22326821476438ead9a8",
-  "head_sha": "db5ed1ae727510b69635de427a45e65f66f2bf44",
+  "merge_base": "625089a8494cb5570908d299ad658c09a0939273",
+  "diff_sha256": "519abdc128f630c404165c274491d1b088cbd46e0b1e17a0ba24a352aaea3114",
+  "head_sha": "29300ad9508ebaf374d0ad4fd2bb16b8c2d9bcf7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N05 registry caps_count/total_capabilities aligned with provides; matrix/whitepapers regen. Local lock only."
+  "note": "N08 rebased onto main after #1057; whitepapers/AUTO-STATS regen. Local lock only."
 }
