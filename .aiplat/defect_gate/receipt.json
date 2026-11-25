@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T08:55:00+08:00",
+  "reviewed_at": "2026-11-25T09:00:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "c3ab9623e9cb6abf141927002813488f704450c7",
-  "diff_sha256": "b8be0183480226f4405e93c211e66db313ac8148eba22cc385c5f8f026991e81",
-  "head_sha": "2f9730fed0ccd612ee8b2875d6649963674d0c5c",
+  "diff_sha256": "e5e8f0d2465d71f3be30019c3aef544bb64c7160e082509836b5172cdb33bef5",
+  "head_sha": "0cdea948281790d86ad51c54a7014054cf51e853",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "SLO alert product rebased onto main after #1051; caps aligned; local lock only."
+  "note": "SLO alert product after whitepaper sync; residual retained; product_surface true. Local lock only."
 }
