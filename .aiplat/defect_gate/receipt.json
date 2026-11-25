@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T09:25:00+08:00",
+  "reviewed_at": "2026-11-25T09:26:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "a67df3e8c64afe9ac7b429eeeed4cce0ed3d9534",
   "diff_sha256": "4b6c7cee0190abcb6f39366a8bd2dde3a257fad5674d88e51c32ef6ccaa52b10",
-  "head_sha": "71b5950c7a66557b40f0d35fcffc35250468f88e",
+  "head_sha": "7deb6fa4475af1f6ce61640f63167ee62a223c79",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N07 where/expr product rebased onto main after SLO; certified false. Local lock only."
+  "note": "N07 where/expr product rebased onto main(+N13+SLO); certified/accuracy false. Local lock only."
 }
