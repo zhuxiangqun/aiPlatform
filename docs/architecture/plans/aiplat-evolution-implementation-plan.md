@@ -23,6 +23,8 @@ last_reviewed: 2026-11-25
 > **2026-11-25**：G0 **人工签批**（对话「批准」；actor=`zhu-ying`）— 预算上限 + 安全边界已签字；夹具回放齐备后 `evaluate_g0_exit_readiness.phase0_complete=true`；证据 `reports/architecture/evo-compute/phase0-g0-human-signoff-evidence.md`。  
 > **2026-11-25**：G1 **slice-1** 已接线（DE/ES 离线 Orchestrator + holdout 代理确认 + Human Gate/Canary/回滚状态机演练）；证据 `reports/architecture/evo-compute/phase1-g1-de-es-slice1-evidence.md`。套件 `g1_complete=false`。  
 > **2026-11-25**：G1 **slice-2** 已接线（三试点 DE/ES 电池 + 可复现/血缘/holdout 汇总）；证据 `reports/architecture/evo-compute/phase1-g1-pilots-battery-slice2-evidence.md`。套件 `g1_complete=false`。  
+> **2026-11-25**：G2 **slice-1** 已接线（离散 GA + 覆盖率缺测诚实探针）；证据 `reports/architecture/evo-compute/phase2-g2-ga-slice1-evidence.md`。套件 `g2_complete=false`。  
+> **2026-11-26**：G2 **slice-2** 已接线（库存/报告实测覆盖路径 + Facade 评测桥接）；证据 `reports/architecture/evo-compute/phase2-g2-coverage-slice2-evidence.md`。夹具达标 ≠ 生产 L4；套件 `g2_complete=false`。  
 > **未宣称** 生产流量 holdout 认证 / 真实 Canary 上线 / E2 / 闭环已测 L4；`certified`/`e2_claimed` 恒 false。
 
 ## 0. 结论先行
@@ -604,7 +606,8 @@ GA 试点无安全回归
 ```
 
 > slice-1 进度：离散 GA 离线循环（`run_ga_offline`）、评测/FDE 覆盖率诚实探针（缺测 `baseline_missing`）、G2 suite/gate **已可用**。  
-> **不得**因 slice-1 套件绿宣称 G2/E2 完成；实测覆盖 ≥ 阈值与生产回归仍属加深项。
+> slice-2 进度：库存/能力报告实测覆盖路径、Facade→eval 桥接、slice-2 suite **已可用**（夹具阈值）。  
+> **不得**因 slice-1/2 套件绿或夹具达标宣称 G2/E2 / 生产 L4 完成。
 
 ### Phase 3：AIS + GP 受限（M10–M12）
 

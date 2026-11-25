@@ -26,8 +26,16 @@ from core.harness.evo_compute.budget import (
     set_budget_policy,
 )
 from core.harness.evo_compute.coverage import (
+    coverage_from_baseline_kpi,
+    coverage_ratio_from_capability_report,
+    coverage_ratio_from_inventory,
+    default_g2_eval_inventory_fixture,
+    default_g2_fde_inventory_fixture,
     measure_eval_coverage,
+    measure_eval_coverage_from_capability_report,
+    measure_eval_coverage_from_inventory,
     measure_fde_evidence_coverage,
+    measure_fde_evidence_coverage_from_inventory,
 )
 from core.harness.evo_compute.drill import run_human_gate_canary_rollback_drill
 from core.harness.evo_compute.exit_readiness import (
@@ -69,9 +77,11 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_g0_gate,
     evaluate_evo_compute_g1_gate,
     evaluate_evo_compute_g2_gate,
+    evaluate_evo_compute_g2_slice2_gate,
     run_evo_compute_g0_suite,
     run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
+    run_evo_compute_g2_slice2_suite,
     run_evo_compute_g2_suite,
 )
 
@@ -89,7 +99,13 @@ __all__ = [
     "evaluate_closed_loop_baseline_gate",
     "evaluate_evo_compute_g0_gate",
     "evaluate_evo_compute_g1_gate",
+    "coverage_from_baseline_kpi",
+    "coverage_ratio_from_capability_report",
+    "coverage_ratio_from_inventory",
+    "default_g2_eval_inventory_fixture",
+    "default_g2_fde_inventory_fixture",
     "evaluate_evo_compute_g2_gate",
+    "evaluate_evo_compute_g2_slice2_gate",
     "evaluate_g0_exit_readiness",
     "evaluate_g1_exit_readiness",
     "evaluate_g2_exit_readiness",
@@ -101,7 +117,10 @@ __all__ = [
     "list_pilot_genome_ids",
     "measure_closed_loop_baseline",
     "measure_eval_coverage",
+    "measure_eval_coverage_from_capability_report",
+    "measure_eval_coverage_from_inventory",
     "measure_fde_evidence_coverage",
+    "measure_fde_evidence_coverage_from_inventory",
     "pilot_genome_specs",
     "rank_candidates",
     "register_genome",
@@ -112,6 +131,7 @@ __all__ = [
     "run_evo_compute_g0_suite",
     "run_evo_compute_g1_slice2_suite",
     "run_evo_compute_g1_suite",
+    "run_evo_compute_g2_slice2_suite",
     "run_evo_compute_g2_suite",
     "run_ga_offline",
     "run_human_gate_canary_rollback_drill",
