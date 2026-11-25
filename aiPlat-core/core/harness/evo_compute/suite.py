@@ -1,6 +1,7 @@
 """Phase 0 / G0 最小套件与门槛门。
 
-覆盖：genome 登记、离线评估、Pareto 排名、状态机含 human_gate、基线诚实锁。
+覆盖：genome 登记、离线评估、Pareto 排名、状态机含 human_gate、基线诚实锁；
+slice-2：三试点、预算/安全（未签字）、夹具回放、出口就绪诚实锁。
 不宣称 E2 / L4 / 认证 / 生产写入。
 """
 from __future__ import annotations
@@ -11,12 +12,21 @@ from core.harness.evo_compute.baseline import (
     evaluate_closed_loop_baseline_gate,
     run_closed_loop_baseline_suite,
 )
+from core.harness.evo_compute.budget import (
+    check_budget,
+    clear_budget_for_tests,
+    get_budget_policy,
+)
+from core.harness.evo_compute.exit_readiness import evaluate_g0_exit_readiness
 from core.harness.evo_compute.fitness import rank_candidates
 from core.harness.evo_compute.genome_registry import (
     clear_registry_for_tests,
     get_genome,
     register_genome,
 )
+from core.harness.evo_compute.pilots import register_pilot_genomes
+from core.harness.evo_compute.replay import replay_candidate_offline
+from core.harness.evo_compute.safety import clear_safety_for_tests, get_safety_boundary
 from core.harness.evo_compute.sandbox import evaluate_candidate_offline
 from core.harness.evo_compute.status import advance_candidate_status, default_happy_path
 
@@ -40,8 +50,10 @@ def _pilot_genome() -> Dict[str, Any]:
 
 
 def run_evo_compute_g0_suite() -> Dict[str, Any]:
-    """G0 最小可用套件。"""
+    """G0 最小可用套件（含 slice-2 试点/预算/安全/回放）。"""
     clear_registry_for_tests()
+    clear_budget_for_tests()
+    clear_safety_for_tests()
     cases: list = []
 
     # 1. genome register
@@ -77,7 +89,7 @@ def run_evo_compute_g0_suite() -> Dict[str, Any]:
         }
     )
 
-    # 3. Pareto → ranked with two candidates
+    # 3. Pareto → ranked with hard constraint
     ranked = rank_candidates(
         [
             {
@@ -160,12 +172,7 @@ def run_evo_compute_g0_suite() -> Dict[str, Any]:
         to_status="evaluated",
         actor="alice",
     )
-    cases.append(
-        {
-            "id": "abolished_evaluated",
-            "pass": abolished.get("ok") is False,
-        }
-    )
+    cases.append({"id": "abolished_evaluated", "pass": abolished.get("ok") is False})
 
     happy = default_happy_path()
     cases.append(
@@ -180,6 +187,68 @@ def run_evo_compute_g0_suite() -> Dict[str, Any]:
     base_gate = evaluate_closed_loop_baseline_gate(base_suite)
     cases.append({"id": "baseline_suite", "pass": bool(base_gate.get("ok"))})
 
+    # 6. three pilot genomes (§9)
+    pilots = register_pilot_genomes(persist=False)
+    cases.append(
+        {
+            "id": "three_pilot_genomes",
+            "pass": bool(pilots.get("ok")) and int(pilots.get("count") or 0) == 3,
+        }
+    )
+
+    # 7. budget default unsigned + hard stop
+    bud = get_budget_policy()
+    over = check_budget({"candidates": 9999})
+    cases.append(
+        {
+            "id": "budget_unsigned_and_hard_stop",
+            "pass": bud.get("approved") is False
+            and over.get("within_budget") is False
+            and over.get("auto_stop") is True,
+        }
+    )
+
+    # 8. safety default unsigned
+    saf = get_safety_boundary()
+    cases.append(
+        {
+            "id": "safety_unsigned_default",
+            "pass": saf.get("signed") is False
+            and "sandbox_no_production_write"
+            in ((saf.get("boundary") or {}).get("rules") or []),
+        }
+    )
+
+    # 9. fixture offline replay on first pilot
+    rep = replay_candidate_offline(
+        genome_id="routing.weights.v1",
+        genes={"semantic_weight": 0.5, "cost_weight": 0.3, "latency_weight": 0.2},
+        candidate_id="g0-replay-1",
+        seed=7,
+        persist_evidence=False,
+    )
+    cases.append(
+        {
+            "id": "fixture_replay_ranked",
+            "pass": bool(rep.get("ok"))
+            and rep.get("status") == "ranked"
+            and rep.get("production_sample") is False
+            and rep.get("production_write") is False,
+        }
+    )
+
+    # 10. exit readiness honest: unsigned → phase0_complete false
+    ready = evaluate_g0_exit_readiness(replay_ok=bool(rep.get("ok")), baseline_ok=True)
+    cases.append(
+        {
+            "id": "exit_readiness_unsigned_incomplete",
+            "pass": ready.get("phase0_complete") is False
+            and ready.get("certified") is False
+            and "budget_approved" in (ready.get("missing") or [])
+            and "safety_signed" in (ready.get("missing") or []),
+        }
+    )
+
     passed = sum(1 for c in cases if c["pass"])
     return {
         "ok": passed == len(cases),
@@ -187,11 +256,12 @@ def run_evo_compute_g0_suite() -> Dict[str, Any]:
         "total": len(cases),
         "cases": cases,
         "pilot_genome_id": "routing.weights.g0_pilot",
+        "pilot_genome_ids": pilots.get("registered") or [],
         "g0_foundation": True,
         "certified": False,
         "e2_claimed": False,
         "phase0_complete": False,
-        "note": "G0 foundation slice-1 only; not Phase 0 exit / not DE-ES",
+        "note": "G0 slice-1+2 machinery; budget/safety human signoff still required for Phase 0 exit",
     }
 
 
@@ -203,7 +273,6 @@ def evaluate_evo_compute_g0_gate(suite: Optional[Dict[str, Any]] = None) -> Dict
     """
     s = suite if suite is not None else run_evo_compute_g0_suite()
     ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
-    # 诚实：不得因 gate 通过而宣称 phase0 完成或 E2
     return {
         "ok": ok,
         "passed": ok,
@@ -213,3 +282,10 @@ def evaluate_evo_compute_g0_gate(suite: Optional[Dict[str, Any]] = None) -> Dict
         "g0_foundation": True,
         "suite": s,
     }
+
+
+def run_evo_compute_g0_slice2_suite() -> Dict[str, Any]:
+    """G0 slice-2 套件别名：与 ``run_evo_compute_g0_suite`` 同路径（已含试点/预算/安全/回放）。"""
+    out = run_evo_compute_g0_suite()
+    out["slice"] = "g0-slice2"
+    return out

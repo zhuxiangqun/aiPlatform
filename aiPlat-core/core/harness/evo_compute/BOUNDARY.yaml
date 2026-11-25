@@ -1,7 +1,8 @@
 layer: core
 rationale: |
   Harness 子模块目录（evo_compute）。受控演化计算底座（Genome Registry /
-  Fitness / Sandbox / Candidate 状态机 / 闭环 KPI 基线）。符合
+  Fitness / Sandbox / Candidate 状态机 / 闭环 KPI 基线 / 三试点 /
+  预算硬上限 / 安全边界 / 夹具回放 / G0 出口就绪）。符合
   boundary-standard.md §3.1——Harness 是 AI Runtime Kernel，本目录为执行
-  基础设施的一部分。不写生产配置、不宣称 E2 / Phase0 出口。
+  基础设施的一部分。不写生产配置、不自动批准预算/安全、不宣称 E2 / Phase0 出口。
 known_debt: []

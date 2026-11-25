@@ -143,6 +143,7 @@ review_cycle: 90d
 > 2026-11-24：知识系统 N08 有界 Lv4 auto-close 产品面第一刀（`evaluate_bounded_lv4_auto_close_product`；默认可用；lv4_product_surface=true；仍仅 low；certified/full_action_lv4 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-25：知识系统 N08 有界 Lv4 auto-close 产品面第二刀（medium 须 approval_attested+kill_switch_clear；lv4_medium_approval_product=true；high 仍拒；full_action_lv4/certified 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-25：受控演化计算 Phase 0 / G0 底座 slice-1（`core/harness/evo_compute` Genome/Fitness/Sandbox/Candidate.status+HUMAN_GATE + 闭环 KPI 基线落盘；经 CoreFacade；phase0_complete/e2/certified 恒 false；不写生产配置）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-25：受控演化计算 Phase 0 / G0 slice-2（三试点 genome + 预算硬上限 + 安全边界签字契约 + 夹具离线回放 + G0 出口就绪；缺人工签字则 phase0_complete=false；经 CoreFacade；不写生产配置/不采生产流量）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威覆盖显式 residual（`apply_published_seed_authority`；不改写 workspace_seeds；不可用诚实上报；freeze 仍 true；certified/seed_replacement_complete 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威产品面第一刀（`list_object_type_seed_catalog` + `apply_published_seed_authority_product`；默认可用；不改写 workspace_seeds；seed_product_surface=true；certified/seed_replacement_complete 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 W6 Knowledge SDK 最小切片（ObjectType→Client 表面/源码经 Facade；L1 kb:read）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

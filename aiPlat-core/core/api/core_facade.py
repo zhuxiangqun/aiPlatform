@@ -20659,6 +20659,147 @@ def evaluate_evo_compute_g0_gate(suite: Optional[dict] = None) -> dict:
     return _gate(suite)
 
 
+def register_evo_pilot_genomes(*, persist: bool = True) -> dict:
+    """CoreFacade：登记三试点 genome（§9；不写生产）。
+
+    Args:
+        persist: 是否落盘。
+    """
+    from core.harness.evo_compute.pilots import register_pilot_genomes as _reg
+
+    return _reg(persist=persist)
+
+
+def get_evo_budget_policy() -> dict:
+    """CoreFacade：读取演化预算策略（默认未批准）。"""
+    from core.harness.evo_compute.budget import get_budget_policy as _get
+
+    return _get()
+
+
+def set_evo_budget_policy(policy: Optional[dict] = None, *, persist: bool = True) -> dict:
+    """CoreFacade：设定预算上限（不自动批准）。
+
+    Args:
+        policy: 覆盖字段。
+        persist: 是否落盘。
+    """
+    from core.harness.evo_compute.budget import set_budget_policy as _set
+
+    return _set(policy or {}, persist=persist)
+
+
+def check_evo_budget(usage: Optional[dict] = None) -> dict:
+    """CoreFacade：对照硬上限检查用量。
+
+    Args:
+        usage: 当前用量字典。
+    """
+    from core.harness.evo_compute.budget import check_budget as _chk
+
+    return _chk(usage)
+
+
+def approve_evo_budget(
+    *,
+    actor: str,
+    evidence_ref: str = "",
+    persist: bool = True,
+) -> dict:
+    """CoreFacade：人工批准预算上限。
+
+    Args:
+        actor: 批准人。
+        evidence_ref: 证据引用。
+        persist: 是否落盘。
+    """
+    from core.harness.evo_compute.budget import approve_budget as _appr
+
+    return _appr(actor=actor, evidence_ref=evidence_ref, persist=persist)
+
+
+def get_evo_safety_boundary() -> dict:
+    """CoreFacade：读取安全边界（默认未签字）。"""
+    from core.harness.evo_compute.safety import get_safety_boundary as _get
+
+    return _get()
+
+
+def sign_evo_safety_boundary(
+    *,
+    actor: str,
+    evidence_ref: str = "",
+    persist: bool = True,
+) -> dict:
+    """CoreFacade：安全/SRE 签字。
+
+    Args:
+        actor: 签字人。
+        evidence_ref: 证据引用。
+        persist: 是否落盘。
+    """
+    from core.harness.evo_compute.safety import sign_safety_boundary as _sign
+
+    return _sign(actor=actor, evidence_ref=evidence_ref, persist=persist)
+
+
+def replay_evo_candidate_offline(
+    *,
+    genome_id: str,
+    genes: Optional[dict] = None,
+    fixture: Optional[dict] = None,
+    use_partition: str = "validate",
+    candidate_id: str = "",
+    seed: int = 0,
+    persist_evidence: bool = True,
+) -> dict:
+    """CoreFacade：夹具离线回放 → 沙箱评估。
+
+    Args:
+        genome_id: 已登记 genome。
+        genes: 基因。
+        fixture: 回放夹具。
+        use_partition: 聚合分区。
+        candidate_id: 候选 id。
+        seed: 种子。
+        persist_evidence: 是否落盘证据。
+    """
+    from core.harness.evo_compute.replay import replay_candidate_offline as _rep
+
+    return _rep(
+        genome_id=genome_id,
+        genes=genes,
+        fixture=fixture,
+        use_partition=use_partition,
+        candidate_id=candidate_id,
+        seed=seed,
+        persist_evidence=persist_evidence,
+    )
+
+
+def evaluate_evo_g0_exit_readiness(
+    *,
+    replay_ok: Optional[bool] = None,
+    baseline_ok: bool = True,
+) -> dict:
+    """CoreFacade：G0 出口就绪（缺签字则 phase0_complete=false）。
+
+    Args:
+        replay_ok: 是否已有回放证据。
+        baseline_ok: 基线能力是否可用。
+    """
+    from core.harness.evo_compute.exit_readiness import evaluate_g0_exit_readiness as _r
+
+    return _r(replay_ok=replay_ok, baseline_ok=baseline_ok)
+
+
+def run_evo_compute_g0_slice2_suite() -> dict:
+    """CoreFacade：G0 slice-2 套件（三试点/预算/安全/回放；phase0_complete 恒 false）。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g0_slice2_suite as _run
+
+    return _run()
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
