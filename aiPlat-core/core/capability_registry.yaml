@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3303
+total_capabilities: 3309
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -2835,7 +2835,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 825
+    caps_count: 831
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -5998,15 +5998,27 @@ domains:
         module: "core/harness/knowledge_pipeline/object_type_publish.py"
       - symbol: "apply_published_seed_authority_product"
         type: "function"
-        signature: "N02 product: published-over-seed (no env; certified=false)"
+        signature: "N02 product: published-over-seed with auto-backup (seed_migrate_rollback=true; certified=false)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "backup_seed_authority_snapshot"
+        type: "function"
+        signature: "N02 product: backup allowlist authority mirror"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "list_seed_authority_backups"
+        type: "function"
+        signature: "N02 product: list allowlist authority backups (bounded)"
+        module: "core/harness/knowledge_pipeline/object_type_publish.py"
+      - symbol: "restore_seed_authority_snapshot"
+        type: "function"
+        signature: "N02 product: restore allowlist authority mirror"
         module: "core/harness/knowledge_pipeline/object_type_publish.py"
       - symbol: "run_seed_authority_product_suite"
         type: "function"
-        signature: "N02 product: seed authority suite (certified=false)"
+        signature: "N02 product: seed authority suite slice-2 (certified=false)"
         module: "core/harness/knowledge_pipeline/object_type_publish.py"
       - symbol: "evaluate_seed_authority_product_gate"
         type: "function"
-        signature: "N02 product: seed authority gate (certified=false)"
+        signature: "N02 product: seed authority gate requires seed_migrate_rollback"
         module: "core/harness/knowledge_pipeline/object_type_publish.py"
       - symbol: "list_knowledge_object_type_seed_catalog"
         type: "function"
@@ -6015,6 +6027,18 @@ domains:
       - symbol: "apply_published_seed_authority_product"
         type: "function"
         signature: "CoreFacade: N02 product seed authority"
+        module: "core/api/core_facade.py"
+      - symbol: "backup_knowledge_seed_authority_snapshot"
+        type: "function"
+        signature: "CoreFacade: N02 product seed authority backup"
+        module: "core/api/core_facade.py"
+      - symbol: "list_knowledge_seed_authority_backups"
+        type: "function"
+        signature: "CoreFacade: N02 product seed authority backup list"
+        module: "core/api/core_facade.py"
+      - symbol: "restore_knowledge_seed_authority_snapshot"
+        type: "function"
+        signature: "CoreFacade: N02 product seed authority restore"
         module: "core/api/core_facade.py"
       - symbol: "run_seed_authority_product_suite"
         type: "function"

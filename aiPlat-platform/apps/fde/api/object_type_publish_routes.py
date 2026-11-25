@@ -341,6 +341,85 @@ async def apply_published_seed_authority_product_route(
     return out
 
 
+class ObjectTypeSeedAuthorityBackupBody(BaseModel):
+    """N02 产品面：权威镜像 backup / restore。"""
+
+    tenant_id: str = Field(..., min_length=1)
+    output_root: Optional[str] = None
+    backup_id: str = Field(default="")
+
+
+@router.get("/object-types/product/seed-authority/backups")
+async def list_seed_authority_backups_route(
+    tenant_id: str,
+    limit: int = 20,
+) -> Dict[str, Any]:
+    """N02 产品面：列举 allowlist 权威备份（有界）。
+
+    Args:
+        tenant_id: 租户。
+        limit: 列表上限（服务端钳制 ≤20）。
+    """
+    from core.api.core_facade import list_knowledge_seed_authority_backups
+
+    out = list_knowledge_seed_authority_backups(
+        tenant_id=tenant_id,
+        limit=max(1, min(int(limit or 20), 20)),
+    )
+    if out.get("status") == "invalid":
+        raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
+    if out.get("status") == "denied":
+        raise HTTPException(status_code=403, detail=out.get("reason") or "denied")
+    return out
+
+
+@router.post("/object-types/product/seed-authority/backup")
+async def backup_seed_authority_snapshot_route(
+    body: ObjectTypeSeedAuthorityBackupBody = Body(...),
+) -> Dict[str, Any]:
+    """N02 产品面：backup allowlist 权威镜像（非 in-tree seeds）。
+
+    Args:
+        body: 租户 + 可选 output_root。
+    """
+    from core.api.core_facade import backup_knowledge_seed_authority_snapshot
+
+    out = backup_knowledge_seed_authority_snapshot(
+        tenant_id=body.tenant_id,
+        output_root=body.output_root,
+    )
+    if out.get("status") == "invalid":
+        raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
+    if out.get("status") == "denied":
+        raise HTTPException(status_code=403, detail=out.get("reason") or "denied")
+    return out
+
+
+@router.post("/object-types/product/seed-authority/restore")
+async def restore_seed_authority_snapshot_route(
+    body: ObjectTypeSeedAuthorityBackupBody = Body(...),
+) -> Dict[str, Any]:
+    """N02 产品面：restore allowlist 权威镜像（非 certified）。
+
+    Args:
+        body: 租户 + backup_id。
+    """
+    from core.api.core_facade import restore_knowledge_seed_authority_snapshot
+
+    if not str(body.backup_id or "").strip():
+        raise HTTPException(status_code=400, detail="backup_id_required")
+    out = restore_knowledge_seed_authority_snapshot(
+        tenant_id=body.tenant_id,
+        backup_id=str(body.backup_id),
+        output_root=body.output_root,
+    )
+    if out.get("status") == "invalid":
+        raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
+    if out.get("status") == "denied":
+        raise HTTPException(status_code=403, detail=out.get("reason") or "denied")
+    return out
+
+
 @router.post("/object-types/product/seed-authority/suite")
 async def run_seed_authority_product_suite_route() -> Dict[str, Any]:
     """N02 产品面：种子权威套件。"""

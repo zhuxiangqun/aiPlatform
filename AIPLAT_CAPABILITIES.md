@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4242
+total_capabilities: 4249
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -1369,7 +1369,8 @@ scan_hash: 8f9548ec24f4
 | **ObjectType 多租户批量 residual（N02）** | `bulk_transition_object_types` + Facade/HTTP `bulk-transition` + 门户批量区 | ✅ | ≤20 项逐项回执；`AIPLAT_KNOWLEDGE_OBJECT_TYPE_BULK=1`；suite `bulk_opt_in`/`bulk_unavailable`；freeze 仍 true；certified/seed_replacement 恒 false。**显式 residual**：opt-in `apply_published_seed_authority`（证据 `phase2-n02-seed-replace-residual-evidence.md`）。生成物适用：已接线 | 本批 |
 | **ObjectType 多租户批量产品面第一刀（N02）** | `bulk_transition_object_types_product` + `/object-types/product/bulk-transition*` + `ObjectTypePublishPanel` | ✅ | 默认可用（无 residual env）；≤20 项逐项回执；`bulk_product_surface=true`；certified/seed_replacement 恒 false；freeze 仍 true；residual opt-in 路径保留。证据 `phase2-n02-bulk-portal-product-evidence.md`。**未宣称** certified / 无限批量编排。生成物适用：已接线（管理端） | 本批 |
 | **ObjectType 种子权威覆盖 residual（N02）** | `apply_published_seed_authority` + Facade/HTTP `seed-authority` | ✅ | published 优先于 seed；不改写 `workspace_seeds`；可选写盘仅 allowlist；`AIPLAT_KNOWLEDGE_OBJECT_TYPE_SEED_REPLACE=1`；suite `seed_replacement_opt_in`/`seed_replacement_unavailable`；freeze 仍 true；certified/`seed_replacement_complete` 恒 false。生成物适用：已接线（经 Facade） | 本批 |
-| **ObjectType 种子权威产品面第一刀（N02）** | `list_object_type_seed_catalog` + `apply_published_seed_authority_product` + `/object-types/product/seed*` + `ObjectTypePublishPanel` | ✅ | 默认可用（无 residual env）；workspace_seeds 只读目录；published-over-seed 写 allowlist；`seed_product_surface=true`；certified/`seed_replacement_complete`/mutated 恒 false；freeze 仍 true。证据 `phase2-n02-seed-authority-product-evidence.md`。**未宣称** complete / certified。生成物适用：已接线（管理端） | 本批 |
+| **ObjectType 种子权威产品面第一刀（N02）** | `list_object_type_seed_catalog` + `apply_published_seed_authority_product` + `/object-types/product/seed*` + `ObjectTypePublishPanel` | ✅ | 默认可用（无 residual env）；workspace_seeds 只读目录；published-over-seed 写 allowlist；`seed_product_surface=true`；certified/`seed_replacement_complete`/mutated 恒 false；freeze 仍 true。证据 `phase2-n02-seed-authority-product-evidence.md`。**产品面第二刀**：allowlist migrate/rollback（证据 `phase2-n02-seed-authority-product-slice2-evidence.md`）。**未宣称** complete / certified。生成物适用：已接线（管理端） | 本批 |
+| **ObjectType 种子权威产品面第二刀（N02）** | `backup_seed_authority_snapshot` / `list_seed_authority_backups` / `restore_seed_authority_snapshot` + product write auto-backup + `/object-types/product/seed-authority/{backup,backups,restore}` + `ObjectTypePublishPanel` | ✅ | 默认可用；allowlist `current/` + `backups/{id}/`；`seed_migrate_rollback=true`；suite `seed_migrate_*`；certified/`seed_replacement_complete`/`workspace_seeds_mutated` 恒 false；freeze 仍 true。证据 `phase2-n02-seed-authority-product-slice2-evidence.md`。**未宣称** complete / in-tree 替换 / certified。生成物适用：已接线（管理端） | 本批 |
 | **Knowledge SDK（v4.3.1 W6 最小切片）** | `harness/knowledge_pipeline/sdk_generator.py` + CoreFacade + `GET/POST …/fde/sdk/*` | ✅ | 附录 E.3；ObjectType→Client 表面/Python 源码仅经 Facade；`kb:read` L1。证据 `phase2-sdk-evidence.md`。**未宣称** 多语言包发布/字段 ACL/N24 | 本批 |
 | **Knowledge SDK 写盘安装（v4.3.1 显式 residual）** | `install_sdk_python` / `resolve_sdk_install_root` + Facade `install_knowledge_sdk` + `POST …/fde/sdk/install/{object_type}` | ✅ | allowlist `aiplat-sdk/aiplat/knowledge/`；path escape / 非 allowlist 拒绝；仍要 `kb:read`。证据 `phase2-sdk-write-install-evidence.md`。**未宣称** 多语言/PyPI/字段 ACL/N24 certified | 本批 |
 | **Knowledge SLO 遥测接线（v4.3.1 F1 deepen）** | `harness/knowledge_pipeline/slo_telemetry.py` + CoreFacade + `GET/POST …/fde/slo/*` | ✅ | 白皮书 §14 三指标采集/快照/接线门；wiring≠attainment；**`slo_telemetry_freeze` 停止默认 SLO wiring deepen**。证据 `phase2-slo-telemetry-wiring-evidence.md` + `phase2-slo-telemetry-freeze-evidence.md`。**未宣称** 生产达标/告警/Full unconditional | 本批 |
@@ -1649,7 +1650,13 @@ scan_hash: 8f9548ec24f4
 | evaluate_bulk_portal_product_gate | `core/api/core_facade.py` | ✅ | CoreFacade：N02 产品面 bulk 门槛门 | 本批 |
 | apply_published_seed_authority | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 residual published-over-seed 权威覆盖（非全量替换/非 certified） | 本批 |
 | list_object_type_seed_catalog | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 产品面 workspace_seeds ObjectType 种子目录（只读） | 本批 |
-| apply_published_seed_authority_product | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 产品面 published-over-seed（无 env；非 complete/非 certified） | 本批 |
+| apply_published_seed_authority_product | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 产品面 published-over-seed（无 env；写前 auto-backup；非 complete/非 certified） | 本批 |
+| backup_seed_authority_snapshot | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 产品面 allowlist 权威镜像 backup | 本批 |
+| list_seed_authority_backups | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 产品面 allowlist 权威备份列表（有界） | 本批 |
+| restore_seed_authority_snapshot | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 产品面 allowlist 权威镜像 restore | 本批 |
+| backup_knowledge_seed_authority_snapshot | `core/api/core_facade.py` | ✅ | CoreFacade：N02 产品面 seed authority backup | 本批 |
+| list_knowledge_seed_authority_backups | `core/api/core_facade.py` | ✅ | CoreFacade：N02 产品面 seed authority backups | 本批 |
+| restore_knowledge_seed_authority_snapshot | `core/api/core_facade.py` | ✅ | CoreFacade：N02 产品面 seed authority restore | 本批 |
 | run_seed_authority_product_suite | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 产品面种子权威套件 | 本批 |
 | evaluate_seed_authority_product_gate | `core/harness/knowledge_pipeline/object_type_publish.py` | ✅ | N02 产品面种子权威门槛门 | 本批 |
 | list_knowledge_object_type_seed_catalog | `core/api/core_facade.py` | ✅ | CoreFacade：N02 产品面种子目录 | 本批 |
@@ -5143,9 +5150,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 808 | 1 | 809 |
+| Harness 执行引擎 | 809 | 1 | 810 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 902 | 9 | 911 |
+| 知识引擎（本体） | 908 | 9 | 917 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5188,7 +5195,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4231** | **11** | **4242** |
+| **总计** | **4238** | **11** | **4249** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

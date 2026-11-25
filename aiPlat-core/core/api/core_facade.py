@@ -5791,7 +5791,7 @@ def apply_published_seed_authority_product(
         seed_path: 种子文件名或 workspace_seeds 路径。
         object_type_ids: 可选类型列表。
         output_root: 可选写盘根。
-        write: 是否写盘。
+        write: 是否写盘（写前自动 backup）。
     """
     from core.harness.knowledge_pipeline.object_type_publish import (
         apply_published_seed_authority_product as _apply,
@@ -5803,6 +5803,66 @@ def apply_published_seed_authority_product(
         object_type_ids=object_type_ids,
         output_root=output_root,
         write=write,
+    )
+
+
+def backup_knowledge_seed_authority_snapshot(
+    *,
+    tenant_id: str,
+    output_root: Optional[str] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N02 产品面权威镜像 backup（allowlist；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        output_root: 可选写盘根。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        backup_seed_authority_snapshot as _backup,
+    )
+
+    return _backup(tenant_id=tenant_id, output_root=output_root)
+
+
+def list_knowledge_seed_authority_backups(
+    *,
+    tenant_id: str,
+    output_root: Optional[str] = None,
+    limit: int = 20,
+) -> Dict[str, Any]:
+    """CoreFacade：N02 产品面权威备份列表（有界）。
+
+    Args:
+        tenant_id: 租户。
+        output_root: 可选写盘根。
+        limit: 列表上限。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        list_seed_authority_backups as _list,
+    )
+
+    return _list(tenant_id=tenant_id, output_root=output_root, limit=limit)
+
+
+def restore_knowledge_seed_authority_snapshot(
+    *,
+    tenant_id: str,
+    backup_id: str,
+    output_root: Optional[str] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N02 产品面权威镜像 restore（allowlist；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        backup_id: 备份 id。
+        output_root: 可选写盘根。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        restore_seed_authority_snapshot as _restore,
+    )
+
+    return _restore(
+        tenant_id=tenant_id, backup_id=backup_id, output_root=output_root
     )
 
 
