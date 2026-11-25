@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4267
+total_capabilities: 4273
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -570,6 +570,29 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| sign_evo_safety_boundary | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| get_evo_safety_boundary | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| approve_evo_budget | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| check_evo_budget | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| set_evo_budget_policy | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| get_evo_budget_policy | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| run_evo_compute_g0_slice2_suite | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
+| default_replay_fixture | `core/harness/evo_compute/replay.py` | ✅ | 自动同步 | 已合入 |
+| clear_safety_for_tests | `core/harness/evo_compute/safety.py` | ✅ | 自动同步 | 已合入 |
+| get_safety_boundary | `core/harness/evo_compute/safety.py` | ✅ | 自动同步 | 已合入 |
+| default_safety_boundary | `core/harness/evo_compute/safety.py` | ✅ | 自动同步 | 已合入 |
+| clear_budget_for_tests | `core/harness/evo_compute/budget.py` | ✅ | 自动同步 | 已合入 |
+| check_budget | `core/harness/evo_compute/budget.py` | ✅ | 自动同步 | 已合入 |
+| set_budget_policy | `core/harness/evo_compute/budget.py` | ✅ | 自动同步 | 已合入 |
+| get_budget_policy | `core/harness/evo_compute/budget.py` | ✅ | 自动同步 | 已合入 |
+| default_budget_policy | `core/harness/evo_compute/budget.py` | ✅ | 自动同步 | 已合入 |
+| list_pilot_genome_ids | `core/harness/evo_compute/pilots.py` | ✅ | 自动同步 | 已合入 |
+| default_happy_path | `core/harness/evo_compute/status.py` | ✅ | 自动同步 | 已合入 |
+| can_transition | `core/harness/evo_compute/status.py` | ✅ | 自动同步 | 已合入 |
+| is_legal_status | `core/harness/evo_compute/status.py` | ✅ | 自动同步 | 已合入 |
+| normalize_status | `core/harness/evo_compute/status.py` | ✅ | 自动同步 | 已合入 |
+| clear_registry_for_tests | `core/harness/evo_compute/genome_registry.py` | ✅ | 自动同步 | 已合入 |
+| default_ranking_profile | `core/harness/evo_compute/fitness.py` | ✅ | 自动同步 | 已合入 |
 | advance_evo_candidate_status | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | rank_evo_candidates | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | list_evo_genomes | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -583,6 +606,12 @@ scan_hash: 8f9548ec24f4
 | measure_closed_loop_baseline | `core/harness/evo_compute/baseline.py` | ✅ | 五闭环 KPI 基线落盘；hypothesis≠measured；upgrade_claimed 恒 false；生成物适用：已接线 | 本批 |
 | run_evo_compute_g0_suite / evaluate_evo_compute_g0_gate | `core/harness/evo_compute/suite.py` | ✅ | Phase 0 G0 最小套件/门槛；phase0_complete/e2 恒 false；生成物适用：已接线 | 本批 |
 | register_evo_genome / evaluate_evo_candidate_offline / run_evo_compute_g0_suite | `core/api/core_facade.py` | ✅ | CoreFacade G0 入口；生成物适用：已接线 | 本批 |
+| register_pilot_genomes / pilot_genome_specs | `core/harness/evo_compute/pilots.py` | ✅ | §9 三试点（routing/retrieval/timeout）；生成物适用：已接线 | 本批 |
+| get/set/check/approve_budget | `core/harness/evo_compute/budget.py` | ✅ | 评估预算硬上限；默认未批准；超限 auto_stop；生成物适用：已接线 | 本批 |
+| get/sign_safety_boundary / evaluate_safety_readiness | `core/harness/evo_compute/safety.py` | ✅ | 安全边界契约；默认未签字；生成物适用：已接线 | 本批 |
+| replay_candidate_offline / aggregate_partition_metrics | `core/harness/evo_compute/replay.py` | ✅ | 夹具离线回放→fitness→沙箱；production_sample 恒 false；生成物适用：已接线 | 本批 |
+| evaluate_g0_exit_readiness | `core/harness/evo_compute/exit_readiness.py` | ✅ | G0 出口就绪；缺签字则 phase0_complete=false；生成物适用：已接线 | 本批 |
+| register_evo_pilot_genomes / replay_evo_candidate_offline / evaluate_evo_g0_exit_readiness | `core/api/core_facade.py` | ✅ | CoreFacade G0 slice-2 入口；生成物适用：已接线 | 本批 |
 | secure_scan_zip | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | AssetSecureScanError | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | wrap_asset_install_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5168,7 +5197,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 824 | 1 | 825 |
+| Harness 执行引擎 | 830 | 1 | 831 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5213,7 +5242,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4256** | **11** | **4267** |
+| **总计** | **4262** | **11** | **4273** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
