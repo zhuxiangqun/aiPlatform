@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3315
+total_capabilities: 3335
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 647
+    caps_count: 667
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2567,12 +2567,94 @@ domains:
         type: function
         signature: 'Scan zip members for traversal / bomb / blocked suffixes before extract.'
         module: aiPlat-core/core/harness/maintenance/asset_secure_scan.py
+      - symbol: register_genome
+        type: function
+        signature: "register_genome(genome, persist=True)→dict G0 genome registry"
+        module: aiPlat-core/core/harness/evo_compute/genome_registry.py
+      - symbol: get_genome
+        type: function
+        signature: "get_genome(genome_id)→dict"
+        module: aiPlat-core/core/harness/evo_compute/genome_registry.py
+      - symbol: list_genomes
+        type: function
+        signature: "list_genomes()→dict"
+        module: aiPlat-core/core/harness/evo_compute/genome_registry.py
+      - symbol: rank_candidates
+        type: function
+        signature: "rank_candidates(candidates, ranking_profile=None, seed=0)→Pareto ranked"
+        module: aiPlat-core/core/harness/evo_compute/fitness.py
+      - symbol: advance_candidate_status
+        type: function
+        signature: "advance_candidate_status(...); HUMAN_GATE SSOT; no evaluated"
+        module: aiPlat-core/core/harness/evo_compute/status.py
+      - symbol: evaluate_candidate_offline
+        type: function
+        signature: "evaluate_candidate_offline(...); sandbox; production_write=false"
+        module: aiPlat-core/core/harness/evo_compute/sandbox.py
+      - symbol: measure_closed_loop_baseline
+        type: function
+        signature: "measure_closed_loop_baseline(owner=...); hypothesis≠measured"
+        module: aiPlat-core/core/harness/evo_compute/baseline.py
+      - symbol: run_closed_loop_baseline_suite
+        type: function
+        signature: "run_closed_loop_baseline_suite()→dict"
+        module: aiPlat-core/core/harness/evo_compute/baseline.py
+      - symbol: evaluate_closed_loop_baseline_gate
+        type: function
+        signature: "evaluate_closed_loop_baseline_gate(suite=None)→dict"
+        module: aiPlat-core/core/harness/evo_compute/baseline.py
+      - symbol: run_evo_compute_g0_suite
+        type: function
+        signature: "run_evo_compute_g0_suite()→dict; phase0_complete=false"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: evaluate_evo_compute_g0_gate
+        type: function
+        signature: "evaluate_evo_compute_g0_gate(suite=None)→dict"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: register_evo_genome
+        type: function
+        signature: "CoreFacade register_evo_genome"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: get_evo_genome
+        type: function
+        signature: "CoreFacade get_evo_genome"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: list_evo_genomes
+        type: function
+        signature: "CoreFacade list_evo_genomes"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: rank_evo_candidates
+        type: function
+        signature: "CoreFacade rank_evo_candidates"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: advance_evo_candidate_status
+        type: function
+        signature: "CoreFacade advance_evo_candidate_status"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_candidate_offline
+        type: function
+        signature: "CoreFacade evaluate_evo_candidate_offline"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: measure_closed_loop_baseline
+        type: function
+        signature: "CoreFacade measure_closed_loop_baseline; hypothesis≠measured"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_compute_g0_suite
+        type: function
+        signature: "CoreFacade run_evo_compute_g0_suite"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_compute_g0_gate
+        type: function
+        signature: "CoreFacade evaluate_evo_compute_g0_gate"
+        module: aiPlat-core/core/api/core_facade.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "自身消费 PipelineStageConfig + StageRunner"
       - module: "core/harness/interfaces/loop.py"
         reason: "ReActLoop 运行时"
+      - module: "core/api/core_facade.py"
+        reason: "evo_compute G0 门面入口"
 
   # ══════════════════════════════════════════════════════════════
   # 二、记忆子系统 (59 caps)
