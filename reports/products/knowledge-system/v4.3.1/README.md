@@ -38,6 +38,7 @@ authority: supporting
 | [phase2-object-type-publish-evidence.md](./phase2-object-type-publish-evidence.md) | N02 deepen：ObjectType 人审发布（角色门；非 certified） |
 | [phase2-n02-object-type-publish-portal-evidence.md](./phase2-n02-object-type-publish-portal-evidence.md) | N02 residual：管理端 ObjectType 发布薄门户（非种子替换 / 非 certified） |
 | [phase2-n02-bulk-portal-residual-evidence.md](./phase2-n02-bulk-portal-residual-evidence.md) | N02 residual：多租户有界 bulk-transition（不可用诚实上报；非种子替换/非 certified） |
+| [phase2-n02-bulk-portal-product-evidence.md](./phase2-n02-bulk-portal-product-evidence.md) | N02 产品面第一刀：多租户有界 bulk（默认可用；bulk_product_surface=true；非种子替换/非 certified） |
 | [phase2-n02-seed-replace-residual-evidence.md](./phase2-n02-seed-replace-residual-evidence.md) | N02 residual：published-over-seed 权威覆盖（opt-in；不改写 workspace_seeds；非全量种子文件产品化/非 certified） |
 | [phase2-n02-seed-authority-product-evidence.md](./phase2-n02-seed-authority-product-evidence.md) | N02 产品面第一刀：种子目录 + published-over-seed（默认可用；不改写 workspace_seeds；非 complete/非 certified） |
 | [phase2-wiki-rebuild-evidence.md](./phase2-wiki-rebuild-evidence.md) | N05 deepen：Wiki 有条件重建派生页（非 wiki_engine 全量/非 certified） |

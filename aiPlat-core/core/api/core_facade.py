@@ -5667,6 +5667,52 @@ def bulk_transition_object_types(
     return _bulk(items, actor=actor, reason=reason, role=role)
 
 
+def bulk_transition_object_types_product(
+    items: List[Dict[str, Any]],
+    *,
+    actor: str,
+    reason: str,
+    role: str = "",
+) -> Dict[str, Any]:
+    """CoreFacade：N02 产品面多租户批量转换（无 residual env；certified 恒 false）。
+
+    Args:
+        items: 批量项（tenant_id/object_type_id/version/to_status）。
+        actor: 操作人。
+        reason: 理由。
+        role: publish 时角色。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        bulk_transition_object_types_product as _bulk,
+    )
+
+    return _bulk(items, actor=actor, reason=reason, role=role)
+
+
+def run_bulk_portal_product_suite() -> Dict[str, Any]:
+    """CoreFacade：N02 产品面 bulk 套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        run_bulk_portal_product_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_bulk_portal_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N02 产品面 bulk 门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_bulk_portal_product_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.object_type_publish import (
+        evaluate_bulk_portal_product_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def apply_published_seed_authority(
     *,
     tenant_id: str,

@@ -131,6 +131,7 @@ review_cycle: 90d
 > 2026-11-24：知识系统 SLO 告警候选显式 residual（`evaluate_slo_alert_candidates`；不可用诚实上报；freeze 仍 true；certified/Full 恒 false；并同步 N01/N02 freeze note landed 文案）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 SLO 告警候选产品面第一刀（`evaluate_slo_alert_candidates_product`；默认可用；slo_alert_product_surface=true；certified/attainment_ok 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 多租户批量发布显式 residual（`bulk_transition_object_types`；不可用诚实上报；freeze 仍 true；certified/seed_replacement 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-25：知识系统 N02 多租户批量发布产品面第一刀（`bulk_transition_object_types_product`；默认可用；bulk_product_surface=true；certified/seed_replacement 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N24 运维台薄壳显式 residual（`build_ops_console_snapshot`；不可用诚实上报；freeze 仍 true；certified/full_ops_console 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N24 运维台有界导出显式 residual（`export_ops_console_snapshot`；不可用诚实上报；freeze 仍 true；certified/full_ops_console/export_complete 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N24 运维台产品面第一刀（`build_ops_console_product_snapshot` + schema JSON + 浏览器导出；默认可用；full_ops_console=true；certified 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

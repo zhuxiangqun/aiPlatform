@@ -46,3 +46,5 @@ python3 -c "import yaml; c=yaml.safe_load(open('reports/products/knowledge-syste
 - 替换 workspace_seeds 为唯一真源
 - 无限批量 / 工作流编排产品
 - N02 certified / 关闭 ADR 例外
+
+> 后续产品面第一刀见 `phase2-n02-bulk-portal-product-evidence.md`（默认可用；residual 路径仍保留）。

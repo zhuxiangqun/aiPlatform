@@ -191,6 +191,54 @@ async def bulk_transition_object_types_route(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/object-types/product/bulk-transition")
+async def bulk_transition_object_types_product_route(
+    body: ObjectTypeBulkBody = Body(...),
+) -> Dict[str, Any]:
+    """N02 产品面：默认可用多租户批量转换（非 certified）。
+
+    Args:
+        body: items + actor/reason/role。
+    """
+    from core.api.core_facade import bulk_transition_object_types_product
+
+    out = bulk_transition_object_types_product(
+        [item.model_dump() for item in body.items],
+        actor=body.actor,
+        reason=body.reason,
+        role=body.role,
+    )
+    if out.get("status") == "invalid":
+        raise HTTPException(status_code=400, detail=out.get("error") or "invalid")
+    return out
+
+
+@router.post("/object-types/product/bulk-transition/suite")
+async def run_bulk_portal_product_suite_route() -> Dict[str, Any]:
+    """N02 产品面：bulk 套件。"""
+    from core.api.core_facade import run_bulk_portal_product_suite
+
+    return run_bulk_portal_product_suite()
+
+
+@router.post("/object-types/product/bulk-transition/gate")
+async def evaluate_bulk_portal_product_gate_route(
+    body: ObjectTypeGateBody = Body(default_factory=ObjectTypeGateBody),
+) -> Dict[str, Any]:
+    """N02 产品面：bulk 门槛门。
+
+    Args:
+        body: 可选 suite 回执。
+    """
+    from core.api.core_facade import (
+        evaluate_bulk_portal_product_gate,
+        run_bulk_portal_product_suite,
+    )
+
+    suite = body.suite if body.suite is not None else run_bulk_portal_product_suite()
+    return evaluate_bulk_portal_product_gate(suite)
+
+
 class ObjectTypeSeedAuthorityBody(BaseModel):
     """N02 residual：published 覆盖 seed 权威解析。"""
 
