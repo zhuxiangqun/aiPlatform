@@ -4,7 +4,7 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-25T04:10:41Z"
+generated_at: "2026-11-25T04:23:54Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-25T04:10:41Z` |
+| 生成时间 (UTC) | `2026-11-25T04:23:54Z` |
 | CAPABILITIES sha256 | `0d610e6924f9…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -1490,7 +1490,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3309 capabilities (caps_count) | 3309 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3315 capabilities (caps_count) | 3315 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1512,7 +1512,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 831 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | FDE 能力自描述 |
 
 ##### aiPlat-platform/apps/fde/api/router.py
 
@@ -1524,7 +1524,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 831 | N02 ObjectType publish Facade 入口 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | N02 ObjectType publish Facade 入口 |
 | skill-system | §六 Skill 系统 | 217 | CoreFacade 暴露 skill compat |
 | evaluation-system | §十三 评估系统 | 646 | CoreFacade 暴露 m2 deferred estimate |
 | diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
@@ -1566,14 +1566,14 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 831 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
 
 ##### core/api/routers/wiki_ontology_engine.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 831 | 本体引擎 REST API |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | 本体引擎 REST API |
 
 ##### core/api/routers/workspace_tools.py
 
