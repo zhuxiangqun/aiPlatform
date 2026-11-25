@@ -156,6 +156,7 @@ authority: supporting
 | [phase2-n24-ops-console-product-evidence.md](./phase2-n24-ops-console-product-evidence.md) | N24 产品面第一刀：默认可用 snapshot + schema JSON 编辑 + 浏览器导出；full_ops_console=true；非 certified |
 | [phase2-n24-ops-console-schema-form-evidence.md](./phase2-n24-ops-console-schema-form-evidence.md) | N24 Schema 表单字段编辑器：form 读写 + 管理端字段表；schema_form_editor=true；非自由布局设计器 / 非 certified |
 | [phase2-n24-ops-console-product-slice2-evidence.md](./phase2-n24-ops-console-product-slice2-evidence.md) | N24 产品面第二刀：四面板 + 通用 ops bundle（audit_sample≤20）；ops_console_general_export=true；非 export_complete / 非 certified |
+| [phase2-n02-seed-authority-product-slice2-evidence.md](./phase2-n02-seed-authority-product-slice2-evidence.md) | N02 种子权威产品面第二刀：allowlist backup/write/restore；seed_migrate_rollback=true；非 seed_replacement_complete / 非 certified |
 | [phase2-slo-telemetry-freeze-evidence.md](./phase2-slo-telemetry-freeze-evidence.md) | SLO：遥测面冻结（Operational-sufficient / wiring≠attainment / 非达标宣称 / ADR 例外行保留） |
 | [phase2-slo-attainment-window-evidence.md](./phase2-slo-attainment-window-evidence.md) | SLO：生产达标窗口（显式 residual；窗口+非作者批准→attainment_ok；certified 恒假） |
 | [phase2-slo-alerting-residual-evidence.md](./phase2-slo-alerting-residual-evidence.md) | SLO residual：opt-in 告警候选（不可用诚实上报；非 pager 投递/非 certified） |

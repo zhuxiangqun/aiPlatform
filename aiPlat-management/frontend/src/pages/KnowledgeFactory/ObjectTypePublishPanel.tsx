@@ -2,8 +2,9 @@
  * ObjectTypePublishPanel — N02 ObjectType 人审发布管理端薄门户。
  *
  * 经 FDE `/object-types*` → CoreFacade；产品面种子目录 + published-over-seed；
+ * slice-2：allowlist 权威镜像 backup / restore（seed_migrate_rollback）；
  * 产品面有界多租户 bulk（`/object-types/product/bulk-transition`，无 residual env）。
- * 不宣称 seed_replacement_complete / certified。
+ * 不宣称 seed_replacement_complete / certified；不改写 workspace_seeds。
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
@@ -63,6 +64,8 @@ const ObjectTypePublishPanel: React.FC = () => {
   const [seedName, setSeedName] = useState('');
   const [seedNote, setSeedNote] = useState('');
   const [seedApplying, setSeedApplying] = useState(false);
+  const [seedBackupId, setSeedBackupId] = useState('');
+  const [seedBackups, setSeedBackups] = useState<{ backup_id?: string }[]>([]);
 
   const q = (extra: Record<string, string> = {}) => {
     const p = new URLSearchParams({ tenant_id: tenantId.trim(), ...extra });
@@ -91,10 +94,6 @@ const ObjectTypePublishPanel: React.FC = () => {
   useEffect(() => {
     void reload();
   }, [reload]);
-
-  useEffect(() => {
-    void loadSeedCatalog();
-  }, [loadSeedCatalog]);
 
   const runBulk = async () => {
     if (!actor.trim() || !reason.trim()) {
@@ -291,6 +290,28 @@ const ObjectTypePublishPanel: React.FC = () => {
     }
   }, []);
 
+  const loadSeedBackups = useCallback(async () => {
+    if (!tenantId.trim()) return;
+    try {
+      const r = await fetch(
+        API(`/object-types/product/seed-authority/backups?tenant_id=${encodeURIComponent(tenantId.trim())}&limit=20`),
+      );
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(body.detail));
+      const list = Array.isArray(body.items) ? (body.items as { backup_id?: string }[]) : [];
+      setSeedBackups(list);
+      setSeedBackupId((prev) => prev || String(list[0]?.backup_id || ''));
+    } catch (e: unknown) {
+      setSeedBackups([]);
+      setSeedNote((e as Error)?.message || '备份列表加载失败');
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    void loadSeedCatalog();
+    void loadSeedBackups();
+  }, [loadSeedCatalog, loadSeedBackups]);
+
   const runSeedAuthority = async () => {
     if (!tenantId.trim()) {
       toast?.error?.('tenant_id 必填');
@@ -310,13 +331,73 @@ const ObjectTypePublishPanel: React.FC = () => {
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(detailMessage(body.detail));
       setSeedNote(
-        `${String(body.status)} · via=${String(body.via)} · published=${String(body.published_count)} · seed=${String(body.seed_count)} · wrote=${String(body.wrote)} · complete=${String(body.seed_replacement_complete)}`,
+        `${String(body.status)} · via=${String(body.via)} · published=${String(body.published_count)} · seed=${String(body.seed_count)} · wrote=${String(body.wrote)} · backup=${String(body.backup_id || '—')} · migrate=${String(body.seed_migrate_rollback)} · complete=${String(body.seed_replacement_complete)}`,
       );
-      if (body.status === 'ok') toast?.success?.('种子权威解析已写入 allowlist');
-      else toast?.error?.(String(body.note || body.error || body.status));
+      if (body.status === 'ok') {
+        toast?.success?.('种子权威解析已写入 allowlist current/');
+        await loadSeedBackups();
+      } else toast?.error?.(String(body.note || body.error || body.status));
     } catch (e: unknown) {
       setSeedNote((e as Error)?.message || '种子权威解析失败');
       toast?.error?.((e as Error)?.message || '种子权威解析失败');
+    } finally {
+      setSeedApplying(false);
+    }
+  };
+
+  const runSeedBackup = async () => {
+    if (!tenantId.trim()) {
+      toast?.error?.('tenant_id 必填');
+      return;
+    }
+    setSeedApplying(true);
+    try {
+      const r = await fetch(API('/object-types/product/seed-authority/backup'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenantId.trim() }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(body.detail));
+      setSeedNote(
+        `backup ${String(body.status)} · backed_up=${String(body.backed_up)} · id=${String(body.backup_id || '—')} · migrate=${String(body.seed_migrate_rollback)} · mutated=${String(body.workspace_seeds_mutated)}`,
+      );
+      if (body.backup_id) setSeedBackupId(String(body.backup_id));
+      await loadSeedBackups();
+      if (body.status === 'ok') toast?.success?.(body.backed_up ? 'Backup ok' : '无可备份镜像');
+    } catch (e: unknown) {
+      setSeedNote((e as Error)?.message || 'Backup 失败');
+      toast?.error?.((e as Error)?.message || 'Backup 失败');
+    } finally {
+      setSeedApplying(false);
+    }
+  };
+
+  const runSeedRestore = async () => {
+    if (!tenantId.trim() || !seedBackupId.trim()) {
+      toast?.error?.('tenant_id 与 backup_id 必填');
+      return;
+    }
+    setSeedApplying(true);
+    try {
+      const r = await fetch(API('/object-types/product/seed-authority/restore'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_id: tenantId.trim(),
+          backup_id: seedBackupId.trim(),
+        }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(detailMessage(body.detail));
+      setSeedNote(
+        `restore ${String(body.status)} · restored=${String(body.restored)} · id=${String(body.backup_id)} · migrate=${String(body.seed_migrate_rollback)} · complete=${String(body.seed_replacement_complete)}`,
+      );
+      if (body.status === 'ok') toast?.success?.('Restore ok（allowlist current/）');
+      else toast?.error?.(String(body.note || body.error || body.status));
+    } catch (e: unknown) {
+      setSeedNote((e as Error)?.message || 'Restore 失败');
+      toast?.error?.((e as Error)?.message || 'Restore 失败');
     } finally {
       setSeedApplying(false);
     }
@@ -339,7 +420,7 @@ const ObjectTypePublishPanel: React.FC = () => {
       if (!gateRes.ok) throw new Error(detailMessage(gate.detail));
       const certified = Boolean(gate.certified);
       setGateNote(
-        `seed-product suite ok=${Boolean(suite.ok)} · gate certified=${certified} · surface=${String(gate.seed_product_surface)}（须 certified=false）`,
+        `seed-product suite ok=${Boolean(suite.ok)} · gate certified=${certified} · surface=${String(gate.seed_product_surface)} · migrate=${String(gate.seed_migrate_rollback)}（须 certified=false）`,
       );
       if (certified) {
         toast?.error?.('gate.certified 为 true — 违反诚实锁');
@@ -360,7 +441,7 @@ const ObjectTypePublishPanel: React.FC = () => {
           <FileStack className="h-4 w-4 text-sky-300/90" />
           <span>ObjectType 人审发布（N02）</span>
           <span className="text-[11px] text-gray-500 font-normal">
-            产品面种子权威 · 非 certified · 不改写 workspace_seeds
+            产品面种子权威 slice-2 · migrate/rollback · 非 certified · 不改写 workspace_seeds
           </span>
         </div>
         <div className="flex gap-2">
@@ -385,12 +466,14 @@ const ObjectTypePublishPanel: React.FC = () => {
       <CardContent className="space-y-4 px-4 pb-4">
         <p className="text-[11px] text-gray-500 leading-relaxed">
           draft → in_review → published|rejected；publish 须配置角色（默认 reviewer）。
-          产品面可解析 workspace_seeds 只读目录并写 allowlist 权威快照；不宣称
-          seed_replacement_complete / N02 certified。
+          产品面可解析 workspace_seeds 只读目录并写 allowlist ``current/``；支持 Backup /
+          Restore（非 in-tree 替换）。不宣称 seed_replacement_complete / N02 certified。
         </p>
 
         <div className="rounded border border-emerald-900/40 bg-emerald-950/20 px-3 py-3 space-y-2">
-          <div className="text-[12px] text-emerald-200/90">种子权威产品面（默认可用）</div>
+          <div className="text-[12px] text-emerald-200/90">
+            种子权威产品面（默认可用 · seed_migrate_rollback）
+          </div>
           <label className="text-[11px] text-gray-400 space-y-1 block">
             seed file
             <select
@@ -409,6 +492,24 @@ const ObjectTypePublishPanel: React.FC = () => {
               )}
             </select>
           </label>
+          <label className="text-[11px] text-gray-400 space-y-1 block">
+            backup_id（Restore）
+            <select
+              className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+              value={seedBackupId}
+              onChange={(e) => setSeedBackupId(e.target.value)}
+            >
+              {seedBackups.length === 0 ? (
+                <option value="">（无备份）</option>
+              ) : (
+                seedBackups.map((it) => (
+                  <option key={String(it.backup_id)} value={String(it.backup_id)}>
+                    {String(it.backup_id)}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
           {seedNote ? (
             <div className="text-[11px] text-gray-500 border border-gray-800 rounded px-2 py-1.5 font-mono">
               {seedNote}
@@ -420,7 +521,10 @@ const ObjectTypePublishPanel: React.FC = () => {
               size="sm"
               variant="ghost"
               disabled={loading}
-              onClick={() => void loadSeedCatalog()}
+              onClick={() => {
+                void loadSeedCatalog();
+                void loadSeedBackups();
+              }}
             >
               刷新目录
             </Button>
@@ -431,6 +535,24 @@ const ObjectTypePublishPanel: React.FC = () => {
               onClick={() => void runSeedAuthority()}
             >
               解析并写 allowlist
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={seedApplying || !tenantId.trim()}
+              onClick={() => void runSeedBackup()}
+            >
+              Backup
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={seedApplying || !tenantId.trim() || !seedBackupId.trim()}
+              onClick={() => void runSeedRestore()}
+            >
+              Restore
             </Button>
           </div>
         </div>

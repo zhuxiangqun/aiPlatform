@@ -8,6 +8,7 @@
   - 产品面第一刀：默认可用 ``bulk_transition_object_types_product``（无 residual env）
   - 显式 residual：opt-in ``apply_published_seed_authority`` 有界种子权威覆盖
   - 产品面第一刀：默认可用种子目录 + published-over-seed（不改写 workspace_seeds）
+  - 产品面第二刀：allowlist 权威镜像 backup → write → restore（``seed_migrate_rollback``）
 
 非目标：
   - 不原地改写 / 删除 ``workspace_seeds/**-object-types.json``
@@ -19,6 +20,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import sqlite3
 import tempfile
 import uuid
@@ -874,6 +876,7 @@ def evaluate_bulk_portal_product_gate(
 
 
 _SEED_REPLACE_MAX = 20
+_SEED_BACKUP_LIST_MAX = 20
 _SEED_REPLACE_CASES = (
     "seed_replacement_unavailable",
     "seed_replacement_opt_in",
@@ -882,8 +885,43 @@ _SEED_REPLACE_CASES = (
 _SEED_PRODUCT_CASES = (
     "seed_authority_product_catalog",
     "seed_authority_product_apply",
+    "seed_migrate_backup",
+    "seed_migrate_write",
+    "seed_migrate_restore",
     "honesty_product_certified_false",
 )
+
+
+def _seed_authority_json_name(tenant_id: str) -> str:
+    """权威镜像文件名。"""
+    return f"{str(tenant_id or '').strip()}-object-types.authority.json"
+
+
+def _seed_authority_current_file(root: Path, tenant_id: str) -> Path:
+    """current/ 布局下的权威文件。"""
+    return root / "current" / _seed_authority_json_name(tenant_id)
+
+
+def _seed_authority_legacy_file(root: Path, tenant_id: str) -> Path:
+    """兼容 slice-1 扁平权威文件。"""
+    return root / _seed_authority_json_name(tenant_id)
+
+
+def _seed_authority_existing_file(root: Path, tenant_id: str) -> Optional[Path]:
+    """优先 current/，否则扁平兼容文件。"""
+    cur = _seed_authority_current_file(root, tenant_id)
+    if cur.is_file():
+        return cur
+    legacy = _seed_authority_legacy_file(root, tenant_id)
+    if legacy.is_file():
+        return legacy
+    return None
+
+
+def _new_seed_authority_backup_id() -> str:
+    """生成有界备份 id（UTC 时间戳 + 短 uuid）。"""
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"{ts}-{uuid.uuid4().hex[:8]}"
 
 
 def resolve_seed_authority_output_root(
@@ -912,6 +950,211 @@ def resolve_seed_authority_output_root(
             }
         return {"ok": True, "output_root": str(cand), "allowlist": str(allow)}
     return {"ok": True, "output_root": str(allow), "allowlist": str(allow)}
+
+
+def backup_seed_authority_snapshot(
+    *,
+    tenant_id: str,
+    output_root: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N02 产品面：将 allowlist 权威镜像备份到 ``backups/{backup_id}/``。
+
+    不改写 ``workspace_seeds``。无现有镜像时 ``backed_up=false`` 仍 ok。
+
+    Args:
+        tenant_id: 租户。
+        output_root: 可选写盘根（须 allowlist）。
+    """
+    tid = str(tenant_id or "").strip()
+    base: Dict[str, Any] = {
+        "tenant_id": tid,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "workspace_seeds_mutated": False,
+        "seed_product_surface": True,
+        "seed_migrate_rollback": True,
+    }
+    if not tid:
+        return {**base, "status": "invalid", "error": "tenant_required"}
+    root_info = resolve_seed_authority_output_root(output_root=output_root)
+    if not root_info.get("ok"):
+        return {
+            **base,
+            "status": "denied",
+            "reason": root_info.get("reason") or "output_root_denied",
+            "allowlist": root_info.get("allowlist"),
+        }
+    root = Path(str(root_info["output_root"]))
+    src = _seed_authority_existing_file(root, tid)
+    if src is None:
+        return {
+            **base,
+            "status": "ok",
+            "via": "product",
+            "backed_up": False,
+            "backup_id": None,
+            "source_path": None,
+            "note": (
+                "no authority mirror to backup; "
+                "not seed_replacement_complete / not N02 certified"
+            ),
+        }
+    backup_id = _new_seed_authority_backup_id()
+    dest_dir = root / "backups" / backup_id
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / _seed_authority_json_name(tid)
+    shutil.copy2(src, dest)
+    return {
+        **base,
+        "status": "ok",
+        "via": "product",
+        "backed_up": True,
+        "backup_id": backup_id,
+        "source_path": str(src),
+        "backup_path": str(dest),
+        "note": (
+            "allowlist authority mirror backup; "
+            "not seed_replacement_complete / not N02 certified"
+        ),
+    }
+
+
+def list_seed_authority_backups(
+    *,
+    tenant_id: str,
+    output_root: Optional[str] = None,
+    limit: int = _SEED_BACKUP_LIST_MAX,
+) -> Dict[str, Any]:
+    """N02 产品面：列举 allowlist 权威备份（有界，默认 ≤20）。
+
+    Args:
+        tenant_id: 租户。
+        output_root: 可选写盘根。
+        limit: 列表上限（服务端钳制）。
+    """
+    tid = str(tenant_id or "").strip()
+    cap = max(1, min(int(limit or _SEED_BACKUP_LIST_MAX), _SEED_BACKUP_LIST_MAX))
+    base: Dict[str, Any] = {
+        "tenant_id": tid,
+        "items": [],
+        "total": 0,
+        "limit": cap,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "workspace_seeds_mutated": False,
+        "seed_product_surface": True,
+        "seed_migrate_rollback": True,
+    }
+    if not tid:
+        return {**base, "status": "invalid", "error": "tenant_required"}
+    root_info = resolve_seed_authority_output_root(output_root=output_root)
+    if not root_info.get("ok"):
+        return {
+            **base,
+            "status": "denied",
+            "reason": root_info.get("reason") or "output_root_denied",
+            "allowlist": root_info.get("allowlist"),
+        }
+    root = Path(str(root_info["output_root"]))
+    backups_root = root / "backups"
+    name = _seed_authority_json_name(tid)
+    items: List[Dict[str, Any]] = []
+    if backups_root.is_dir():
+        for bid_dir in sorted(backups_root.iterdir(), reverse=True):
+            if not bid_dir.is_dir():
+                continue
+            path = bid_dir / name
+            if not path.is_file():
+                continue
+            items.append(
+                {
+                    "backup_id": bid_dir.name,
+                    "path": str(path),
+                    "size_bytes": path.stat().st_size,
+                }
+            )
+            if len(items) >= cap:
+                break
+    return {
+        **base,
+        "status": "ok",
+        "via": "product",
+        "items": items,
+        "total": len(items),
+        "note": (
+            "allowlist authority backup list; "
+            "not seed_replacement_complete / not N02 certified"
+        ),
+    }
+
+
+def restore_seed_authority_snapshot(
+    *,
+    tenant_id: str,
+    backup_id: str,
+    output_root: Optional[str] = None,
+) -> Dict[str, Any]:
+    """N02 产品面：从 ``backups/{backup_id}/`` 恢复权威镜像到 ``current/``。
+
+    Args:
+        tenant_id: 租户。
+        backup_id: ``backup_seed_authority_snapshot`` 返回的 id。
+        output_root: 可选写盘根。
+    """
+    tid = str(tenant_id or "").strip()
+    bid = str(backup_id or "").strip()
+    base: Dict[str, Any] = {
+        "tenant_id": tid,
+        "backup_id": bid,
+        "certified": False,
+        "n02_full_conformance": False,
+        "n02_object_type_freeze": True,
+        "seed_replacement_complete": False,
+        "workspace_seeds_mutated": False,
+        "seed_product_surface": True,
+        "seed_migrate_rollback": True,
+    }
+    if not tid or not bid:
+        return {**base, "status": "invalid", "error": "tenant_backup_id_required"}
+    # 为什么：禁止路径穿越——backup_id 只能是单段目录名
+    if "/" in bid or "\\" in bid or bid in {".", ".."} or ".." in bid:
+        return {**base, "status": "denied", "reason": "backup_id_invalid"}
+    root_info = resolve_seed_authority_output_root(output_root=output_root)
+    if not root_info.get("ok"):
+        return {
+            **base,
+            "status": "denied",
+            "reason": root_info.get("reason") or "output_root_denied",
+            "allowlist": root_info.get("allowlist"),
+        }
+    root = Path(str(root_info["output_root"]))
+    src = (root / "backups" / bid / _seed_authority_json_name(tid)).resolve()
+    try:
+        src.relative_to((root / "backups").resolve())
+    except ValueError:
+        return {**base, "status": "denied", "reason": "backup_path_not_allowlisted"}
+    if not src.is_file():
+        return {**base, "status": "invalid", "error": "backup_not_found"}
+    current_dir = root / "current"
+    current_dir.mkdir(parents=True, exist_ok=True)
+    dest = _seed_authority_current_file(root, tid)
+    shutil.copy2(src, dest)
+    return {
+        **base,
+        "status": "ok",
+        "via": "product",
+        "restored": True,
+        "source_path": str(src),
+        "output_path": str(dest),
+        "note": (
+            "allowlist authority mirror restore; "
+            "not seed_replacement_complete / not N02 certified"
+        ),
+    }
 
 
 def workspace_object_type_seed_root() -> Path:
@@ -960,6 +1203,7 @@ def list_object_type_seed_catalog() -> Dict[str, Any]:
         "seed_replacement_complete": False,
         "workspace_seeds_mutated": False,
         "seed_product_surface": True,
+        "seed_migrate_rollback": True,
         "note": (
             "object-type seed catalog (read-only workspace_seeds); "
             "not seed_replacement_complete / not N02 certified"
@@ -1054,6 +1298,7 @@ def _apply_published_seed_authority_impl(
         "seed_replacement_complete": False,
         "workspace_seeds_mutated": False,
         "seed_product_surface": bool(product_surface),
+        "seed_migrate_rollback": bool(product_surface),
     }
     if not tid or not sp:
         return {**base, "status": "invalid", "error": "tenant_seed_path_required"}
@@ -1159,7 +1404,13 @@ def _apply_published_seed_authority_impl(
             }
         root = Path(str(root_info["output_root"]))
         root.mkdir(parents=True, exist_ok=True)
-        target = root / f"{tid}-object-types.authority.json"
+        # 为什么：产品面写 current/；residual 保持扁平兼容
+        if product_surface:
+            current_dir = root / "current"
+            current_dir.mkdir(parents=True, exist_ok=True)
+            target = _seed_authority_current_file(root, tid)
+        else:
+            target = _seed_authority_legacy_file(root, tid)
         payload = {
             "tenant_id": tid,
             "source_seed_path": str(seed_resolved),
@@ -1167,6 +1418,7 @@ def _apply_published_seed_authority_impl(
             "seed_replacement_complete": False,
             "certified": False,
             "seed_product_surface": bool(product_surface),
+            "seed_migrate_rollback": bool(product_surface),
         }
         target.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
@@ -1175,7 +1427,8 @@ def _apply_published_seed_authority_impl(
         out_path = str(target)
 
     note = (
-        "seed authority product surface; workspace_seeds read-only; "
+        "seed authority product surface slice-2 (migrate/rollback); "
+        "workspace_seeds read-only; "
         "not seed_replacement_complete / not N02 certified"
         if product_surface
         else (
@@ -1276,8 +1529,8 @@ def apply_published_seed_authority_product(
 ) -> Dict[str, Any]:
     """N02 产品面：默认可用 published-over-seed（种子须在 workspace_seeds）。
 
-    无 residual env 门。永不改写 ``workspace_seeds``；写盘仅 allowlist。
-    ``certified`` / ``seed_replacement_complete`` 恒 false。
+    无 residual env 门。永不改写 ``workspace_seeds``；写盘仅 allowlist ``current/``。
+    写盘前自动 backup（slice-2）。``certified`` / ``seed_replacement_complete`` 恒 false。
 
     Args:
         tenant_id: 租户。
@@ -1300,6 +1553,7 @@ def apply_published_seed_authority_product(
         "seed_replacement_complete": False,
         "workspace_seeds_mutated": False,
         "seed_product_surface": True,
+        "seed_migrate_rollback": True,
     }
     if not tid:
         return {**base, "status": "invalid", "error": "tenant_required"}
@@ -1326,7 +1580,24 @@ def apply_published_seed_authority_product(
             "allowlist": resolved.get("allowlist"),
         }
 
-    return _apply_published_seed_authority_impl(
+    backup_id = None
+    # 为什么：写盘前先备份现有镜像，保证可 restore；无镜像时 backup 仍 ok
+    if write:
+        bak = backup_seed_authority_snapshot(
+            tenant_id=tid, output_root=output_root
+        )
+        if bak.get("status") == "denied":
+            return {
+                **base,
+                "status": "denied",
+                "via": "product",
+                "reason": bak.get("reason") or "backup_denied",
+                "allowlist": bak.get("allowlist"),
+            }
+        if bak.get("backed_up") and bak.get("backup_id"):
+            backup_id = bak.get("backup_id")
+
+    out = _apply_published_seed_authority_impl(
         tenant_id=tid,
         seed_path=str(resolved["seed_path"]),
         object_type_ids=object_type_ids,
@@ -1336,6 +1607,11 @@ def apply_published_seed_authority_product(
         via="product",
         product_surface=True,
     )
+    out["seed_migrate_rollback"] = True
+    out["seed_product_surface"] = True
+    if write:
+        out["backup_id"] = backup_id
+    return out
 
 
 def run_seed_replacement_suite(
@@ -1531,7 +1807,7 @@ def run_seed_authority_product_suite(
     *,
     tenant_id: str = "n02-seed-product-tenant",
 ) -> Dict[str, Any]:
-    """N02 产品面：种子目录 + published-over-seed 套件（certified 恒 false）。
+    """N02 产品面：种子目录 + migrate/rollback 套件（certified 恒 false）。
 
     Args:
         tenant_id: 套件租户。
@@ -1633,27 +1909,101 @@ def run_seed_authority_product_suite(
             if isinstance(first_item, dict)
             else None
         )
+        out_path = Path(str(applied.get("output_path") or ""))
         cases.append(
             {
                 "id": "seed_authority_product_apply",
                 "ok": applied.get("status") == "ok"
                 and applied.get("via") == "product"
                 and applied.get("seed_product_surface") is True
+                and applied.get("seed_migrate_rollback") is True
                 and first_item.get("authority") == "published"
                 and label == "published-product-label"
                 and applied.get("wrote") is True
                 and applied.get("workspace_seeds_mutated") is False
                 and applied.get("seed_replacement_complete") is False
-                and applied.get("certified") is False,
+                and applied.get("certified") is False
+                and out_path.is_file()
+                and "current" in out_path.parts,
             }
         )
+
+        # slice-2：备份现有 current 镜像
+        bak = backup_seed_authority_snapshot(tenant_id=tenant_id)
+        bak_id = bak.get("backup_id")
+        cases.append(
+            {
+                "id": "seed_migrate_backup",
+                "ok": bak.get("status") == "ok"
+                and bak.get("backed_up") is True
+                and bool(bak_id)
+                and bak.get("seed_migrate_rollback") is True
+                and bak.get("workspace_seeds_mutated") is False,
+            }
+        )
+
+        # 再写一版（自动 backup）；确认仍可写
+        rewritten = apply_published_seed_authority_product(
+            tenant_id=tenant_id,
+            seed_path=seed_name or seed_path,
+            object_type_ids=[probe_oid],
+            write=True,
+            db_path=db,
+        )
+        cases.append(
+            {
+                "id": "seed_migrate_write",
+                "ok": rewritten.get("status") == "ok"
+                and rewritten.get("wrote") is True
+                and rewritten.get("seed_migrate_rollback") is True
+                and rewritten.get("seed_replacement_complete") is False
+                and bool(rewritten.get("backup_id")),
+            }
+        )
+
+        # 篡改 current 后 restore 回 bak_id
+        current = Path(str(rewritten.get("output_path") or ""))
+        if current.is_file():
+            current.write_text(
+                json.dumps({"tampered": True, "tenant_id": tenant_id}, ensure_ascii=False)
+                + "\n",
+                encoding="utf-8",
+            )
+        restored = restore_seed_authority_snapshot(
+            tenant_id=tenant_id,
+            backup_id=str(bak_id or ""),
+        )
+        restored_body = {}
+        if restored.get("output_path"):
+            try:
+                restored_body = json.loads(
+                    Path(str(restored["output_path"])).read_text(encoding="utf-8")
+                )
+            except Exception:  # noqa: BLE001
+                restored_body = {}
+        listed = list_seed_authority_backups(tenant_id=tenant_id)
+        cases.append(
+            {
+                "id": "seed_migrate_restore",
+                "ok": restored.get("status") == "ok"
+                and restored.get("restored") is True
+                and restored.get("seed_migrate_rollback") is True
+                and restored.get("workspace_seeds_mutated") is False
+                and restored_body.get("tampered") is not True
+                and isinstance(restored_body.get("object_types"), list)
+                and listed.get("status") == "ok"
+                and listed.get("total", 0) >= 1,
+            }
+        )
+
         cases.append(
             {
                 "id": "honesty_product_certified_false",
                 "ok": applied.get("certified") is False
                 and applied.get("n02_object_type_freeze") is True
                 and applied.get("seed_replacement_complete") is False
-                and catalog.get("seed_replacement_complete") is False,
+                and catalog.get("seed_replacement_complete") is False
+                and restored.get("seed_replacement_complete") is False,
             }
         )
     finally:
@@ -1679,9 +2029,10 @@ def run_seed_authority_product_suite(
         "n02_object_type_freeze": True,
         "seed_replacement_complete": False,
         "seed_product_surface": True,
+        "seed_migrate_rollback": True,
         "workspace_seeds_mutated": False,
         "note": (
-            "Seed authority product surface suite; "
+            "Seed authority product surface suite slice-2 (migrate/rollback); "
             "not seed_replacement_complete / not N02 certified"
         ),
     }
@@ -1690,7 +2041,7 @@ def run_seed_authority_product_suite(
 def evaluate_seed_authority_product_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """N02 产品面种子权威门槛门；禁止 certified / complete。
+    """N02 产品面种子权威门槛门；要求 migrate/rollback；禁止 certified / complete。
 
     Args:
         suite: ``run_seed_authority_product_suite`` 回执。
@@ -1705,6 +2056,8 @@ def evaluate_seed_authority_product_gate(
         issues.append("honesty_seed_replacement_complete_forbidden")
     if s.get("seed_product_surface") is not True:
         issues.append("product_seed_surface_required")
+    if s.get("seed_migrate_rollback") is not True:
+        issues.append("product_seed_migrate_rollback_required")
     if s.get("workspace_seeds_mutated") is True:
         issues.append("honesty_workspace_seeds_mutated_forbidden")
     ids = {
@@ -1723,8 +2076,9 @@ def evaluate_seed_authority_product_gate(
         "n02_object_type_freeze": True,
         "seed_replacement_complete": False,
         "seed_product_surface": True,
+        "seed_migrate_rollback": True,
         "workspace_seeds_mutated": False,
-        "note": "Seed authority product gate; not N02 certified",
+        "note": "Seed authority product gate slice-2; not N02 certified",
     }
 
 
