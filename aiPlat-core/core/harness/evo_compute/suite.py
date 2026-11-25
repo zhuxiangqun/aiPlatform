@@ -511,3 +511,122 @@ def run_evo_compute_g1_slice2_suite() -> Dict[str, Any]:
         "e2_claimed": False,
         "note": "G1 slice-2 three-pilot battery; suite green ≠ claimed G1/E2 exit",
     }
+
+
+def run_evo_compute_g2_suite() -> Dict[str, Any]:
+    """G2 最小套件：离散 GA + 覆盖率诚实锁；``g2_complete`` 恒 false。"""
+    from core.harness.evo_compute.budget import approve_budget, clear_budget_for_tests
+    from core.harness.evo_compute.coverage import (
+        measure_eval_coverage,
+        measure_fde_evidence_coverage,
+    )
+    from core.harness.evo_compute.exit_readiness import evaluate_g2_exit_readiness
+    from core.harness.evo_compute.ga import run_ga_offline
+    from core.harness.evo_compute.genome_registry import clear_registry_for_tests
+    from core.harness.evo_compute.pilots import register_pilot_genomes
+    from core.harness.evo_compute.safety import clear_safety_for_tests
+
+    clear_registry_for_tests()
+    clear_budget_for_tests()
+    clear_safety_for_tests()
+    cases: list = []
+
+    pilots = register_pilot_genomes(persist=False)
+    cases.append({"id": "pilots_ready", "pass": bool(pilots.get("ok"))})
+    approve_budget(actor="g2-suite", persist=False)
+
+    # timeout.retry 含 int 离散字段
+    ga = run_ga_offline(
+        genome_id="timeout.retry.v1",
+        population_size=6,
+        generations=3,
+        seed=21,
+    )
+    cases.append(
+        {
+            "id": "ga_discrete_ok",
+            "pass": bool(ga.get("ok"))
+            and ga.get("algorithm") == "ga"
+            and int(ga.get("hard_constraint_regressions", 1)) == 0
+            and ga.get("safety_regression") is False
+            and ga.get("production_write") is False
+            and len(ga.get("discrete_fields") or []) >= 1,
+        }
+    )
+
+    # 再跑 retrieval（含 top_k int）
+    ga2 = run_ga_offline(
+        genome_id="retrieval.params.v1",
+        population_size=5,
+        generations=2,
+        seed=7,
+    )
+    cases.append({"id": "ga_retrieval_ok", "pass": bool(ga2.get("ok"))})
+
+    # 缺测诚实：覆盖率门不得因缺测而通过
+    ev = measure_eval_coverage()
+    fde = measure_fde_evidence_coverage()
+    cases.append(
+        {
+            "id": "eval_coverage_honest_missing",
+            "pass": bool(ev.get("ok"))
+            and ev.get("baseline_missing") is True
+            and ev.get("meets_g2_threshold") is False,
+        }
+    )
+    cases.append(
+        {
+            "id": "fde_coverage_honest_missing",
+            "pass": bool(fde.get("ok"))
+            and fde.get("baseline_missing") is True
+            and fde.get("meets_g2_threshold") is False,
+        }
+    )
+
+    ready = evaluate_g2_exit_readiness(
+        ga_ok=bool(ga.get("ok")),
+        safety_regression_free=ga.get("safety_regression") is False,
+        eval_coverage_ok=bool(ev.get("meets_g2_threshold")),
+        fde_coverage_ok=bool(fde.get("meets_g2_threshold")),
+    )
+    cases.append(
+        {
+            "id": "g2_exit_incomplete_without_coverage",
+            "pass": ready.get("g2_complete") is False
+            and ready.get("certified") is False
+            and "eval_coverage_ok" in (ready.get("missing") or [])
+            and "fde_coverage_ok" in (ready.get("missing") or []),
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "g2_foundation": True,
+        "g2_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "note": "G2 slice-1 discrete GA; eval/FDE coverage still baseline_missing",
+    }
+
+
+def evaluate_evo_compute_g2_gate(suite: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """G2 门槛门：套件全过；g2_complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_g2_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_g2_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g2_foundation": True,
+        "g2_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "suite": s,
+    }

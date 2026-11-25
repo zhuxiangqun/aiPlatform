@@ -102,3 +102,41 @@ def evaluate_g1_exit_readiness(
         "e2_claimed": False,
         "note": "G1 exit; surrogate holdout allowed for slice-1; not E2/certified",
     }
+
+
+def evaluate_g2_exit_readiness(
+    *,
+    ga_ok: bool = False,
+    safety_regression_free: bool = False,
+    eval_coverage_ok: bool = False,
+    fde_coverage_ok: bool = False,
+) -> Dict[str, Any]:
+    """评估 Phase 2 / G2 出口条件是否齐备。
+
+    Args:
+        ga_ok: 离散 GA 离线循环是否成功。
+        safety_regression_free: GA 试点无安全回归。
+        eval_coverage_ok: 评测覆盖 ≥90%（须实测，不可缺测冒充）。
+        fde_coverage_ok: FDE 证据覆盖 ≥95%（须实测）。
+
+    Returns:
+        回执；全部满足时 ``g2_complete`` 可为 True；certified/e2 恒 false。
+    """
+    checks = {
+        "ga_ok": bool(ga_ok),
+        "safety_regression_free": bool(safety_regression_free),
+        "eval_coverage_ok": bool(eval_coverage_ok),
+        "fde_coverage_ok": bool(fde_coverage_ok),
+    }
+    all_ok = all(checks.values())
+    return {
+        "ok": True,
+        "ready": all_ok,
+        "checks": checks,
+        "missing": [k for k, v in checks.items() if not v],
+        "g2_complete": all_ok,
+        "g2_foundation": True,
+        "certified": False,
+        "e2_claimed": False,
+        "note": "G2 exit requires measured eval/FDE coverage; suite green ≠ claim",
+    }

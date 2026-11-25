@@ -147,6 +147,7 @@ review_cycle: 90d
 > 2026-11-25：受控演化计算 Phase 0 / G0 人工签批证据落盘（预算+安全边界 actor=`zhu-ying`；夹具回放后 exit readiness 可 phase0_complete=true；certified/e2 恒 false；不写生产配置）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-25：受控演化计算 Phase 1 / G1 slice-1（DE/ES 离线 Orchestrator + holdout 代理确认 + Human Gate/Canary/回滚演练；经 CoreFacade；g1_complete/certified/e2 恒 false；不写生产/不采生产流量）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-25：受控演化计算 Phase 1 / G1 slice-2（三试点 DE/ES 电池 + 可复现/血缘/holdout 汇总；经 CoreFacade；g1_complete/certified/e2 恒 false；代理适应度；不写生产）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-25：受控演化计算 Phase 2 / G2 slice-1（离散 GA 离线循环 + 评测/FDE 覆盖率诚实探针 + G2 suite/gate；经 CoreFacade；g2_complete/certified/e2 恒 false；缺测 baseline_missing；不写生产）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威覆盖显式 residual（`apply_published_seed_authority`；不改写 workspace_seeds；不可用诚实上报；freeze 仍 true；certified/seed_replacement_complete 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威产品面第一刀（`list_object_type_seed_catalog` + `apply_published_seed_authority_product`；默认可用；不改写 workspace_seeds；seed_product_surface=true；certified/seed_replacement_complete 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 W6 Knowledge SDK 最小切片（ObjectType→Client 表面/源码经 Facade；L1 kb:read）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
