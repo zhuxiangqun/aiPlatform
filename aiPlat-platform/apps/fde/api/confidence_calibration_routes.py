@@ -194,3 +194,49 @@ async def compute_ece_from_samples_route(
         n_bins=body.n_bins,
         high_threshold=body.high_threshold,
     )
+
+
+@router.post("/confidence-calibrations/product/ece-train")
+async def compute_ece_from_samples_product_route(
+    body: EceTrainBody = Body(...),
+):
+    """N13 产品面：有界样本 ECE/Brier（默认可用；非 certified）。
+
+    Args:
+        body: samples / n_bins / high_threshold。
+    """
+    from core.api.core_facade import compute_ece_from_samples_product
+
+    return compute_ece_from_samples_product(
+        body.samples,
+        n_bins=body.n_bins,
+        high_threshold=body.high_threshold,
+    )
+
+
+@router.post("/confidence-calibrations/product/suite")
+async def ece_train_product_suite_route() -> Dict[str, Any]:
+    """N13 产品面套件。"""
+    from core.api.core_facade import run_ece_train_product_suite
+
+    return run_ece_train_product_suite()
+
+
+@router.post("/confidence-calibrations/product/gate")
+async def ece_train_product_gate_route(
+    body: Optional[Dict[str, Any]] = Body(default=None),
+) -> Dict[str, Any]:
+    """N13 产品面门槛门。
+
+    Args:
+        body: 可选已跑 suite；缺省时现场跑套件。
+    """
+    from core.api.core_facade import (
+        evaluate_ece_train_product_gate,
+        run_ece_train_product_suite,
+    )
+
+    suite = body if isinstance(body, dict) and body.get("cases") else None
+    if suite is None:
+        suite = run_ece_train_product_suite()
+    return evaluate_ece_train_product_gate(suite)

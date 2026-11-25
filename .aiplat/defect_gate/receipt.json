@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-24T20:08:00+08:00",
+  "reviewed_at": "2026-11-25T07:45:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "022ebeddcf909a0a3d62b754deb8f061e29fd52e",
-  "diff_sha256": "15b619160c7f687482fd8070a5ebd29a429ed8f1fbe059885c7ad8db67ed6ad2",
-  "head_sha": "b91dacac38cb7f7ee43034b6a782da0c8a63cc94",
+  "merge_base": "50e0d24c6762b3c3e585b67b486ded5f15017b0b",
+  "diff_sha256": "7def95d699b16c8cafab4ca43c9e55cc014b4a65e97bb52d64ec6163e23c1769",
+  "head_sha": "688b171a1adfec12677002d0744eb329e14e851c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N10 LLM judge product slice-1; llm_judge_product_surface true; accuracy/certified false; residual env path retained. Local lock only."
+  "note": "N13 after caps_count fix; CI truth gate pass locally. Local lock only."
 }

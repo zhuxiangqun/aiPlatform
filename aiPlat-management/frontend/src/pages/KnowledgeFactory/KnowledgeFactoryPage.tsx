@@ -29,6 +29,7 @@ import OpsConsolePanel from './OpsConsolePanel';
 import Lv4AutoClosePanel from './Lv4AutoClosePanel';
 import ProductionAttestPanel from './ProductionAttestPanel';
 import LlmJudgePanel from './LlmJudgePanel';
+import EceTrainPanel from './EceTrainPanel';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
 const WIKI_DOMAINS_API = '/api/core/wiki/ontology/domains';
@@ -1490,6 +1491,7 @@ const KnowledgeFactoryPage: React.FC = () => {
           <Lv4AutoClosePanel />
           <ProductionAttestPanel />
           <LlmJudgePanel />
+          <EceTrainPanel />
           <details className="rounded border border-gray-800/80">
             <summary className="cursor-pointer px-3 py-2 text-[12px] text-gray-500 hover:text-gray-300">
               对照材料仪表（可跳过）
