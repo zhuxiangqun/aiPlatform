@@ -5305,6 +5305,50 @@ def evaluate_object_set_filter_gate(
     return _gate(suite)
 
 
+def evaluate_object_set_where_expr_product(
+    item: Dict[str, Any],
+    filt: Dict[str, Any],
+    *,
+    max_depth: int = 4,
+) -> Dict[str, Any]:
+    """CoreFacade：N07/N22 产品面 `$expr`/`$where` 结构化回执（certified 恒 false）。
+
+    Args:
+        item: 对象行。
+        filt: filter 表达式。
+        max_depth: 嵌套深度上限。
+    """
+    from core.harness.knowledge_pipeline.object_set import (
+        evaluate_object_set_where_expr_product as _eval,
+    )
+
+    return _eval(item, filt, max_depth=max_depth)
+
+
+def run_object_set_where_expr_product_suite() -> Dict[str, Any]:
+    """CoreFacade：N07/N22 产品面 where/expr 套件。"""
+    from core.harness.knowledge_pipeline.object_set import (
+        run_object_set_where_expr_product_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_object_set_where_expr_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：N07/N22 产品面 where/expr 门槛门。
+
+    Args:
+        suite: ``run_object_set_where_expr_product_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.object_set import (
+        evaluate_object_set_where_expr_product_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def create_knowledge_scenario(
     *,
     tenant_id: str,

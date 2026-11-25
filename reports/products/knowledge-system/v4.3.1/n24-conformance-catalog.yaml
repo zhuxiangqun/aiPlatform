@@ -23,7 +23,7 @@ core_minimum_ids:
 n09_core_probe_freeze: true
 n09_core_probe_note: "Cross-tenant isolation suite probes are Core-sufficient; no further default-literal mop for Core."
 n07_n22_h1_condition_freeze: true
-n07_n22_h1_condition_note: "H.1 bounded condition surface (ops through expr-lang A+B+C) is Extended-sufficient; stop further default condition-op deepen. Residual: certified / arbitrary RBAC; $where declared_unavailable (no JS); $expr bounded compare landed (phase2-objectset-where-expr-residual-evidence.md) — still not full expression language."
+n07_n22_h1_condition_note: "H.1 bounded condition surface (ops through expr-lang A+B+C) is Extended-sufficient; stop further default condition-op deepen. Residual: certified / arbitrary RBAC; $where declared_unavailable (no JS); $expr bounded compare landed (phase2-objectset-where-expr-residual-evidence.md); product surface slice-1 landed (evaluate_object_set_where_expr_product; default-on; objectset_where_expr_product_surface=true — phase2-objectset-where-expr-product-evidence.md) — still not full expression language / not certified."
 n08_action_policy_freeze: true
 n08_action_policy_note: "N08 Policy/Approval/Audit + kill switch + Lv4 FP gate v2 is Extended-sufficient; stop further default N08 deepen. Residual: certified / full Action Lv4 productization; bounded auto-close opt-in landed (evaluate_bounded_lv4_auto_close; unavailable when AIPLAT_KNOWLEDGE_LV4_AUTO_CLOSE off — phase2-n08-lv4-autoclose-residual-evidence.md); bounded auto-close product surface slice-1 landed (evaluate_bounded_lv4_auto_close_product; default-on; lv4_product_surface=true; still not full_action_lv4 — phase2-n08-lv4-autoclose-product-evidence.md) — still not full Action Lv4 / not certified."
 n24_unified_audit_freeze: true
@@ -251,7 +251,7 @@ items:
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-matrix-per-role-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-matrix-config-axes-evidence.md
       - reports/products/knowledge-system/v4.3.1/phase2-abox-acl-h1-condition-freeze-evidence.md
-    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse + retrieve/KB/CRAG + 裸 Wiki/GraphRAG + OKF/OWL/suggestions/offline 导出字段 ACL + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 有界条件面（至 expr-lang A+B+C；n07_n22_h1_condition_freeze=true 停止默认 condition-op deepen）+ masked_properties + apply/list/get_h1 + 薄表单 + 薄矩阵 + per-role 矩阵 + 配置轴；非 certified/非$where|$expr/非任意 RBAC 产品"
+    note: "Extended-scoped exists (附录 N.3); ObjectSet + link.traverse + retrieve/KB/CRAG + 裸 Wiki/GraphRAG + OKF/OWL/suggestions/offline 导出字段 ACL + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 有界条件面（至 expr-lang A+B+C；n07_n22_h1_condition_freeze=true 停止默认 condition-op deepen）+ masked_properties + apply/list/get_h1 + 薄表单 + 薄矩阵 + per-role 矩阵 + 配置轴；非 certified；`$where`/`$expr` residual+**产品面第一刀**（objectset_where_expr_product_surface=true；`$where` 仍 unavailable）；非任意 RBAC 产品"
   - id: N08
     level: extended
     title: 动作执行走 Policy/Approval/Audit

@@ -64,3 +64,63 @@ async def query_object_set_route(
     if status == "error":
         raise HTTPException(status_code=400, detail=out.get("reason") or "error")
     return out
+
+
+class WhereExprProductBody(BaseModel):
+    """N07/N22 产品面 `$expr`/`$where` 探针。"""
+
+    item: Dict[str, Any] = Field(default_factory=dict)
+    filter: Dict[str, Any] = Field(default_factory=dict)
+    max_depth: int = Field(4, ge=1, le=8)
+
+
+class WhereExprProductGateBody(BaseModel):
+    """产品面门槛门探针。"""
+
+    suite: Optional[Dict[str, Any]] = None
+
+
+@router.post("/object-sets/product/where-expr")
+async def object_set_where_expr_product_route(
+    body: WhereExprProductBody = Body(...),
+) -> Dict[str, Any]:
+    """N07/N22 产品面：有界 `$expr` / `$where` 结构化回执（非 certified）。
+
+    Args:
+        body: item + filter。
+    """
+    from core.api.core_facade import evaluate_object_set_where_expr_product
+
+    return evaluate_object_set_where_expr_product(
+        body.item,
+        body.filter,
+        max_depth=body.max_depth,
+    )
+
+
+@router.post("/object-sets/product/suite")
+async def object_set_where_expr_product_suite_route() -> Dict[str, Any]:
+    """N07/N22 产品面 where/expr 套件。"""
+    from core.api.core_facade import run_object_set_where_expr_product_suite
+
+    return run_object_set_where_expr_product_suite()
+
+
+@router.post("/object-sets/product/gate")
+async def object_set_where_expr_product_gate_route(
+    body: WhereExprProductGateBody = Body(default_factory=WhereExprProductGateBody),
+) -> Dict[str, Any]:
+    """N07/N22 产品面 where/expr 门槛门。
+
+    Args:
+        body: 可选 suite 回执。
+    """
+    from core.api.core_facade import (
+        evaluate_object_set_where_expr_product_gate,
+        run_object_set_where_expr_product_suite,
+    )
+
+    suite = body.suite
+    if suite is None:
+        suite = run_object_set_where_expr_product_suite()
+    return evaluate_object_set_where_expr_product_gate(suite)
