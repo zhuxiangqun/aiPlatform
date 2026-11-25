@@ -1,4 +1,4 @@
-"""N08 有界 Lv4 auto-close 产品面：默认可用；full_action_lv4 / certified 恒 false。"""
+"""N08 有界 Lv4 auto-close 产品面：low|medium+审批；full_action_lv4 / certified 恒 false。"""
 from __future__ import annotations
 
 import os
@@ -21,16 +21,21 @@ ROOT = Path(__file__).resolve().parents[6]
 def test_product_suite_and_gate_honesty():
     suite = _suite()
     assert suite["ok"] is True
-    assert suite["passed"] == 3
+    assert suite["passed"] == 6
     assert suite["certified"] is False
     assert suite["full_action_lv4"] is False
     assert suite["lv4_product_surface"] is True
+    assert suite["lv4_medium_approval_product"] is True
     ids = {c["id"] for c in suite["cases"] if c.get("ok")}
     assert "lv4_auto_close_product_eval" in ids
     assert "lv4_auto_close_product_high_risk_denied" in ids
+    assert "lv4_auto_close_product_medium_denied_without_approval" in ids
+    assert "lv4_auto_close_product_medium_ok_with_gates" in ids
+    assert "lv4_auto_close_product_medium_kill_switch_active" in ids
     assert "honesty_product_certified_false" in ids
     gate = _gate(suite)
     assert gate["ok"] is True
+    assert gate["lv4_medium_approval_product"] is True
     bad = dict(suite)
     bad["certified"] = True
     honesty = _gate(bad)
@@ -41,6 +46,11 @@ def test_product_suite_and_gate_honesty():
     honesty2 = _gate(bad2)
     assert honesty2["ok"] is False
     assert "honesty_full_action_lv4_forbidden" in honesty2["issues"]
+    bad3 = dict(suite)
+    bad3["lv4_medium_approval_product"] = False
+    honesty3 = _gate(bad3)
+    assert honesty3["ok"] is False
+    assert "product_lv4_medium_approval_required" in honesty3["issues"]
 
 
 def test_facade_product_suite():
@@ -49,6 +59,7 @@ def test_facade_product_suite():
     gate = evaluate_bounded_lv4_auto_close_product_gate(suite)
     assert gate["ok"] is True
     assert gate["lv4_product_surface"] is True
+    assert gate["lv4_medium_approval_product"] is True
     assert gate["full_action_lv4"] is False
 
 
@@ -77,7 +88,37 @@ def test_product_without_residual_env():
     assert product["via"] == "product"
     assert product["auto_close_allowed"] is True
     assert product["lv4_product_surface"] is True
+    assert product["lv4_medium_approval_product"] is True
     assert product["full_action_lv4"] is False
+
+
+def test_product_medium_requires_gates():
+    os.environ.pop("AIPLAT_ACTION_KILL_SWITCH", None)
+    bare = evaluate_bounded_lv4_auto_close_product(
+        action_id="n08-med",
+        total=100,
+        false_positives=0,
+        rollback_action_id="rb",
+        risk_level="medium",
+        action_level="lv4_auto_close",
+        min_samples=10,
+    )
+    assert bare["auto_close_allowed"] is False
+    assert bare["reason"] == "approval_attested_required"
+    ok = evaluate_bounded_lv4_auto_close_product(
+        action_id="n08-med",
+        total=100,
+        false_positives=0,
+        rollback_action_id="rb",
+        risk_level="medium",
+        action_level="lv4_auto_close",
+        min_samples=10,
+        approval_attested=True,
+        kill_switch_clear=True,
+    )
+    assert ok["status"] == "ok"
+    assert ok["auto_close_allowed"] is True
+    assert ok["risk_level"] == "medium"
 
 
 def test_docs_and_wiring_state():
@@ -91,11 +132,10 @@ def test_docs_and_wiring_state():
     )
     text = mod.read_text(encoding="utf-8")
     assert "evaluate_bounded_lv4_auto_close_product" in text
-    assert "run_bounded_lv4_auto_close_product_suite" in text
+    assert "lv4_medium_approval_product" in text
+    assert "approval_attested" in text
     facade = ROOT / "aiPlat-core" / "core" / "api" / "core_facade.py"
-    assert "evaluate_bounded_lv4_auto_close_product" in facade.read_text(
-        encoding="utf-8"
-    )
+    assert "approval_attested" in facade.read_text(encoding="utf-8")
     routes = (
         ROOT
         / "aiPlat-platform"
@@ -104,7 +144,9 @@ def test_docs_and_wiring_state():
         / "api"
         / "lv4_false_positive_routes.py"
     )
-    assert "lv4-auto-close/product/evaluate" in routes.read_text(encoding="utf-8")
+    rtext = routes.read_text(encoding="utf-8")
+    assert "lv4-auto-close/product/evaluate" in rtext
+    assert "approval_attested" in rtext
     panel = (
         ROOT
         / "aiPlat-management"
@@ -114,4 +156,7 @@ def test_docs_and_wiring_state():
         / "KnowledgeFactory"
         / "Lv4AutoClosePanel.tsx"
     )
-    assert "lv4-auto-close/product/evaluate" in panel.read_text(encoding="utf-8")
+    ptext = panel.read_text(encoding="utf-8")
+    assert "lv4-auto-close/product/evaluate" in ptext
+    assert "approval_attested" in ptext
+    assert "kill_switch_clear" in ptext

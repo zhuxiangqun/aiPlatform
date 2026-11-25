@@ -77,7 +77,7 @@ async def evaluate_lv4_false_positive_gate_route(
 
 
 class BoundedAutoCloseBody(BaseModel):
-    """N08 residual：有界 Lv4 auto-close 评估。"""
+    """N08 residual / 产品面：有界 Lv4 auto-close 评估。"""
 
     action_id: str = Field(..., min_length=1)
     total: int = Field(..., ge=0)
@@ -87,6 +87,8 @@ class BoundedAutoCloseBody(BaseModel):
     action_level: str = "lv4_auto_close"
     fp_rate_max: float = Field(0.005, gt=0.0, le=1.0)
     min_samples: Optional[int] = Field(None, ge=1)
+    approval_attested: bool = False
+    kill_switch_clear: bool = False
 
 
 @router.post("/lv4-auto-close/evaluate")
@@ -147,10 +149,10 @@ async def evaluate_bounded_lv4_auto_close_gate_route(
 async def evaluate_bounded_lv4_auto_close_product_route(
     body: BoundedAutoCloseBody = Body(...),
 ):
-    """N08 产品面：有界 Lv4 auto-close（默认可用；非全量；certified 恒假）。
+    """N08 产品面：有界 Lv4 auto-close（low|medium+审批；非全量；certified 恒假）。
 
     Args:
-        body: 样本与风险/阶梯约束。
+        body: 样本与风险/阶梯/审批/急停声明。
     """
     from core.api.core_facade import evaluate_bounded_lv4_auto_close_product
 
@@ -163,6 +165,8 @@ async def evaluate_bounded_lv4_auto_close_product_route(
         action_level=body.action_level,
         fp_rate_max=body.fp_rate_max,
         min_samples=body.min_samples,
+        approval_attested=body.approval_attested,
+        kill_switch_clear=body.kill_switch_clear,
     )
     if out.get("status") == "invalid":
         raise HTTPException(status_code=400, detail=out.get("error") or "invalid")

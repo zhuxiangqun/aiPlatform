@@ -151,6 +151,7 @@ authority: supporting
 | [phase2-n08-action-policy-freeze-evidence.md](./phase2-n08-action-policy-freeze-evidence.md) | N08：Action Policy 面冻结（Extended-sufficient / 非全量 Lv4 / 非 certified / ADR 例外行保留） |
 | [phase2-n08-lv4-autoclose-residual-evidence.md](./phase2-n08-lv4-autoclose-residual-evidence.md) | N08 residual：有界 Lv4 auto-close（opt-in low 风险+FP 门；不可用诚实上报；非全量 Action Lv4/非 certified） |
 | [phase2-n08-lv4-autoclose-product-evidence.md](./phase2-n08-lv4-autoclose-product-evidence.md) | N08 产品面第一刀：有界 Lv4 auto-close（默认可用；lv4_product_surface；非 full_action_lv4/非 certified） |
+| [phase2-n08-lv4-autoclose-product-slice2-evidence.md](./phase2-n08-lv4-autoclose-product-slice2-evidence.md) | N08 产品面第二刀：medium + 审批/急停声明；lv4_medium_approval_product；非 full_action_lv4/非 certified |
 | [phase2-n24-unified-audit-freeze-evidence.md](./phase2-n24-unified-audit-freeze-evidence.md) | N24：统一审计/Revision 面冻结（Operational-sufficient / 非全量运维台 / 非 certified / ADR 例外行保留） |
 | [phase2-n24-ops-console-residual-evidence.md](./phase2-n24-ops-console-residual-evidence.md) | N24 residual：运维台薄壳（opt-in 聚合审计近窗+SLO；不可用诚实上报；非全量运维台/非 certified） |
 | [phase2-n24-ops-console-export-residual-evidence.md](./phase2-n24-ops-console-export-residual-evidence.md) | N24 residual：运维台有界导出（opt-in JSON 写盘；不可用诚实上报；非全量下载/非 schema 编辑器/非 certified） |

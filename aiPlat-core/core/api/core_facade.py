@@ -20445,18 +20445,22 @@ def evaluate_bounded_lv4_auto_close_product(
     action_level: str = "lv4_auto_close",
     fp_rate_max: float = 0.005,
     min_samples: Optional[int] = None,
+    approval_attested: bool = False,
+    kill_switch_clear: bool = False,
 ) -> dict:
-    """CoreFacade：N08 有界 Lv4 auto-close 产品面评估（默认可用；非全量）。
+    """CoreFacade：N08 有界 Lv4 auto-close 产品面（low|medium+审批；非全量）。
 
     Args:
         action_id: 动作 id。
         total: 历史执行条数。
         false_positives: 误报条数。
         rollback_action_id: 回滚动作。
-        risk_level: 风险（有界仅 low）。
+        risk_level: ``low`` 或 ``medium``（high 拒绝）。
         action_level: 阶梯（须 lv4_auto_close）。
         fp_rate_max: 误报率上限。
         min_samples: 最小样本。
+        approval_attested: medium 须 True。
+        kill_switch_clear: medium 须 True。
     """
     from core.harness.knowledge_pipeline.lv4_bounded_auto_close import (
         evaluate_bounded_lv4_auto_close_product as _eval,
@@ -20471,6 +20475,8 @@ def evaluate_bounded_lv4_auto_close_product(
         action_level=action_level,
         fp_rate_max=fp_rate_max,
         min_samples=min_samples,
+        approval_attested=approval_attested,
+        kill_switch_clear=kill_switch_clear,
     )
 
 
