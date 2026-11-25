@@ -289,3 +289,130 @@ def run_evo_compute_g0_slice2_suite() -> Dict[str, Any]:
     out = run_evo_compute_g0_suite()
     out["slice"] = "g0-slice2"
     return out
+
+
+def run_evo_compute_g1_suite() -> Dict[str, Any]:
+    """G1 最小套件：DE/ES + holdout + 演练；``g1_complete`` 恒 false。"""
+    from core.harness.evo_compute.drill import run_human_gate_canary_rollback_drill
+    from core.harness.evo_compute.exit_readiness import evaluate_g1_exit_readiness
+    from core.harness.evo_compute.holdout import compare_holdout
+    from core.harness.evo_compute.orchestrator import run_de_es_offline
+    from core.harness.evo_compute.pilots import register_pilot_genomes
+    from core.harness.evo_compute.budget import clear_budget_for_tests, approve_budget
+    from core.harness.evo_compute.genome_registry import clear_registry_for_tests
+    from core.harness.evo_compute.safety import clear_safety_for_tests
+
+    clear_registry_for_tests()
+    clear_budget_for_tests()
+    clear_safety_for_tests()
+    cases: list = []
+
+    pilots = register_pilot_genomes(persist=False)
+    cases.append({"id": "pilots_ready", "pass": bool(pilots.get("ok"))})
+    # 预算批准仅满足硬停检查上下文；不宣称生产授权
+    approve_budget(actor="g1-suite", persist=False)
+
+    de = run_de_es_offline(
+        genome_id="routing.weights.v1",
+        algorithm="de",
+        population_size=6,
+        generations=3,
+        seed=42,
+    )
+    cases.append(
+        {
+            "id": "de_offline_ranked",
+            "pass": bool(de.get("ok"))
+            and float(de.get("lineage_completeness") or 0) >= 1.0
+            and bool(de.get("reproducible_check"))
+            # 0 是合法值，禁止用 ``or 1``（会把零回归误判为失败）
+            and int(de.get("hard_constraint_regressions", 1)) == 0
+            and de.get("production_write") is False,
+        }
+    )
+
+    es = run_de_es_offline(
+        genome_id="routing.weights.v1",
+        algorithm="es",
+        population_size=6,
+        generations=2,
+        seed=7,
+    )
+    cases.append({"id": "es_offline_ok", "pass": bool(es.get("ok"))})
+
+    best = (de.get("ranked_candidates") or [{}])[0]
+    baseline = {"semantic_weight": 0.33, "cost_weight": 0.33, "latency_weight": 0.34}
+    hold = compare_holdout(
+        genome_id="routing.weights.v1",
+        baseline_genes=baseline,
+        challenger_genes=dict(best.get("genes") or baseline),
+        n_batches=4,
+        seed=1,
+    )
+    cases.append(
+        {
+            "id": "holdout_confirm",
+            "pass": bool(hold.get("ok")) and hold.get("certified") is False,
+        }
+    )
+
+    drill = run_human_gate_canary_rollback_drill(candidate_id="g1-drill-1")
+    cases.append(
+        {
+            "id": "human_gate_canary_rollback_drill",
+            "pass": bool(drill.get("ok"))
+            and bool(drill.get("human_gate_ok"))
+            and bool(drill.get("canary_ok"))
+            and bool(drill.get("rollback_ok"))
+            and drill.get("production_write") is False,
+        }
+    )
+
+    ready = evaluate_g1_exit_readiness(
+        de_es_ok=bool(de.get("ok")),
+        lineage_rate=float(de.get("lineage_completeness") or 0),
+        reproducible=bool(de.get("reproducible_check")),
+        hard_constraint_ok=int(de.get("hard_constraint_regressions", 1)) == 0,
+        holdout_significant=bool(hold.get("significant")),
+        drill_ok=bool(drill.get("ok")),
+    )
+    cases.append(
+        {
+            "id": "g1_exit_readiness_computable",
+            "pass": bool(ready.get("ok")) and ready.get("certified") is False,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "holdout_significant": bool(hold.get("significant")),
+        "exit_ready": bool(ready.get("ready")),
+        "g1_foundation": True,
+        "g1_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "note": "G1 slice-1 machinery; suite green ≠ claimed G1/E2 exit",
+    }
+
+
+def evaluate_evo_compute_g1_gate(suite: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """G1 门槛门：套件全过；g1_complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_g1_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_g1_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g1_foundation": True,
+        "g1_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "suite": s,
+    }

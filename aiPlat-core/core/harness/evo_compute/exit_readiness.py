@@ -58,3 +58,47 @@ def evaluate_g0_exit_readiness(
             "never auto-approve"
         ),
     }
+
+
+def evaluate_g1_exit_readiness(
+    *,
+    de_es_ok: bool = False,
+    lineage_rate: float = 0.0,
+    reproducible: bool = False,
+    hard_constraint_ok: bool = False,
+    holdout_significant: bool = False,
+    drill_ok: bool = False,
+) -> Dict[str, Any]:
+    """评估 Phase 1 / G1 出口条件是否齐备。
+
+    Args:
+        de_es_ok: DE/ES 离线循环是否成功。
+        lineage_rate: 血缘完整率（须 ≥1.0）。
+        reproducible: 可复现检查是否通过。
+        hard_constraint_ok: 硬约束零回归。
+        holdout_significant: holdout 上预注册显著提升。
+        drill_ok: Human Gate / Canary / 回滚演练通过。
+
+    Returns:
+        回执；全部满足时 ``g1_complete`` 可为 True；certified/e2 恒 false。
+    """
+    checks = {
+        "de_es_ok": bool(de_es_ok),
+        "lineage_complete": float(lineage_rate) >= 1.0,
+        "reproducible": bool(reproducible),
+        "hard_constraint_ok": bool(hard_constraint_ok),
+        "holdout_significant": bool(holdout_significant),
+        "drill_ok": bool(drill_ok),
+    }
+    all_ok = all(checks.values())
+    return {
+        "ok": True,
+        "ready": all_ok,
+        "checks": checks,
+        "missing": [k for k, v in checks.items() if not v],
+        "g1_complete": all_ok,
+        "g1_foundation": True,
+        "certified": False,
+        "e2_claimed": False,
+        "note": "G1 exit; surrogate holdout allowed for slice-1; not E2/certified",
+    }

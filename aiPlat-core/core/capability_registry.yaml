@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3370
+total_capabilities: 3390
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 702
+    caps_count: 722
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2787,6 +2787,86 @@ domains:
         type: function
         signature: "CoreFacade run_evo_compute_g0_slice2_suite"
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: init_individual
+        type: function
+        signature: "init_individual(genome, seed, salt)→genes"
+        module: aiPlat-core/core/harness/evo_compute/de_es.py
+      - symbol: de_mutate
+        type: function
+        signature: "de_mutate(...); DE trial vector"
+        module: aiPlat-core/core/harness/evo_compute/de_es.py
+      - symbol: es_mutate
+        type: function
+        signature: "es_mutate(...); ES gaussian"
+        module: aiPlat-core/core/harness/evo_compute/de_es.py
+      - symbol: genes_fingerprint
+        type: function
+        signature: "genes_fingerprint(genes)→str"
+        module: aiPlat-core/core/harness/evo_compute/de_es.py
+      - symbol: surrogate_fitness
+        type: function
+        signature: "surrogate_fitness(genes, genome, partition)→fitness"
+        module: aiPlat-core/core/harness/evo_compute/de_es.py
+      - symbol: clip_genes
+        type: function
+        signature: "clip_genes(genes, fields)→dict"
+        module: aiPlat-core/core/harness/evo_compute/de_es.py
+      - symbol: repair_sum_to_one
+        type: function
+        signature: "repair_sum_to_one(genes, fields)→dict"
+        module: aiPlat-core/core/harness/evo_compute/de_es.py
+      - symbol: needs_sum_to_one
+        type: function
+        signature: "needs_sum_to_one(genome)→bool"
+        module: aiPlat-core/core/harness/evo_compute/de_es.py
+      - symbol: run_de_es_offline
+        type: function
+        signature: "run_de_es_offline(...); DE/ES pop loop; g1_complete=false"
+        module: aiPlat-core/core/harness/evo_compute/orchestrator.py
+      - symbol: compare_holdout
+        type: function
+        signature: "compare_holdout(...); §10.2.1 surrogate"
+        module: aiPlat-core/core/harness/evo_compute/holdout.py
+      - symbol: run_human_gate_canary_rollback_drill
+        type: function
+        signature: "run_human_gate_canary_rollback_drill(...); status drill"
+        module: aiPlat-core/core/harness/evo_compute/drill.py
+      - symbol: evaluate_g1_exit_readiness
+        type: function
+        signature: "evaluate_g1_exit_readiness(...); g1_complete iff all"
+        module: aiPlat-core/core/harness/evo_compute/exit_readiness.py
+      - symbol: run_evo_compute_g1_suite
+        type: function
+        signature: "run_evo_compute_g1_suite()→dict; g1_complete=false"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: evaluate_evo_compute_g1_gate
+        type: function
+        signature: "evaluate_evo_compute_g1_gate(suite=None)→dict"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: run_evo_de_es_offline
+        type: function
+        signature: "CoreFacade run_evo_de_es_offline"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: compare_evo_holdout
+        type: function
+        signature: "CoreFacade compare_evo_holdout"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_human_gate_canary_rollback_drill
+        type: function
+        signature: "CoreFacade run_evo_human_gate_canary_rollback_drill"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_g1_exit_readiness
+        type: function
+        signature: "CoreFacade evaluate_evo_g1_exit_readiness"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_compute_g1_suite
+        type: function
+        signature: "CoreFacade run_evo_compute_g1_suite"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_compute_g1_gate
+        type: function
+        signature: "CoreFacade evaluate_evo_compute_g1_gate"
+        module: aiPlat-core/core/api/core_facade.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -2794,7 +2874,7 @@ domains:
       - module: "core/harness/interfaces/loop.py"
         reason: "ReActLoop 运行时"
       - module: "core/api/core_facade.py"
-        reason: "evo_compute G0 门面入口"
+        reason: "evo_compute G0/G1 门面入口"
 
   # ══════════════════════════════════════════════════════════════
   # 二、记忆子系统 (59 caps)
