@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T14:55:02+08:00",
+  "reviewed_at": "2026-11-25T15:42:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "4c060163673eb1865b176b48e64801817ce6507a",
-  "diff_sha256": "f8e5fa8b519dc55525f0ca3fef6be84db79b9e606bd5071050fc06a9125bb3a6",
-  "head_sha": "b8125d976a3b882d119e863eeecdaec4077e3d96",
+  "diff_sha256": "33de448d52fc3cb69ea04ca29d921dd030c225509c4097463a8aaec84012cff7",
+  "head_sha": "d2bc4f312c0fcd9cd595ef2622c1e7ed49decc7b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G0 CI fix: clause-sync + Report doc_type. Local lock only."
+  "note": "G0 slice-2: pilots/budget/safety/replay/exit_readiness. phase0_complete false until human signoff; certified/e2 false. Local lock only."
 }
