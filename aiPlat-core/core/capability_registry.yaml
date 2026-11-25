@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3335
+total_capabilities: 3341
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 667
+    caps_count: 673
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2647,6 +2647,30 @@ domains:
         type: function
         signature: "CoreFacade evaluate_evo_compute_g0_gate"
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: default_ranking_profile
+        type: function
+        signature: '默认标量化权重（须版本化；禁止事后改权抬名次）。'
+        module: aiPlat-core/core/harness/evo_compute/fitness.py
+      - symbol: clear_registry_for_tests
+        type: function
+        signature: '测试用：清空进程内登记（不删磁盘）。'
+        module: aiPlat-core/core/harness/evo_compute/genome_registry.py
+      - symbol: normalize_status
+        type: function
+        signature: '规范化状态字符串。'
+        module: aiPlat-core/core/harness/evo_compute/status.py
+      - symbol: is_legal_status
+        type: function
+        signature: '是否为合法 Candidate.status。'
+        module: aiPlat-core/core/harness/evo_compute/status.py
+      - symbol: can_transition
+        type: function
+        signature: '是否允许状态变迁。'
+        module: aiPlat-core/core/harness/evo_compute/status.py
+      - symbol: default_happy_path
+        type: function
+        signature: '低风险试点默认幸福路径（含显式 human_gate）。'
+        module: aiPlat-core/core/harness/evo_compute/status.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

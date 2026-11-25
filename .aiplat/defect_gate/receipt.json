@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T13:55:48+08:00",
+  "reviewed_at": "2026-11-25T14:43:22+08:00",
   "base_ref": "origin/main",
-  "merge_base": "06077bb68ae84b2ce723be362551be9224d654cf",
-  "diff_sha256": "a80cb6d905eafbb20dff8c5e4fc7b710dd64922eadab49e670c0aa44d58caa43",
-  "head_sha": "8785b66bead2819bf4f5a0ebea41985d6fd4d8f0",
+  "merge_base": "4c060163673eb1865b176b48e64801817ce6507a",
+  "diff_sha256": "33f55af23e8bb37dbb65b2472d74062999fce971d2d2f3a4f275246e77a31b9f",
+  "head_sha": "049418e08819e3120577c284c53ecc15f53fb1e4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only: maturity honesty + evo status/gates/Pareto/holdout/stats. No runtime code. Local lock only."
+  "note": "G0 foundation slice-1; phase0_complete/e2/certified false. Local lock only."
 }
