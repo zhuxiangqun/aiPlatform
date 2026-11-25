@@ -6,7 +6,7 @@ authority: design-target
 language: zh-CN
 created: 2026-11-14
 doc_id: AIPLAT_EVOLUTION_IMPLEMENTATION_PLAN_6856B3
-last_reviewed: 2026-11-15
+last_reviewed: 2026-11-25
 ---
 # aiPlat 闭环与演化计算实施方案
 
@@ -16,18 +16,19 @@ last_reviewed: 2026-11-15
 >
 > 本文是实施方案，不是当前实现状态，也不是认证结论。  
 > 目标周期：以 2026-12 为 T0，12 个月。  
-> 总原则：先补闭环，再做受控演化；不做生产环境无人工门的自主进化。
+> 总原则：先补闭环，再做受控演化；不做生产环境无人工门的自主进化。  
+> **SSOT**：`Candidate.status` 与状态机以演化计算架构 §6 为准；Phase Gate 以本文 §12 / §15 **同一套 G0–G3** 为准（禁止第二套含义）。
 
 ## 0. 结论先行
 
 ```text
-当前整体约 L3
+闭环等级：工作假设整体 ≈ L3（待 KPI 基线；见成熟度模型 §3）
 12 个月目标：
-  治理 L2 → L3
-  知识 L2–L3 → L3+
-  评测 L3 → L4
-  FDE L3 → L4
-  执行 L4 → L4+
+  治理 假设L2 → 已测 L3
+  知识 假设L2–L3 → 已测 L3+
+  评测 假设L3 → 已测 L4
+  FDE 假设L3 → 已测 L4
+  执行 假设L4 → 已测 L4+
 演化能力：
   E0（无） → E2（离线受控演化）
 不追求：
@@ -68,15 +69,16 @@ DE / ES 调参
 
 ## 2. 现状基线
 
-| 闭环 | 当前 | 主要缺口 |
+| 闭环 | 工作假设（非已测） | 主要缺口 |
 |---|:---:|---|
-| 执行 | L4 | 结果回流学习不完整 |
-| 评测 | L3 | 覆盖不足，自动修复最后一跳 |
-| FDE | L3 | 客户数据/跨项目复用靠人工 |
-| 知识 | L2–L3 | 证据覆盖、冲突裁决、错误回滚 |
-| 治理 | L2 | 自动发现→自动修复不完整 |
+| 执行 | 假设 L4 | 结果回流学习不完整 |
+| 评测 | 假设 L3 | 覆盖不足，自动修复最后一跳 |
+| FDE | 假设 L3 | 客户数据/跨项目复用靠人工 |
+| 知识 | 假设 L2–L3 | 证据覆盖、冲突裁决、错误回滚 |
+| 治理 | 假设 L2 | 自动发现→自动修复不完整 |
 
-必须先做基线测量，不能直接拿目标值当现状。
+必须先做基线测量，不能直接拿目标值或工作假设当已测现状。  
+等级判定公式见成熟度模型 §3.2（六维度 `min` ∩ KPI 列）。
 
 ## 3. 实施原则
 
@@ -268,11 +270,11 @@ Evolution Orchestrator
    ↓
 Evolution Sandbox
    ↓
-Fitness Service
+Fitness Service（Pareto → ranked，见架构 §4.3.1）
    ↓
-Safety Gate
+Safety Gate → safety_passed
    ↓
-Human Approval
+Human Gate → approved | rejected
    ↓
 Canary → Production
    ↓
@@ -316,6 +318,8 @@ rollback: versioned_config
 
 ### 7.2 Candidate
 
+> `status` 枚举与架构文档 §6 **逐字对齐**（SSOT）。禁止使用已废除的 `evaluated`。
+
 ```yaml
 candidate_id: ...
 parent_ids: [...]
@@ -323,7 +327,9 @@ genome_id: ...
 generation: 3
 mutation: ...
 created_at: ...
-status: evaluated | ranked | approved | rejected | canary | production | rolled_back
+status: draft | registered | evaluating | ranked | safety_passed | human_gate | approved | rejected | canary | production | retired | rolled_back
+ranking_profile_id: ...   # §4.3.1 标量化/knee 规则版本
+pareto_frontier_ref: ...  # 前沿快照证据
 ```
 
 ### 7.3 Evaluation
@@ -446,21 +452,41 @@ PolicyGate 规则
 
 ### 10.1 数据集
 
+与架构 §10.1 对齐并冻结版本：
+
 ```text
-训练/调参集
-验证集
-holdout
-对抗集
-真实回放样本
+tune (默认 60%)     — 调参/进化搜索
+validate (20%)      — 选型/早停
+holdout (15%)       — 最终增益；进化不可见
+regression (5%)     — 回归门 + 固定对抗集
+真实回放样本        — 可映射进上述分区，须声明
 ```
 
 ### 10.2 统计
 
 ```text
-预注册 primary metric
+预注册 primary metric + 检验族（默认：双侧均值差，Welch t 或 bootstrap CI）
+预注册显著性阈值 α（默认 0.05）与最小效应量
 至少 2 个独立 batch
 报告均值、置信区间、样本量
 不只看单次最优
+```
+
+#### 10.2.1 多重比较 / 选择偏差（强制）
+
+演化会评估大量候选再挑「最好的」，必须校正：
+
+```text
+1. 预注册最大候选评估数 N_max（计入预算）
+2. 主结论只允许：
+   - 预指定单一 primary 对比（baseline vs 预声明 challenger），或
+   - 对 holdout 上最终入选者 vs baseline 做一次确认检验
+3. 若在 validate 上比较 K 个候选再晋升：
+   - 使用 Bonferroni / Holm 按 K 校正，或
+   - 预注册门控筛选 + holdout 一次性确认（推荐）
+4. 「统计显著提升」= holdout 上 primary 相对 baseline
+   在预注册 α（经校正后）下拒绝 H0，且效应 ≥ 预注册最小效应量
+5. 探索性分析可报告，但不得单独满足 Phase Gate
 ```
 
 ### 10.3 预算
@@ -500,26 +526,29 @@ GP 生成核心代码
 绕过审批
 ```
 
-## 12. 12 个月计划
+## 12. 12 个月计划（Phase Gate = G0–G3，与 §15 同一套）
 
 ### Phase 0：基线 + 底座（M1–M3）
 
 交付：
 
-- 五条闭环 KPI 基线；
+- 五条闭环 KPI 基线（成熟度 §7）；
 - 治理 L3 方案；
 - 知识 owner/证据清单；
 - Genome Registry schema；
-- Fitness/Replay 原型；
-- 预算与安全门设计。
+- Fitness/Replay 原型 + ranking_profile；
+- Sandbox 可跑通一次离线评估；
+- 预算与 Safety/Human Gate 设计。
 
-Gate G0：
+**Gate G0**（Phase 0 出口）：
 
 ```text
-基线有数据
+基线有落盘数据（非文档自述）
 owner 明确
-试点对象确定
+预算上限批准
 安全边界批准
+Registry / Fitness / Sandbox 最小可用（可注册 genome、评估 1 个候选、留证据）
+试点对象确定
 ```
 
 ### Phase 1：DE/ES 试点（M4–M6）
@@ -529,17 +558,18 @@ owner 明确
 - 3 个低风险对象；
 - DE/ES runner；
 - 离线回放；
-- 多目标排名；
-- 人工审批；
-- Canary 演练。
+- 多目标排名（§4.3.1）；
+- 状态机走通至 human_gate → approved；
+- Canary + 回滚演练。
 
-Gate G1：
+**Gate G1**（Phase 1 出口）：
 
 ```text
 候选可复现率 ≥95%
 血缘完整率 100%
 硬约束零回归
-至少 1 个对象有统计显著提升
+至少 1 个对象在 holdout 上按 §10.2.1 定义「统计显著提升」
+Canary / 回滚 / Human Gate 演练通过（含状态 HUMAN_GATE）
 ```
 
 ### Phase 2：GA + 评测/FDE（M7–M9）
@@ -551,7 +581,7 @@ Gate G1：
 - FDE L4 关键项；
 - 自动回归。
 
-Gate G2：
+**Gate G2**（Phase 2 出口）：
 
 ```text
 评测覆盖 ≥90%
@@ -565,16 +595,17 @@ GA 试点无安全回归
 
 - AIS 异常检测；
 - GP 强类型 DSL 沙箱；
-- 生产候选评审；
-- L4 评估报告。
+- 生产候选评审（100% Human Gate）；
+- 闭环 L4 评估报告（按成熟度 §3.2，有基线）。
 
-Gate G3：
+**Gate G3**（Phase 3 出口）：
 
 ```text
-AIS 误报可接受
+AIS 误报在预注册阈值内
 GP 只在 DSL 内
-生产候选 100% 人工批准
+生产候选 100% 经 HUMAN_GATE 批准
 回滚演练通过
+治理/知识/评测/FDE 已测等级达 L4 目标（或差距清单 + owner 签字缓释）
 ```
 
 ## 13. 前 90 天
@@ -599,15 +630,17 @@ GP 只在 DSL 内
 | FDE/产品 | 试点对象、人工门 |
 | 数据治理 | 知识 owner/证据 |
 
-## 15. 验收 Gate
+## 15. 验收 Gate（与 §12 同一套；禁止并行定义）
 
-| Gate | 条件 |
-|---|---|
-| G0 | 基线、owner、预算、安全边界 |
-| G1 | Registry/Fitness/Sandbox 可用 |
-| G2 | DE/ES 试点有效且无硬约束回归 |
-| G3 | Canary/回滚/人工门通过 |
-| G4 | 治理/知识/评测/FDE 达到 L4 目标 |
+| Gate | Phase 出口 | 条件（摘要；细节以 §12 为准） |
+|---|---|---|
+| G0 | Phase 0 | 基线落盘 + owner + 预算 + 安全边界 + Registry/Fitness/Sandbox 最小可用 + 试点确定 |
+| G1 | Phase 1 | DE/ES 可复现/血缘/硬约束 + holdout 统计显著（§10.2.1）+ Canary/回滚/Human Gate 演练 |
+| G2 | Phase 2 | 评测/FDE L4 关键覆盖 + GA 无安全回归 |
+| G3 | Phase 3 | AIS/GP 边界 + 生产候选 100% Human Gate + 回滚 + 闭环 L4 评估报告 |
+
+已废除：另设「G1=仅底座 / G2=仅 DE/ES / G3=仅 Canary / G4=成熟度」的第二套含义。  
+成熟度 L4 并入 **G3** 交付（评估报告），不再使用独立 G4 门号。
 
 ## 16. KPI
 
