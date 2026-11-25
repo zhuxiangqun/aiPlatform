@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3411
+total_capabilities: 3426
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 743
+    caps_count: 758
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2946,6 +2946,66 @@ domains:
       - symbol: evaluate_evo_compute_g2_gate
         type: function
         signature: "CoreFacade evaluate_evo_compute_g2_gate"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: coverage_ratio_from_inventory
+        type: function
+        signature: "coverage_ratio_from_inventory(covered,required)→ratio"
+        module: aiPlat-core/core/harness/evo_compute/coverage.py
+      - symbol: coverage_ratio_from_capability_report
+        type: function
+        signature: "coverage_ratio_from_capability_report(report)→ratio"
+        module: aiPlat-core/core/harness/evo_compute/coverage.py
+      - symbol: coverage_from_baseline_kpi
+        type: function
+        signature: "coverage_from_baseline_kpi(baseline,loop,kpi)"
+        module: aiPlat-core/core/harness/evo_compute/coverage.py
+      - symbol: default_g2_eval_inventory_fixture
+        type: function
+        signature: "default_g2_eval_inventory_fixture(meet_threshold=True)"
+        module: aiPlat-core/core/harness/evo_compute/coverage.py
+      - symbol: default_g2_fde_inventory_fixture
+        type: function
+        signature: "default_g2_fde_inventory_fixture(meet_threshold=True)"
+        module: aiPlat-core/core/harness/evo_compute/coverage.py
+      - symbol: measure_eval_coverage_from_inventory
+        type: function
+        signature: "measure_eval_coverage_from_inventory(...)"
+        module: aiPlat-core/core/harness/evo_compute/coverage.py
+      - symbol: measure_fde_evidence_coverage_from_inventory
+        type: function
+        signature: "measure_fde_evidence_coverage_from_inventory(...)"
+        module: aiPlat-core/core/harness/evo_compute/coverage.py
+      - symbol: measure_eval_coverage_from_capability_report
+        type: function
+        signature: "measure_eval_coverage_from_capability_report(report)"
+        module: aiPlat-core/core/harness/evo_compute/coverage.py
+      - symbol: run_evo_compute_g2_slice2_suite
+        type: function
+        signature: "run_evo_compute_g2_slice2_suite()→dict; g2_complete=false"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: evaluate_evo_compute_g2_slice2_gate
+        type: function
+        signature: "evaluate_evo_compute_g2_slice2_gate(suite=None)"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: measure_evo_eval_coverage_from_inventory
+        type: function
+        signature: "CoreFacade measure_evo_eval_coverage_from_inventory"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: measure_evo_fde_evidence_coverage_from_inventory
+        type: function
+        signature: "CoreFacade measure_evo_fde_evidence_coverage_from_inventory"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: collect_evo_eval_coverage_from_capability_report
+        type: function
+        signature: "CoreFacade collect_evo_eval_coverage_from_capability_report"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_compute_g2_slice2_suite
+        type: function
+        signature: "CoreFacade run_evo_compute_g2_slice2_suite"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_compute_g2_slice2_gate
+        type: function
+        signature: "CoreFacade evaluate_evo_compute_g2_slice2_gate"
         module: aiPlat-core/core/api/core_facade.py
       - symbol: continuous_midpoints
         type: function

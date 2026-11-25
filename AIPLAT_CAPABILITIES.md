@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4323
+total_capabilities: 4327
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -570,6 +570,15 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| continuous_midpoints | `core/harness/evo_compute/ga.py` | ✅ | 自动同步 | 已合入 |
+| measure_evo_fde_evidence_coverage_from_inventory | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| measure_evo_eval_coverage_from_inventory | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| measure_fde_evidence_coverage_from_inventory | `core/harness/evo_compute/coverage.py` | ✅ | 自动同步 | 已合入 |
+| measure_eval_coverage_from_inventory | `core/harness/evo_compute/coverage.py` | ✅ | 自动同步 | 已合入 |
+| default_g2_fde_inventory_fixture | `core/harness/evo_compute/coverage.py` | ✅ | 自动同步 | 已合入 |
+| default_g2_eval_inventory_fixture | `core/harness/evo_compute/coverage.py` | ✅ | 自动同步 | 已合入 |
+| coverage_from_baseline_kpi | `core/harness/evo_compute/coverage.py` | ✅ | 自动同步 | 已合入 |
+| coverage_ratio_from_capability_report | `core/harness/evo_compute/coverage.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_evo_g2_exit_readiness | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | measure_evo_fde_evidence_coverage | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_evo_compute_g2_gate | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
@@ -639,6 +648,10 @@ scan_hash: 8f9548ec24f4
 | measure_eval_coverage / measure_fde_evidence_coverage | `core/harness/evo_compute/coverage.py` | ✅ | 评测/FDE 覆盖率探针；缺测诚实 baseline_missing；生成物适用：已接线 | 本批 |
 | evaluate_g2_exit_readiness / run_evo_compute_g2_suite | `core/harness/evo_compute/exit_readiness.py` / `suite.py` | ✅ | G2 出口就绪与套件；缺测覆盖则 g2_complete=false；生成物适用：已接线 | 本批 |
 | run_evo_ga_offline / measure_evo_eval_coverage / run_evo_compute_g2_suite | `core/api/core_facade.py` | ✅ | CoreFacade G2 入口；套件绿≠宣称 G2/E2；生成物适用：已接线 | 本批 |
+| coverage_ratio_from_inventory / measure_*_from_inventory | `core/harness/evo_compute/coverage.py` | ✅ | G2 slice-2 库存实测覆盖；夹具达标≠生产 L4；生成物适用：已接线 | 本批 |
+| measure_eval_coverage_from_capability_report | `core/harness/evo_compute/coverage.py` | ✅ | 能力覆盖报告→探针；Harness 不直导 apps；生成物适用：已接线 | 本批 |
+| run_evo_compute_g2_slice2_suite / evaluate_evo_compute_g2_slice2_gate | `core/harness/evo_compute/suite.py` | ✅ | G2 slice-2 套件；g2_complete 恒 false；生成物适用：已接线 | 本批 |
+| collect_evo_eval_coverage_from_capability_report / measure_evo_*_from_inventory | `core/api/core_facade.py` | ✅ | CoreFacade G2 slice-2；评测桥接仅经 Facade；生成物适用：已接线 | 本批 |
 | secure_scan_zip | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | AssetSecureScanError | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | wrap_asset_install_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5224,7 +5237,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 880 | 1 | 881 |
+| Harness 执行引擎 | 884 | 1 | 885 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5269,7 +5282,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4312** | **11** | **4323** |
+| **总计** | **4316** | **11** | **4327** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -630,3 +630,175 @@ def evaluate_evo_compute_g2_gate(suite: Optional[Dict[str, Any]] = None) -> Dict
         "e2_claimed": False,
         "suite": s,
     }
+
+
+def run_evo_compute_g2_slice2_suite() -> Dict[str, Any]:
+    """G2 slice-2：库存/报告实测覆盖路径；夹具达标 ≠ 宣称生产 L4。
+
+    ``g2_complete`` 在套件回执中恒 false（夹具实测不可冒充出口宣称）。
+    """
+    from core.harness.evo_compute.budget import approve_budget, clear_budget_for_tests
+    from core.harness.evo_compute.coverage import (
+        coverage_ratio_from_capability_report,
+        default_g2_eval_inventory_fixture,
+        default_g2_fde_inventory_fixture,
+        measure_eval_coverage,
+        measure_eval_coverage_from_capability_report,
+        measure_eval_coverage_from_inventory,
+        measure_fde_evidence_coverage,
+        measure_fde_evidence_coverage_from_inventory,
+    )
+    from core.harness.evo_compute.exit_readiness import evaluate_g2_exit_readiness
+    from core.harness.evo_compute.ga import run_ga_offline
+    from core.harness.evo_compute.genome_registry import clear_registry_for_tests
+    from core.harness.evo_compute.pilots import register_pilot_genomes
+    from core.harness.evo_compute.safety import clear_safety_for_tests
+
+    clear_registry_for_tests()
+    clear_budget_for_tests()
+    clear_safety_for_tests()
+    cases: list = []
+
+    pilots = register_pilot_genomes(persist=False)
+    cases.append({"id": "pilots_ready", "pass": bool(pilots.get("ok"))})
+    approve_budget(actor="g2-slice2-suite", persist=False)
+
+    ga = run_ga_offline(
+        genome_id="timeout.retry.v1",
+        population_size=5,
+        generations=2,
+        seed=11,
+    )
+    cases.append(
+        {
+            "id": "ga_ok",
+            "pass": bool(ga.get("ok")) and ga.get("safety_regression") is False,
+        }
+    )
+
+    # 缺测路径仍诚实
+    missing = measure_eval_coverage()
+    cases.append(
+        {
+            "id": "eval_still_honest_when_unmeasured",
+            "pass": missing.get("baseline_missing") is True
+            and missing.get("meets_g2_threshold") is False,
+        }
+    )
+
+    # 库存达标
+    ev_fix = default_g2_eval_inventory_fixture(meet_threshold=True)
+    ev = measure_eval_coverage_from_inventory(**ev_fix)
+    cases.append(
+        {
+            "id": "eval_inventory_meets",
+            "pass": ev.get("baseline_missing") is False
+            and ev.get("meets_g2_threshold") is True
+            and float(ev.get("coverage") or 0) >= 0.90,
+        }
+    )
+
+    ev_low_fix = default_g2_eval_inventory_fixture(meet_threshold=False)
+    ev_low = measure_eval_coverage_from_inventory(**ev_low_fix)
+    cases.append(
+        {
+            "id": "eval_inventory_below",
+            "pass": ev_low.get("baseline_missing") is False
+            and ev_low.get("meets_g2_threshold") is False,
+        }
+    )
+
+    fde_fix = default_g2_fde_inventory_fixture(meet_threshold=True)
+    fde = measure_fde_evidence_coverage_from_inventory(**fde_fix)
+    cases.append(
+        {
+            "id": "fde_inventory_meets",
+            "pass": fde.get("baseline_missing") is False
+            and fde.get("meets_g2_threshold") is True
+            and float(fde.get("coverage") or 0) >= 0.95,
+        }
+    )
+
+    fde_low = measure_fde_evidence_coverage_from_inventory(
+        **default_g2_fde_inventory_fixture(meet_threshold=False)
+    )
+    cases.append(
+        {
+            "id": "fde_inventory_below",
+            "pass": fde_low.get("meets_g2_threshold") is False,
+        }
+    )
+
+    # 能力报告形映射（不直导 apps）
+    report = {
+        "schema": "eval.capability_coverage.v1",
+        "covered_capabilities": 9,
+        "total_in_scope": 10,
+        "n_gaps": 1,
+        "subject_kind": "agent",
+        "claim_eligible": False,
+    }
+    ratio = coverage_ratio_from_capability_report(report)
+    from_rep = measure_eval_coverage_from_capability_report(report)
+    cases.append(
+        {
+            "id": "capability_report_mapping",
+            "pass": ratio.get("baseline_missing") is False
+            and abs(float(ratio.get("coverage") or 0) - 0.9) < 1e-9
+            and from_rep.get("meets_g2_threshold") is True,
+        }
+    )
+
+    # 夹具双达标时 exit_readiness 可为 True；套件仍不宣称 g2_complete
+    ready = evaluate_g2_exit_readiness(
+        ga_ok=bool(ga.get("ok")),
+        safety_regression_free=ga.get("safety_regression") is False,
+        eval_coverage_ok=bool(ev.get("meets_g2_threshold")),
+        fde_coverage_ok=bool(fde.get("meets_g2_threshold")),
+    )
+    cases.append(
+        {
+            "id": "exit_ready_on_fixture_but_suite_unclaimed",
+            "pass": ready.get("g2_complete") is True
+            and ready.get("certified") is False
+            and measure_fde_evidence_coverage().get("baseline_missing") is True,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "g2-slice2",
+        "g2_foundation": True,
+        "g2_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "note": (
+            "G2 slice-2 inventory/report measured path; "
+            "fixture thresholds ≠ production L4 / Gate claim"
+        ),
+    }
+
+
+def evaluate_evo_compute_g2_slice2_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """G2 slice-2 门槛门；g2_complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_g2_slice2_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_g2_slice2_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g2_foundation": True,
+        "g2_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "suite": s,
+    }

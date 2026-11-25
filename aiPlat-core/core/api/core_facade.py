@@ -21075,6 +21075,94 @@ def evaluate_evo_compute_g2_gate(suite: Optional[dict] = None) -> dict:
     return _gate(suite)
 
 
+def measure_evo_eval_coverage_from_inventory(
+    *,
+    covered_ids: Optional[list] = None,
+    required_ids: Optional[list] = None,
+) -> dict:
+    """CoreFacade：评测覆盖（库存实测）。
+
+    Args:
+        covered_ids: 已覆盖能力/项。
+        required_ids: 应覆盖全集。
+    """
+    from core.harness.evo_compute.coverage import (
+        measure_eval_coverage_from_inventory as _m,
+    )
+
+    return _m(covered_ids=covered_ids, required_ids=required_ids)
+
+
+def measure_evo_fde_evidence_coverage_from_inventory(
+    *,
+    covered_ids: Optional[list] = None,
+    required_ids: Optional[list] = None,
+) -> dict:
+    """CoreFacade：FDE 证据覆盖（库存实测）。
+
+    Args:
+        covered_ids: 已覆盖证据项。
+        required_ids: 应覆盖证据项。
+    """
+    from core.harness.evo_compute.coverage import (
+        measure_fde_evidence_coverage_from_inventory as _m,
+    )
+
+    return _m(covered_ids=covered_ids, required_ids=required_ids)
+
+
+def collect_evo_eval_coverage_from_capability_report(
+    *,
+    profile: Optional[dict] = None,
+    profile_id: str = "",
+    subject_kind: str = "",
+    min_per_capability: Optional[int] = None,
+    cases: Optional[list] = None,
+) -> dict:
+    """CoreFacade：经评测能力覆盖分析 → G2 评测覆盖探针（apps 仅在此桥接）。
+
+    Args:
+        profile: 评测 profile。
+        profile_id: profile 标识。
+        subject_kind: Subject 种类。
+        min_per_capability: 每能力最小用例数。
+        cases: 可选用例库。
+    """
+    from core.harness.evo_compute.coverage import (
+        measure_eval_coverage_from_capability_report as _m,
+    )
+
+    report = eval_analyze_capability_coverage(
+        profile=profile,
+        profile_id=profile_id,
+        subject_kind=subject_kind,
+        min_per_capability=min_per_capability,
+        cases=cases,
+    )
+    out = _m(report if isinstance(report, dict) else None)
+    out["capability_report_ok"] = bool((report or {}).get("ok"))
+    out["bridged_via"] = "eval_analyze_capability_coverage"
+    return out
+
+
+def run_evo_compute_g2_slice2_suite() -> dict:
+    """CoreFacade：G2 slice-2 套件（夹具实测；g2_complete 恒 false）。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g2_slice2_suite as _run
+
+    return _run()
+
+
+def evaluate_evo_compute_g2_slice2_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：G2 slice-2 门槛门。
+
+    Args:
+        suite: ``run_evo_compute_g2_slice2_suite`` 回执。
+    """
+    from core.harness.evo_compute.suite import evaluate_evo_compute_g2_slice2_gate as _gate
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
