@@ -18,6 +18,7 @@ exception_adr: reports/products/knowledge-system/v4.3.1/phase2-exception-adr.md
 > 2026-11-23：剩余 ADR 例外面已批量冻结（`phase2-remaining-adr-freeze-evidence.md`）；本表 residual 列仍开放，不因 freeze 关闭。
 > 2026-11-23：Phase 2 sufficient-freeze 程序收口（`phase2-sufficient-freeze-closeout-evidence.md`）；仍不关闭 residual / certified。
 > 2026-11-24：产品完备面显式 residual 已合入（N02 bulk / N24 ops console 薄壳 / N08 有界 Lv4 auto-close / N02 published-over-seed / N24 ops console 有界导出）；N24 运维台**产品面**已落地（默认可用 + schema JSON + **表单字段编辑器** + 浏览器导出；`full_ops_console=true` / `schema_form_editor=true`）；N02 **种子权威产品面第一刀**已落地（workspace_seeds 目录 + published-over-seed；`seed_product_surface=true`；不改写 seeds）；N08 **有界 Lv4 auto-close 产品面第一刀**已落地（默认可用；`lv4_product_surface=true`；仍仅 low）；N11/N14 **生产切写就绪产品面第一刀**已落地（默认可用；`prod_attest_product_surface=true`）；N10 **LLM judge 产品面第一刀**已落地（默认可用；`llm_judge_product_surface=true`）；**未**宣称 certified / seed_replacement_complete / full_action_lv4 / production_cutover_certified / accuracy_claim / 自由布局可视化设计器；freeze 仍 true。
+> 2026-11-25：N24 运维台**产品面第二刀**已落地（四面板 + 通用 ops bundle；`ops_console_general_export=true`；audit_sample≤20；非 export_complete）；**未**宣称 certified / export_complete / 自由布局可视化设计器；freeze 仍 true。
 
 ## 本切片修复
 

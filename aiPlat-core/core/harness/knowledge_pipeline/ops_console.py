@@ -3,10 +3,10 @@
 职责：
   - 聚合统一审计 bus 近窗计数 + SLO 快照达标概况
   - 显式 residual：opt-in ``build_ops_console_snapshot`` / ``export_ops_console_snapshot``
-  - 产品面：默认可用 snapshot + schema JSON/表单字段编辑 + 浏览器导出
+  - 产品面：默认可用四面板 snapshot + schema JSON/表单字段编辑 + 通用 bundle 导出
 
 非目标：
-  - 不宣称 N24 certified / Full unconditional / 关闭 ADR 例外
+  - 不宣称 N24 certified / Full unconditional / export_complete / 关闭 ADR 例外
   - 不做自由布局可视化设计器（Retool 级）；表单字段编辑器已落地
   - residual 路径不可用时诚实上报 ``ops_console_unavailable`` / ``ops_console_export_unavailable``
 """
@@ -37,13 +37,17 @@ _OPS_EXPORT_CASES = (
 
 _OPS_PRODUCT_CASES = (
     "ops_console_product_snapshot",
+    "ops_console_product_multi_panel",
     "ops_console_product_schema",
     "ops_console_product_schema_form",
     "ops_console_product_export",
+    "ops_console_product_general_export",
     "honesty_product_certified_false",
 )
 
 _SCHEMA_FIELD_TYPES = ("string", "number", "boolean", "object", "array")
+_OPS_AUDIT_SAMPLE_MAX = 20
+_OPS_PRODUCT_PANEL_KEYS = ("audit", "slo", "schema", "export")
 
 
 def normalize_ops_console_schema_form(
@@ -830,6 +834,7 @@ def build_ops_console_product_snapshot(
         "n24_full_conformance": False,
         "n24_unified_audit_freeze": True,
         "full_ops_console": True,
+        "ops_console_general_export": True,
         "product_surface": True,
     }
     if not tid:
@@ -843,13 +848,42 @@ def build_ops_console_product_snapshot(
         slo_db_path=slo_db_path,
         include_live=include_live,
     )
+    audit = body["audit"]
+    slo = body["slo"]
+    # 为什么：四面板结构化摘要供 UI 分卡渲染，避免仅 dump 整包 JSON
+    panel_summaries = {
+        "audit": {
+            "recent_count": int(audit.get("recent_count") or 0),
+            "listed": int(audit.get("listed") or 0),
+            "window_hours": int(audit.get("window_hours") or window_hours),
+        },
+        "slo": {
+            "snapshot_status": slo.get("snapshot_status"),
+            "miss_count": int(slo.get("miss_count") or 0),
+            "miss_metrics": list(slo.get("miss_metrics") or []),
+        },
+        "schema": {
+            "editor": True,
+            "form_editor": True,
+        },
+        "export": {
+            "general_export": True,
+            "export_complete": False,
+        },
+    }
     return {
         **base,
         "status": "ok",
         "via": "product",
-        "audit": body["audit"],
-        "slo": body["slo"],
+        "audit": audit,
+        "slo": slo,
+        "panel_summaries": panel_summaries,
         "panels": {
+            "audit": True,
+            "slo": True,
+            "schema": True,
+            "export": True,
+            # 兼容 slice-1 消费者
             "unified_audit": True,
             "slo_telemetry": True,
             "export_download": True,
@@ -857,7 +891,7 @@ def build_ops_console_product_snapshot(
             "schema_form_editor": True,
         },
         "note": (
-            "ops console product surface (schema form + JSON); "
+            "ops console product surface slice-2 (multi-panel + general export); "
             "not N24 certified / Full remains conditional"
         ),
     }
@@ -1009,6 +1043,55 @@ def save_ops_console_schema(
     }
 
 
+def _bounded_audit_sample(
+    tenant_id: str,
+    *,
+    window_hours: int = 24,
+    audit_db_path: Optional[str] = None,
+    limit: int = _OPS_AUDIT_SAMPLE_MAX,
+) -> List[Dict[str, Any]]:
+    """取近窗有界审计事件样本（硬上限，防无限 dump）。
+
+    Args:
+        tenant_id: 租户。
+        window_hours: 回溯窗口小时。
+        audit_db_path: 可选统一审计 bus 库。
+        limit: 样本上限（钳制到 ``_OPS_AUDIT_SAMPLE_MAX``）。
+    """
+    from core.harness.knowledge_pipeline.unified_audit_bus import (
+        list_unified_audit_bus_events,
+    )
+
+    cap = max(1, min(int(limit or _OPS_AUDIT_SAMPLE_MAX), _OPS_AUDIT_SAMPLE_MAX))
+    since = time.time() - max(1, int(window_hours)) * 3600
+    items = list_unified_audit_bus_events(
+        tenant_id=tenant_id,
+        limit=max(cap * 3, 50),
+        db_path=audit_db_path,
+    )
+    sample: List[Dict[str, Any]] = []
+    for r in reversed(list(items or [])):
+        if not isinstance(r, dict):
+            continue
+        ts = float(r.get("occurred_at") or 0)
+        if ts <= 0:
+            ts = float(r.get("recorded_at") or r.get("created_at") or 0)
+        if ts < since:
+            continue
+        sample.append(
+            {
+                "event_id": r.get("event_id"),
+                "stream": r.get("stream"),
+                "event_type": r.get("event_type"),
+                "occurred_at": r.get("occurred_at"),
+                "recorded_at": r.get("recorded_at"),
+            }
+        )
+        if len(sample) >= cap:
+            break
+    return sample
+
+
 def export_ops_console_product(
     tenant_id: str,
     *,
@@ -1019,8 +1102,15 @@ def export_ops_console_product(
     include_live: bool = False,
     output_root: Optional[str] = None,
     write: bool = False,
+    include_audit_sample: bool = True,
+    object_type_id: str = "",
+    schema_db_path: Optional[str] = None,
+    audit_sample_limit: int = _OPS_AUDIT_SAMPLE_MAX,
 ) -> Dict[str, Any]:
-    """N24 产品面：浏览器可下载 JSON 导出（无 EXPORT env 门；非 certified）。
+    """N24 产品面：通用 ops bundle 浏览器导出（无 EXPORT env 门；非 certified）。
+
+    bundle = snapshot + schema + 有界 audit 样本 + SLO miss。
+    ``ops_console_general_export=true``；``export_complete`` 恒 false。
 
     Args:
         tenant_id: 租户。
@@ -1031,6 +1121,10 @@ def export_ops_console_product(
         include_live: SLO 是否计入 live 源。
         output_root: 可选写盘根（须 allowlist）。
         write: 是否顺带服务端写盘。
+        include_audit_sample: 是否附带有界 audit 样本（默认 true）。
+        object_type_id: 可选 schema 类型过滤。
+        schema_db_path: 可选 ObjectType 发布库。
+        audit_sample_limit: audit 样本上限（服务端钳制）。
     """
     tid = str(tenant_id or "").strip()
     base: Dict[str, Any] = {
@@ -1041,6 +1135,7 @@ def export_ops_console_product(
         "n24_full_conformance": False,
         "n24_unified_audit_freeze": True,
         "full_ops_console": True,
+        "ops_console_general_export": True,
         "export_complete": False,
         "product_surface": True,
     }
@@ -1063,21 +1158,55 @@ def export_ops_console_product(
             "snapshot": snap,
         }
 
+    schema = get_ops_console_schema(
+        tenant_id=tid,
+        object_type_id=str(object_type_id or "").strip(),
+        db_path=schema_db_path,
+    )
+    audit_sample: List[Dict[str, Any]] = []
+    if include_audit_sample:
+        audit_sample = _bounded_audit_sample(
+            tid,
+            window_hours=window_hours,
+            audit_db_path=audit_db_path,
+            limit=audit_sample_limit,
+        )
+    slo_miss_detail = {
+        "miss_count": int((snap.get("slo") or {}).get("miss_count") or 0),
+        "miss_metrics": list((snap.get("slo") or {}).get("miss_metrics") or []),
+        "snapshot_status": (snap.get("slo") or {}).get("snapshot_status"),
+    }
+
     payload = {
-        "kind": "ops_console_product_export",
+        "kind": "ops_console_product_bundle",
         "tenant_id": tid,
         "domain_id": str(domain_id or ""),
         "window_hours": int(window_hours),
         "exported_at": time.time(),
         "certified": False,
         "full_ops_console": True,
+        "ops_console_general_export": True,
         "export_complete": False,
         "snapshot": {
             "status": snap.get("status"),
             "audit": snap.get("audit"),
             "slo": snap.get("slo"),
             "panels": snap.get("panels"),
+            "panel_summaries": snap.get("panel_summaries"),
         },
+        "schema": {
+            "status": schema.get("status"),
+            "object_type_id": schema.get("object_type_id"),
+            "definition": schema.get("definition"),
+            "form": schema.get("form"),
+            "items_count": len(schema.get("items") or []),
+        },
+        "audit_sample": audit_sample,
+        "audit_sample_count": len(audit_sample),
+        "audit_sample_limit": max(
+            1, min(int(audit_sample_limit or _OPS_AUDIT_SAMPLE_MAX), _OPS_AUDIT_SAMPLE_MAX)
+        ),
+        "slo_miss_detail": slo_miss_detail,
         "download_filename": f"{tid}-ops-console-product.json",
     }
     out_path = ""
@@ -1108,7 +1237,12 @@ def export_ops_console_product(
         "output_path": out_path or None,
         "wrote": bool(out_path),
         "payload": payload,
-        "panels": {
+        "panels": snap.get("panels")
+        or {
+            "audit": True,
+            "slo": True,
+            "schema": True,
+            "export": True,
             "unified_audit": True,
             "slo_telemetry": True,
             "export_download": True,
@@ -1116,7 +1250,7 @@ def export_ops_console_product(
             "schema_form_editor": True,
         },
         "note": (
-            "ops console product export; browser download ready; "
+            "ops console product general export bundle; "
             "export_complete remains false / not N24 certified"
         ),
     }
@@ -1189,6 +1323,7 @@ def run_ops_console_product_suite(
                 include_live=False,
             )
             panels = snap.get("panels") or {}
+            panel_summaries = snap.get("panel_summaries") or {}
             cases.append(
                 {
                     "id": "ops_console_product_snapshot",
@@ -1199,6 +1334,17 @@ def run_ops_console_product_suite(
                     and panels.get("schema_form_editor") is True
                     and panels.get("export_download") is True
                     and int((snap.get("audit") or {}).get("recent_count") or 0) >= 1,
+                }
+            )
+            cases.append(
+                {
+                    "id": "ops_console_product_multi_panel",
+                    "ok": snap.get("status") == "ok"
+                    and all(panels.get(k) is True for k in _OPS_PRODUCT_PANEL_KEYS)
+                    and isinstance(panel_summaries, dict)
+                    and all(k in panel_summaries for k in _OPS_PRODUCT_PANEL_KEYS)
+                    and isinstance(panel_summaries.get("audit"), dict)
+                    and isinstance(panel_summaries.get("slo"), dict),
                 }
             )
 
@@ -1281,8 +1427,10 @@ def run_ops_console_product_suite(
                 tenant_id,
                 audit_db_path=audit_db,
                 slo_db_path=slo_db,
+                schema_db_path=ot_db,
                 include_live=False,
                 write=True,
+                include_audit_sample=True,
             )
             payload = exported.get("payload") or {}
             cases.append(
@@ -1295,13 +1443,32 @@ def run_ops_console_product_suite(
                     and bool(exported.get("wrote")),
                 }
             )
+            audit_sample = payload.get("audit_sample") or []
+            cases.append(
+                {
+                    "id": "ops_console_product_general_export",
+                    "ok": exported.get("status") == "ok"
+                    and exported.get("ops_console_general_export") is True
+                    and exported.get("export_complete") is False
+                    and exported.get("certified") is False
+                    and payload.get("kind") == "ops_console_product_bundle"
+                    and payload.get("ops_console_general_export") is True
+                    and isinstance(payload.get("snapshot"), dict)
+                    and isinstance(payload.get("schema"), dict)
+                    and isinstance(audit_sample, list)
+                    and len(audit_sample) <= _OPS_AUDIT_SAMPLE_MAX
+                    and len(audit_sample) >= 1
+                    and isinstance(payload.get("slo_miss_detail"), dict),
+                }
+            )
             cases.append(
                 {
                     "id": "honesty_product_certified_false",
                     "ok": snap.get("certified") is False
                     and snap.get("n24_full_conformance") is False
                     and snap.get("n24_unified_audit_freeze") is True
-                    and exported.get("certified") is False,
+                    and exported.get("certified") is False
+                    and exported.get("export_complete") is False,
                 }
             )
         finally:
@@ -1327,11 +1494,12 @@ def run_ops_console_product_suite(
         "n24_full_conformance": False,
         "n24_unified_audit_freeze": True,
         "full_ops_console": True,
+        "ops_console_general_export": True,
         "export_complete": False,
         "product_surface": True,
         "note": (
-            "Ops console product surface suite; full_ops_console true; "
-            "not N24 certified"
+            "Ops console product surface suite slice-2; "
+            "multi-panel + general export; not N24 certified"
         ),
     }
 
@@ -1339,7 +1507,7 @@ def run_ops_console_product_suite(
 def evaluate_ops_console_product_gate(
     suite: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """N24 产品面门槛门：要求 full_ops_console；禁止 certified。
+    """N24 产品面门槛门：要求 full_ops_console + general_export；禁止 certified。
 
     Args:
         suite: ``run_ops_console_product_suite`` 回执。
@@ -1352,6 +1520,8 @@ def evaluate_ops_console_product_gate(
         issues.append("honesty_certified_flag_forbidden")
     if s.get("full_ops_console") is not True:
         issues.append("product_full_ops_console_required")
+    if s.get("ops_console_general_export") is not True:
+        issues.append("product_ops_console_general_export_required")
     if s.get("export_complete") is True:
         issues.append("honesty_export_complete_forbidden")
     ids = {
@@ -1369,7 +1539,8 @@ def evaluate_ops_console_product_gate(
         "n24_full_conformance": False,
         "n24_unified_audit_freeze": True,
         "full_ops_console": True,
+        "ops_console_general_export": True,
         "export_complete": False,
         "product_surface": True,
-        "note": "Ops console product gate; not N24 certified",
+        "note": "Ops console product gate slice-2; not N24 certified",
     }

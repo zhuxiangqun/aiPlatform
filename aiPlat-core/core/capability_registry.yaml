@@ -4785,7 +4785,7 @@ domains:
       - symbol: "build_ops_console_product_snapshot"
         module: core/harness/knowledge_pipeline/ops_console.py
         type: function
-        signature: "N24 product: ops console snapshot (full_ops_console=true; certified=false)"
+        signature: "N24 product: multi-panel snapshot (full_ops_console=true; panel_summaries; certified=false)"
       - symbol: "normalize_ops_console_schema_form"
         module: core/harness/knowledge_pipeline/ops_console.py
         type: function
@@ -4813,7 +4813,7 @@ domains:
       - symbol: "export_ops_console_product"
         module: core/harness/knowledge_pipeline/ops_console.py
         type: function
-        signature: "N24 product: browser-ready JSON export"
+        signature: "N24 product: general ops bundle export (ops_console_general_export=true; export_complete=false)"
       - symbol: "run_ops_console_product_suite"
         module: core/harness/knowledge_pipeline/ops_console.py
         type: function

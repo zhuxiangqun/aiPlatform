@@ -1,8 +1,8 @@
 /**
- * OpsConsolePanel — N24 运维台产品面管理端 UI。
+ * OpsConsolePanel — N24 运维台产品面管理端 UI（slice-2）。
  *
- * 默认走 `/ops-console/product/*`：概览 / Schema 表单+JSON / 导出。
- * full_ops_console=true；certified 恒 false。
+ * 四面板：Audit / SLO / Schema / Export；通用 bundle 导出。
+ * ops_console_general_export=true；certified / export_complete 恒 false。
  */
 import React, { useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
@@ -27,6 +27,17 @@ type SchemaForm = {
   fields: SchemaField[];
 };
 
+type PanelSummaries = {
+  audit?: { recent_count?: number; listed?: number; window_hours?: number };
+  slo?: {
+    snapshot_status?: string;
+    miss_count?: number;
+    miss_metrics?: string[];
+  };
+  schema?: { editor?: boolean; form_editor?: boolean };
+  export?: { general_export?: boolean; export_complete?: boolean };
+};
+
 type OpsSnapshot = {
   status?: string;
   via?: string;
@@ -36,6 +47,7 @@ type OpsSnapshot = {
   n24_full_conformance?: boolean;
   n24_unified_audit_freeze?: boolean;
   full_ops_console?: boolean;
+  ops_console_general_export?: boolean;
   export_complete?: boolean;
   product_surface?: boolean;
   wrote?: boolean;
@@ -47,13 +59,18 @@ type OpsSnapshot = {
     miss_count?: number;
   };
   panels?: Record<string, boolean>;
+  panel_summaries?: PanelSummaries;
   payload?: {
     download_filename?: string;
+    kind?: string;
+    audit_sample_count?: number;
+    ops_console_general_export?: boolean;
+    export_complete?: boolean;
     [key: string]: unknown;
   };
 };
 
-type TabId = 'overview' | 'schema' | 'export';
+type TabId = 'audit' | 'slo' | 'schema' | 'export';
 
 function detailMessage(detail: unknown): string {
   if (typeof detail === 'string') return detail;
@@ -96,7 +113,7 @@ const OpsConsolePanel: React.FC = () => {
   const [tenantId, setTenantId] = useState('lock-service');
   const [domainId, setDomainId] = useState('');
   const [windowHours, setWindowHours] = useState(24);
-  const [tab, setTab] = useState<TabId>('overview');
+  const [tab, setTab] = useState<TabId>('audit');
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [savingSchema, setSavingSchema] = useState(false);
@@ -110,6 +127,7 @@ const OpsConsolePanel: React.FC = () => {
     '{\n  "object_type_id": "OpsProbeType",\n  "label": "",\n  "fields": []\n}\n',
   );
   const [showJson, setShowJson] = useState(false);
+  const [includeAuditSample, setIncludeAuditSample] = useState(true);
 
   const syncJsonFromForm = useCallback((form: SchemaForm) => {
     setSchemaText(JSON.stringify(form, null, 2) + '\n');
@@ -151,7 +169,7 @@ const OpsConsolePanel: React.FC = () => {
       const ok = body.ok === true;
       setGateNote(
         ok
-          ? `product gate ok · certified=${String(body.certified)} · full=${String(body.full_ops_console)}`
+          ? `product gate ok · certified=${String(body.certified)} · full=${String(body.full_ops_console)} · general_export=${String(body.ops_console_general_export)}`
           : `product gate fail · ${(body.issues || []).join(',') || 'unknown'}`,
       );
     } catch (e: unknown) {
@@ -278,6 +296,9 @@ const OpsConsolePanel: React.FC = () => {
           window_hours: windowHours || 24,
           include_live: false,
           write: true,
+          include_audit_sample: includeAuditSample,
+          object_type_id: objectTypeId.trim(),
+          audit_sample_limit: 20,
         }),
       });
       const body = (await r.json().catch(() => ({}))) as OpsSnapshot & {
@@ -298,7 +319,7 @@ const OpsConsolePanel: React.FC = () => {
       URL.revokeObjectURL(url);
       setExportNote(
         body.status === 'ok'
-          ? `export ok · browser download=${filename} · wrote=${String(body.wrote)} · complete=${String(body.export_complete)}`
+          ? `general export ok · kind=${String(payload.kind || '—')} · sample=${String(payload.audit_sample_count ?? 0)} · download=${filename} · complete=${String(body.export_complete)} · certified=${String(body.certified)}`
           : `export ${String(body.status)} · ${body.note || ''}`,
       );
     } catch (e: unknown) {
@@ -306,14 +327,18 @@ const OpsConsolePanel: React.FC = () => {
     } finally {
       setExporting(false);
     }
-  }, [tenantId, domainId, windowHours]);
+  }, [tenantId, domainId, windowHours, includeAuditSample, objectTypeId]);
+
+  const summaries = snap?.panel_summaries;
+  const auditSummary = summaries?.audit || snap?.audit;
+  const sloSummary = summaries?.slo || snap?.slo;
 
   return (
     <Card className="border-gray-800 bg-gray-950/40">
       <CardHeader className="flex flex-row items-center justify-between gap-2 py-3">
         <div className="flex items-center gap-2 text-[13px] text-gray-200">
           <Gauge className="h-4 w-4 text-emerald-400/80" />
-          <span>运维台产品面（N24）</span>
+          <span>运维台产品面（N24 · slice-2）</span>
         </div>
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" variant="ghost" onClick={() => void runGate()}>
@@ -333,8 +358,9 @@ const OpsConsolePanel: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-3 text-[12px] text-gray-400">
         <p className="text-gray-500">
-          默认可用：概览 + Schema 表单字段编辑（可切 JSON）+ 浏览器下载导出。
-          full_ops_console=true；非 certified / 非自由布局设计器。
+          四面板：Audit / SLO / Schema / Export。通用 bundle 导出（snapshot + schema + 有界
+          audit 样本 ≤20 + SLO miss）。ops_console_general_export=true；非 export_complete /
+          非 certified / 非自由布局设计器。
         </p>
         <div className="flex flex-wrap gap-2 items-end">
           <label className="flex flex-col gap-1">
@@ -365,57 +391,106 @@ const OpsConsolePanel: React.FC = () => {
             />
           </label>
         </div>
-        <div className="flex gap-2">
-          {(
-            [
-              ['overview', '概览'],
-              ['schema', 'Schema'],
-              ['export', '导出'],
-            ] as const
-          ).map(([id, label]) => (
-            <Button
-              key={id}
-              type="button"
-              size="sm"
-              variant={tab === id ? 'outline' : 'ghost'}
-              onClick={() => setTab(id)}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
+
+        {snap ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {(
+              [
+                ['audit', 'Audit', `recent=${String(auditSummary?.recent_count ?? 0)}`],
+                [
+                  'slo',
+                  'SLO',
+                  `miss=${String(sloSummary?.miss_count ?? 0)}`,
+                ],
+                ['schema', 'Schema', 'form+JSON'],
+                [
+                  'export',
+                  'Export',
+                  `general=${String(snap.ops_console_general_export ?? true)}`,
+                ],
+              ] as const
+            ).map(([id, title, meta]) => (
+              <button
+                key={id}
+                type="button"
+                className={`rounded border p-2 text-left ${
+                  tab === id
+                    ? 'border-emerald-700/60 bg-emerald-950/30 text-gray-200'
+                    : 'border-gray-800 bg-black/20 text-gray-400 hover:border-gray-700'
+                }`}
+                onClick={() => setTab(id)}
+              >
+                <div className="text-[12px] font-medium text-gray-200">{title}</div>
+                <div className="text-[11px] text-gray-500 mt-1">{meta}</div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            {(
+              [
+                ['audit', 'Audit'],
+                ['slo', 'SLO'],
+                ['schema', 'Schema'],
+                ['export', 'Export'],
+              ] as const
+            ).map(([id, label]) => (
+              <Button
+                key={id}
+                type="button"
+                size="sm"
+                variant={tab === id ? 'outline' : 'ghost'}
+                onClick={() => setTab(id)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        )}
         {gateNote ? <p className="text-gray-500">{gateNote}</p> : null}
 
-        {tab === 'overview' ? (
+        {tab === 'audit' ? (
           snap ? (
             <div className="rounded border border-gray-800 bg-black/30 p-3 space-y-2 font-mono text-[11px]">
               <div>
-                status={String(snap.status)} · via={String(snap.via || '—')} ·
-                certified={String(snap.certified)} · full_ops=
-                {String(snap.full_ops_console)} · freeze=
+                status={String(snap.status)} · certified={String(snap.certified)} · freeze=
                 {String(snap.n24_unified_audit_freeze)}
               </div>
               {snap.status === 'ok' ? (
                 <>
                   <div>
                     audit.recent={String(snap.audit?.recent_count ?? 0)} /
-                    listed={String(snap.audit?.listed ?? 0)}
+                    listed={String(snap.audit?.listed ?? 0)} · window=
+                    {String(snap.audit?.window_hours ?? snap.window_hours ?? 24)}h
                   </div>
-                  <div>
-                    slo.status={String(snap.slo?.snapshot_status || '—')} ·
-                    miss={String(snap.slo?.miss_count ?? 0)}
-                    {(snap.slo?.miss_metrics || []).length
-                      ? ` [${(snap.slo?.miss_metrics || []).join(', ')}]`
-                      : ''}
+                  <div className="text-gray-500">
+                    有界样本仅在 Export bundle 中附带（≤20）；本面板为近窗计数摘要。
                   </div>
-                  <div>panels={JSON.stringify(snap.panels || {})}</div>
                 </>
               ) : (
                 <div className="text-amber-400/90">{snap.note || snap.status}</div>
               )}
             </div>
           ) : (
-            <p className="text-gray-600">点击刷新加载产品面快照（无需 residual env）。</p>
+            <p className="text-gray-600">点击刷新加载 Audit 面板摘要。</p>
+          )
+        ) : null}
+
+        {tab === 'slo' ? (
+          snap ? (
+            <div className="rounded border border-gray-800 bg-black/30 p-3 space-y-2 font-mono text-[11px]">
+              <div>
+                slo.status={String(snap.slo?.snapshot_status || '—')} · miss=
+                {String(snap.slo?.miss_count ?? 0)}
+              </div>
+              {(snap.slo?.miss_metrics || []).length ? (
+                <div>miss_metrics=[{(snap.slo?.miss_metrics || []).join(', ')}]</div>
+              ) : (
+                <div className="text-gray-500">当前窗口无 SLO miss。</div>
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-600">点击刷新加载 SLO 面板摘要。</p>
           )
         ) : null}
 
@@ -560,6 +635,14 @@ const OpsConsolePanel: React.FC = () => {
 
         {tab === 'export' ? (
           <div className="space-y-2">
+            <label className="flex items-center gap-2 text-gray-400">
+              <input
+                type="checkbox"
+                checked={includeAuditSample}
+                onChange={(e) => setIncludeAuditSample(e.target.checked)}
+              />
+              <span>include_audit_sample（≤20；非完整 dump）</span>
+            </label>
             <Button
               type="button"
               size="sm"
@@ -568,8 +651,12 @@ const OpsConsolePanel: React.FC = () => {
               onClick={() => void runExport()}
             >
               <Download className={`h-3.5 w-3.5 mr-1 ${exporting ? 'animate-pulse' : ''}`} />
-              浏览器下载 JSON
+              下载通用 bundle JSON
             </Button>
+            <p className="text-gray-600">
+              bundle = snapshot + schema + audit_sample + slo_miss_detail；
+              export_complete=false · certified=false。
+            </p>
             {exportNote ? <p className="text-gray-500">{exportNote}</p> : null}
           </div>
         ) : null}
