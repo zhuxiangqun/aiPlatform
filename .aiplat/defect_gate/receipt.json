@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T07:45:00+08:00",
+  "reviewed_at": "2026-11-25T09:00:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "50e0d24c6762b3c3e585b67b486ded5f15017b0b",
-  "diff_sha256": "7def95d699b16c8cafab4ca43c9e55cc014b4a65e97bb52d64ec6163e23c1769",
-  "head_sha": "688b171a1adfec12677002d0744eb329e14e851c",
+  "merge_base": "c3ab9623e9cb6abf141927002813488f704450c7",
+  "diff_sha256": "e5e8f0d2465d71f3be30019c3aef544bb64c7160e082509836b5172cdb33bef5",
+  "head_sha": "0cdea948281790d86ad51c54a7014054cf51e853",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N13 after caps_count fix; CI truth gate pass locally. Local lock only."
+  "note": "SLO alert product after whitepaper sync; residual retained; product_surface true. Local lock only."
 }

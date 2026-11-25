@@ -7797,6 +7797,60 @@ def evaluate_knowledge_slo_alert_gate(
     return evaluate_slo_alert_gate(suite)
 
 
+def evaluate_knowledge_slo_alert_candidates_product(
+    tenant_id: str,
+    *,
+    domain_id: str = "",
+    window_hours: int = 24,
+    db_path: Any = None,
+    include_live: bool = True,
+) -> Dict[str, Any]:
+    """CoreFacade：SLO 产品面告警候选（默认可用；非投递；certified 恒 false）。
+
+    Args:
+        tenant_id: 租户。
+        domain_id: 可选域。
+        window_hours: 窗口小时。
+        db_path: 可选样本库。
+        include_live: 是否计入 live 源。
+    """
+    from core.harness.knowledge_pipeline.slo_telemetry import (
+        evaluate_slo_alert_candidates_product,
+    )
+
+    return evaluate_slo_alert_candidates_product(
+        tenant_id,
+        domain_id=domain_id,
+        window_hours=window_hours,
+        db_path=str(db_path) if db_path else None,
+        include_live=include_live,
+    )
+
+
+def run_knowledge_slo_alert_product_suite() -> Dict[str, Any]:
+    """CoreFacade：SLO 产品面告警套件（certified 恒 false）。"""
+    from core.harness.knowledge_pipeline.slo_telemetry import (
+        run_slo_alert_product_suite,
+    )
+
+    return run_slo_alert_product_suite()
+
+
+def evaluate_knowledge_slo_alert_product_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade：SLO 产品面告警门槛门（certified 恒 false）。
+
+    Args:
+        suite: ``run_slo_alert_product_suite`` 回执。
+    """
+    from core.harness.knowledge_pipeline.slo_telemetry import (
+        evaluate_slo_alert_product_gate,
+    )
+
+    return evaluate_slo_alert_product_gate(suite)
+
+
 def build_knowledge_ops_console_snapshot(
     tenant_id: str,
     *,

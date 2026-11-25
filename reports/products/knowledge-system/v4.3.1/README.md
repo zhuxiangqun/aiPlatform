@@ -155,6 +155,7 @@ authority: supporting
 | [phase2-slo-telemetry-freeze-evidence.md](./phase2-slo-telemetry-freeze-evidence.md) | SLO：遥测面冻结（Operational-sufficient / wiring≠attainment / 非达标宣称 / ADR 例外行保留） |
 | [phase2-slo-attainment-window-evidence.md](./phase2-slo-attainment-window-evidence.md) | SLO：生产达标窗口（显式 residual；窗口+非作者批准→attainment_ok；certified 恒假） |
 | [phase2-slo-alerting-residual-evidence.md](./phase2-slo-alerting-residual-evidence.md) | SLO residual：opt-in 告警候选（不可用诚实上报；非 pager 投递/非 certified） |
+| [phase2-slo-alert-product-evidence.md](./phase2-slo-alert-product-evidence.md) | SLO 产品面第一刀：告警候选（默认可用；非 pager 投递/非 certified） |
 | [phase2-n01-raw-integrity-freeze-evidence.md](./phase2-n01-raw-integrity-freeze-evidence.md) | N01：Raw/连接器面冻结（Core-sufficient / 非 vendor 矩阵 / 非 certified / ADR 例外行保留） |
 | [phase2-n02-object-type-freeze-evidence.md](./phase2-n02-object-type-freeze-evidence.md) | N02：ObjectType 发布面冻结（Core-sufficient / 非全量门户 / 非 certified / ADR 例外行保留） |
 | [phase2-remaining-adr-freeze-evidence.md](./phase2-remaining-adr-freeze-evidence.md) | 剩余 ADR 例外面批量冻结（N03/N04·N12/N05/N06/N10/N11·N14/N13/N17–N21/N23；sufficient / 非 certified） |

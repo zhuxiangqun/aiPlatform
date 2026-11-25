@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4226
+total_capabilities: 4230
 last_updated: 2026-11-24
 version: "30.14"
 auto_sync: true
@@ -1371,7 +1371,8 @@ scan_hash: 8f9548ec24f4
 | **Knowledge SDK 写盘安装（v4.3.1 显式 residual）** | `install_sdk_python` / `resolve_sdk_install_root` + Facade `install_knowledge_sdk` + `POST …/fde/sdk/install/{object_type}` | ✅ | allowlist `aiplat-sdk/aiplat/knowledge/`；path escape / 非 allowlist 拒绝；仍要 `kb:read`。证据 `phase2-sdk-write-install-evidence.md`。**未宣称** 多语言/PyPI/字段 ACL/N24 certified | 本批 |
 | **Knowledge SLO 遥测接线（v4.3.1 F1 deepen）** | `harness/knowledge_pipeline/slo_telemetry.py` + CoreFacade + `GET/POST …/fde/slo/*` | ✅ | 白皮书 §14 三指标采集/快照/接线门；wiring≠attainment；**`slo_telemetry_freeze` 停止默认 SLO wiring deepen**。证据 `phase2-slo-telemetry-wiring-evidence.md` + `phase2-slo-telemetry-freeze-evidence.md`。**未宣称** 生产达标/告警/Full unconditional | 本批 |
 | **Knowledge SLO 达标窗口（v4.3.1 显式 residual）** | `evaluate_slo_attainment_window` + Facade + `POST …/fde/slo/evaluate-attainment` | ✅ | 窗口三指标达标 + 非作者 SLO 批准 → `attainment_ok`；拒复用 Full 批准；`certified`/`n24_full_conformance` 恒假。证据 `phase2-slo-attainment-window-evidence.md`。**未宣称** Full unconditional / 告警投递 | 本批 |
-| **Knowledge SLO 告警候选 residual** | `evaluate_slo_alert_candidates` + Facade/HTTP `evaluate-alerts` | ✅ | 未达标/无样本 → 结构化候选；`AIPLAT_KNOWLEDGE_SLO_ALERT=1` 实网；suite `slo_alert_opt_in`/`slo_alert_unavailable`；freeze 仍 true；certified/Full/attainment_ok 恒 false。证据 `phase2-slo-alerting-residual-evidence.md`。**未宣称** pager 投递 / certified。生成物适用：已接线（经 Facade） | 本批 |
+| **Knowledge SLO 告警候选 residual** | `evaluate_slo_alert_candidates` + Facade/HTTP `evaluate-alerts` | ✅ | 未达标/无样本 → 结构化候选；`AIPLAT_KNOWLEDGE_SLO_ALERT=1` 实网；suite `slo_alert_opt_in`/`slo_alert_unavailable`；freeze 仍 true；certified/Full/attainment_ok 恒 false。证据 `phase2-slo-alerting-residual-evidence.md`。**产品面第一刀**：`evaluate_slo_alert_candidates_product`（默认可用；`slo_alert_product_surface=true`；证据 `phase2-slo-alert-product-evidence.md`）。**未宣称** pager 投递 / certified。生成物适用：已接线（经 Facade） | 本批 |
+| **SLO 告警候选产品面第一刀** | `evaluate_slo_alert_candidates_product` + `/slo/product*` + `SloAlertPanel` | ✅ | 默认可用（无 residual env）；仍仅结构化候选；`slo_alert_product_surface=true`；certified/`attainment_ok` 恒 false；freeze 仍 true。证据 `phase2-slo-alert-product-evidence.md`。**未宣称** pager 投递 / certified。生成物适用：已接线（管理端） | 本批 |
 | **Wiki/KB 字段 ACL（v4.3.1 N07/N22 deepen）** | `syscalls/retrieval.py` + `knowledge_pipeline/retriever.py` + `knowledge/okf_exporter.py` + `knowledge/knowledge_ontology.py` + `knowledge/evolution_runner.py` + `policy/field_level_security.py` + `graph_abox_acl.py` + `wiki_field_security.py` + FDE `graph/acl` + `FieldAclPanel.tsx` / `AboxAclPanel.tsx` | ✅ | 统一检索/KB/CRAG + 导出字段脱敏 + EvolutionRunner + platform auto 身份透传 + 字段/ABox ACL 薄 UI + DELETE + preview + H.1 有界条件面（至 expr-lang A+B+C）+ **`n07_n22_h1_condition_freeze` 停止默认 condition-op deepen** + masked_properties + apply/list/get_h1 + 薄表单 + 薄矩阵 + per-role 矩阵（`role_actions`）+ 配置轴（`h1_matrix_axes` / `crud_matrix.h1_matrix_*`）；证据 `phase2-abox-acl-h1-condition-freeze-evidence.md`。**未宣称** certified / `$where`/`$expr` / 任意 RBAC 产品。生成物适用：已接线 | 本批 |
 | **Knowledge Pipeline 生成物适用性** | 生成 agent 运行时知识检索接入 | ⚠️ | 生成物不适用（理由：生成 agent 运行时知识检索由 core 全局 syscall `sys_kb_retrieve`（harness/syscalls/retrieval.py，ReActLoop 天然可用）平台横切强制执行，生成物无需自建检索路径；与 platform kb 能力族评估结论一致，2026-08-27 收尾） | 已评估 |
 | **CC/Codex hooks 协议桥（G6）** | `harness/infrastructure/hooks/cc_bridge.py` + `cc_bridge_rules.py` | ✅ | 直接消费 Claude Code / Codex `hooks.json`：事件映射表（CC 7/30 + Codex 4/10 → HookPhase 子集）+ command handler 执行（shell=False/超时/fail-open）+ 默认关（`~/.aiplat/hooks.json` 或 `AIPLAT_CC_HOOKS_PATH` 存在时装载）；http/mcp_tool/prompt/agent handler 跳过记 WARNING，unmapped 事件不静默执行（对齐 DSH hooks 桥诚实披露） | 已合入 |
@@ -1927,6 +1928,9 @@ scan_hash: 8f9548ec24f4
 | evaluate_slo_attainment_window | `core/harness/knowledge_pipeline/slo_telemetry.py` | ✅ | SLO 达标窗口（≠certified） | 本批 |
 | evaluate_knowledge_slo_attainment_window | `core/api/core_facade.py` | ✅ | Facade 达标窗口入口 | 本批 |
 | evaluate_slo_alert_candidates | `core/harness/knowledge_pipeline/slo_telemetry.py` | ✅ | SLO residual 告警候选（非投递/非 certified） | 本批 |
+| evaluate_slo_alert_candidates_product | `core/harness/knowledge_pipeline/slo_telemetry.py` | ✅ | SLO 产品面告警候选（默认可用；非投递/非 certified） | 本批 |
+| run_slo_alert_product_suite | `core/harness/knowledge_pipeline/slo_telemetry.py` | ✅ | SLO 产品面告警套件 | 本批 |
+| evaluate_slo_alert_product_gate | `core/harness/knowledge_pipeline/slo_telemetry.py` | ✅ | SLO 产品面告警门槛门 | 本批 |
 | build_ops_console_snapshot | `core/harness/knowledge_pipeline/ops_console.py` | ✅ | N24 residual 运维台薄壳（非全量/非 certified） | 本批 |
 | record_knowledge_slo_sample | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
 | get_knowledge_slo_snapshot | `core/api/core_facade.py` | ✅ | 自动同步 | 本批 |
@@ -5127,9 +5131,9 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 804 | 1 | 805 |
+| Harness 执行引擎 | 805 | 1 | 806 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 890 | 9 | 899 |
+| 知识引擎（本体） | 893 | 9 | 902 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
@@ -5172,7 +5176,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4215** | **11** | **4226** |
+| **总计** | **4219** | **11** | **4230** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
