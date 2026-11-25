@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T09:52:00+08:00",
+  "reviewed_at": "2026-11-25T10:33:33+08:00",
   "base_ref": "origin/main",
-  "merge_base": "927bfa075de9f8f62cbe86e9e3793a5494ee5551",
-  "diff_sha256": "ccd609d0d481619718d48692dfd20c1a62f851ada8cc23eedcc1017b34db2fd9",
-  "head_sha": "01231bc7196c510adf7e37011202d88ecaad2632",
+  "merge_base": "1f6efe4fa18b3abe4ba095c895b82513c2a78da1",
+  "diff_sha256": "5ca868661fec0dc3b5f1a952c95de4e9eff26d4449c74d9618d1fe2dac5ff889",
+  "head_sha": "dc32b611f4a9b4284e1452e488648def24acc693",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "N02 bulk product rebased onto main(+N07); bulk_product_surface=true; residual retained; certified false. Local lock only."
+  "note": "N24 ops console slice-2: multi-panel + general bundle; residual paths retained; certified/export_complete honesty locked. Local lock only."
 }

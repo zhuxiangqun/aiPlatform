@@ -47,6 +47,9 @@ class OpsConsoleExportBody(BaseModel):
     include_live: bool = Field(default=False)
     write: bool = Field(default=False)
     output_root: Optional[str] = Field(default=None)
+    include_audit_sample: bool = Field(default=True)
+    object_type_id: str = Field(default="")
+    audit_sample_limit: int = Field(default=20, ge=1, le=20)
 
 
 class OpsConsoleSchemaSaveBody(BaseModel):
@@ -277,11 +280,11 @@ async def ops_console_product_export_route(
     body: OpsConsoleExportBody,
     x_aiplat_tenant_id: Optional[str] = Header(None, alias="X-AIPLAT-TENANT-ID"),
 ) -> Dict[str, Any]:
-    """N24 产品面：浏览器可下载 JSON 导出（certified 恒假）。
+    """N24 产品面：通用 ops bundle 浏览器导出（certified / export_complete 恒假）。
 
     Args:
         request: FastAPI Request。
-        body: 导出参数。
+        body: 导出参数（``include_audit_sample`` 默认 true；上限服务端钳制）。
         x_aiplat_tenant_id: 租户 header。
     """
     from core.api.core_facade import export_knowledge_ops_console_product
@@ -289,6 +292,8 @@ async def ops_console_product_export_route(
     tid = _tenant_from(request, x_aiplat_tenant_id, str(body.tenant_id or ""))
     if not tid:
         raise HTTPException(status_code=400, detail="tenant_id_required")
+    # 为什么：HTTP 层再钳一次，防止客户端绕过 Pydantic 上限
+    sample_limit = max(1, min(int(body.audit_sample_limit or 20), 20))
     out = export_knowledge_ops_console_product(
         tid,
         domain_id=str(body.domain_id or ""),
@@ -296,6 +301,9 @@ async def ops_console_product_export_route(
         include_live=bool(body.include_live),
         output_root=body.output_root,
         write=bool(body.write),
+        include_audit_sample=bool(body.include_audit_sample),
+        object_type_id=str(body.object_type_id or ""),
+        audit_sample_limit=sample_limit,
     )
     if out.get("status") == "invalid":
         raise HTTPException(status_code=400, detail=out.get("error") or "invalid")

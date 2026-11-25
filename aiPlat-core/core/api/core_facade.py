@@ -8201,8 +8201,12 @@ def export_knowledge_ops_console_product(
     include_live: bool = False,
     output_root: Any = None,
     write: bool = False,
+    include_audit_sample: bool = True,
+    object_type_id: str = "",
+    schema_db_path: Any = None,
+    audit_sample_limit: int = 20,
 ) -> Dict[str, Any]:
-    """CoreFacade：N24 运维台产品面导出（浏览器下载；certified 恒 false）。
+    """CoreFacade：N24 运维台产品面通用 bundle 导出（浏览器下载；certified 恒 false）。
 
     Args:
         tenant_id: 租户。
@@ -8213,6 +8217,10 @@ def export_knowledge_ops_console_product(
         include_live: SLO 是否计入 live 源。
         output_root: 可选写盘根（allowlist）。
         write: 是否顺带服务端写盘。
+        include_audit_sample: 是否附带有界 audit 样本。
+        object_type_id: 可选 schema 类型过滤。
+        schema_db_path: 可选 ObjectType 发布库。
+        audit_sample_limit: audit 样本上限（服务端钳制）。
     """
     from core.harness.knowledge_pipeline.ops_console import export_ops_console_product
 
@@ -8225,6 +8233,10 @@ def export_knowledge_ops_console_product(
         include_live=include_live,
         output_root=str(output_root) if output_root else None,
         write=write,
+        include_audit_sample=include_audit_sample,
+        object_type_id=str(object_type_id or ""),
+        schema_db_path=str(schema_db_path) if schema_db_path else None,
+        audit_sample_limit=int(audit_sample_limit or 20),
     )
 
 

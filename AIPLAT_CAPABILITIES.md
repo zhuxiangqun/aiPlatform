@@ -1,6 +1,6 @@
 ---
-total_capabilities: 4241
-last_updated: 2026-11-24
+total_capabilities: 4242
+last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
 core_guarantees:
@@ -1224,8 +1224,9 @@ scan_hash: 8f9548ec24f4
 | **Unified Audit UI（v4.3.1 N24 J4/J12–J17）** | 知识工厂 `UnifiedAuditPanel` → J3/J5 HTTP（list/filter/suite/gate/materialize/bus/append + bus suite/gate） | ✅ | 统一审计薄面板；J12–J16 既有加深；J17 事件详情展开（refs/payload）+ bus event_type 过滤；UI 诚实锁；**`n24_unified_audit_freeze` 停止默认 N24 deepen**；certified 恒 false。证据 `phase2-unified-audit-ui-evidence.md` + … + `phase2-unified-audit-ui-event-detail-evidence.md` + `phase2-n24-unified-audit-freeze-evidence.md`。**未宣称** N24 certified / 全量运维台。生成物适用：已接线（管理端展示） | 本批 |
 | **Ops Console 薄壳 residual（N24）** | `build_ops_console_snapshot` + Facade/HTTP `/ops-console*` + `OpsConsolePanel` | ✅ | 聚合统一审计近窗 + SLO 概况；`AIPLAT_KNOWLEDGE_OPS_CONSOLE=1`；suite `ops_console_opt_in`/`ops_console_unavailable`；freeze 仍 true；certified/full_ops_console 恒 false。证据 `phase2-n24-ops-console-residual-evidence.md`。**未宣称** 全量运维台 / certified。生成物适用：已接线（管理端展示） | 本批 |
 | **Ops Console 有界导出 residual（N24）** | `export_ops_console_snapshot` + Facade/HTTP `/ops-console/export*` + 面板导出按钮 | ✅ | 有界 JSON 写盘（allowlist）；`AIPLAT_KNOWLEDGE_OPS_CONSOLE_EXPORT=1`；suite `ops_console_export_opt_in`/`ops_console_export_unavailable`；`export_complete`/certified/full_ops_console/schema_editor 恒 false；freeze 仍 true。证据 `phase2-n24-ops-console-export-residual-evidence.md`。**未宣称** 全量下载产品化 / 全量运维台 / certified。生成物适用：已接线（管理端触发） | 本批 |
-| **Ops Console 产品面第一刀（N24）** | `build_ops_console_product_snapshot` + schema get/save + `export_ops_console_product` + `/ops-console/product*` + `OpsConsolePanel` 三区 | ✅ | 默认可用（无 residual env）；`full_ops_console=true`；ObjectType schema JSON 编辑（draft）；浏览器下载导出；certified/`export_complete` 恒 false；freeze 仍 true。证据 `phase2-n24-ops-console-product-evidence.md`。**未宣称** certified。生成物适用：已接线（管理端） | 本批 |
+| **Ops Console 产品面第一刀（N24）** | `build_ops_console_product_snapshot` + schema get/save + `export_ops_console_product` + `/ops-console/product*` + `OpsConsolePanel` | ✅ | 默认可用（无 residual env）；`full_ops_console=true`；ObjectType schema JSON 编辑（draft）；浏览器下载导出；certified/`export_complete` 恒 false；freeze 仍 true。证据 `phase2-n24-ops-console-product-evidence.md`。**产品面第二刀**：四面板 + 通用 bundle（证据 `phase2-n24-ops-console-product-slice2-evidence.md`）。**未宣称** certified。生成物适用：已接线（管理端） | 本批 |
 | **Ops Console Schema 表单编辑器（N24）** | `normalize_ops_console_schema_form` / `definition_from_ops_console_schema_form` + save `form=` + `OpsConsolePanel` 字段表 | ✅ | 产品面字段表单（name/type/required/description）+ JSON 高级模式；`schema_form_editor=true`；suite `ops_console_product_schema_form`；certified 恒 false；freeze 仍 true。证据 `phase2-n24-ops-console-schema-form-evidence.md`。**未宣称** 自由布局可视化设计器 / certified。生成物适用：已接线（管理端） | 本批 |
+| **Ops Console 产品面第二刀（N24）** | `panel_summaries` 四面板 + `export_ops_console_product` 通用 bundle（snapshot/schema/audit_sample≤20/slo_miss）+ `/ops-console/product*` + `OpsConsolePanel` 四 Tab | ✅ | 默认可用；`ops_console_general_export=true`；suite `ops_console_product_multi_panel`/`ops_console_product_general_export`；certified/`export_complete` 恒 false；freeze 仍 true。证据 `phase2-n24-ops-console-product-slice2-evidence.md`。**未宣称** export_complete / 自由布局设计器 / certified。生成物适用：已接线（管理端） | 本批 |
 | **Unified Audit Bus（v4.3.1 N24 J5）** | `append_unified_audit_event` / materialize / suite / gate + Facade + FDE `/unified-audit/append|bus|materialize` | ✅ | append-only 写总线；revision_audit 热路径；门槛门 certified 恒 false。证据 `phase2-unified-audit-bus-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（经 Facade） | 本批 |
 | **Unified Audit Hotpath（v4.3.1 N24 J6）** | `publish_package` / `persist_execution` best-effort → bus；suite 增 package/action hotpath | ✅ | Package/Action 热路径写总线；与 materialize 幂等共存；门槛门 certified 恒 false。证据 `phase2-unified-audit-hotpath-evidence.md`。**未宣称** ActionStore 合并 / N24 certified。生成物适用：已接线（生产写路径） | 本批 |
 | **Unified Audit FactQuery Bus Hotpath（v4.3.1 N24 J11）** | `_maybe_append_fact_query_to_bus` / `record_audit_snapshot` → bus | ✅ | Fact/Query 快照写入后 best-effort 入统一总线；与 J10 materialize 幂等；门槛门 certified 恒 false。证据 `phase2-unified-audit-fact-query-bus-hotpath-evidence.md`。**未宣称** N24 certified。生成物适用：已接线 | 本批 |
@@ -5142,7 +5143,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 807 | 1 | 808 |
+| Harness 执行引擎 | 808 | 1 | 809 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 902 | 9 | 911 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5187,7 +5188,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4230** | **11** | **4241** |
+| **总计** | **4231** | **11** | **4242** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
