@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3390
+total_capabilities: 3394
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 722
+    caps_count: 726
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2866,6 +2866,22 @@ domains:
       - symbol: evaluate_evo_compute_g1_gate
         type: function
         signature: "CoreFacade evaluate_evo_compute_g1_gate"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_pilot_de_es_battery
+        type: function
+        signature: "run_pilot_de_es_battery(...); 3-pilot DE/ES; g1_complete=false"
+        module: aiPlat-core/core/harness/evo_compute/battery.py
+      - symbol: run_evo_compute_g1_slice2_suite
+        type: function
+        signature: "run_evo_compute_g1_slice2_suite()→dict; g1_complete=false"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: run_evo_pilot_de_es_battery
+        type: function
+        signature: "CoreFacade run_evo_pilot_de_es_battery"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_compute_g1_slice2_suite
+        type: function
+        signature: "CoreFacade run_evo_compute_g1_slice2_suite"
         module: aiPlat-core/core/api/core_facade.py
     breaks: []
     consumers_expected:

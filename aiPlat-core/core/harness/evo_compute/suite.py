@@ -416,3 +416,98 @@ def evaluate_evo_compute_g1_gate(suite: Optional[Dict[str, Any]] = None) -> Dict
         "e2_claimed": False,
         "suite": s,
     }
+
+
+def run_evo_compute_g1_slice2_suite() -> Dict[str, Any]:
+    """G1 slice-2：三试点 DE/ES 电池 + 指标汇总；``g1_complete`` 恒 false。"""
+    from core.harness.evo_compute.battery import run_pilot_de_es_battery
+    from core.harness.evo_compute.budget import approve_budget, clear_budget_for_tests
+    from core.harness.evo_compute.drill import run_human_gate_canary_rollback_drill
+    from core.harness.evo_compute.exit_readiness import evaluate_g1_exit_readiness
+    from core.harness.evo_compute.genome_registry import clear_registry_for_tests
+    from core.harness.evo_compute.safety import clear_safety_for_tests
+
+    clear_registry_for_tests()
+    clear_budget_for_tests()
+    clear_safety_for_tests()
+    cases: list = []
+
+    approve_budget(actor="g1-slice2-suite", persist=False)
+    bat = run_pilot_de_es_battery(
+        algorithms=["de", "es"],
+        population_size=6,
+        generations=2,
+        seed=42,
+        register_pilots=True,
+        run_holdout=True,
+    )
+    summary = bat.get("summary") or {}
+    cases.append(
+        {
+            "id": "three_pilot_battery_ok",
+            "pass": bool(bat.get("ok"))
+            and len(bat.get("genome_ids") or []) == 3
+            and bat.get("production_write") is False,
+        }
+    )
+    cases.append(
+        {
+            "id": "repro_rate_gate",
+            "pass": bool(summary.get("meets_repro_gate"))
+            and float(summary.get("reproducible_rate") or 0) >= 0.95,
+        }
+    )
+    cases.append(
+        {
+            "id": "lineage_and_hard_gates",
+            "pass": bool(summary.get("meets_lineage_gate"))
+            and bool(summary.get("meets_hard_gate")),
+        }
+    )
+    cases.append(
+        {
+            "id": "holdout_at_least_one",
+            "pass": bool(summary.get("meets_holdout_gate"))
+            and int(summary.get("holdout_significant_count") or 0) >= 1,
+        }
+    )
+
+    drill = run_human_gate_canary_rollback_drill(candidate_id="g1-s2-drill")
+    cases.append(
+        {
+            "id": "drill_ok",
+            "pass": bool(drill.get("ok")) and drill.get("production_write") is False,
+        }
+    )
+
+    ready = evaluate_g1_exit_readiness(
+        de_es_ok=bool(bat.get("ok")),
+        lineage_rate=float(summary.get("lineage_min") or 0),
+        reproducible=bool(summary.get("meets_repro_gate")),
+        hard_constraint_ok=bool(summary.get("meets_hard_gate")),
+        holdout_significant=bool(summary.get("meets_holdout_gate")),
+        drill_ok=bool(drill.get("ok")),
+    )
+    cases.append(
+        {
+            "id": "g1_exit_readiness_from_battery",
+            "pass": bool(ready.get("ok"))
+            and ready.get("certified") is False
+            and ready.get("e2_claimed") is False,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "battery_summary": summary,
+        "exit_ready": bool(ready.get("ready")),
+        "g1_foundation": True,
+        "g1_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "note": "G1 slice-2 three-pilot battery; suite green ≠ claimed G1/E2 exit",
+    }

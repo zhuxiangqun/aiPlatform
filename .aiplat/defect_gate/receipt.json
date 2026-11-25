@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T19:57:38+08:00",
+  "reviewed_at": "2026-11-25T20:54:45+08:00",
   "base_ref": "origin/main",
-  "merge_base": "6ec02cae84792f81d79766542ebbb9eddd6e859b",
-  "diff_sha256": "c05dc29b13b3fdd804cb8af5b17273cbde41ad52cfd39d203217e6ffa644f215",
-  "head_sha": "f69cdc0757d7eecb0550e394e44ab2d5637be0dd",
+  "merge_base": "a2a94c861aa7040eb2e417ef090ff7fef5a18151",
+  "diff_sha256": "dca6c7fba5f87151132de0d6b8ca8c6eff6f10eab61be9fa789cda123d2239e4",
+  "head_sha": "3c9f443ad65a4e6589cf1d5f9f20d9d451fb0f78",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G1 DE/ES slice-1; CAPABILITIES stats + whitepaper sync; zero findings"
+  "note": "G1 slice-2 three-pilot DE/ES battery; g1_complete=false; zero findings"
 }

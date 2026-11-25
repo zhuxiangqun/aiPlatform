@@ -22,6 +22,7 @@ last_reviewed: 2026-11-25
 > **2026-11-25**：G0 **slice-2** 已接线（三试点 genome + 预算硬上限 + 安全边界契约 + 夹具回放 + `evaluate_g0_exit_readiness`）；证据 `reports/architecture/evo-compute/phase0-g0-pilots-slice2-evidence.md`。  
 > **2026-11-25**：G0 **人工签批**（对话「批准」；actor=`zhu-ying`）— 预算上限 + 安全边界已签字；夹具回放齐备后 `evaluate_g0_exit_readiness.phase0_complete=true`；证据 `reports/architecture/evo-compute/phase0-g0-human-signoff-evidence.md`。  
 > **2026-11-25**：G1 **slice-1** 已接线（DE/ES 离线 Orchestrator + holdout 代理确认 + Human Gate/Canary/回滚状态机演练）；证据 `reports/architecture/evo-compute/phase1-g1-de-es-slice1-evidence.md`。套件 `g1_complete=false`。  
+> **2026-11-25**：G1 **slice-2** 已接线（三试点 DE/ES 电池 + 可复现/血缘/holdout 汇总）；证据 `reports/architecture/evo-compute/phase1-g1-pilots-battery-slice2-evidence.md`。套件 `g1_complete=false`。  
 > **未宣称** 生产流量 holdout 认证 / 真实 Canary 上线 / E2 / 闭环已测 L4；`certified`/`e2_claimed` 恒 false。
 
 ## 0. 结论先行
@@ -582,7 +583,9 @@ Canary / 回滚 / Human Gate 演练通过（含状态 HUMAN_GATE）
 ```
 
 > slice-1 进度：DE/ES 离线 Orchestrator、代理 holdout 确认、状态机演练 **已可用**；适应度为确定性代理（非生产流量）。  
-> **不得**因 slice-1 套件绿宣称 G1/E2 完成；生产 holdout / 真实 Canary 仍属加深项。
+> slice-2 进度：§9 三试点电池已跑通，可复现/血缘/硬约束/holdout 汇总门 **可用**（代理指标）。  
+> **不得**因 slice-1/2 套件绿宣称 G1/E2 完成；生产 holdout / 真实 Canary 仍属加深项。
+
 ### Phase 2：GA + 评测/FDE（M7–M9）
 
 交付：
