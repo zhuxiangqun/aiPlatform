@@ -1,8 +1,8 @@
 ---
-doc_type: Evidence
+doc_type: Report
 title: Phase 0 / G0 — 受控演化底座最小切片（Genome + Fitness + Sandbox + 基线）
 status: active
-authority: evidence
+authority: supporting
 language: zh-CN
 created: 2026-11-25
 ---
