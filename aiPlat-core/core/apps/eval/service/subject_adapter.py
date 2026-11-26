@@ -1781,12 +1781,6 @@ class ToolSubjectAdapter:
             base["tier_claim_illegal"] = bound.get("tier_claim_illegal")
         return base
 
-
-class McpSubjectAdapter(ToolSubjectAdapter):
-    """MCP subject（E09）：复用 Tool fixture 路径；subject_kind=mcp。"""
-
-    subject_kind = "mcp"
-
     def capability_catalog(self) -> List[Dict[str, Any]]:
         """返回 Tool/MCP v1 可测能力目录。
 
@@ -1995,6 +1989,12 @@ class McpSubjectAdapter(ToolSubjectAdapter):
             "v1_in_scope": all(c in self.v1_caps for c in caps) if caps else False,
             "capabilities": caps,
         }
+
+
+class McpSubjectAdapter(ToolSubjectAdapter):
+    """MCP subject（E09）：复用 Tool fixture 路径；subject_kind=mcp。"""
+
+    subject_kind = "mcp"
 
 
 def _handoff_edges(handoffs: Sequence[Any]) -> List[tuple]:

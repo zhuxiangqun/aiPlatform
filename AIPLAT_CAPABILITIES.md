@@ -570,6 +570,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_interop_operational_bundle | `core/harness/maintenance/interop_operational.py` | ✅ | 自动同步 | 已合入 |
 | compare_evo_pso_vs_de_es | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | run_evo_pso_offline | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | pso_step | `core/harness/evo_compute/pso.py` | ✅ | 自动同步 | 已合入 |
@@ -2661,6 +2662,10 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_fde_operational_bundle | `core/apps/fde/service/operational_contracts.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_eval_operational_bundle | `core/apps/eval/service/operational_gates.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_eval_production_sla_authorize | `core/apps/eval/service/operational_gates.py` | ✅ | 自动同步 | 已合入 |
+| list_e09_subject_kinds | `core/apps/eval/service/interop_subject.py` | ✅ | 自动同步 | 已合入 |
 | default_tool_retrieval_cases | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
 | environment_ready_for_family | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
 | retrieval_env_available | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
