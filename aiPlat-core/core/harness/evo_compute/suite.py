@@ -2004,3 +2004,104 @@ def evaluate_evo_compute_production_deepen_slice4_gate(
         "d4_signed": bool(s.get("d4_signed")),
         "suite": s,
     }
+
+def run_evo_compute_pso_baseline_suite() -> Dict[str, Any]:
+    """PSO 离线基线对照套件；不宣称优于 DE/ES / Gate 完成。"""
+    from core.harness.evo_compute.pilots import register_pilot_genomes
+    from core.harness.evo_compute.pso import compare_pso_vs_de_es, run_pso_offline
+
+    register_pilot_genomes(persist=False)
+    cases: list = []
+    gid = "routing.weights.v1"
+
+    pso = run_pso_offline(genome_id=gid, swarm_size=6, iterations=4, seed=7)
+    cases.append(
+        {
+            "id": "pso_offline_ok",
+            "pass": pso.get("ok") is True
+            and pso.get("algorithm") == "pso"
+            and pso.get("baseline_only") is True
+            and pso.get("g1_complete") is False
+            and pso.get("certified") is False
+            and pso.get("e2_claimed") is False
+            and pso.get("production_write") is False
+            and float((pso.get("gbest") or {}).get("fitness", {}).get("quality") or 0) > 0,
+        }
+    )
+    cases.append(
+        {
+            "id": "pso_reproducible_and_lineage",
+            "pass": pso.get("reproducible_check") is True
+            and float(pso.get("lineage_completeness") or 0) >= 1.0,
+        }
+    )
+
+    pso2 = run_pso_offline(genome_id=gid, swarm_size=6, iterations=4, seed=7)
+    cases.append(
+        {
+            "id": "pso_same_seed_gbest_stable",
+            "pass": (pso.get("gbest") or {}).get("fitness", {}).get("quality")
+            == (pso2.get("gbest") or {}).get("fitness", {}).get("quality"),
+        }
+    )
+
+    cmp = compare_pso_vs_de_es(
+        genome_id=gid, population_size=6, generations=4, seed=11, de_algorithm="de"
+    )
+    cases.append(
+        {
+            "id": "compare_pso_vs_de",
+            "pass": cmp.get("ok") is True
+            and cmp.get("baseline_only") is True
+            and cmp.get("pso_claimed_superior") is False
+            and cmp.get("g1_complete") is False
+            and "delta_quality_pso_minus_de" in cmp,
+        }
+    )
+
+    miss = run_pso_offline(genome_id="nonexistent.genome.v0", swarm_size=4, iterations=2)
+    cases.append(
+        {
+            "id": "unknown_genome_fails",
+            "pass": miss.get("ok") is False and miss.get("baseline_only") is True,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "pso-baseline",
+        "baseline_only": True,
+        "g1_foundation": True,
+        "g1_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "note": "PSO baseline-only suite; ≠ primary algorithm / gate claim",
+    }
+
+
+def evaluate_evo_compute_pso_baseline_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """PSO 基线门槛门；complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_pso_baseline_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_pso_baseline_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "baseline_only": True,
+        "g1_foundation": True,
+        "g1_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "suite": s,
+    }

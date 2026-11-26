@@ -9,6 +9,7 @@
   - 生产加深 D2：版本化 holdout 分区
   - 生产加深 D3：SkillRouter Canary 切流/观察/回滚（默认沙箱）
   - 生产加深 D4：活台账 HITL 100% + 已测 L4/缓释签批包
+  - PSO 离线基线对照（非主算法）
 
 非目标：
   - 不写生产配置、不采生产流量、不宣称 E2/L4/认证
@@ -16,6 +17,7 @@
   - 套件绿 ≠ Gate 宣称完成；AIS 不自动修复；GP 不生成核心代码
   - D3 默认沙箱路由器；``use_global_router`` 才触达全局并标 production_write
   - D4 ``d4_signed`` ≠ ``g3_complete`` / E2
+  - PSO 仅基线对照，不宣称优于 DE/ES
 """
 
 from core.harness.evo_compute.ais import (
@@ -106,6 +108,7 @@ from core.harness.evo_compute.live_sources import (
 )
 from core.harness.evo_compute.loops_l4 import build_loops_l4_assessment_report
 from core.harness.evo_compute.orchestrator import run_de_es_offline
+from core.harness.evo_compute.pso import compare_pso_vs_de_es, run_pso_offline
 from core.harness.evo_compute.pilots import (
     list_pilot_genome_ids,
     pilot_genome_specs,
@@ -146,6 +149,7 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_production_deepen_slice2_gate,
     evaluate_evo_compute_production_deepen_slice3_gate,
     evaluate_evo_compute_production_deepen_slice4_gate,
+    evaluate_evo_compute_pso_baseline_gate,
     run_evo_compute_g0_suite,
     run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
@@ -159,6 +163,7 @@ from core.harness.evo_compute.suite import (
     run_evo_compute_production_deepen_slice2_suite,
     run_evo_compute_production_deepen_slice3_suite,
     run_evo_compute_production_deepen_slice4_suite,
+    run_evo_compute_pso_baseline_suite,
 )
 
 __all__ = [
@@ -201,6 +206,9 @@ __all__ = [
     "evaluate_evo_compute_production_deepen_slice2_gate",
     "evaluate_evo_compute_production_deepen_slice3_gate",
     "evaluate_evo_compute_production_deepen_slice4_gate",
+    "evaluate_evo_compute_pso_baseline_gate",
+    "compare_pso_vs_de_es",
+    "run_pso_offline",
     "evaluate_g0_exit_readiness",
     "collect_production_deepen_d4_pack",
     "evaluate_production_deepen_d4_readiness",
@@ -256,6 +264,7 @@ __all__ = [
     "run_evo_compute_production_deepen_slice2_suite",
     "run_evo_compute_production_deepen_slice3_suite",
     "run_evo_compute_production_deepen_slice4_suite",
+    "run_evo_compute_pso_baseline_suite",
     "run_ga_offline",
     "run_gp_offline",
     "run_human_gate_canary_rollback_drill",
