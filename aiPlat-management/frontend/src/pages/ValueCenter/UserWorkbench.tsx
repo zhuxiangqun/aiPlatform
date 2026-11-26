@@ -37,6 +37,31 @@ const EMPTY_FDE: FDEData = {
   },
 };
 
+/** Coerce pending_decisions rows (evolve HITL or Spec) to FE card fields. */
+function normalizePendingDecision(row: unknown): FDEData['pending_decisions'][number] {
+  const r = (row && typeof row === 'object' ? row : {}) as Record<string, unknown>;
+  const summary = String(r.execution_summary || r.summary || '');
+  return {
+    spec_id: String(r.spec_id || r.domain_id || r.id || ''),
+    version: Number(r.version ?? 0) || 0,
+    days_in_review: Number(r.days_in_review ?? 0) || 0,
+    execution_summary: summary,
+  };
+}
+
+/** Coerce timeline rows: backend may emit ts/type or legacy at/event. */
+function normalizeTimelineEvent(row: unknown): TimelineEvent {
+  const r = (row && typeof row === 'object' ? row : {}) as Record<string, unknown>;
+  const type = String(r.type || r.event || '');
+  const summary = String(r.summary || (r.version ? `${type} · ${r.version}` : type));
+  return {
+    ts: String(r.ts || r.at || ''),
+    type,
+    spec_id: String(r.spec_id || ''),
+    summary,
+  };
+}
+
 /** workbench proxy returns ItemResponse `{ data: FDEData }`; tolerate flat body. */
 function normalizeFdeDashboard(body: unknown): FDEData {
   const raw = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
@@ -52,7 +77,7 @@ function normalizeFdeDashboard(body: unknown): FDEData {
     ...EMPTY_FDE,
     ...inner,
     pending_decisions: Array.isArray(inner.pending_decisions)
-      ? (inner.pending_decisions as FDEData['pending_decisions'])
+      ? inner.pending_decisions.map(normalizePendingDecision)
       : [],
     signal_alerts: Array.isArray(inner.signal_alerts)
       ? (inner.signal_alerts as FDEData['signal_alerts'])
@@ -61,7 +86,7 @@ function normalizeFdeDashboard(body: unknown): FDEData {
       ? (inner.trace_anomalies as FDEData['trace_anomalies'])
       : [],
     timeline: Array.isArray(inner.timeline)
-      ? (inner.timeline as FDEData['timeline'])
+      ? inner.timeline.map(normalizeTimelineEvent)
       : [],
     last_updated: String(inner.last_updated || ''),
     training: { ...EMPTY_FDE.training, ...trainingIn },
@@ -269,8 +294,12 @@ const UserWorkbench: React.FC = () => {
               color={fdeData.pending_decisions.length > 0 ? '#f59e0b' : '#22c55e'}
               items={fdeData.pending_decisions.map(d => ({
                 label: d.spec_id,
-                sub: `v${d.version} · ${d.days_in_review} 天`,
-                link: `/value-center/spec/${d.spec_id}`,
+                sub: d.execution_summary
+                  ? `${d.execution_summary.slice(0, 48)}${d.execution_summary.length > 48 ? '…' : ''} · ${d.days_in_review} 天`
+                  : `v${d.version} · ${d.days_in_review} 天`,
+                link: d.spec_id.startsWith('evo_')
+                  ? undefined
+                  : `/value-center/spec/${d.spec_id}`,
               }))}
               expanded={expandedCard}
               onToggle={(newId) => {
@@ -745,7 +774,7 @@ const UserWorkbench: React.FC = () => {
 
 const ExpandableCard: React.FC<{
   id: string; title: string; count: number; unit: string;
-  color: string; items: { label: string; sub: string; link: string }[];
+  color: string; items: { label: string; sub: string; link?: string }[];
   expanded: string | null; onToggle: (id: string | null) => void;
 }> = ({ id, title, count, unit, color, items, expanded, onToggle }) => {
   const isExpanded = expanded === id;

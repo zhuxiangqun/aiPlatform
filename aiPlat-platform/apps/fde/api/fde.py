@@ -226,8 +226,33 @@ async def get_fde_dashboard() -> Dict[str, Any]:
     return result
 
 
+def _days_in_review(created_at: str) -> int:
+    """从 ISO 时间戳算待审天数（UTC）；解析失败返回 0。
+
+    Args:
+        created_at: ISO8601 创建时间。
+
+    Returns:
+        非负整天数。
+    """
+    raw = (created_at or "").strip()
+    if not raw:
+        return 0
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return max(0, (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).days)
+    except Exception:
+        return 0
+
+
 def _collect_pending_decisions() -> List[Dict[str, Any]]:
-    """Real collector: Evolve HITL queue (AI FDE half-step)."""
+    """Real collector: Evolve HITL queue (AI FDE half-step).
+
+    字段契约对齐 UserWorkbench：spec_id / version / days_in_review / execution_summary；
+    另保留 id/kind 供后续 evolve 操作入口使用。
+    """
     try:
         from core.api.core_facade import list_fde_evolve_proposals
 
@@ -235,14 +260,25 @@ def _collect_pending_decisions() -> List[Dict[str, Any]]:
         for p in list_fde_evolve_proposals(limit=50):
             if p.get("review_status") != "pending_hitl":
                 continue
+            proposal_id = str(p.get("proposal_id") or "").strip()
+            domain_id = str(p.get("domain_id") or "").strip()
+            keys = list(p.get("keys") or [])
+            summary = str(p.get("summary") or "").strip()
+            # 为什么：FE 卡片用 spec_id 作 label/link；evolve 无 Spec 时用 domain 或 proposal
+            spec_id = domain_id or proposal_id or "evolve"
             out.append(
                 {
-                    "id": p.get("proposal_id"),
+                    "spec_id": spec_id,
+                    "version": len(keys),
+                    "days_in_review": _days_in_review(str(p.get("created_at") or "")),
+                    "execution_summary": summary
+                    or (f"evolve HITL · {proposal_id}" if proposal_id else "evolve HITL"),
+                    "id": proposal_id,
                     "kind": "evolve_proposal",
-                    "summary": p.get("summary") or "",
-                    "domain_id": p.get("domain_id") or "",
+                    "summary": summary,
+                    "domain_id": domain_id,
                     "created_at": p.get("created_at") or "",
-                    "keys": p.get("keys") or [],
+                    "keys": keys,
                 }
             )
         return out
@@ -250,16 +286,67 @@ def _collect_pending_decisions() -> List[Dict[str, Any]]:
         return []
 
 
+def _serialize_signal_alert(item: Any) -> Optional[Dict[str, Any]]:
+    """将 FeedbackRadar suggestion（dataclass 或 dict）转为 FE 卡片字段。
+
+    Args:
+        item: SpecAdjustmentSuggestion 或等价 dict。
+
+    Returns:
+        含 spec_id/type/severity/detail/suggested_action 的 dict；无法序列化则 None。
+    """
+    if item is None:
+        return None
+    if isinstance(item, dict):
+        sev = item.get("severity")
+        typ = item.get("type")
+        return {
+            "spec_id": str(item.get("spec_id") or ""),
+            "type": getattr(typ, "value", typ) if typ is not None else "",
+            "severity": getattr(sev, "value", sev) if sev is not None else "",
+            "detail": str(item.get("detail") or ""),
+            "suggested_action": str(item.get("suggested_action") or ""),
+        }
+    sev = getattr(item, "severity", "")
+    typ = getattr(item, "type", "")
+    return {
+        "spec_id": str(getattr(item, "spec_id", "") or ""),
+        "type": str(getattr(typ, "value", typ) or ""),
+        "severity": str(getattr(sev, "value", sev) or ""),
+        "detail": str(getattr(item, "detail", "") or ""),
+        "suggested_action": str(getattr(item, "suggested_action", "") or ""),
+    }
+
+
 async def _collect_signal_alerts() -> List[Dict[str, Any]]:
-    """FeedbackRadar high/critical user feedback signals."""
+    """FeedbackRadar high/critical user feedback signals.
+
+    analyze_all_active 返回 Dict[spec_id, List[suggestion]]，需展平后再过滤。
+    """
     try:
         from core.api.core_facade import FeedbackRadar
         radar = FeedbackRadar()
-        active = await radar.analyze_all_active() if hasattr(radar, "analyze_all_active") else []
-        return [a for a in (active or []) if a.get("severity") in ("high", "critical")]
+        active = await radar.analyze_all_active() if hasattr(radar, "analyze_all_active") else {}
+        flat: List[Any] = []
+        if isinstance(active, dict):
+            for suggestions in active.values():
+                if isinstance(suggestions, (list, tuple)):
+                    flat.extend(suggestions)
+                elif suggestions is not None:
+                    flat.append(suggestions)
+        elif isinstance(active, (list, tuple)):
+            flat = list(active)
+        out: List[Dict[str, Any]] = []
+        for item in flat:
+            row = _serialize_signal_alert(item)
+            if not row:
+                continue
+            if str(row.get("severity") or "").lower() not in ("high", "critical"):
+                continue
+            out.append(row)
+        return out
     except Exception:
         return []
-
 
 def _collect_trace_anomalies() -> List[Dict[str, Any]]:
     """从 Spec 最新执行轨迹汇总犹豫/重复/异常警告（经 CoreFacade）。
@@ -355,6 +442,38 @@ def _collect_training_status_dash() -> Dict[str, Any]:
                 "dataset_count": 0}
 
 
+def _timeline_event(
+    *,
+    spec_id: str,
+    event: str,
+    at: str,
+    summary: str = "",
+    version: Any = "",
+) -> Dict[str, Any]:
+    """统一时间线条目为 FE 契约（ts/type/summary）并保留 legacy 字段。
+
+    Args:
+        spec_id: Spec 或 proposal 标识。
+        event: 事件类型（写入 type）。
+        at: ISO 时间（写入 ts）。
+        summary: 展示文案；空则用 event。
+        version: 兼容旧字段。
+
+    Returns:
+        时间线 dict。
+    """
+    text = (summary or event or "").strip()
+    return {
+        "ts": at or "",
+        "type": event or "",
+        "spec_id": spec_id or "",
+        "summary": text,
+        "event": event or "",
+        "version": version,
+        "at": at or "",
+    }
+
+
 async def _collect_timeline() -> List[Dict[str, Any]]:
     """Real collector: acceptance signoffs + evolve apply/reject/rollback events."""
     events: List[Dict[str, Any]] = []
@@ -367,13 +486,15 @@ async def _collect_timeline() -> List[Dict[str, Any]]:
                 try:
                     with open(os.path.join(ad, fn), encoding="utf-8") as fh:
                         rec = json.load(fh)
+                    signer = rec.get("signed_by") or ""
                     events.append(
-                        {
-                            "spec_id": rec.get("spec_id") or fn,
-                            "event": "acceptance_signoff",
-                            "version": rec.get("signed_by") or "",
-                            "at": rec.get("signed_at") or "",
-                        }
+                        _timeline_event(
+                            spec_id=str(rec.get("spec_id") or fn),
+                            event="acceptance_signoff",
+                            at=str(rec.get("signed_at") or ""),
+                            summary=f"acceptance signoff · {signer}".strip(" ·"),
+                            version=signer,
+                        )
                     )
                 except Exception:
                     continue
@@ -386,24 +507,27 @@ async def _collect_timeline() -> List[Dict[str, Any]]:
             status = p.get("review_status") or ""
             if status not in {"approved", "rejected", "applied", "rolled_back"}:
                 continue
+            keys_preview = ",".join((p.get("keys") or [])[:3])
             events.append(
-                {
-                    "spec_id": p.get("proposal_id") or "",
-                    "event": f"evolve_{status}",
-                    "version": ",".join((p.get("keys") or [])[:3]),
-                    "at": p.get("rolled_back_at")
-                    or p.get("applied_at")
-                    or p.get("rejected_at")
-                    or p.get("approved_at")
-                    or p.get("created_at")
-                    or "",
-                }
+                _timeline_event(
+                    spec_id=str(p.get("domain_id") or p.get("proposal_id") or ""),
+                    event=f"evolve_{status}",
+                    at=str(
+                        p.get("rolled_back_at")
+                        or p.get("applied_at")
+                        or p.get("rejected_at")
+                        or p.get("approved_at")
+                        or p.get("created_at")
+                        or ""
+                    ),
+                    summary=(p.get("summary") or f"evolve {status} · {keys_preview}").strip(),
+                    version=keys_preview,
+                )
             )
     except Exception:
         pass  # noqa: best-effort timeline
-    events.sort(key=lambda e: str(e.get("at") or ""), reverse=True)
+    events.sort(key=lambda e: str(e.get("ts") or e.get("at") or ""), reverse=True)
     return events[:40]
-
 # ════════════════════════════════════════════════════════════
 # Tab 2: 部署管理 (offline package)
 # ════════════════════════════════════════════════════════════
