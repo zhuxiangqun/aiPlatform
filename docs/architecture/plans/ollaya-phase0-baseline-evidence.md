@@ -16,9 +16,9 @@ authority: supporting
 | 字段 | 填写 |
 |------|------|
 | 环境 | ☑dev ☐staging ☐prod（分表，勿混） |
-| 观测窗口起止 | 本机冒烟：`2026-11-08T12:20+08`（重启后即时快照）· **staging/prod ≥7 天窗口仍待填** |
-| 进程/副本 | 本机 `gunicorn -w 1` @ `127.0.0.1:8002`（#616 后 SIGHUP 重载）；**每进程各自计数** |
-| 采集方式 | `scripts/collect_domain_router_route_stats.py` 或 `GET /api/core/diagnostics/domain-router/route-stats`；影子骨架另见 `GET /diagnostics/decision-shadow/status` |
+| 观测窗口起止 | 本机冒烟：`2026-11-08T12:20+08` · **dev Day-0 窗口已开**：`2026-11-26`→目标≥`2026-12-03`（台账 `reports/architecture/human-gates/ollaya-window-ledger.md`）· **staging/prod ≥7 天仍待填** |
+| 进程/副本 | 本机 core @ `127.0.0.1:8002`（Day-0 uptime≈5.3h）；**每进程各自计数** |
+| 采集方式 | `scripts/ollaya_phase0_daily_collect.sh`（日采）+ `scripts/collect_domain_router_route_stats.py`；影子骨架另见 `GET /diagnostics/decision-shadow/status` |
 | 联系人 | |
 
 ## 0.2 埋点设计（已扩展现有 `route_stats`）
@@ -44,6 +44,7 @@ authority: supporting
 | dev | 2026-11-08T12:20+08 post-restart | 0 | 0.0 | 0.0 | 0.0 | 0 | None | None | 0 | 0 | #613 合入后重启 gunicorn；uptime≈70s；JSONL→`.aiplat/ollaya_phase0/route_stats.jsonl`；全 0 为预期（无 classify 流量）≠ Go |
 | dev | 2026-11-08T12:25+08 after-classify-smoke | 10 | 30.0 | 0.0 | 70.0 | 7 | 0.085 | 2.218 | 0 | 3 | 经 `POST /skills/domain_assessor/execute` 打 8 条（含先验 2）；T1=3/T3=7/t2_reject=3；T3 p50 亚毫秒疑似 LLM 快速失败/降级，**≠ 真实 T3 延迟、≠ Go** |
 | dev | 2026-11-08T14:06+08 post-616-reload | 0 | 0.0 | 0.0 | 0.0 | 0 | None | None | 0 | 0 | #616 合入后 SIGHUP；uptime≈378s；计数因重载清零（预期）；**另**见 §0.3.1 影子骨架探测 |
+| dev | 2026-11-26T21:00+08 day0-window-open | 0 | 0.0 | 0.0 | 0.0 | 0 | None | None | 0 | 0 | 日采 harness Day-0；uptime≈19259s；shadow `enabled=false`/`classify_hook_wired=false`；台账已开；**≠ staging · ≠ Go** |
 
 ### 0.3.1 默关 `decision_shadow` 本机探测（#616）
 
@@ -59,6 +60,13 @@ authority: supporting
 **本机已确认**：重启后 OpenAPI 含 `/api/core/diagnostics/domain-router/route-stats`（HTTP 200）。staging/prod 仍须部署含 #612+#613 的二进制后再采。
 
 ```bash
+# 推荐：日采（route-stats + decision_shadow + 台账行）
+CORE_BASE="${CORE_BASE:-http://127.0.0.1:8002}" ENV_LABEL=dev \
+  bash scripts/ollaya_phase0_daily_collect.sh
+# staging（配置真实 URL 后）
+CORE_BASE=https://staging.example/core ENV_LABEL=staging \
+  bash scripts/ollaya_phase0_daily_collect.sh
+
 # 单副本 → 打印可粘贴进上表的 markdown 行，并追加 JSONL
 python3 scripts/collect_domain_router_route_stats.py \
   --base "${CORE_BASE:-http://127.0.0.1:8002}" \

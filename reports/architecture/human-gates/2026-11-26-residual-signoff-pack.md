@@ -17,7 +17,7 @@ created: 2026-11-26
 
 | 门 | 今日可做 | 今日结论 | 机读记录 |
 |----|----------|----------|----------|
-| Ollaya 采样 Go | 会签包 + staging 窗口窄授权 | **采样仍 No-Go**；筹备已授权 | `ollaya-staging-window-authorize.approved.json` + [0.6 会签包](../../../docs/architecture/plans/ollaya-phase0-06-signoff-pack.md) |
+| Ollaya 采样 Go | 会签包 + staging 窄授权 + **日采 Day-0** | **采样仍 No-Go**；dev 窗口已开（≠ staging） | `ollaya-staging-window-authorize.approved.json` + `ollaya-window-ledger.md` + [0.6 会签包](../../../docs/architecture/plans/ollaya-phase0-06-signoff-pack.md) |
 | KS Full unconditional | 核对窗口 + 保留 conditional | **阻断**（窗口未达标；批准已有但不足） | `ks-full-unconditional.pending.json` |
 | evo `g*_complete` | 生产宣称待批清单 | **阻断**（D5≠g*；缺真实 Canary/holdout） | `evo-g-complete-production.pending.json` |
 

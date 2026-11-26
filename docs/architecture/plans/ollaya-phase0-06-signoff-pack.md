@@ -29,8 +29,8 @@ purpose: Ollaya 0.6 正式会签执行包（≠ 采样 Go；≠ 挂 classify）
 
 | # | 动作 | Owner | 状态 |
 |---|------|-------|:----:|
-| W1 | staging（或 prod 只读副本）部署含 route-stats + decision_shadow 的 core | 运维 | ☐ |
-| W2 | 跑 `scripts/collect_domain_router_route_stats.py --env staging` ≥7 天 | 运维 | ☐ |
+| W1 | staging（或 prod 只读副本）部署含 route-stats + decision_shadow 的 core | 运维 | ☐（dev 本机已有；staging URL 未配） |
+| W2 | 日采 ≥7 天（`scripts/ollaya_phase0_daily_collect.sh`） | 运维 | ◐ Day-0 已跑（dev）；staging 待 URL |
 | W3 | 把窗口填入证据包 §0.1 / §0.3 / §0.4（分表，勿混 dev） | 试点负责人 | ☐ |
 | W4 | 达 §0.7 阈值：`t3_hits≥100` 或（`t3_llm_pct≥5%` 且 total≥500） | 测量 | ☐ |
 | W5 | 隐私批 C7（字段白名单 + TTL） | Data Governance | ☐ |
@@ -39,11 +39,11 @@ purpose: Ollaya 0.6 正式会签执行包（≠ 采样 Go；≠ 挂 classify）
 ### W2 参考命令
 
 ```bash
-# staging 日采（示例；以实际 base URL 为准）
-PYTHONPATH=aiPlat-core:aiPlat-infra:aiPlat-platform \
-  python3 scripts/collect_domain_router_route_stats.py --env staging
-# 影子骨架状态（须仍 enabled=false）
-curl -sS "$CORE_BASE/api/core/diagnostics/decision-shadow/status"
+# 日采（推荐；自动写 JSONL + 台账行；shadow 若 enabled/wired 则失败退出）
+CORE_BASE="${CORE_BASE:-http://127.0.0.1:8002}" ENV_LABEL=dev \
+  bash scripts/ollaya_phase0_daily_collect.sh
+CORE_BASE=https://staging.example/core ENV_LABEL=staging \
+  bash scripts/ollaya_phase0_daily_collect.sh
 ```
 
 ## 3. 0.6 评审勾选表（会上填 · 未签前禁止合并影子开流）
