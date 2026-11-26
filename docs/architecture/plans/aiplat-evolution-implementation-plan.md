@@ -32,7 +32,8 @@ last_reviewed: 2026-11-25
 > **2026-11-26**：生产加深 **D1** 已接线（活评测/FDE 摘要 + HUMAN_GATE 台账 + 只读 Canary 探针 + baseline→L4 levels）；证据 `reports/architecture/evo-compute/production-deepen-d1-evidence.md`。`g*_complete=false`。  
 > **2026-11-26**：生产加深 **D2** 已接线（版本化 holdout 分区 + `compare_holdout` 优先 dataset；可 surrogate/unavailable）；证据 `reports/architecture/evo-compute/production-deepen-d2-evidence.md`。`production_traffic=false`。  
 > **2026-11-26**：生产加深 **D3** 已接线（候选↔SkillRouter 切流/观察/回滚；默认沙箱；`use_global_router` 才 `production_write`）；证据 `reports/architecture/evo-compute/production-deepen-d3-evidence.md`。  
-> **后续加深（登记）**：D4 活台账 HITL/已测 L4 → 再 **PSO** 对照。  
+> **2026-11-26**：生产加深 **D4** 已接线（活台账 HITL 100% + 已测 L4/缓释签批包；`d4_signed≠g3_complete`）；证据 `reports/architecture/evo-compute/production-deepen-d4-evidence.md`。  
+> **后续（登记）**：再 **PSO** 对照（生产加深 D1–D4 完成后）。  
 > **未宣称** 生产流量 holdout 认证 / 真实生产 Canary 上线 / E2 / 生产闭环已测 L4 / G3 完成；`certified`/`e2_claimed` 恒 false。夹具 ready ≠ 生产宣称。
 
 ## 0. 结论先行
@@ -643,8 +644,9 @@ GP 只在 DSL 内
 > 生产加深 D1：`candidate_ledger` / `live_sources` / `collect_evo_production_deepen_slice1` **已可用**（只读探针 + 台账；无切流）。  
 > 生产加深 D2：`holdout_dataset` / `compare_holdout(dataset|surrogate|unavailable)` **已可用**（版本化分区；≠ 生产流量确认）。  
 > 生产加深 D3：`canary_bridge` 切流/观察/回滚 + D3 suite/gate **已可用**（默认沙箱；≠ 生产 Canary 宣称）。  
-> 后续：D4 活 HITL/L4 签批 → PSO 对照。  
-> **不得**因 slice-1/2/3 或 D1–D3 套件绿宣称生产 G3/E2 完成；夹具/缓释/unavailable 路径 ≠ 生产流量认证。
+> 生产加深 D4：`deepen_signoff` 活 HITL+L4/缓释签批 + D4 suite/gate **已可用**（`d4_signed≠g3_complete`）。  
+> 后续：PSO 离线对照。  
+> **不得**因 slice-1/2/3 或 D1–D4 套件绿宣称生产 G3/E2 完成；夹具/缓释/unavailable 路径 ≠ 生产流量认证。
 
 ## 13. 前 90 天
 

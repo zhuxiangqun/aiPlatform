@@ -1821,3 +1821,186 @@ def evaluate_evo_compute_production_deepen_slice3_gate(
         "production_write": False,
         "suite": s,
     }
+
+
+def run_evo_compute_production_deepen_slice4_suite() -> Dict[str, Any]:
+    """生产加深 D4：活台账 HITL 100% + 已测 L4/缓释签批；Gate 宣称恒 false。"""
+    from core.harness.evo_compute.candidate_ledger import (
+        clear_ledger_for_tests,
+        record_human_gate_decision,
+    )
+    from core.harness.evo_compute.deepen_signoff import (
+        clear_d4_signoff_for_tests,
+        collect_production_deepen_d4_pack,
+        evaluate_production_deepen_d4_readiness,
+        sign_production_deepen_d4,
+    )
+
+    clear_ledger_for_tests()
+    clear_d4_signoff_for_tests()
+    cases: list = []
+
+    empty = collect_production_deepen_d4_pack(measured=False)
+    cases.append(
+        {
+            "id": "empty_ledger_not_ready",
+            "pass": empty.get("pack_ready") is False
+            and "hitl_live_100" in (empty.get("missing") or [])
+            and empty.get("g3_complete") is False,
+        }
+    )
+
+    # 缺 levels → L4 unavailable，不可用夹具冒充
+    cases.append(
+        {
+            "id": "missing_levels_unavailable",
+            "pass": (empty.get("loops_l4") or {}).get("source") == "unavailable"
+            and (empty.get("loops_l4") or {}).get("baseline_missing") is True,
+        }
+    )
+
+    record_human_gate_decision(
+        candidate_id="d4-cand-a",
+        status="production",
+        actor="owner-a",
+        evidence_ref="hg:d4-a",
+        persist=False,
+    )
+    record_human_gate_decision(
+        candidate_id="d4-cand-b",
+        status="canary",
+        actor="owner-b",
+        evidence_ref="hg:d4-b",
+        persist=False,
+    )
+
+    measured_levels = {"governance": 4, "knowledge": 4, "eval": 4, "fde": 4}
+    pack_ok = collect_production_deepen_d4_pack(
+        levels=measured_levels, measured=True
+    )
+    cases.append(
+        {
+            "id": "ledger_hitl_100_and_measured_l4",
+            "pass": pack_ok.get("pack_ready") is True
+            and pack_ok.get("hitl_live_100") is True
+            and pack_ok.get("loops_l4_or_waiver_ok") is True
+            and (pack_ok.get("hitl") or {}).get("source") == "ledger"
+            and (pack_ok.get("loops_l4") or {}).get("measured") is True
+            and pack_ok.get("certified") is False
+            and pack_ok.get("e2_claimed") is False,
+        }
+    )
+
+    # 未测 L4 + 未签缓释 → 不 ready
+    gap_pack = collect_production_deepen_d4_pack(
+        levels={"governance": 3, "knowledge": 4, "eval": 2, "fde": 3},
+        measured=True,
+        waiver_signed=False,
+    )
+    cases.append(
+        {
+            "id": "gap_without_waiver_not_ready",
+            "pass": gap_pack.get("pack_ready") is False
+            and "loops_l4_or_waiver_ok" in (gap_pack.get("missing") or []),
+        }
+    )
+
+    # 未测等级但有效缓释 → L4 侧 ok
+    waiver_pack = collect_production_deepen_d4_pack(
+        levels={"governance": 3, "knowledge": 4, "eval": 2, "fde": 3},
+        measured=False,
+        waiver_owner="loop-owner",
+        waiver_signed=True,
+    )
+    cases.append(
+        {
+            "id": "waiver_path_ok_with_ledger",
+            "pass": waiver_pack.get("pack_ready") is True
+            and waiver_pack.get("loops_l4_or_waiver_ok") is True
+            and bool((waiver_pack.get("loops_l4") or {}).get("waiver", {}).get("valid")),
+        }
+    )
+
+    # 未 ready 不可签
+    bad_sign = sign_production_deepen_d4(
+        actor="signer",
+        evidence_ref="d4:bad",
+        pack=empty,
+        persist=False,
+    )
+    cases.append(
+        {
+            "id": "sign_rejected_when_pack_not_ready",
+            "pass": bad_sign.get("ok") is False
+            and bad_sign.get("d4_signed") is False
+            and bad_sign.get("error") == "pack_not_ready",
+        }
+    )
+
+    signed = sign_production_deepen_d4(
+        actor="d4-owner",
+        evidence_ref="d4:signoff:suite",
+        pack=pack_ok,
+        persist=False,
+    )
+    cases.append(
+        {
+            "id": "sign_ok_sets_d4_signed",
+            "pass": signed.get("ok") is True
+            and signed.get("d4_signed") is True
+            and signed.get("g3_complete") is False
+            and signed.get("e2_claimed") is False
+            and signed.get("certified") is False,
+        }
+    )
+
+    ready = evaluate_production_deepen_d4_readiness(pack_ok)
+    cases.append(
+        {
+            "id": "readiness_ready_after_sign",
+            "pass": ready.get("ready") is True
+            and ready.get("d4_signed") is True
+            and ready.get("g3_complete") is False,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "production-deepen-d4",
+        "g1_foundation": True,
+        "g1_complete": False,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "d4_signed": bool(signed.get("d4_signed")),
+        "note": "production deepen D4 live HITL+L4 signoff pack; ≠ gate/E2 claim",
+    }
+
+
+def evaluate_evo_compute_production_deepen_slice4_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """生产加深 D4 门槛门；complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_production_deepen_slice4_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_production_deepen_slice4_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g1_foundation": True,
+        "g1_complete": False,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "d4_signed": bool(s.get("d4_signed")),
+        "suite": s,
+    }
