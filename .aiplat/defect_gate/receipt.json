@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T08:33:23+08:00",
+  "reviewed_at": "2026-11-26T08:56:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c19ad09781371be03c55b1f3af2e2824861a1400",
-  "diff_sha256": "18da3bf0cee136d6d3d49dd0ee539b3b30304d4fbd62e6d369cae0ff9f61ba63",
-  "head_sha": "19361c3a6c696cce738d552121a40f246cfb847e",
+  "merge_base": "28244aaebdb2486561adfbe97413e2e443bdbe3a",
+  "diff_sha256": "7a0ae402786b957ba46bccb04a8602ecf6fcfd69abe800d561ad1d9859cb4d40",
+  "head_sha": "2580b9a70e6660e8028f8faea396110e65d50799",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G3 AIS detect-only; auto_remediate=false; suite g3_complete=false"
+  "note": "G3 slice-2/3: GP dsl_only/no core code; HITL/L4 fixtures; suite g3_complete=false. Exit readiness fixture ready ≠ production claim."
 }
