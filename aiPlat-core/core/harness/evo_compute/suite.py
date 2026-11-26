@@ -802,3 +802,169 @@ def evaluate_evo_compute_g2_slice2_gate(
         "e2_claimed": False,
         "suite": s,
     }
+
+
+def run_evo_compute_g2_slice3_suite() -> Dict[str, Any]:
+    """G2 slice-3：冻结回归集自动回归门；分数不回流进化；g2_complete 恒 false。"""
+    from core.harness.evo_compute.budget import approve_budget, clear_budget_for_tests
+    from core.harness.evo_compute.ga import run_ga_offline
+    from core.harness.evo_compute.genome_registry import clear_registry_for_tests, get_genome
+    from core.harness.evo_compute.pilots import register_pilot_genomes
+    from core.harness.evo_compute.regression import (
+        REGRESSION_DATASET_VERSION,
+        default_regression_set,
+        run_regression_gate,
+    )
+    from core.harness.evo_compute.safety import clear_safety_for_tests
+
+    clear_registry_for_tests()
+    clear_budget_for_tests()
+    clear_safety_for_tests()
+    cases: list = []
+
+    pilots = register_pilot_genomes(persist=False)
+    cases.append({"id": "pilots_ready", "pass": bool(pilots.get("ok"))})
+    approve_budget(actor="g2-slice3-suite", persist=False)
+
+    gid = "timeout.retry.v1"
+    rset = default_regression_set(genome_id=gid)
+    cases.append(
+        {
+            "id": "regression_set_frozen",
+            "pass": bool(rset.get("ok"))
+            and rset.get("frozen") is True
+            and rset.get("dataset_version") == REGRESSION_DATASET_VERSION
+            and rset.get("production_sample") is False
+            and int(rset.get("n_cases") or 0) >= 2,
+        }
+    )
+
+    # 版本漂移 → frozen false
+    drift = default_regression_set(genome_id=gid, dataset_version="regression_fixture_v0")
+    cases.append(
+        {
+            "id": "version_bump_required",
+            "pass": drift.get("frozen") is False,
+        }
+    )
+
+    ga = run_ga_offline(
+        genome_id=gid,
+        population_size=5,
+        generations=2,
+        seed=5,
+    )
+    cases.append(
+        {
+            "id": "ga_ok",
+            "pass": bool(ga.get("ok")) and ga.get("safety_regression") is False,
+        }
+    )
+
+    ginfo = get_genome(gid)
+    fields = (ginfo.get("genome") or {}).get("fields") or []
+    # 基线：字段中点；挑战者：GA best（若无则用基线）
+    baseline = {}
+    for f in fields:
+        name = str(f.get("name") or "")
+        if not name:
+            continue
+        lo = float(f.get("min") if f.get("min") is not None else 0)
+        hi = float(f.get("max") if f.get("max") is not None else lo)
+        if str(f.get("type") or "").lower() == "int":
+            baseline[name] = int(round((lo + hi) / 2.0))
+        else:
+            baseline[name] = (lo + hi) / 2.0
+    challenger = dict((ga.get("best") or {}).get("genes") or baseline)
+
+    gate = run_regression_gate(
+        genome_id=gid,
+        baseline_genes=baseline,
+        challenger_genes=challenger,
+    )
+    cases.append(
+        {
+            "id": "regression_gate_ok",
+            "pass": bool(gate.get("ok"))
+            and gate.get("feeds_evolution") is False
+            and gate.get("g2_complete") is False
+            and gate.get("certified") is False
+            and gate.get("frozen_ok") is True,
+        }
+    )
+    cases.append(
+        {
+            "id": "regression_gate_pass_or_honest_fail",
+            "pass": gate.get("passed") is True
+            or (
+                gate.get("passed") is False
+                and (
+                    gate.get("safety_regression") is True
+                    or float(gate.get("quality_drop") or 0)
+                    > float(gate.get("max_quality_drop") or 0)
+                )
+            ),
+        }
+    )
+
+    # 故意安全变差应拒绝（注入 safety 不可行于 surrogate；用超大质量塌陷基因）
+    bad = dict(baseline)
+    for f in fields:
+        name = str(f.get("name") or "")
+        if not name:
+            continue
+        lo = float(f.get("min") if f.get("min") is not None else 0)
+        if str(f.get("type") or "").lower() == "int":
+            bad[name] = int(lo)
+        else:
+            bad[name] = lo
+    bad_gate = run_regression_gate(
+        genome_id=gid,
+        baseline_genes=baseline,
+        challenger_genes=bad,
+        max_quality_drop=0.0,
+    )
+    cases.append(
+        {
+            "id": "rejects_quality_collapse",
+            "pass": bad_gate.get("passed") is False or bad_gate.get("quality_drop", 0) <= 0,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "g2-slice3",
+        "g2_foundation": True,
+        "g2_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "note": (
+            "G2 slice-3 auto regression on frozen fixture; "
+            "feeds_evolution=false; ≠ production L4 / Gate claim"
+        ),
+    }
+
+
+def evaluate_evo_compute_g2_slice3_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """G2 slice-3 门槛门；g2_complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_g2_slice3_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_g2_slice3_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g2_foundation": True,
+        "g2_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "suite": s,
+    }

@@ -57,6 +57,12 @@ from core.harness.evo_compute.pilots import (
     pilot_genome_specs,
     register_pilot_genomes,
 )
+from core.harness.evo_compute.regression import (
+    REGRESSION_DATASET_VERSION,
+    default_adversarial_cases,
+    default_regression_set,
+    run_regression_gate,
+)
 from core.harness.evo_compute.replay import (
     aggregate_partition_metrics,
     default_replay_fixture,
@@ -78,10 +84,12 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_g1_gate,
     evaluate_evo_compute_g2_gate,
     evaluate_evo_compute_g2_slice2_gate,
+    evaluate_evo_compute_g2_slice3_gate,
     run_evo_compute_g0_suite,
     run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
     run_evo_compute_g2_slice2_suite,
+    run_evo_compute_g2_slice3_suite,
     run_evo_compute_g2_suite,
 )
 
@@ -105,7 +113,11 @@ __all__ = [
     "default_g2_eval_inventory_fixture",
     "default_g2_fde_inventory_fixture",
     "evaluate_evo_compute_g2_gate",
+    "REGRESSION_DATASET_VERSION",
+    "default_adversarial_cases",
+    "default_regression_set",
     "evaluate_evo_compute_g2_slice2_gate",
+    "evaluate_evo_compute_g2_slice3_gate",
     "evaluate_g0_exit_readiness",
     "evaluate_g1_exit_readiness",
     "evaluate_g2_exit_readiness",
@@ -132,10 +144,12 @@ __all__ = [
     "run_evo_compute_g1_slice2_suite",
     "run_evo_compute_g1_suite",
     "run_evo_compute_g2_slice2_suite",
+    "run_evo_compute_g2_slice3_suite",
     "run_evo_compute_g2_suite",
     "run_ga_offline",
     "run_human_gate_canary_rollback_drill",
     "run_pilot_de_es_battery",
+    "run_regression_gate",
     "set_budget_policy",
     "sign_safety_boundary",
 ]
