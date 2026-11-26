@@ -20,7 +20,7 @@ created: 2026-11-27
 | P1 | 0.6 会签包与 C1–C8 表已打印/共享 | ✅ 已落盘 | ☐ |
 | P2 | staging 窗口窄授权已批（≠ Go） | ✅ authorize_prep | ☐ |
 | P3 | 日采脚本可用 | ✅ `scripts/ollaya_phase0_daily_collect.sh` | ☐ |
-| P4 | 台账已开（dev Day-0） | ✅ ledger；Day-1 core 离线 SKIP | ☐ |
+| P4 | 台账已开（dev Day-0/Day-1） | ✅ Day-1 total=0；shadow 默关 | ☐ |
 | P5 | staging `CORE_BASE` 已登记 | ❌ **未配置** | ☐ |
 | P6 | 隐私 owner（C7）已邀约 | ☐ 待填 | ☐ |
 | P7 | 值班 owner + 健康检查入口（C8）已邀约 | ☐ 待填 | ☐ |
