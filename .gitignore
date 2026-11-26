@@ -108,6 +108,8 @@ deploy-kit/images/*.tar
 .aiplat/cap_graph.db
 .aiplat/aiplat_executions.sqlite3
 .aiplat/execution.db  # legacy path
+# Ollaya Phase 0 local scrapes (ledger lives under reports/; ≠ sampling Go)
+.aiplat/ollaya_phase0/
 
 pentest-reports/
 

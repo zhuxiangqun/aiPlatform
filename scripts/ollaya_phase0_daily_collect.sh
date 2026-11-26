@@ -20,6 +20,7 @@ cd "$ROOT"
 
 CORE_BASE="${CORE_BASE:-http://127.0.0.1:8002}"
 ENV_LABEL="${ENV_LABEL:-dev}"
+# 本地运行时目录（已 gitignore；台账在 reports/…/ollaya-window-ledger.md）
 OUT_DIR="${OLLAYA_PHASE0_DIR:-.aiplat/ollaya_phase0}"
 mkdir -p "$OUT_DIR"
 
