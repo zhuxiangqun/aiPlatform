@@ -19,5 +19,5 @@ last_reviewed: 2026-11-26
 - [规范性附录](./normative-appendix.md)
 - [批准 ADR](./ADR-FDE-SYS-v1.0-2026-11-26.md)
 - [实施计划](../../../architecture/plans/fde-system-v1.0-implementation-plan.md)
-- [Core 差距证据（测量）](../../../reports/products/fde-system/v1.0/core-gap-evidence.md)
+- [Core 差距证据（测量）](../../../../reports/products/fde-system/v1.0/core-gap-evidence.md)
 - [`schemas/`](./schemas/README.md)

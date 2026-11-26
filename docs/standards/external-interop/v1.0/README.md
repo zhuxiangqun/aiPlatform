@@ -19,5 +19,5 @@ last_reviewed: 2026-11-26
 - [规范性附录](./normative-appendix.md)
 - [批准 ADR](./ADR-EXT-INTEROP-v1.0-2026-11-26.md)
 - [实施计划](../../../architecture/plans/external-interop-v1.0-implementation-plan.md)
-- [Core 差距证据（测量）](../../../reports/products/external-interop/v1.0/core-gap-evidence.md)
+- [Core 差距证据（测量）](../../../../reports/products/external-interop/v1.0/core-gap-evidence.md)
 - [`schemas/`](./schemas/README.md)
