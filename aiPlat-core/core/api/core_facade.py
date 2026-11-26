@@ -21917,6 +21917,91 @@ def evaluate_evo_compute_production_deepen_slice4_gate(
     return _gate(suite)
 
 
+def run_evo_pso_offline(
+    *,
+    genome_id: str,
+    swarm_size: int = 8,
+    iterations: int = 5,
+    seed: int = 42,
+    w: float = 0.72,
+    c1: float = 1.4,
+    c2: float = 1.4,
+    ranking_profile: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：离线 PSO 基线对照（非主算法）。
+
+    Args:
+        genome_id: 已登记 genome。
+        swarm_size: 粒子数。
+        iterations: 迭代。
+        seed: 种子。
+        w/c1/c2: PSO 超参。
+        ranking_profile: 排名配置。
+    """
+    from core.harness.evo_compute.pso import run_pso_offline as _run
+
+    return _run(
+        genome_id=genome_id,
+        swarm_size=swarm_size,
+        iterations=iterations,
+        seed=seed,
+        w=w,
+        c1=c1,
+        c2=c2,
+        ranking_profile=ranking_profile,
+    )
+
+
+def compare_evo_pso_vs_de_es(
+    *,
+    genome_id: str,
+    population_size: int = 8,
+    generations: int = 5,
+    seed: int = 42,
+    de_algorithm: str = "de",
+) -> dict:
+    """CoreFacade：PSO vs DE/ES 代理对照（无优越性宣称）。
+
+    Args:
+        genome_id: genome。
+        population_size: 种群。
+        generations: 代数。
+        seed: 种子。
+        de_algorithm: de 或 es。
+    """
+    from core.harness.evo_compute.pso import compare_pso_vs_de_es as _cmp
+
+    return _cmp(
+        genome_id=genome_id,
+        population_size=population_size,
+        generations=generations,
+        seed=seed,
+        de_algorithm=de_algorithm,
+    )
+
+
+def run_evo_compute_pso_baseline_suite() -> dict:
+    """CoreFacade：PSO 基线套件。"""
+    from core.harness.evo_compute.suite import run_evo_compute_pso_baseline_suite as _run
+
+    return _run()
+
+
+def evaluate_evo_compute_pso_baseline_gate(
+    suite: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：PSO 基线门槛门。
+
+    Args:
+        suite: suite 回执。
+    """
+    from core.harness.evo_compute.suite import (
+        evaluate_evo_compute_pso_baseline_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 

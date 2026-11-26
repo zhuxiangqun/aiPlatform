@@ -7,10 +7,12 @@ rationale: |
   HUMAN_GATE 覆盖审计 / 闭环 L4 评估报告 /   生产加深 D1 活源与台账 /
   生产加深 D2 版本化 holdout 分区 /
   生产加深 D3 SkillRouter Canary 切流/回滚（默认沙箱）/
-  生产加深 D4 活台账 HITL+已测 L4/缓释签批 / G3 出口就绪）。符合
+  生产加深 D4 活台账 HITL+已测 L4/缓释签批 /
+  PSO 离线基线对照（非主算法）/ G3 出口就绪）。符合
   boundary-standard.md §3.1——Harness 是 AI Runtime Kernel，本目录为执行
   基础设施的一部分。不写生产配置、不采生产流量、不自动批准预算/安全、
   不宣称 E2 / G0–G3 默认出口完成；AIS 先检测不修复；GP 不生成核心代码；
   D1 Canary 探针只读无切流；D3 默认沙箱切流（全局需显式 use_global_router）；
-  D4 d4_signed ≠ g3_complete；holdout 分区 ≠ 生产流量确认；夹具 ≠ 生产 L4。
+  D4 d4_signed ≠ g3_complete；PSO 仅基线对照不宣称优于 DE/ES；
+  holdout 分区 ≠ 生产流量确认；夹具 ≠ 生产 L4。
 known_debt: []

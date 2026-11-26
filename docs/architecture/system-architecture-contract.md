@@ -157,6 +157,8 @@ review_cycle: 90d
 > 2026-11-26：受控演化计算生产加深 D2（版本化 holdout 分区 + compare_holdout 优先 dataset；经 CoreFacade；production_traffic/certified/e2 恒 false；可 surrogate/unavailable）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-26：受控演化计算生产加深 D3（候选↔SkillRouter Canary 切流/观察/回滚；默认沙箱；`use_global_router` 才 production_write；经 CoreFacade；g*_complete/certified/e2 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-26：受控演化计算生产加深 D4（活台账 HITL 100% + 已测 L4/缓释签批；`d4_signed≠g3_complete`；经 CoreFacade；certified/e2 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-26：受控演化计算 PSO 离线基线对照（`run_pso_offline` / vs DE/ES；baseline_only；经 CoreFacade；不宣称优于 DE/ES；g1_complete/certified/e2 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-26：受控演化计算 PSO 离线基线对照（`run_pso_offline` / vs DE/ES；baseline_only；经 CoreFacade；不宣称优于 DE/ES；g1_complete/certified/e2 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威覆盖显式 residual（`apply_published_seed_authority`；不改写 workspace_seeds；不可用诚实上报；freeze 仍 true；certified/seed_replacement_complete 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威产品面第一刀（`list_object_type_seed_catalog` + `apply_published_seed_authority_product`；默认可用；不改写 workspace_seeds；seed_product_surface=true；certified/seed_replacement_complete 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 W6 Knowledge SDK 最小切片（ObjectType→Client 表面/源码经 Facade；L1 kb:read）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

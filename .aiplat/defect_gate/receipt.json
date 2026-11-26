@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T12:55:15+08:00",
+  "reviewed_at": "2026-11-26T13:23:20+08:00",
   "base_ref": "origin/main",
-  "merge_base": "bb2d0e422603ad16915d8f4d4dbb30203db4fca9",
-  "diff_sha256": "570513f57d5370484a3aab24195edb39008a4fd779634b3296731a6626805276",
-  "head_sha": "a68d477c86191b65d6c71d089b58e62dac5a0b86",
+  "merge_base": "f754e349eba85c8b58e3b4547143f57fe625abe5",
+  "diff_sha256": "b72ca8bc5993de4ee090e5dfa4af2c9e60a1aa9af82d30804383d9798a3478f1",
+  "head_sha": "25c598b2bb472c2f31f8475b27a73d23c98e4d1e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "D4 + whitepaper sync; d4_signed≠g3_complete. Local lock only."
+  "note": "PSO rebased onto main+D4; baseline_only; no superiority/gate claim. Local lock only."
 }
