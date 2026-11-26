@@ -20849,17 +20849,21 @@ def compare_evo_holdout(
     alpha: float = 0.05,
     min_effect: float = 0.02,
     seed: int = 0,
+    holdout_partition: Optional[dict] = None,
+    allow_surrogate_fallback: bool = True,
 ) -> dict:
-    """CoreFacade：holdout 确认对比（§10.2.1 最小）。
+    """CoreFacade：holdout 确认对比（§10.2.1；优先版本化分区）。
 
     Args:
         genome_id: genome。
         baseline_genes: 基线基因。
         challenger_genes: 挑战者基因。
-        n_batches: batch 数。
+        n_batches: 代理路径 batch 数。
         alpha: 显著性水平。
         min_effect: 最小效应量。
-        seed: 种子。
+        seed: 代理路径种子。
+        holdout_partition: 可选已加载分区。
+        allow_surrogate_fallback: 无分区时是否回退代理。
     """
     from core.harness.evo_compute.holdout import compare_holdout as _cmp
 
@@ -20871,6 +20875,8 @@ def compare_evo_holdout(
         alpha=alpha,
         min_effect=min_effect,
         seed=seed,
+        holdout_partition=holdout_partition,
+        allow_surrogate_fallback=allow_surrogate_fallback,
     )
 
 
@@ -21581,6 +21587,63 @@ def evaluate_evo_compute_production_deepen_slice1_gate(
     """
     from core.harness.evo_compute.suite import (
         evaluate_evo_compute_production_deepen_slice1_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
+def load_evo_holdout_partition(
+    genome_id: str,
+    *,
+    prefer_disk: bool = True,
+    allow_seed_fallback: bool = True,
+) -> dict:
+    """CoreFacade：加载 holdout 分区（磁盘或试点种子）。
+
+    Args:
+        genome_id: genome id。
+        prefer_disk: 优先落盘。
+        allow_seed_fallback: 无盘时回退种子。
+    """
+    from core.harness.evo_compute.holdout_dataset import load_holdout_partition as _load
+
+    return _load(
+        genome_id,
+        prefer_disk=prefer_disk,
+        allow_seed_fallback=allow_seed_fallback,
+    )
+
+
+def install_evo_pilot_holdout_seeds(*, persist: bool = True) -> dict:
+    """CoreFacade：安装三试点 holdout 种子分区。
+
+    Args:
+        persist: 是否写盘。
+    """
+    from core.harness.evo_compute.holdout_dataset import install_pilot_holdout_seeds as _i
+
+    return _i(persist=persist)
+
+
+def run_evo_compute_production_deepen_slice2_suite() -> dict:
+    """CoreFacade：生产加深 D2 套件（holdout 分区）。"""
+    from core.harness.evo_compute.suite import (
+        run_evo_compute_production_deepen_slice2_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_evo_compute_production_deepen_slice2_gate(
+    suite: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：生产加深 D2 门槛门。
+
+    Args:
+        suite: D2 suite 回执。
+    """
+    from core.harness.evo_compute.suite import (
+        evaluate_evo_compute_production_deepen_slice2_gate as _gate,
     )
 
     return _gate(suite)

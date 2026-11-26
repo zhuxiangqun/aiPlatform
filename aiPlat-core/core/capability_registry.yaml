@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3486
+total_capabilities: 3497
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 818
+    caps_count: 829
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -3234,6 +3234,50 @@ domains:
       - symbol: evaluate_evo_compute_production_deepen_slice1_gate
         type: function
         signature: "CoreFacade evaluate_evo_compute_production_deepen_slice1_gate"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: default_pilot_holdout_seed
+        type: function
+        signature: "default_pilot_holdout_seed(genome_id)→dict"
+        module: aiPlat-core/core/harness/evo_compute/holdout_dataset.py
+      - symbol: install_pilot_holdout_seeds
+        type: function
+        signature: "install_pilot_holdout_seeds(persist=True)→dict"
+        module: aiPlat-core/core/harness/evo_compute/holdout_dataset.py
+      - symbol: load_holdout_partition
+        type: function
+        signature: "load_holdout_partition(genome_id)→dict; dataset|unavailable"
+        module: aiPlat-core/core/harness/evo_compute/holdout_dataset.py
+      - symbol: score_genes_on_holdout_batches
+        type: function
+        signature: "score_genes_on_holdout_batches(genes,genome,batches)→list"
+        module: aiPlat-core/core/harness/evo_compute/holdout_dataset.py
+      - symbol: partition_fingerprint
+        type: function
+        signature: "partition_fingerprint(partition)→str"
+        module: aiPlat-core/core/harness/evo_compute/holdout_dataset.py
+      - symbol: run_evo_compute_production_deepen_slice2_suite
+        type: function
+        signature: "run_evo_compute_production_deepen_slice2_suite()→dict"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: evaluate_evo_compute_production_deepen_slice2_gate
+        type: function
+        signature: "evaluate_evo_compute_production_deepen_slice2_gate(suite=None)"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: load_evo_holdout_partition
+        type: function
+        signature: "CoreFacade load_evo_holdout_partition"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: install_evo_pilot_holdout_seeds
+        type: function
+        signature: "CoreFacade install_evo_pilot_holdout_seeds"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_compute_production_deepen_slice2_suite
+        type: function
+        signature: "CoreFacade run_evo_compute_production_deepen_slice2_suite"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_compute_production_deepen_slice2_gate
+        type: function
+        signature: "CoreFacade evaluate_evo_compute_production_deepen_slice2_gate"
         module: aiPlat-core/core/api/core_facade.py
       - symbol: continuous_midpoints
         type: function
