@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T12:52:45+08:00",
+  "reviewed_at": "2026-11-26T12:55:15+08:00",
   "base_ref": "origin/main",
   "merge_base": "bb2d0e422603ad16915d8f4d4dbb30203db4fca9",
-  "diff_sha256": "926f19cb8c6aff5a75e983d82e006a755b7cb8509d40649468e3c7bedc933d08",
-  "head_sha": "2e275f3f7a33bd9a94e39f463dc484812daf3aa3",
+  "diff_sha256": "570513f57d5370484a3aab24195edb39008a4fd779634b3296731a6626805276",
+  "head_sha": "a68d477c86191b65d6c71d089b58e62dac5a0b86",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "D4 live HITL+L4 signoff; d4_signed≠g3_complete/e2. Local lock only."
+  "note": "D4 + whitepaper sync; d4_signed≠g3_complete. Local lock only."
 }
