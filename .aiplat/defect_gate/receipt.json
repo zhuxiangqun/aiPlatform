@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T08:56:00+08:00",
+  "reviewed_at": "2026-11-26T10:45:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "28244aaebdb2486561adfbe97413e2e443bdbe3a",
-  "diff_sha256": "7a0ae402786b957ba46bccb04a8602ecf6fcfd69abe800d561ad1d9859cb4d40",
-  "head_sha": "2580b9a70e6660e8028f8faea396110e65d50799",
+  "merge_base": "3c9467c07c73eb70c5d9c5e64eef31585b1f05fc",
+  "diff_sha256": "8fa7f5de023ef76a4fdd3462c6db393267bb82f38b3d482aef32a8089e789679",
+  "head_sha": "6d1dc88d0449b6d8090f9715fee7deb5e7aed86d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G3 slice-2/3: GP dsl_only/no core code; HITL/L4 fixtures; suite g3_complete=false. Exit readiness fixture ready ≠ production claim."
+  "note": "D1 deepen + impact matrix refresh; g*_complete/certified/e2 false; canary cutover=false."
 }

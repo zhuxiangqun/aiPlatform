@@ -1346,3 +1346,188 @@ def evaluate_evo_compute_g3_slice3_gate(
         "e2_claimed": False,
         "suite": s,
     }
+
+
+def run_evo_compute_production_deepen_slice1_suite() -> Dict[str, Any]:
+    """生产加深 D1：活源摘要诚实路径 + 台账审计；Gate 宣称恒 false。"""
+    from core.harness.evo_compute.candidate_ledger import (
+        clear_ledger_for_tests,
+        record_human_gate_decision,
+    )
+    from core.harness.evo_compute.coverage import default_g2_fde_inventory_fixture
+    from core.harness.evo_compute.human_gate_audit import audit_human_gate_from_ledger
+    from core.harness.evo_compute.live_sources import (
+        levels_from_baseline_loops,
+        probe_canary_rollout,
+        summarize_live_eval_coverage,
+        summarize_live_fde_coverage,
+    )
+    from core.harness.evo_compute.loops_l4 import build_loops_l4_assessment_report
+
+    cases: list = []
+
+    # 1) 无源 → unavailable（诚实）
+    eval_miss = summarize_live_eval_coverage(None)
+    cases.append(
+        {
+            "id": "eval_unavailable_honest",
+            "pass": eval_miss.get("available") is False
+            and eval_miss.get("baseline_missing") is True
+            and eval_miss.get("source") == "unavailable"
+            and eval_miss.get("g3_complete") is False,
+        }
+    )
+
+    fde_miss = summarize_live_fde_coverage(None)
+    cases.append(
+        {
+            "id": "fde_unavailable_honest",
+            "pass": fde_miss.get("available") is False
+            and fde_miss.get("baseline_missing") is True,
+        }
+    )
+
+    canary_miss = probe_canary_rollout(None)
+    cases.append(
+        {
+            "id": "canary_probe_unavailable_no_cutover",
+            "pass": canary_miss.get("available") is False
+            and canary_miss.get("cutover") is False
+            and canary_miss.get("production_write") is False,
+        }
+    )
+
+    # 2) 有 live 形输入 → source=live
+    live_report = {
+        "schema": "eval.capability_coverage.v1",
+        "total_in_scope": 10,
+        "covered_capabilities": 9,
+    }
+    eval_live = summarize_live_eval_coverage(live_report)
+    cases.append(
+        {
+            "id": "eval_live_measurable",
+            "pass": eval_live.get("available") is True
+            and eval_live.get("source") == "live"
+            and eval_live.get("meets_threshold") is True
+            and eval_live.get("certified") is False,
+        }
+    )
+
+    fde_live = summarize_live_fde_coverage(default_g2_fde_inventory_fixture(meet_threshold=True))
+    cases.append(
+        {
+            "id": "fde_live_inventory",
+            "pass": fde_live.get("available") is True and fde_live.get("source") == "live",
+        }
+    )
+
+    canary_live = probe_canary_rollout(
+        [{"skill": "demo", "ab_active": True}, {"skill": "other", "ab_active": False}]
+    )
+    cases.append(
+        {
+            "id": "canary_rollout_readonly",
+            "pass": canary_live.get("available") is True
+            and canary_live.get("ab_active_count") == 1
+            and canary_live.get("cutover") is False,
+        }
+    )
+
+    # 3) 台账审计
+    clear_ledger_for_tests()
+    record_human_gate_decision(
+        candidate_id="deepen-cand-1",
+        status="production",
+        actor="deepen-owner",
+        evidence_ref="hg:deepen-1",
+        persist=False,
+    )
+    record_human_gate_decision(
+        candidate_id="deepen-cand-2",
+        status="canary",
+        actor="deepen-owner",
+        evidence_ref="hg:deepen-2",
+        persist=False,
+    )
+    ledger_audit = audit_human_gate_from_ledger()
+    cases.append(
+        {
+            "id": "ledger_human_gate_100",
+            "pass": ledger_audit.get("source") == "ledger"
+            and ledger_audit.get("human_gate_100") is True
+            and ledger_audit.get("g3_complete") is False,
+        }
+    )
+
+    # 4) baseline → levels；缺测 measured=false
+    levels_miss = levels_from_baseline_loops(None)
+    cases.append(
+        {
+            "id": "baseline_levels_unavailable",
+            "pass": levels_miss.get("measured") is False
+            and levels_miss.get("source") == "unavailable",
+        }
+    )
+    baseline_full = {
+        "owner": "platform-oncall",
+        "loops": {
+            "governance": {"measured_level": 4, "baseline_missing": False, "kpi": {}},
+            "knowledge": {"measured_level": 4, "baseline_missing": False, "kpi": {}},
+            "eval": {"measured_level": 4, "baseline_missing": False, "kpi": {}},
+            "fde": {"measured_level": 4, "baseline_missing": False, "kpi": {}},
+        },
+    }
+    levels_ok = levels_from_baseline_loops(baseline_full)
+    l4 = build_loops_l4_assessment_report(
+        levels=levels_ok.get("levels"),
+        measured=bool(levels_ok.get("measured")),
+    )
+    cases.append(
+        {
+            "id": "baseline_levels_feed_l4_measured_flag",
+            "pass": levels_ok.get("measured") is True
+            and l4.get("measured") is True
+            and l4.get("loops_l4_or_waiver") is True
+            and l4.get("certified") is False
+            and l4.get("g3_complete") is False,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "production-deepen-d1",
+        "g3_foundation": True,
+        "g3_complete": False,
+        "g2_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "note": "production deepen D1 live adapters; suite green ≠ gate/e2 claim",
+    }
+
+
+def evaluate_evo_compute_production_deepen_slice1_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """生产加深 D1 门槛门；complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_production_deepen_slice1_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_production_deepen_slice1_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g3_foundation": True,
+        "g3_complete": False,
+        "g2_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "suite": s,
+    }

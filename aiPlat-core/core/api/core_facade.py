@@ -21424,6 +21424,168 @@ def evaluate_evo_compute_g3_slice3_gate(suite: Optional[dict] = None) -> dict:
     return _gate(suite)
 
 
+def record_evo_human_gate_decision(
+    *,
+    candidate_id: str,
+    status: str,
+    actor: str,
+    evidence_ref: str,
+    human_gate_passed: bool = True,
+    persist: bool = True,
+) -> dict:
+    """CoreFacade：写入候选 HUMAN_GATE 台账（非生产配置）。
+
+    Args:
+        candidate_id: 候选 id。
+        status: Candidate.status。
+        actor: 审批人。
+        evidence_ref: 证据。
+        human_gate_passed: 是否过门。
+        persist: 是否落盘。
+    """
+    from core.harness.evo_compute.candidate_ledger import record_human_gate_decision as _r
+
+    return _r(
+        candidate_id=candidate_id,
+        status=status,
+        actor=actor,
+        evidence_ref=evidence_ref,
+        human_gate_passed=human_gate_passed,
+        persist=persist,
+    )
+
+
+def audit_evo_human_gate_from_ledger(
+    *,
+    require_production_path_only: bool = True,
+) -> dict:
+    """CoreFacade：从台账审计 HUMAN_GATE 覆盖。
+
+    Args:
+        require_production_path_only: 仅生产路径。
+    """
+    from core.harness.evo_compute.human_gate_audit import audit_human_gate_from_ledger as _a
+
+    return _a(require_production_path_only=require_production_path_only)
+
+
+def collect_evo_production_deepen_slice1(
+    *,
+    eval_profile: Optional[dict] = None,
+    eval_profile_id: str = "",
+    eval_subject_kind: str = "",
+    eval_cases: Optional[list] = None,
+    fde_inventory: Optional[dict] = None,
+    baseline: Optional[dict] = None,
+    include_canary_probe: bool = True,
+    skip_eval_bridge: bool = False,
+) -> dict:
+    """CoreFacade：生产加深 D1 编排（活评测桥 + FDE/canary/L4/台账）。
+
+    Args:
+        eval_profile: 评测 profile（经 capability coverage 桥）。
+        eval_profile_id: profile id。
+        eval_subject_kind: subject 种类。
+        eval_cases: 可选用例。
+        fde_inventory: ``{covered_ids, required_ids}``；缺则 unavailable。
+        baseline: 闭环基线回执；缺则自动 measure（可能缺测）。
+        include_canary_probe: 是否只读 SkillRouter rollout。
+        skip_eval_bridge: True 时不调评测桥（测诚实 unavailable）。
+    """
+    from core.harness.evo_compute.baseline import measure_closed_loop_baseline
+    from core.harness.evo_compute.human_gate_audit import audit_human_gate_from_ledger
+    from core.harness.evo_compute.live_sources import (
+        levels_from_baseline_loops,
+        probe_canary_rollout,
+        summarize_live_eval_coverage,
+        summarize_live_fde_coverage,
+    )
+    from core.harness.evo_compute.loops_l4 import build_loops_l4_assessment_report
+
+    eval_summary: dict
+    if skip_eval_bridge:
+        eval_summary = summarize_live_eval_coverage(None)
+    else:
+        try:
+            bridged = collect_evo_eval_coverage_from_capability_report(
+                profile=eval_profile,
+                profile_id=eval_profile_id,
+                subject_kind=eval_subject_kind,
+                cases=eval_cases,
+            )
+            eval_summary = summarize_live_eval_coverage(bridged)
+            eval_summary["bridged_via"] = bridged.get("bridged_via")
+        except Exception as exc:  # noqa: BLE001 — 桥失败诚实不可用
+            eval_summary = summarize_live_eval_coverage(None)
+            eval_summary["bridge_error"] = str(exc)[:200]
+
+    fde_summary = summarize_live_fde_coverage(fde_inventory)
+
+    canary_summary: dict
+    if include_canary_probe:
+        try:
+            router = get_skill_router()
+            rollout = router.get_rollout_status() if router is not None else None
+            rows = rollout if isinstance(rollout, list) else None
+            canary_summary = probe_canary_rollout(rows)
+        except Exception as exc:  # noqa: BLE001
+            canary_summary = probe_canary_rollout(None)
+            canary_summary["probe_error"] = str(exc)[:200]
+    else:
+        canary_summary = probe_canary_rollout(None)
+
+    base = baseline
+    if base is None:
+        base = measure_closed_loop_baseline(owner="deepen-d1", persist=False)
+    levels_pack = levels_from_baseline_loops(base if isinstance(base, dict) else None)
+    l4 = build_loops_l4_assessment_report(
+        levels=levels_pack.get("levels"),
+        measured=bool(levels_pack.get("measured")),
+    )
+    hitl = audit_human_gate_from_ledger()
+
+    return {
+        "ok": True,
+        "slice": "production-deepen-d1",
+        "eval_coverage": eval_summary,
+        "fde_coverage": fde_summary,
+        "canary_probe": canary_summary,
+        "loop_levels": levels_pack,
+        "loops_l4_report": l4,
+        "human_gate_audit": hitl,
+        "g3_complete": False,
+        "g2_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "note": "production deepen D1 collect; live/unavailable honest; ≠ gate claim",
+    }
+
+
+def run_evo_compute_production_deepen_slice1_suite() -> dict:
+    """CoreFacade：生产加深 D1 套件。"""
+    from core.harness.evo_compute.suite import (
+        run_evo_compute_production_deepen_slice1_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_evo_compute_production_deepen_slice1_gate(
+    suite: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：生产加深 D1 门槛门。
+
+    Args:
+        suite: deepen suite 回执。
+    """
+    from core.harness.evo_compute.suite import (
+        evaluate_evo_compute_production_deepen_slice1_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 

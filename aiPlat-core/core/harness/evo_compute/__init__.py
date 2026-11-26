@@ -5,6 +5,7 @@
   - 预算与安全边界 / 夹具回放 / G0–G2 出口就绪
   - DE/ES、GA、覆盖探针、冻结回归门
   - AIS 异常检测（先检测不修复）/ GP 强类型 DSL / G3 出口就绪
+  - 生产加深 D1：活源摘要 / 候选台账 / 只读 Canary 探针
 
 非目标：
   - 不写生产配置、不采生产流量、不宣称 E2/L4/认证
@@ -65,7 +66,18 @@ from core.harness.evo_compute.gp import (
 from core.harness.evo_compute.holdout import compare_holdout
 from core.harness.evo_compute.human_gate_audit import (
     audit_human_gate_coverage,
+    audit_human_gate_from_ledger,
     default_full_coverage_fixture,
+)
+from core.harness.evo_compute.candidate_ledger import (
+    list_production_path_candidates,
+    record_human_gate_decision,
+)
+from core.harness.evo_compute.live_sources import (
+    levels_from_baseline_loops,
+    probe_canary_rollout,
+    summarize_live_eval_coverage,
+    summarize_live_fde_coverage,
 )
 from core.harness.evo_compute.loops_l4 import build_loops_l4_assessment_report
 from core.harness.evo_compute.orchestrator import run_de_es_offline
@@ -105,6 +117,7 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_g3_gate,
     evaluate_evo_compute_g3_slice2_gate,
     evaluate_evo_compute_g3_slice3_gate,
+    evaluate_evo_compute_production_deepen_slice1_gate,
     run_evo_compute_g0_suite,
     run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
@@ -114,6 +127,7 @@ from core.harness.evo_compute.suite import (
     run_evo_compute_g3_suite,
     run_evo_compute_g3_slice2_suite,
     run_evo_compute_g3_slice3_suite,
+    run_evo_compute_production_deepen_slice1_suite,
 )
 
 __all__ = [
@@ -122,6 +136,7 @@ __all__ = [
     "aggregate_partition_metrics",
     "approve_budget",
     "audit_human_gate_coverage",
+    "audit_human_gate_from_ledger",
     "build_loops_l4_assessment_report",
     "check_budget",
     "compare_holdout",
@@ -151,6 +166,7 @@ __all__ = [
     "evaluate_evo_compute_g3_gate",
     "evaluate_evo_compute_g3_slice2_gate",
     "evaluate_evo_compute_g3_slice3_gate",
+    "evaluate_evo_compute_production_deepen_slice1_gate",
     "evaluate_g0_exit_readiness",
     "evaluate_g1_exit_readiness",
     "evaluate_g2_exit_readiness",
@@ -159,8 +175,10 @@ __all__ = [
     "get_budget_policy",
     "get_genome",
     "get_safety_boundary",
+    "levels_from_baseline_loops",
     "list_genomes",
     "list_pilot_genome_ids",
+    "list_production_path_candidates",
     "measure_closed_loop_baseline",
     "measure_eval_coverage",
     "measure_eval_coverage_from_capability_report",
@@ -168,7 +186,9 @@ __all__ = [
     "measure_fde_evidence_coverage",
     "measure_fde_evidence_coverage_from_inventory",
     "pilot_genome_specs",
+    "probe_canary_rollout",
     "rank_candidates",
+    "record_human_gate_decision",
     "register_genome",
     "register_pilot_genomes",
     "reject_core_code_payload",
@@ -184,6 +204,7 @@ __all__ = [
     "run_evo_compute_g3_suite",
     "run_evo_compute_g3_slice2_suite",
     "run_evo_compute_g3_slice3_suite",
+    "run_evo_compute_production_deepen_slice1_suite",
     "run_ga_offline",
     "run_gp_offline",
     "run_human_gate_canary_rollback_drill",
@@ -191,5 +212,7 @@ __all__ = [
     "run_regression_gate",
     "set_budget_policy",
     "sign_safety_boundary",
+    "summarize_live_eval_coverage",
+    "summarize_live_fde_coverage",
     "validate_dsl_program",
 ]
