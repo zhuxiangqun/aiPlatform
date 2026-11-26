@@ -15,7 +15,8 @@ purpose: FDE 系统 v1.0 Operational（F10–F11）测量；默认未授权；�
 | F10 生产独立进程 authorize | **exists** | `evaluate_fde_production_process_authorize`；`AIPLAT_FDE_OPTIONAL_SPLIT` 不够 |
 | F11 compose 长驻 | **exists** | `evaluate_fde_compose_long_running_authorize`；须批准 + `adr_ref`；标准正文未授权 |
 
-**当前 authorized=false。compose 长驻=否。**
+**当前 F10 authorized=true**（朱莹批准 `operational-approval-record.approved.json`，仅 `gate_ids=[F10]`）。  
+**F11 / bundle `operational_ready=false`**（未批 compose；不扩大 ADR-09）。
 
 ```bash
 pytest aiPlat-core/core/tests/unit/test_apps/test_fde_operational_f10_f11.py -q

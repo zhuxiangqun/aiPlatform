@@ -1,0 +1,20 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "fde-system operational F10 only",
+  "gate_ids": ["F10"],
+  "status": "approved",
+  "decision": "authorize",
+  "approvers": [
+    {
+      "name": "朱莹",
+      "role": "Data Governance",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-26"
+    }
+  ],
+  "adr_ref": null,
+  "approval_date": "2026-11-26",
+  "record_id": "FDE-SYS-V10-OPERATIONAL-F10-2026-11-26",
+  "note": "Non-author 朱莹已批准 F10 生产独立进程 authorize（pilot）。F11 compose 长驻故意未批：不扩大 ADR-09；须另批 ADR + adr_ref 才可 authorized。"
+}

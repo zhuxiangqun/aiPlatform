@@ -1,0 +1,21 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "external-interop operational X10 X11",
+  "gate_ids": ["X10", "X11"],
+  "status": "approved",
+  "decision": "authorize",
+  "approvers": [
+    {
+      "name": "朱莹",
+      "role": "Data Governance",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-26"
+    }
+  ],
+  "sla_ref": "sla://interop-pilot-vendor-v1",
+  "vendor_id": "pilot-vendor",
+  "approval_date": "2026-11-26",
+  "record_id": "EXT-INTEROP-V10-OPERATIONAL-2026-11-26",
+  "note": "Non-author 朱莹已批准 X10 生产 authorize + X11 供应商 SLA 绑定（pilot）。≠ certified / ≠ L2 auto-grant。"
+}

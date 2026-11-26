@@ -1,0 +1,20 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "evaluation-system operational E10 E11",
+  "gate_ids": ["E10", "E11"],
+  "status": "approved",
+  "decision": "authorize",
+  "approvers": [
+    {
+      "name": "朱莹",
+      "role": "Data Governance",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-26"
+    }
+  ],
+  "sla_ref": "sla://eval-pilot-operational-v1",
+  "approval_date": "2026-11-26",
+  "record_id": "EVAL-SYS-V10-OPERATIONAL-2026-11-26",
+  "note": "Non-author 朱莹已批准 E10 process_split + E11 pilot SLA authorize。≠ certified / ≠ accuracy claim。E12 κ 报告独立，accuracy_claim 恒 false。"
+}

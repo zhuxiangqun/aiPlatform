@@ -11,14 +11,14 @@ purpose: 评测系统 v1.0 Operational（E10–E12）测量；默认未授权
 # 评测系统 v1.0 — Operational 差距证据（测量）
 
 > **性质**：门禁/报告存在性测量。`exists` ≠ `authorized` ≠ `certified`。  
-> 批准模板：`operational-approval-record.pending.json`（status=pending）。
+> 批准记录：`operational-approval-record.approved.json`（朱莹 / 2026-11-26）；pending 模板仍保留。
 
 ## 总判定
 
 | 问题 | 结论 |
 |---|---|
 | E10–E12 能力存在 | **exists** |
-| 当前 authorized / operational_ready | **false**（无非作者批准） |
+| 当前 authorized / operational_ready | **true**（朱莹非作者批准 `operational-approval-record.approved.json`；E10+E11） |
 | certified | **否** |
 
 ## E10–E12
