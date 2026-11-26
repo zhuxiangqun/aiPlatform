@@ -1,0 +1,21 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "external-interop Extended certification (附录 N X07–X09)",
+  "gate_ids": ["X07", "X08", "X09"],
+  "status": "approved",
+  "decision": "conditional",
+  "approvers": [
+    {
+      "name": "朱莹",
+      "role": "Data Governance",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-26"
+    }
+  ],
+  "approval_date": "2026-11-26",
+  "effective_date": "2026-11-26",
+  "exceptions": [],
+  "record_id": "EXT-INTEROP-V10-EXTENDED-2026-11-26",
+  "note": "对话「批准」授权；Non-author 朱莹已复核 extended-gap-evidence.md。Conditional: extended_ready only; ≠ certified / ≠ L2 auto-grant。"
+}

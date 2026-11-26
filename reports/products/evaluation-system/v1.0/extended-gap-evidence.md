@@ -18,7 +18,8 @@ purpose: 评测系统 v1.0 附录 N Extended（E07–E09）代码证据盘点；
 | 问题 | 结论 |
 |---|---|
 | E07–E09 测量 | **exists** |
-| 正式 extended_ready / certified | **否**（须非作者复核） |
+| 正式 extended_ready | **是（conditional）**：朱莹非作者复核（`extended-approval-record.approved.json`） |
+| certified | **否** |
 
 ## E07–E09
 
