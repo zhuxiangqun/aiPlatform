@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T10:29:00+08:00",
+  "reviewed_at": "2026-11-26T10:42:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "3c9467c07c73eb70c5d9c5e64eef31585b1f05fc",
-  "diff_sha256": "ee807a694ed2d558d95e89143f7f5c1d3e5e29d2cb31ab25abe4cb464c8976e2",
-  "head_sha": "5e4e594923af76ebd7280c9ab396a0dc908921c2",
+  "diff_sha256": "8a5addb392d6f61cc48ba73e5539f0423a7184f9e275206171ae290101b064fa",
+  "head_sha": "4d30ad8498011a14e07afa7777603f6158a06bf2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Production deepen D2 holdout partitions; dataset|surrogate|unavailable labeled; production_traffic=false. Stacks on D1 (#1071)."
+  "note": "D1+D2 deepen; AUTO-STATS refreshed; holdout dataset≠production traffic; g*_complete/certified/e2 false."
 }
