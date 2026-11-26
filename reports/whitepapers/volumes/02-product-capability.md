@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-26T10:07:49Z"
+generated_at: "2026-11-26T11:11:18Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "51fe83f2bfbc571a41c22b3462e2121f0730898293484481d7efd8a3c1be7b21"
+caps_sha256: "7d93c1a64a10f807311682f1dbafd2e67be9147c43197a93fef282bb0bd79a5b"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=51fe83f2bfbc571a41c22b3462e2121f0730898293484481d7efd8a3c1be7b21 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=7d93c1a64a10f807311682f1dbafd2e67be9147c43197a93fef282bb0bd79a5b scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-26T10:07:49Z` |
-| CAPABILITIES sha256 | `51fe83f2bfbc…` |
+| 生成时间 (UTC) | `2026-11-26T11:11:18Z` |
+| CAPABILITIES sha256 | `7d93c1a64a10…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1314,12 +1314,12 @@ _(节选；全文见权威源)_
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 950 | 1 | 951 |
+| Harness 执行引擎 | 951 | 1 | 952 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 315 | 0 | 315 |
+| Agent 系统 | 319 | 0 | 319 |
 | Skill 系统 | 215 | 0 | 215 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
@@ -1359,7 +1359,7 @@ _(节选；全文见权威源)_
 | Skill 目录标准化 | 9 | 0 | 9 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4399** | **11** | **4410** |
+| **总计** | **4404** | **11** | **4415** |
 
 ### 3.2 上手路径（节选）
 
@@ -1490,7 +1490,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3563 capabilities (caps_count) | 3563 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3568 capabilities (caps_count) | 3568 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1524,7 +1524,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 864 | evo_compute G0/G1/G2/G3 + production deepen 门面入口 |
+| harness-execution-engine | §一 Harness 执行引擎 | 865 | evo_compute G0/G1/G2/G3 + production deepen 门面入口 |
 | knowledge-engine-ontology | §三 知识引擎（本体） | 837 | N02 ObjectType publish Facade 入口 |
 | skill-system | §六 Skill 系统 | 224 | CoreFacade 暴露 skill compat |
 | evaluation-system | §十三 评估系统 | 669 | CoreFacade 暴露 m2 deferred estimate |
@@ -1542,7 +1542,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 334 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 338 | Agent REST 端点 |
 
 ##### core/api/routers/diagnostics.py
 
@@ -1617,14 +1617,14 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 864 | 自身消费 PipelineStageConfig + StageRunner |
+| harness-execution-engine | §一 Harness 执行引擎 | 865 | 自身消费 PipelineStageConfig + StageRunner |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
 | model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
 | management-and-quality | §二十五 管理 & 质量 | 119 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
-| agent-system | §五 Agent 系统 | 334 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 338 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | extension-and-learning | §十一 扩展
 
