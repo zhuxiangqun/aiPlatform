@@ -1,0 +1,21 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "evaluation-system Core certification (附录 N E01–E06)",
+  "gate_ids": ["E01", "E02", "E03", "E04", "E05", "E06"],
+  "status": "approved",
+  "decision": "conditional",
+  "approvers": [
+    {
+      "name": "朱鸿林",
+      "role": "Security",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-26"
+    }
+  ],
+  "approval_date": "2026-11-26",
+  "effective_date": "2026-11-26",
+  "exceptions": [],
+  "record_id": "EVAL-SYS-V10-CORE-2026-11-26",
+  "note": "Non-author 朱鸿林已复核测量证据（core-gap-evidence.md）。Conditional: Core-scoped exists + formal core_ready / pilot_core only; ≠ certified / ≠ Extended / ≠ Operational accuracy。"
+}

@@ -17,7 +17,7 @@ purpose: 外援互通 v1.0 附录 N Core（X01–X06）代码证据盘点；非 
 
 | 问题 | 结论 |
 |---|---|
-| 能否宣称 `core_ready`？ | **测量态：X01–X06 均为 exists**；正式 `core_ready` 仍须非作者复核 |
+| 能否宣称 `core_ready`？ | **是（conditional）**：X01–X06 exists + 非作者 Security 朱鸿林复核（`core-approval-record.approved.json`） |
 | 能否宣称 `certified`？ | **否** |
 
 ## X01–X06

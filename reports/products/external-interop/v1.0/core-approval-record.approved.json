@@ -1,0 +1,21 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "external-interop Core certification (附录 N X01–X06)",
+  "gate_ids": ["X01", "X02", "X03", "X04", "X05", "X06"],
+  "status": "approved",
+  "decision": "conditional",
+  "approvers": [
+    {
+      "name": "朱鸿林",
+      "role": "Security",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-26"
+    }
+  ],
+  "approval_date": "2026-11-26",
+  "effective_date": "2026-11-26",
+  "exceptions": [],
+  "record_id": "EXT-INTEROP-V10-CORE-2026-11-26",
+  "note": "Non-author 朱鸿林已复核测量证据（core-gap-evidence.md）。Conditional: Core-scoped exists + formal core_ready only; ≠ certified / ≠ L2 auto-grant。"
+}

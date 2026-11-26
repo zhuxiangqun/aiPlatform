@@ -1,0 +1,21 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "fde-system Core certification (附录 N F01–F06)",
+  "gate_ids": ["F01", "F02", "F03", "F04", "F05", "F06"],
+  "status": "approved",
+  "decision": "conditional",
+  "approvers": [
+    {
+      "name": "朱鸿林",
+      "role": "Security",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-26"
+    }
+  ],
+  "approval_date": "2026-11-26",
+  "effective_date": "2026-11-26",
+  "exceptions": [],
+  "record_id": "FDE-SYS-V10-CORE-2026-11-26",
+  "note": "Non-author 朱鸿林已复核测量证据（core-gap-evidence.md）。Conditional: Core-scoped exists + formal core_ready only; ≠ certified；ADR-09 部署边界未扩大；F11 compose 另批。"
+}

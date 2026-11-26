@@ -17,7 +17,7 @@ purpose: FDE 系统 v1.0 附录 N Core（F01–F06）代码证据盘点；非 ce
 
 | 问题 | 结论 |
 |---|---|
-| 能否宣称 `core_ready`？ | **测量态接近：F01–F06 均为 exists**；正式 `core_ready` 仍须非作者复核附录 N 清单 |
+| 能否宣称 `core_ready`？ | **是（conditional）**：F01–F06 exists + 非作者 Security 朱鸿林复核（`core-approval-record.approved.json`）；ADR-09 边界未扩大 |
 | 能否宣称 `certified`？ | **否** |
 
 ## F01–F06
