@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T20:01:44+08:00",
+  "reviewed_at": "2026-11-26T20:23:04+08:00",
   "base_ref": "origin/main",
-  "merge_base": "96e0b258573adb6aa77e4881cedd5267b0adc535",
-  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "head_sha": "96e0b258573adb6aa77e4881cedd5267b0adc535",
+  "merge_base": "c02e6a35937a56b55910d1876a14f6d4de2e7cc2",
+  "diff_sha256": "304334de8acef47b4fdffc2f9215c35731c2a03e46cb1a6e37ff81fe53536ad5",
+  "head_sha": "3fe2fa4c82f100d319112b5bb328c41b7d862fbf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "F11 compose+smoke landing; five-check clean. Local lock only."
+  "note": "KS N.5 + pre-commit clause-sync docs only. Local lock only."
 }
