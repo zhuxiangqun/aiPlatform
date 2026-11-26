@@ -6,11 +6,14 @@
   - DE/ES、GA、覆盖探针、冻结回归门
   - AIS 异常检测（先检测不修复）/ GP 强类型 DSL / G3 出口就绪
   - 生产加深 D1：活源摘要 / 候选台账 / 只读 Canary 探针
+  - 生产加深 D2：版本化 holdout 分区
+  - 生产加深 D3：SkillRouter Canary 切流/观察/回滚（默认沙箱）
 
 非目标：
   - 不写生产配置、不采生产流量、不宣称 E2/L4/认证
   - 不替代 ``evolution_engine.py`` 夜间 Skill 流水线
   - 套件绿 ≠ Gate 宣称完成；AIS 不自动修复；GP 不生成核心代码
+  - D3 默认沙箱路由器；``use_global_router`` 才触达全局并标 production_write
 """
 
 from core.harness.evo_compute.ais import (
@@ -81,6 +84,12 @@ from core.harness.evo_compute.candidate_ledger import (
     list_production_path_candidates,
     record_human_gate_decision,
 )
+from core.harness.evo_compute.canary_bridge import (
+    observe_evo_canary,
+    request_evo_canary_cutover,
+    rollback_evo_canary,
+    run_evo_canary_cutover_rollback_cycle,
+)
 from core.harness.evo_compute.live_sources import (
     levels_from_baseline_loops,
     probe_canary_rollout,
@@ -127,6 +136,7 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_g3_slice3_gate,
     evaluate_evo_compute_production_deepen_slice1_gate,
     evaluate_evo_compute_production_deepen_slice2_gate,
+    evaluate_evo_compute_production_deepen_slice3_gate,
     run_evo_compute_g0_suite,
     run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
@@ -138,6 +148,7 @@ from core.harness.evo_compute.suite import (
     run_evo_compute_g3_slice3_suite,
     run_evo_compute_production_deepen_slice1_suite,
     run_evo_compute_production_deepen_slice2_suite,
+    run_evo_compute_production_deepen_slice3_suite,
 )
 
 __all__ = [
@@ -178,7 +189,12 @@ __all__ = [
     "evaluate_evo_compute_g3_slice3_gate",
     "evaluate_evo_compute_production_deepen_slice1_gate",
     "evaluate_evo_compute_production_deepen_slice2_gate",
+    "evaluate_evo_compute_production_deepen_slice3_gate",
     "evaluate_g0_exit_readiness",
+    "observe_evo_canary",
+    "request_evo_canary_cutover",
+    "rollback_evo_canary",
+    "run_evo_canary_cutover_rollback_cycle",
     "HOLDOUT_DATASET_VERSION",
     "default_pilot_holdout_seed",
     "install_pilot_holdout_seeds",
@@ -223,6 +239,7 @@ __all__ = [
     "run_evo_compute_g3_slice3_suite",
     "run_evo_compute_production_deepen_slice1_suite",
     "run_evo_compute_production_deepen_slice2_suite",
+    "run_evo_compute_production_deepen_slice3_suite",
     "run_ga_offline",
     "run_gp_offline",
     "run_human_gate_canary_rollback_drill",
