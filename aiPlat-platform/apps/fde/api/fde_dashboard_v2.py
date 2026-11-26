@@ -29,9 +29,10 @@ router = APIRouter(tags=["fde-dashboard-v2"])
 
 @router.get("/dashboard", response_model=FdeItemResponse)
 async def fde_dashboard():
-    """Unified dashboard: key metrics, recent activity, alerts, governance health.
+    """运营总览仪表板（指标/活动/告警/治理）。
 
-    Single-request management overview combining data from multiple subsystems.
+    路径：``GET /fde/dashboard``（与四卡片 Evolution 仪表板区分——后者走
+    ``GET /fde/dashboard/evolution`` 或 workbench ``/fde-dashboard`` 代理）。
     """
     import time as _td
 

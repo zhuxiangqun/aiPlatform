@@ -2523,7 +2523,7 @@ scan_hash: 8f9548ec24f4
 | 治理自审计 | aiPlat-platform/apps/fde/api/fde_governance.py:27 | ✅ | GET /fde/governance/validate — 8项能力逐一可执行审计(代码可查/端点可调/约束可测)→8/8 pass in 50ms | 已合入 |
 | 术语定义自动补全 | apps/skills/registry.py:1298-1390 | ✅ | 术语自播种时关键词匹配生成定义(15个预置定义)→无LLM调用→零延迟→无匹配时留空待人工补全 | 已合入 |
 | 跨域术语去重 | apps/skills/registry.py:1873 | ✅ | 术语播种前检测enterprise-terms中同名概念→已有则创建similar_to跨域关联→防止跨域术语碎片化 | 已合入 |
-| FDE仪表板 | platform/apps/fde/api/fde.py:204 | ✅ | GET /fde/dashboard — 单次请求聚合关键指标+最近活动+主动告警+治理健康度→前端首页即用 | 已合入 |
+| FDE仪表板 | platform/apps/fde/api/fde_dashboard_v2.py | ✅ | GET /fde/dashboard — 运营总览（指标+活动+告警+治理）；四卡片 Evolution 见 GET /fde/dashboard/evolution + workbench /fde-dashboard | 已合入 |
 | **文档系统下载** | management/api/docs.py` + `frontend/src/pages/Docs/DocsViewer.tsx | ✅ | GET /api/docs/download?path=... — 文档系统支持文件下载（Content-Disposition attachment） | 已合入 |
 | 会话对比 | platform/apps/fde/api/fde_sessions_compare.py:20 | ✅ | GET /fde/sessions/compare?left=id1&right=id2 — 双会话并排对比(就绪度/证据覆盖率/行动数/知识缺口)→增量分析 | 已合入 |
 | 上下文总线 | harness/knowledge/context_bus.py | ✅ | assemble_field_assessment()统一10层上下文组装→registry.py从~350行注入缩减为~10行→各层可独立复用 | 已合入 |

@@ -179,7 +179,7 @@ class FdeFreezeResponse(_PydanticBaseModel):
 
 
 class FdeDashboardResponse(_PydanticBaseModel):
-    """GET /fde/dashboard — 四卡片 + 时间线聚合"""
+    """GET /fde/dashboard/evolution — 四卡片 + 时间线聚合（UserWorkbench）。"""
     pending_decisions: List[Dict[str, Any]] = []
     signal_alerts: List[Dict[str, Any]] = []
     trace_anomalies: List[Dict[str, Any]] = []
@@ -188,13 +188,14 @@ class FdeDashboardResponse(_PydanticBaseModel):
     last_updated: str = ""
 
 
-@router.get("/dashboard", response_model=FdeDashboardResponse)
+@router.get("/dashboard/evolution", response_model=FdeDashboardResponse)
 async def get_fde_dashboard() -> Dict[str, Any]:
-    """FDE 仪表板: 聚合四卡片数据 + 时间线。
+    """FDE Evolution 四卡片仪表板（pending/alerts/trace/training + 时间线）。
 
     Migrated from workbench.py:/workbench/fde-dashboard.
-    Returns pending decisions, signal alerts, trace anomalies, training progress,
-    and a 7-day timeline of Spec lifecycle events. Cached for 30s.
+    HTTP 路径用 ``/dashboard/evolution``，避免与运营总览 ``/dashboard``（v2）撞路由。
+    workbench ``/fde-dashboard`` 仍直接调用本函数（不经 HTTP 路径）。
+    Cached for 30s.
     """
     global _dash_cache, _dash_cache_ts
     now = time.time()

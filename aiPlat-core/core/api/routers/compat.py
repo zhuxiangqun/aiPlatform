@@ -2402,10 +2402,17 @@ async def compat_repairs_post(request: Request, body: Dict[str, Any] = None):
 
 
 # ════════════════════════════════════════════════════════════
-# Workbench FDE dashboard — POST alias
+# Workbench FDE dashboard — GET/POST compat（禁止假零 stub）
 # ════════════════════════════════════════════════════════════
 
-@router.post("/workbench/fde-dashboard")
-async def compat_workbench_fde_dashboard_post():
-    """POST alias for workbench FDE dashboard."""
-    return {"pending_decisions": 0, "signal_alerts": 0, "status": "ok"}
+@router.api_route("/workbench/fde-dashboard", methods=["GET", "POST"])
+async def compat_workbench_fde_dashboard():
+    """Compat 入口：委托真实 FDE 四卡片聚合（≠ 假 pending_decisions=0）。
+
+    Returns:
+        ``{"data": <FdeDashboardResponse dict>}``，与 platform workbench 代理同形。
+    """
+    # 为什么：旧 stub 恒返回 pending_decisions=0 会把空队列伪装成健康；必须走真 collector
+    from apps.fde.api.fde import get_fde_dashboard as _fde_dashboard
+
+    return {"data": await _fde_dashboard()}

@@ -41,7 +41,7 @@ class FdeFreezeResponse(BaseModel):
 
 
 class FdeDashboardResponse(BaseModel):
-    """GET /fde/dashboard — 四卡片 + 时间线聚合"""
+    """GET /fde/dashboard/evolution — 四卡片 + 时间线聚合"""
     pending_decisions: List[Dict[str, Any]] = []
     signal_alerts: List[Dict[str, Any]] = []
     trace_anomalies: List[Dict[str, Any]] = []
