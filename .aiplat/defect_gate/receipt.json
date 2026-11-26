@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T19:53:36+08:00",
+  "reviewed_at": "2026-11-26T20:01:28+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a20ff88216b2a4e09cb15ed6014185db49a2c1a6",
-  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "head_sha": "a20ff88216b2a4e09cb15ed6014185db49a2c1a6",
+  "merge_base": "c553d46bfdfc22ddf99e85d5e65cfd02889c394d",
+  "diff_sha256": "5b4877a7114bb5dc8e49465f1cbaca83fea3fb3ba73444786cb9b94e103dff2e",
+  "head_sha": "93f987ed5dde3b239f10a4a728ff1c6ee87ae9d3",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "F11 Accepted + operational approval; docs only. Local lock only."
+  "note": "F11 compose+smoke landing; five-check clean. Local lock only."
 }
