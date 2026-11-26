@@ -8,7 +8,7 @@ scope_in: 附录 A–Q；附录 N 等级映射与 Core 最小符合集；附录 
 scope_out: 实现状态声明、业务域内容
 owner: 朱向群
 version: 4.3.1
-last_reviewed: 2026-11-19
+last_reviewed: 2026-11-26
 review_cycle: 90d
 ---
 # aiPlat 知识体系规范性附录 v4.3.1
@@ -18,7 +18,7 @@ review_cycle: 90d
 > **状态**：Approved Standard Annex（`status: active` = 当前标准版本；强制生效日 2027-01-01）
 > **权威**：`authority: canonical`（与正文同等效力）
 > **配套**：《aiPlat 知识体系技术白皮书 v4.3.1（已批准）》
-> **勘误**：2026-11-13 修正附录 P 的批准状态；2026-11-19 闭合附录 N 等级映射与附录 O/`high_precision` 口径。
+> **勘误**：2026-11-13 修正附录 P 的批准状态；2026-11-19 闭合附录 N 等级映射与附录 O/`high_precision` 口径；2026-11-26 N.5 勾选回填（对照 n24 catalog；≠ certified）。
 > **效力**：本附录与正文具有同等效力。字段名、必填规则、类型、错误码、版本兼容和符合性清单为 MUST/SHOULD；示例值仅作说明。
 > **说明**：本附录不是“仅供参考”；实现必须满足本附录的规范性要求。附录 N 为符合性清单的**机读权威**。
 
@@ -911,30 +911,33 @@ Function ticket.priority_score -> ticket.priorityScore({ticket_id})
 
 ### N.5 勾选摘要
 
-- [ ] N01 Raw 不可变（core）
-- [ ] N02 语义模型版本化（core）
-- [ ] N03 Fact/Claim 有 evidence（core）
-- [ ] N04 来源策略与冲突裁决（core）
-- [ ] N05 Wiki/索引有条件重建（extended）
-- [ ] N06 Gateway 查询契约（core）
-- [ ] N07 权限召回前过滤（extended）
-- [ ] N08 动作执行走 Policy/Approval/Audit（extended）
-- [ ] N09 跨租户 0 泄漏（core）
-- [ ] N10 评测有定义/数据集/门槛（operational）
-- [ ] N11 迁移/回滚方案（operational）
-- [ ] N12 Fact 状态机（core）
-- [ ] N13 confidence 校准规则（operational）
-- [ ] N14 跨存储失败恢复/对账（operational）
-- [ ] N15 JSON Schema 与附录一致（core）
-- [ ] N16 附录示例通过 Schema 校验（core）
-- [ ] N17 记录级语义校验通过（core）
-- [ ] N18 实现方语义测试通过（core）
-- [ ] N19 运行时权威与审计快照（extended）
-- [ ] N20 L1/L2/L3 约束分层（extended）
-- [ ] N21 防假绿（core）
-- [ ] N22 实例/字段级 ACL（extended）
-- [ ] N23 OCS 完整度（operational）
-- [ ] N24 版本/变更/审计（operational）
+> **回填（2026-11-26）**：下列勾选 = 测量目录 `reports/products/knowledge-system/v4.3.1/n24-conformance-catalog.yaml` 中对应项 `status: exists`（24/24）。  
+> **诚实锁**：勾选 ≠ `certified` / ≠ Full unconditional；全量仍须 N.6 独立非作者批准 + SLO 条件说明。
+
+- [x] N01 Raw 不可变（core）
+- [x] N02 语义模型版本化（core）
+- [x] N03 Fact/Claim 有 evidence（core）
+- [x] N04 来源策略与冲突裁决（core）
+- [x] N05 Wiki/索引有条件重建（extended）
+- [x] N06 Gateway 查询契约（core）
+- [x] N07 权限召回前过滤（extended）
+- [x] N08 动作执行走 Policy/Approval/Audit（extended）
+- [x] N09 跨租户 0 泄漏（core）
+- [x] N10 评测有定义/数据集/门槛（operational）
+- [x] N11 迁移/回滚方案（operational）
+- [x] N12 Fact 状态机（core）
+- [x] N13 confidence 校准规则（operational）
+- [x] N14 跨存储失败恢复/对账（operational）
+- [x] N15 JSON Schema 与附录一致（core）
+- [x] N16 附录示例通过 Schema 校验（core）
+- [x] N17 记录级语义校验通过（core）
+- [x] N18 实现方语义测试通过（core）
+- [x] N19 运行时权威与审计快照（extended）
+- [x] N20 L1/L2/L3 约束分层（extended）
+- [x] N21 防假绿（core）
+- [x] N22 实例/字段级 ACL（extended）
+- [x] N23 OCS 完整度（operational）
+- [x] N24 版本/变更/审计（operational）
 
 ---
 

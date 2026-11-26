@@ -12,7 +12,8 @@ last_reviewed: 2026-11-15
 # 知识体系标准 v4.3.1
 
 > 已批准标准，2027-01-01 生效。  
-> 批准提交：`c43862c4`。
+> 批准提交：`c43862c4`。  
+> **N.5（2026-11-26）**：附录勾选已对照 `n24-conformance-catalog.yaml` 回填 24/24 `exists`；≠ `certified` / ≠ Full unconditional。
 
 - [技术白皮书](./technical-whitepaper.md)
 - [规范性附录](./normative-appendix.md)
