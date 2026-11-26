@@ -21,7 +21,7 @@ created: 2026-11-26
 | opened_at | 2026-11-26（Day-0） |
 | target_close | ≥2026-12-03（满 7 天） |
 | env_today | **dev**（本机 `127.0.0.1:8002`） |
-| staging CORE_BASE | **未配置**（Go 仍须 staging/prod 分表） |
+| staging CORE_BASE | **不可用**（负责人确认 2026-11-27：暂无 staging URL；Go 仍须 staging/prod 分表） |
 | decision_shadow | `enabled=false`；`classify_hook_wired=false`（Day-1 复核） |
 
 ## Daily rows（自动/半自动追加）

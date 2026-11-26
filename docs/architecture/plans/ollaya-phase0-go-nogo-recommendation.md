@@ -46,7 +46,7 @@ purpose: 阶段 0 Go/No-Go 工程建议（≠ 正式会签；≠ 开采样）
 | 0.6 会签包 | ✅ [ollaya-phase0-06-signoff-pack.md](./ollaya-phase0-06-signoff-pack.md) |
 | staging 窗口窄授权 | ✅ `reports/architecture/human-gates/ollaya-staging-window-authorize.approved.json` |
 | 日采 harness + Day-0 台账 | ✅ `scripts/ollaya_phase0_daily_collect.sh` + `ollaya-window-ledger.md`（**dev**；≠ staging Go） |
-| staging/prod 满窗 / C7 / C8 / 采样 Go | ☐ 仍待 |
+| staging/prod 满窗 / C7 / C8 / 采样 Go | ☐ 仍待（2026-11-27：**暂无 staging URL** → 满窗不可启动） |
 | 2026-11-27 Prep 单（可打印） | ✅ `reports/architecture/human-gates/ollaya-06-meeting-prep-sheet.md`；Day-1 实采 total=0 / shadow 默关（dev；≠ Go） |
 
 ## 明确不交付
