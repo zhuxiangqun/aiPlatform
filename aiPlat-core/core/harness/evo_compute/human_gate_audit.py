@@ -74,17 +74,23 @@ def audit_human_gate_coverage(
     candidates: Optional[Sequence[Dict[str, Any]]] = None,
     *,
     require_production_path_only: bool = True,
+    source: str = "fixture",
 ) -> Dict[str, Any]:
     """审计候选是否 100% 经 HUMAN_GATE。
 
     Args:
-        candidates: 候选行（status / human_gate_*）。
+        candidates: 候选行（status / human_gate_*）；空且 source=fixture 时用全覆盖夹具。
         require_production_path_only: 仅审计已进入批准后路径的候选。
+        source: ``fixture`` | ``ledger`` | ``live``（调用方标注；不伪造）。
 
     Returns:
         ``human_gate_100`` 等；``g3_complete`` 恒 false；夹具 ≠ 生产宣称。
     """
-    rows = [dict(r) for r in (candidates or default_full_coverage_fixture())]
+    src = str(source or "fixture").strip().lower() or "fixture"
+    if candidates is None and src == "fixture":
+        rows = [dict(r) for r in default_full_coverage_fixture()]
+    else:
+        rows = [dict(r) for r in (candidates or [])]
     scoped: List[Dict[str, Any]] = []
     for r in rows:
         st = normalize_status(str(r.get("status") or ""))
@@ -101,6 +107,7 @@ def audit_human_gate_coverage(
             "passed": 0,
             "missing": ["empty_production_path_set"],
             "failures": [],
+            "source": src,
             "g3_foundation": True,
             "g3_complete": False,
             "certified": False,
@@ -128,6 +135,13 @@ def audit_human_gate_coverage(
     total = len(scoped)
     ratio = float(passed_n) / float(total) if total else 0.0
     full = passed_n == total and total > 0
+    note = (
+        "ledger candidate audit; ≠ production traffic claim"
+        if src == "ledger"
+        else "offline candidate audit; fixture ≠ production traffic claim"
+        if src == "fixture"
+        else "live-labeled candidate audit; still ≠ gate/e2 claim"
+    )
     return {
         "ok": True,
         "human_gate_100": full,
@@ -136,10 +150,32 @@ def audit_human_gate_coverage(
         "passed": passed_n,
         "missing": [] if full else [f["candidate_id"] for f in failures],
         "failures": failures,
+        "source": src,
         "g3_foundation": True,
         "g3_complete": False,
         "certified": False,
         "e2_claimed": False,
         "production_write": False,
-        "note": "offline candidate audit; fixture ≠ production traffic claim",
+        "note": note,
     }
+
+
+def audit_human_gate_from_ledger(
+    *,
+    require_production_path_only: bool = True,
+) -> Dict[str, Any]:
+    """从候选台账审计 HUMAN_GATE 覆盖。
+
+    Args:
+        require_production_path_only: 仅生产路径状态。
+    """
+    from core.harness.evo_compute.candidate_ledger import list_production_path_candidates
+
+    listed = list_production_path_candidates(
+        production_path_only=require_production_path_only
+    )
+    return audit_human_gate_coverage(
+        listed.get("candidates") or [],
+        require_production_path_only=require_production_path_only,
+        source="ledger",
+    )

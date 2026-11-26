@@ -153,6 +153,7 @@ review_cycle: 90d
 > 2026-11-26：受控演化计算 Phase 3 / G3 slice-1（AIS 检测-only + 预注册误报预算 + G3 suite/gate；经 CoreFacade；auto_remediate/g3_complete/certified/e2 恒 false；不写生产）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-26：受控演化计算 Phase 3 / G3 slice-2（GP 强类型 DSL 沙箱；禁止核心代码；经 CoreFacade；g3_complete/certified/e2 恒 false；不写生产）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-26：受控演化计算 Phase 3 / G3 slice-3（HUMAN_GATE 100% 审计 + 闭环 L4 评估报告/缓释 + 回滚演练；经 CoreFacade；g3_complete/certified/e2 恒 false；夹具≠生产宣称）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
+> 2026-11-26：受控演化计算生产加深 D1（活评测/FDE 摘要 + HUMAN_GATE 台账 + 只读 Canary 探针 + baseline→L4；经 CoreFacade；g*_complete/certified/e2 恒 false；无切流/不写生产配置）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威覆盖显式 residual（`apply_published_seed_authority`；不改写 workspace_seeds；不可用诚实上报；freeze 仍 true；certified/seed_replacement_complete 恒 false）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-24：知识系统 N02 种子权威产品面第一刀（`list_object_type_seed_catalog` + `apply_published_seed_authority_product`；默认可用；不改写 workspace_seeds；seed_product_surface=true；certified/seed_replacement_complete 恒 false；freeze 仍 true）。不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`
 > 2026-11-19：知识系统 v4.3.1 W6 Knowledge SDK 最小切片（ObjectType→Client 表面/源码经 Facade；L1 kb:read）；不改变 run_id/trace_id/request_id 或鉴权透传语义。`clause-sync`

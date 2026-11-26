@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3471
+total_capabilities: 3485
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 803
+    caps_count: 817
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -3179,6 +3179,62 @@ domains:
         type: function
         signature: "CoreFacade evaluate_evo_compute_g3_slice3_gate"
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: record_human_gate_decision
+        type: function
+        signature: "record_human_gate_decision(...); ledger; production_write=false"
+        module: aiPlat-core/core/harness/evo_compute/candidate_ledger.py
+      - symbol: list_production_path_candidates
+        type: function
+        signature: "list_production_path_candidates()→dict; source=ledger"
+        module: aiPlat-core/core/harness/evo_compute/candidate_ledger.py
+      - symbol: audit_human_gate_from_ledger
+        type: function
+        signature: "audit_human_gate_from_ledger()→dict; source=ledger"
+        module: aiPlat-core/core/harness/evo_compute/human_gate_audit.py
+      - symbol: summarize_live_eval_coverage
+        type: function
+        signature: "summarize_live_eval_coverage(report)→dict; live|unavailable"
+        module: aiPlat-core/core/harness/evo_compute/live_sources.py
+      - symbol: summarize_live_fde_coverage
+        type: function
+        signature: "summarize_live_fde_coverage(inventory)→dict"
+        module: aiPlat-core/core/harness/evo_compute/live_sources.py
+      - symbol: probe_canary_rollout
+        type: function
+        signature: "probe_canary_rollout(rows); cutover=false"
+        module: aiPlat-core/core/harness/evo_compute/live_sources.py
+      - symbol: levels_from_baseline_loops
+        type: function
+        signature: "levels_from_baseline_loops(baseline)→dict; measured honest"
+        module: aiPlat-core/core/harness/evo_compute/live_sources.py
+      - symbol: run_evo_compute_production_deepen_slice1_suite
+        type: function
+        signature: "run_evo_compute_production_deepen_slice1_suite()→dict"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: evaluate_evo_compute_production_deepen_slice1_gate
+        type: function
+        signature: "evaluate_evo_compute_production_deepen_slice1_gate(suite=None)"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: record_evo_human_gate_decision
+        type: function
+        signature: "CoreFacade record_evo_human_gate_decision"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: audit_evo_human_gate_from_ledger
+        type: function
+        signature: "CoreFacade audit_evo_human_gate_from_ledger"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: collect_evo_production_deepen_slice1
+        type: function
+        signature: "CoreFacade collect_evo_production_deepen_slice1"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_compute_production_deepen_slice1_suite
+        type: function
+        signature: "CoreFacade run_evo_compute_production_deepen_slice1_suite"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_compute_production_deepen_slice1_gate
+        type: function
+        signature: "CoreFacade evaluate_evo_compute_production_deepen_slice1_gate"
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: continuous_midpoints
         type: function
         signature: '非 int 字段取中点默认值。'
@@ -3198,7 +3254,7 @@ domains:
       - module: "core/harness/interfaces/loop.py"
         reason: "ReActLoop 运行时"
       - module: "core/api/core_facade.py"
-        reason: "evo_compute G0/G1/G2/G3 门面入口"
+        reason: "evo_compute G0/G1/G2/G3 + production deepen 门面入口"
 
   # ══════════════════════════════════════════════════════════════
   # 二、记忆子系统 (59 caps)
