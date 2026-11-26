@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T11:20:00+08:00",
+  "reviewed_at": "2026-11-26T12:10:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "02d843a68606e4a71cca54034ea7b17902d6323b",
-  "diff_sha256": "ac67801f104d69eac2121dd32add71c572643fb6e574cae61c5a906a8d0bf317",
-  "head_sha": "b5e2d39ea8d4ab73e90ebcd2e2f3386cb015fd13",
+  "merge_base": "af416c0118d45b14db022ff612d4fe51b8b5bf25",
+  "diff_sha256": "96b3bd0e7c0e6add47e6cc24efebd23928ee2133619634f763f2b9939cb31f94",
+  "head_sha": "269d49660bb87b3fd56410bbacba11b01db6693d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "D2 holdout + whitepaper sync; production_traffic/certified/e2 false."
+  "note": "D3 sandbox SkillRouter cutover; D1 probe remains read-only. Default production_write=false; suite/gate claims locked false. Local lock only."
 }
