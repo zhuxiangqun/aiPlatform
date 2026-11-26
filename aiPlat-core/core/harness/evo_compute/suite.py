@@ -1664,3 +1664,160 @@ def evaluate_evo_compute_production_deepen_slice2_gate(
         "e2_claimed": False,
         "suite": s,
     }
+
+
+def run_evo_compute_production_deepen_slice3_suite() -> Dict[str, Any]:
+    """生产加深 D3：沙箱 SkillRouter 切流↔观察↔回滚；默认非生产写。"""
+    from core.harness.deployment.canary import SkillRouter
+    from core.harness.evo_compute.canary_bridge import (
+        observe_evo_canary,
+        request_evo_canary_cutover,
+        rollback_evo_canary,
+        run_evo_canary_cutover_rollback_cycle,
+    )
+
+    cases: list = []
+    rtr = SkillRouter()
+    skill = "evo.d3.pilot_skill"
+    cid = "d3-cand-1"
+
+    cut = request_evo_canary_cutover(
+        candidate_id=cid,
+        skill_name=skill,
+        version="evo-d3-v1",
+        rollout_percentage=5,
+        actor="d3-suite",
+        evidence_ref="d3-suite",
+        router=rtr,
+        canary_tenants=["t-canary"],
+    )
+    cases.append(
+        {
+            "id": "cutover_approved_to_canary",
+            "pass": cut.get("ok") is True
+            and cut.get("cutover") is True
+            and cut.get("status") == "canary"
+            and cut.get("production_write") is False
+            and cut.get("certified") is False
+            and cut.get("e2_claimed") is False,
+        }
+    )
+
+    obs = observe_evo_canary(skill_name=skill, router=rtr)
+    hit = any(str(r.get("skill") or "") == skill for r in (obs.get("rows") or []))
+    cases.append(
+        {
+            "id": "observe_sees_registered_skill",
+            "pass": obs.get("ok") is True and hit and obs.get("count", 0) >= 1,
+        }
+    )
+
+    # 路由决策：canary tenant 必见新版
+    routed = rtr.route(skill, tenant_id="t-canary", user_id="u1")
+    cases.append(
+        {
+            "id": "router_returns_canary_version",
+            "pass": routed == "evo-d3-v1",
+        }
+    )
+    # 无百分比命中时默认租户仍可能 stable；至少注册存在
+    status_rows = rtr.get_rollout_status()
+    cases.append(
+        {
+            "id": "rollout_row_present",
+            "pass": any(r.get("skill") == skill for r in status_rows),
+        }
+    )
+
+    bad = request_evo_canary_cutover(
+        candidate_id=cid,
+        skill_name=skill,
+        from_status="draft",
+        router=SkillRouter(),
+        actor="d3-suite",
+    )
+    cases.append(
+        {
+            "id": "illegal_from_status_fails_clean",
+            "pass": bad.get("ok") is False and bad.get("cutover") is False,
+        }
+    )
+
+    rb = rollback_evo_canary(
+        candidate_id=cid,
+        skill_name=skill,
+        actor="d3-suite",
+        evidence_ref="d3-suite",
+        router=rtr,
+    )
+    cases.append(
+        {
+            "id": "rollback_canary_to_rolled_back",
+            "pass": rb.get("ok") is True
+            and rb.get("rollback_ok") is True
+            and rb.get("status") == "rolled_back"
+            and rb.get("production_write") is False,
+        }
+    )
+    cases.append(
+        {
+            "id": "router_cleared_after_rollback",
+            "pass": not any(r.get("skill") == skill for r in rtr.get_rollout_status()),
+        }
+    )
+
+    cycle = run_evo_canary_cutover_rollback_cycle(
+        candidate_id="d3-cand-cycle",
+        skill_name="evo.d3.cycle_skill",
+        version="evo-d3-cycle",
+        actor="d3-suite",
+    )
+    cases.append(
+        {
+            "id": "full_cycle_sandbox",
+            "pass": cycle.get("ok") is True
+            and cycle.get("cycle_complete") is True
+            and cycle.get("production_write") is False
+            and cycle.get("g1_complete") is False,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "production-deepen-d3",
+        "g1_foundation": True,
+        "g1_complete": False,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "production_traffic": False,
+        "note": "production deepen D3 sandbox SkillRouter cutover/rollback; ≠ gate/E2",
+    }
+
+
+def evaluate_evo_compute_production_deepen_slice3_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """生产加深 D3 门槛门；complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_production_deepen_slice3_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_production_deepen_slice3_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g1_foundation": True,
+        "g1_complete": False,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "suite": s,
+    }

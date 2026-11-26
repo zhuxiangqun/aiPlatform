@@ -21649,6 +21649,156 @@ def evaluate_evo_compute_production_deepen_slice2_gate(
     return _gate(suite)
 
 
+def request_evo_canary_cutover(
+    *,
+    candidate_id: str,
+    skill_name: str,
+    version: str = "evo-cand",
+    rollout_percentage: int = 5,
+    actor: str = "evo-canary",
+    evidence_ref: str = "d3-canary",
+    from_status: str = "approved",
+    use_global_router: bool = False,
+    canary_tenants: Optional[list] = None,
+) -> dict:
+    """CoreFacade：evo 候选 Canary 切流（默认沙箱 SkillRouter）。
+
+    Args:
+        candidate_id: 候选 id。
+        skill_name: Skill 名。
+        version: 灰度版本。
+        rollout_percentage: 灰度百分比。
+        actor: 操作者。
+        evidence_ref: 证据前缀。
+        from_status: 起始状态。
+        use_global_router: True 才触达全局路由器并标 production_write。
+        canary_tenants: 金丝雀租户。
+    """
+    from core.harness.evo_compute.canary_bridge import request_evo_canary_cutover as _req
+
+    return _req(
+        candidate_id=candidate_id,
+        skill_name=skill_name,
+        version=version,
+        rollout_percentage=rollout_percentage,
+        actor=actor,
+        evidence_ref=evidence_ref,
+        from_status=from_status,
+        use_global_router=use_global_router,
+        canary_tenants=canary_tenants,
+    )
+
+
+def observe_evo_canary(
+    *,
+    skill_name: str = "",
+    use_global_router: bool = False,
+) -> dict:
+    """CoreFacade：观察 Canary rollout（默认沙箱空实例除非全局）。
+
+    Args:
+        skill_name: 可选过滤。
+        use_global_router: 是否读全局路由器。
+    """
+    from core.harness.evo_compute.canary_bridge import observe_evo_canary as _obs
+
+    return _obs(skill_name=skill_name, use_global_router=use_global_router)
+
+
+def rollback_evo_canary(
+    *,
+    candidate_id: str,
+    skill_name: str,
+    actor: str = "evo-canary",
+    evidence_ref: str = "d3-canary",
+    from_status: str = "canary",
+    use_global_router: bool = False,
+    force_remove: bool = True,
+) -> dict:
+    """CoreFacade：Canary 回滚 + 候选 rolled_back。
+
+    Args:
+        candidate_id: 候选 id。
+        skill_name: Skill 名。
+        actor: 操作者。
+        evidence_ref: 证据前缀。
+        from_status: 当前状态。
+        use_global_router: 是否全局路由器。
+        force_remove: 强制 remove_version。
+    """
+    from core.harness.evo_compute.canary_bridge import rollback_evo_canary as _rb
+
+    return _rb(
+        candidate_id=candidate_id,
+        skill_name=skill_name,
+        actor=actor,
+        evidence_ref=evidence_ref,
+        from_status=from_status,
+        use_global_router=use_global_router,
+        force_remove=force_remove,
+    )
+
+
+def run_evo_canary_cutover_rollback_cycle(
+    *,
+    candidate_id: str,
+    skill_name: str,
+    version: str = "evo-cand",
+    rollout_percentage: int = 5,
+    actor: str = "evo-canary",
+    evidence_ref: str = "d3-canary",
+    use_global_router: bool = False,
+) -> dict:
+    """CoreFacade：切流→观察→回滚循环（默认沙箱）。
+
+    Args:
+        candidate_id: 候选。
+        skill_name: Skill。
+        version: 版本。
+        rollout_percentage: 灰度%。
+        actor: 操作者。
+        evidence_ref: 证据。
+        use_global_router: 全局路由器（慎用）。
+    """
+    from core.harness.evo_compute.canary_bridge import (
+        run_evo_canary_cutover_rollback_cycle as _cycle,
+    )
+
+    return _cycle(
+        candidate_id=candidate_id,
+        skill_name=skill_name,
+        version=version,
+        rollout_percentage=rollout_percentage,
+        actor=actor,
+        evidence_ref=evidence_ref,
+        use_global_router=use_global_router,
+    )
+
+
+def run_evo_compute_production_deepen_slice3_suite() -> dict:
+    """CoreFacade：生产加深 D3 套件（Canary 切流/回滚）。"""
+    from core.harness.evo_compute.suite import (
+        run_evo_compute_production_deepen_slice3_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_evo_compute_production_deepen_slice3_gate(
+    suite: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：生产加深 D3 门槛门。
+
+    Args:
+        suite: D3 suite 回执。
+    """
+    from core.harness.evo_compute.suite import (
+        evaluate_evo_compute_production_deepen_slice3_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
