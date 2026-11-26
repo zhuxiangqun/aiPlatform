@@ -10,11 +10,10 @@ from typing import Any, Dict, Mapping, Optional, Set
 
 
 # KPI keys still stubbed — must not be presented as live ops health.
-# pending_decisions + timeline are now wired (evolve HITL / acceptance events).
-_STUB_KPI_KEYS: Set[str] = {
-    "trace_anomalies",
-    "training",
-}
+# pending_decisions / timeline / trace_anomalies / training 均已接线
+# （空列表/disabled 表示「无数据」，≠ stub 占位）。
+_STUB_KPI_KEYS: Set[str] = set()
+
 
 
 class WorkbenchRuntimeGuard:

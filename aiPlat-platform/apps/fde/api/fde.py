@@ -209,7 +209,7 @@ async def get_fde_dashboard() -> Dict[str, Any]:
         "timeline": await _collect_timeline(),
         "last_updated": datetime.now(timezone.utc).isoformat(),
     }
-    # Phase 1: RuntimeGuard KPI honesty (stub keys flagged; UI already hides them)
+    # Phase 1: RuntimeGuard KPI honesty（trace/training 已接线；仅显式 stub 键报警）
     try:
         from core.api.core_facade import WorkbenchRuntimeGuard
         kpi = WorkbenchRuntimeGuard.check_kpi_not_stub(result)
@@ -262,13 +262,97 @@ async def _collect_signal_alerts() -> List[Dict[str, Any]]:
 
 
 def _collect_trace_anomalies() -> List[Dict[str, Any]]:
-    """Still stub — honest hide until TraceStore anomaly feed is wired."""
-    return []
+    """从 Spec 最新执行轨迹汇总犹豫/重复/异常警告（经 CoreFacade）。
+
+    Returns:
+        有异常信号的 Spec 行；无数据时为空列表（已接线，≠ stub）。
+    """
+    out: List[Dict[str, Any]] = []
+    try:
+        from core.api.core_facade import get_spec_lifecycle, get_trace_visualizer
+
+        sl = get_spec_lifecycle()
+        viz = get_trace_visualizer()
+        for meta in (sl.list_specs() or [])[:30]:
+            sid = str(meta.get("spec_id") or "").strip()
+            if not sid:
+                continue
+            latest = sl.get_latest(sid)
+            if latest is None:
+                continue
+            result = getattr(latest, "execution_result", None) or {}
+            raw_trace = result.get("trace") or []
+            if not raw_trace:
+                continue
+            content = getattr(latest, "content", None) or {}
+            stage_count = len(content.get("stage_configs") or [])
+            summary = viz.analyze(
+                raw_trace,
+                spec_id=sid,
+                stage_count=stage_count,
+                goal=str(content.get("agent_md") or "")[:200],
+            )
+            warnings = list(summary.anomaly_warnings or [])
+            hesitation = int(summary.hesitation_count or 0)
+            repeats = int(summary.repeat_count or 0)
+            # 为什么：空轨迹不算异常；仅上报有警告或犹豫/重复信号的 Spec
+            if not warnings and hesitation <= 0 and repeats <= 0:
+                continue
+            out.append(
+                {
+                    "spec_id": sid,
+                    "total_steps": int(summary.total_steps or 0),
+                    "hesitation_count": hesitation,
+                    "repeat_count": repeats,
+                    "anomaly_warnings": warnings,
+                }
+            )
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "_collect_trace_anomalies failed", exc_info=True
+        )
+    return out
 
 
 def _collect_training_status_dash() -> Dict[str, Any]:
-    """Still stub — honest hide until training progress API is wired."""
-    return {"stub": True}
+    """LoRA/SFT 自动训练进度（与 workbench /training/status 同源）。
+
+    Returns:
+        监控字段 dict；失败时 ``enabled=false`` + error（不含 stub 标记）。
+    """
+    try:
+        from core.api.core_facade import get_lora_auto_trigger
+
+        trigger = get_lora_auto_trigger()
+        status = dict(trigger.get_status() or {})
+        model_info: Dict[str, Any] = {}
+        model_path = get_aiplat_data_dir("sft_models/latest.json")
+        if os.path.exists(model_path):
+            try:
+                with open(model_path, encoding="utf-8") as fh:
+                    model_info = json.load(fh)
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "read sft_models/latest.json failed", exc_info=True
+                )
+        dataset_dir = get_aiplat_data_dir("training")
+        dataset_count = 0
+        if os.path.isdir(dataset_dir):
+            dataset_count = len(
+                [f for f in os.listdir(dataset_dir) if f.startswith("sft_train_")]
+            )
+        status["latest_model"] = model_info.get(
+            "result_model", model_info.get("base_model", "")
+        )
+        status["latest_model_completed_at"] = model_info.get("completed_at", "")
+        status["dataset_count"] = dataset_count
+        # 为什么：显式去掉 stub，避免 KPI 守卫把真实空进度当成占位
+        status.pop("stub", None)
+        return status
+    except Exception as e:
+        return {"enabled": False, "error": str(e), "quality_count": 0, "threshold": 0,
+                "progress_pct": 0.0, "ready_to_trigger": False, "latest_model": "",
+                "dataset_count": 0}
 
 
 async def _collect_timeline() -> List[Dict[str, Any]]:

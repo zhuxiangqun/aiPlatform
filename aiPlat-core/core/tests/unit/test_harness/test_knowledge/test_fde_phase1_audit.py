@@ -83,14 +83,24 @@ def test_runtime_guard_action_registered():
 
 
 def test_runtime_guard_kpi_stub():
-    # pending_decisions is wired; stub set is trace_anomalies / training
-    bad = WorkbenchRuntimeGuard.check_kpi_not_stub(
-        {"trace_anomalies": [], "signal_alerts": [{"x": 1}]}
+    # trace_anomalies / training 已接线：空列表不再当 stub；显式 stub 标记仍拦
+    wired = WorkbenchRuntimeGuard.check_kpi_not_stub(
+        {"trace_anomalies": [], "training": {"enabled": False}, "signal_alerts": [{"x": 1}]}
     )
-    assert bad["ok"] is False
-    assert "trace_anomalies" in bad["stub_keys"]
-    good = WorkbenchRuntimeGuard.check_kpi_not_stub({"signal_alerts": [{"x": 1}]})
-    assert good["ok"] is True
+    assert wired["ok"] is True
+    assert wired["stub_keys"] == []
+    # 若未来再把某键列入 _STUB_KPI_KEYS，显式 stub 仍应被检出
+    from core.harness.infrastructure import workbench_runtime_guard as mod
+
+    prev = set(mod._STUB_KPI_KEYS)
+    try:
+        mod._STUB_KPI_KEYS.add("training")
+        bad = WorkbenchRuntimeGuard.check_kpi_not_stub({"training": {"stub": True}})
+        assert bad["ok"] is False
+        assert "training" in bad["stub_keys"]
+    finally:
+        mod._STUB_KPI_KEYS.clear()
+        mod._STUB_KPI_KEYS.update(prev)
 
 
 @pytest.mark.asyncio
