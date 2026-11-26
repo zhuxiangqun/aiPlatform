@@ -8,12 +8,14 @@
   - 生产加深 D1：活源摘要 / 候选台账 / 只读 Canary 探针
   - 生产加深 D2：版本化 holdout 分区
   - 生产加深 D3：SkillRouter Canary 切流/观察/回滚（默认沙箱）
+  - 生产加深 D4：活台账 HITL 100% + 已测 L4/缓释签批包
 
 非目标：
   - 不写生产配置、不采生产流量、不宣称 E2/L4/认证
   - 不替代 ``evolution_engine.py`` 夜间 Skill 流水线
   - 套件绿 ≠ Gate 宣称完成；AIS 不自动修复；GP 不生成核心代码
   - D3 默认沙箱路由器；``use_global_router`` 才触达全局并标 production_write
+  - D4 ``d4_signed`` ≠ ``g3_complete`` / E2
 """
 
 from core.harness.evo_compute.ais import (
@@ -90,6 +92,12 @@ from core.harness.evo_compute.canary_bridge import (
     rollback_evo_canary,
     run_evo_canary_cutover_rollback_cycle,
 )
+from core.harness.evo_compute.deepen_signoff import (
+    collect_production_deepen_d4_pack,
+    evaluate_production_deepen_d4_readiness,
+    get_production_deepen_d4_signoff,
+    sign_production_deepen_d4,
+)
 from core.harness.evo_compute.live_sources import (
     levels_from_baseline_loops,
     probe_canary_rollout,
@@ -137,6 +145,7 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_production_deepen_slice1_gate,
     evaluate_evo_compute_production_deepen_slice2_gate,
     evaluate_evo_compute_production_deepen_slice3_gate,
+    evaluate_evo_compute_production_deepen_slice4_gate,
     run_evo_compute_g0_suite,
     run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
@@ -149,6 +158,7 @@ from core.harness.evo_compute.suite import (
     run_evo_compute_production_deepen_slice1_suite,
     run_evo_compute_production_deepen_slice2_suite,
     run_evo_compute_production_deepen_slice3_suite,
+    run_evo_compute_production_deepen_slice4_suite,
 )
 
 __all__ = [
@@ -190,7 +200,12 @@ __all__ = [
     "evaluate_evo_compute_production_deepen_slice1_gate",
     "evaluate_evo_compute_production_deepen_slice2_gate",
     "evaluate_evo_compute_production_deepen_slice3_gate",
+    "evaluate_evo_compute_production_deepen_slice4_gate",
     "evaluate_g0_exit_readiness",
+    "collect_production_deepen_d4_pack",
+    "evaluate_production_deepen_d4_readiness",
+    "get_production_deepen_d4_signoff",
+    "sign_production_deepen_d4",
     "observe_evo_canary",
     "request_evo_canary_cutover",
     "rollback_evo_canary",
@@ -240,6 +255,7 @@ __all__ = [
     "run_evo_compute_production_deepen_slice1_suite",
     "run_evo_compute_production_deepen_slice2_suite",
     "run_evo_compute_production_deepen_slice3_suite",
+    "run_evo_compute_production_deepen_slice4_suite",
     "run_ga_offline",
     "run_gp_offline",
     "run_human_gate_canary_rollback_drill",

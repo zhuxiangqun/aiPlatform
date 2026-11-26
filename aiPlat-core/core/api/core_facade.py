@@ -21799,6 +21799,124 @@ def evaluate_evo_compute_production_deepen_slice3_gate(
     return _gate(suite)
 
 
+def collect_evo_production_deepen_d4_pack(
+    *,
+    levels: Optional[dict] = None,
+    measured: bool = False,
+    waiver_owner: str = "",
+    waiver_signed: bool = False,
+    waiver_gap_list: Optional[list] = None,
+    require_production_path_only: bool = True,
+) -> dict:
+    """CoreFacade：组装 D4 活 HITL + L4/缓释包。
+
+    Args:
+        levels: 四闭环等级。
+        measured: 是否实测。
+        waiver_owner: 缓释 owner。
+        waiver_signed: 缓释是否签字。
+        waiver_gap_list: 差距清单。
+        require_production_path_only: 仅生产路径候选。
+    """
+    from core.harness.evo_compute.deepen_signoff import (
+        collect_production_deepen_d4_pack as _c,
+    )
+
+    return _c(
+        levels=levels,
+        measured=measured,
+        waiver_owner=waiver_owner,
+        waiver_signed=waiver_signed,
+        waiver_gap_list=waiver_gap_list,
+        require_production_path_only=require_production_path_only,
+    )
+
+
+def sign_evo_production_deepen_d4(
+    *,
+    actor: str,
+    evidence_ref: str,
+    levels: Optional[dict] = None,
+    measured: bool = False,
+    waiver_owner: str = "",
+    waiver_signed: bool = False,
+    waiver_gap_list: Optional[list] = None,
+    persist: bool = True,
+) -> dict:
+    """CoreFacade：Owner 签批 D4 deepen 包（≠ Gate 完成）。
+
+    Args:
+        actor: 签批人。
+        evidence_ref: 证据。
+        levels: 四闭环等级。
+        measured: 是否实测。
+        waiver_owner: 缓释 owner。
+        waiver_signed: 缓释是否签字。
+        waiver_gap_list: 差距清单。
+        persist: 是否落盘。
+    """
+    from core.harness.evo_compute.deepen_signoff import sign_production_deepen_d4 as _s
+
+    return _s(
+        actor=actor,
+        evidence_ref=evidence_ref,
+        levels=levels,
+        measured=measured,
+        waiver_owner=waiver_owner,
+        waiver_signed=waiver_signed,
+        waiver_gap_list=waiver_gap_list,
+        persist=persist,
+    )
+
+
+def get_evo_production_deepen_d4_signoff() -> dict:
+    """CoreFacade：读取 D4 签批状态。"""
+    from core.harness.evo_compute.deepen_signoff import (
+        get_production_deepen_d4_signoff as _g,
+    )
+
+    return _g()
+
+
+def evaluate_evo_production_deepen_d4_readiness(
+    pack: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：D4 就绪评估（ready ≠ Gate 宣称）。
+
+    Args:
+        pack: 预组装包。
+    """
+    from core.harness.evo_compute.deepen_signoff import (
+        evaluate_production_deepen_d4_readiness as _e,
+    )
+
+    return _e(pack)
+
+
+def run_evo_compute_production_deepen_slice4_suite() -> dict:
+    """CoreFacade：生产加深 D4 套件。"""
+    from core.harness.evo_compute.suite import (
+        run_evo_compute_production_deepen_slice4_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_evo_compute_production_deepen_slice4_gate(
+    suite: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：生产加深 D4 门槛门。
+
+    Args:
+        suite: D4 suite 回执。
+    """
+    from core.harness.evo_compute.suite import (
+        evaluate_evo_compute_production_deepen_slice4_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 
