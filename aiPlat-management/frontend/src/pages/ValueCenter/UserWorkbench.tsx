@@ -20,6 +20,54 @@ interface FDEData {
   last_updated: string;
 }
 
+const EMPTY_FDE: FDEData = {
+  pending_decisions: [],
+  signal_alerts: [],
+  trace_anomalies: [],
+  timeline: [],
+  last_updated: '',
+  training: {
+    enabled: false,
+    quality_count: 0,
+    threshold: 0,
+    progress_pct: 0,
+    ready_to_trigger: false,
+    latest_model: '',
+    dataset_count: 0,
+  },
+};
+
+/** workbench proxy returns ItemResponse `{ data: FDEData }`; tolerate flat body. */
+function normalizeFdeDashboard(body: unknown): FDEData {
+  const raw = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  const inner =
+    raw.data && typeof raw.data === 'object' && !Array.isArray(raw.data)
+      ? (raw.data as Record<string, unknown>)
+      : raw;
+  const trainingIn =
+    inner.training && typeof inner.training === 'object'
+      ? (inner.training as Record<string, unknown>)
+      : {};
+  return {
+    ...EMPTY_FDE,
+    ...inner,
+    pending_decisions: Array.isArray(inner.pending_decisions)
+      ? (inner.pending_decisions as FDEData['pending_decisions'])
+      : [],
+    signal_alerts: Array.isArray(inner.signal_alerts)
+      ? (inner.signal_alerts as FDEData['signal_alerts'])
+      : [],
+    trace_anomalies: Array.isArray(inner.trace_anomalies)
+      ? (inner.trace_anomalies as FDEData['trace_anomalies'])
+      : [],
+    timeline: Array.isArray(inner.timeline)
+      ? (inner.timeline as FDEData['timeline'])
+      : [],
+    last_updated: String(inner.last_updated || ''),
+    training: { ...EMPTY_FDE.training, ...trainingIn },
+  } as FDEData;
+}
+
 const STATUS_COLORS: Record<string, string> = { draft:'#94a3b8', pending:'#3b82f6', executing:'#f59e0b', review:'#a855f7', revising:'#ec4899', stable:'#22c55e', archived:'#64748b' };
 const STATUS_LABELS: Record<string, string> = { draft:'草稿', pending:'待执行', executing:'执行中', review:'待审查', revising:'修订中', stable:'稳定', archived:'归档' };
 
@@ -63,12 +111,7 @@ const UserWorkbench: React.FC = () => {
     fetch('/api/platform/apps/workbench/capabilities').then(r => r.ok ? r.json() : {items:[]}).then(d => setCaps(d.items || [])).catch(() => setCaps([]));
     fetch('/api/platform/apps/workbench/tasks').then(r => r.ok ? r.json() : {items:[]}).then(d => setHistory(d.items || [])).catch(() => setHistory([]));
     fetch('/api/platform/apps/workbench/specs').then(r => r.ok ? r.json() : {specs:[]}).then(d => setSpecs(d.specs || [])).catch(() => setSpecs([]));
-    fetch('/api/platform/apps/workbench/fde-dashboard').then(r => r.ok ? r.json() : {}).then(d => setFDEData({
-      pending_decisions: [], signal_alerts: [], trace_anomalies: [],
-      timeline: [], last_updated: '',
-      training: { enabled: false, quality_count: 0, threshold: 0, progress_pct: 0, ready_to_trigger: false, latest_model: '', dataset_count: 0 },
-      ...(d || {}),
-    })).catch(() => setFDEData(null));
+    fetch('/api/platform/apps/workbench/fde-dashboard').then(r => r.ok ? r.json() : {}).then(d => setFDEData(normalizeFdeDashboard(d))).catch(() => setFDEData(null));
     fetch('/api/platform/apps/workbench/promotion-queue').then(r => r.ok ? r.json() : {items:[]}).then(d => setPromoQueue(d.items || [])).catch(() => setPromoQueue([]));
   }, []);
 
@@ -78,13 +121,7 @@ const UserWorkbench: React.FC = () => {
       try {
         const res = await fetch('/api/platform/apps/workbench/fde-dashboard');
         if (res.ok) {
-          const d = await res.json();
-          setFDEData({
-            pending_decisions: [], signal_alerts: [], trace_anomalies: [],
-            timeline: [], last_updated: '',
-            training: { enabled: false, quality_count: 0, threshold: 0, progress_pct: 0, ready_to_trigger: false, latest_model: '', dataset_count: 0 },
-            ...(d || {}),
-          });
+          setFDEData(normalizeFdeDashboard(await res.json()));
         }
         const pRes = await fetch('/api/platform/apps/workbench/promotion-queue');
         if (pRes.ok) {
@@ -163,7 +200,7 @@ const UserWorkbench: React.FC = () => {
     const sRes = await fetch('/api/platform/apps/workbench/specs');
     setSpecs((await sRes.json()).specs || []);
     const dashRes = await fetch('/api/platform/apps/workbench/fde-dashboard');
-    setFDEData(await dashRes.json());
+    setFDEData(normalizeFdeDashboard(await dashRes.json()));
   };
 
   const handleMarkStable = async (specId: string) => {
@@ -173,7 +210,7 @@ const UserWorkbench: React.FC = () => {
       fetch('/api/platform/apps/workbench/fde-dashboard'),
     ]);
     setSpecs((await sRes.json()).specs || []);
-    setFDEData(await dRes.json());
+    setFDEData(normalizeFdeDashboard(await dRes.json()));
   };
 
   const getRadarCount = (specId: string) =>
@@ -212,7 +249,7 @@ const UserWorkbench: React.FC = () => {
                      fetch('/api/platform/apps/workbench/fde-dashboard'),
                    ]);
                    setSpecs((await sRes.json()).specs || []);
-                   setFDEData(await dRes.json());
+                   setFDEData(normalizeFdeDashboard(await dRes.json()));
                  }, 6000);
                }} style={{
                  marginLeft: 12, background: '#3b82f6', color: '#fff', border: 'none',
@@ -322,7 +359,7 @@ const UserWorkbench: React.FC = () => {
                     const res = await fetch('/api/platform/apps/workbench/promotion-queue');
                     setPromoQueue((await res.json()).items || []);
                     const dashRes = await fetch('/api/platform/apps/workbench/fde-dashboard');
-                    setFDEData(await dashRes.json());
+                    setFDEData(normalizeFdeDashboard(await dashRes.json()));
                   }} style={{
                     background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6,
                     padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
@@ -414,7 +451,7 @@ const UserWorkbench: React.FC = () => {
                     fetch('/api/platform/apps/workbench/fde-dashboard'),
                   ]);
                   setSpecs((await sRes.json()).specs || []);
-                  setFDEData(await dRes.json());
+                  setFDEData(normalizeFdeDashboard(await dRes.json()));
                 }} style={{
                   background: '#22c55e20', color: '#22c55e', border: '1px solid #22c55e40',
                   borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
