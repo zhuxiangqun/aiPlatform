@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4369
+total_capabilities: 4377
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -570,6 +570,12 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| clear_ledger_for_tests | `core/harness/evo_compute/candidate_ledger.py` | ✅ | 自动同步 | 已合入 |
+| install_evo_pilot_holdout_seeds | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| load_evo_holdout_partition | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_evo_compute_production_deepen_slice2_gate | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
+| partition_fingerprint | `core/harness/evo_compute/holdout_dataset.py` | ✅ | 自动同步 | 已合入 |
+| default_pilot_holdout_seed | `core/harness/evo_compute/holdout_dataset.py` | ✅ | 自动同步 | 已合入 |
 | audit_evo_human_gate_from_ledger | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | record_evo_human_gate_decision | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_evo_compute_production_deepen_slice1_gate | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
@@ -685,6 +691,8 @@ scan_hash: 8f9548ec24f4
 | summarize_live_eval_coverage / summarize_live_fde_coverage / probe_canary_rollout / levels_from_baseline_loops | `core/harness/evo_compute/live_sources.py` | ✅ | 生产加深 D1 活源摘要；unavailable 诚实；Canary 只读无切流；生成物适用：已接线 | 本批 |
 | audit_human_gate_from_ledger / collect_evo_production_deepen_slice1 | `core/harness/evo_compute/human_gate_audit.py` / `core/api/core_facade.py` | ✅ | 台账审计 + D1 编排门面；g*_complete 恒 false；生成物适用：已接线 | 本批 |
 | run_evo_compute_production_deepen_slice1_suite | `core/harness/evo_compute/suite.py` / `core/api/core_facade.py` | ✅ | 生产加深 D1 套件；套件绿≠ Gate/E2；生成物适用：已接线 | 本批 |
+| load_holdout_partition / install_pilot_holdout_seeds / score_genes_on_holdout_batches | `core/harness/evo_compute/holdout_dataset.py` | ✅ | 生产加深 D2 版本化 holdout 分区；非生产流量；生成物适用：已接线 | 本批 |
+| compare_holdout（dataset/surrogate/unavailable） / run_evo_compute_production_deepen_slice2_suite | `core/harness/evo_compute/holdout.py` / `suite.py` / `core/api/core_facade.py` | ✅ | D2 对比优先分区；套件绿≠ G1/E2；生成物适用：已接线 | 本批 |
 | secure_scan_zip | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | AssetSecureScanError | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | wrap_asset_install_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5270,7 +5278,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 926 | 1 | 927 |
+| Harness 执行引擎 | 934 | 1 | 935 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5315,7 +5323,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4358** | **11** | **4369** |
+| **总计** | **4366** | **11** | **4377** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

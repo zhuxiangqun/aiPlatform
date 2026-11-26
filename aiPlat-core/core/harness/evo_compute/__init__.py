@@ -64,6 +64,14 @@ from core.harness.evo_compute.gp import (
     validate_dsl_program,
 )
 from core.harness.evo_compute.holdout import compare_holdout
+from core.harness.evo_compute.holdout_dataset import (
+    HOLDOUT_DATASET_VERSION,
+    default_pilot_holdout_seed,
+    install_pilot_holdout_seeds,
+    load_holdout_partition,
+    partition_fingerprint,
+    score_genes_on_holdout_batches,
+)
 from core.harness.evo_compute.human_gate_audit import (
     audit_human_gate_coverage,
     audit_human_gate_from_ledger,
@@ -118,6 +126,7 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_g3_slice2_gate,
     evaluate_evo_compute_g3_slice3_gate,
     evaluate_evo_compute_production_deepen_slice1_gate,
+    evaluate_evo_compute_production_deepen_slice2_gate,
     run_evo_compute_g0_suite,
     run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
@@ -128,6 +137,7 @@ from core.harness.evo_compute.suite import (
     run_evo_compute_g3_slice2_suite,
     run_evo_compute_g3_slice3_suite,
     run_evo_compute_production_deepen_slice1_suite,
+    run_evo_compute_production_deepen_slice2_suite,
 )
 
 __all__ = [
@@ -167,7 +177,14 @@ __all__ = [
     "evaluate_evo_compute_g3_slice2_gate",
     "evaluate_evo_compute_g3_slice3_gate",
     "evaluate_evo_compute_production_deepen_slice1_gate",
+    "evaluate_evo_compute_production_deepen_slice2_gate",
     "evaluate_g0_exit_readiness",
+    "HOLDOUT_DATASET_VERSION",
+    "default_pilot_holdout_seed",
+    "install_pilot_holdout_seeds",
+    "load_holdout_partition",
+    "partition_fingerprint",
+    "score_genes_on_holdout_batches",
     "evaluate_g1_exit_readiness",
     "evaluate_g2_exit_readiness",
     "evaluate_g3_exit_readiness",
@@ -205,6 +222,7 @@ __all__ = [
     "run_evo_compute_g3_slice2_suite",
     "run_evo_compute_g3_slice3_suite",
     "run_evo_compute_production_deepen_slice1_suite",
+    "run_evo_compute_production_deepen_slice2_suite",
     "run_ga_offline",
     "run_gp_offline",
     "run_human_gate_canary_rollback_drill",
