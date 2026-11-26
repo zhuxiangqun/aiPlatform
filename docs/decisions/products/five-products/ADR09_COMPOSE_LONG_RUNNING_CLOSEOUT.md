@@ -30,4 +30,6 @@ doc_type: Report
 | 项 | 状态 |
 |----|------|
 | ADR-09 点名项（五产品 + compose 长驻） | ✅ 边界收口 |
+| FDE 可选长驻（F11 / `ADR-FDE-COMPOSE-LONG-RUNNING`） | ✅ BOUNDARY D + 烟测 PASS（2026-11-26） |
+| Field 卷/DB 长驻（`ADR-DRAFT-fde-field-compose`） | ❌ 仍 Draft |
 | 强制全环境生产默认长驻 / 超边界 E4·SLA | ❌ 须另决 |

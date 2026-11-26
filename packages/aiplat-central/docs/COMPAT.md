@@ -22,4 +22,5 @@ Validates:
 
 ## Forbidden without ADR
 
-Listed under `forbidden_without_adr` in the matrix (PG/HA, Field D1 install, full five-process split).
+Listed under `forbidden_without_adr` in the matrix (PG/HA, full five-process split, Field 卷/DB 长驻 Draft 等)。  
+FDE **薄** optional compose 长驻已由 `ADR-FDE-COMPOSE-LONG-RUNNING` Accepted（F11）覆盖；Field `compose.field-longrunning` 仍禁。

@@ -1,0 +1,26 @@
+# FDE optional thin health — base service (ADR-09 / F11).
+# Authorize long-running overlay: ADR-FDE-COMPOSE-LONG-RUNNING (Accepted).
+# One-shot host path remains: bash scripts/adr09_fde_optional_phase_health.sh
+#
+#   docker compose -f compose.fde-optional-health.yml up
+#   curl -fsS http://127.0.0.1:18766/health
+#   docker compose -f compose.fde-optional-health.yml down -v
+#
+# Does NOT expose acceptance/signoff. Does NOT force production default.
+# Field pack with volumes/DB is a different draft (ADR-DRAFT-fde-field-compose).
+services:
+  fde-optional-health:
+    image: python:3.12-slim
+    working_dir: /work
+    volumes:
+      - ../../scripts/adr09_fde_optional_health_server.py:/work/health_server.py:ro
+    environment:
+      ADR09_FDE_HEALTH_HOST: "0.0.0.0"
+      ADR09_FDE_HEALTH_PORT: "18766"
+      AIPLAT_FDE_OPTIONAL_SPLIT: "1"
+      AIPLAT_HOME: "/tmp/aiplat-fde-optional"
+      AIPLAT_ENTERPRISE: "0"
+      AIPLAT_FDE_VERSION: "0.0.0"
+    ports:
+      - "18766:18766"
+    command: ["python3", "/work/health_server.py"]

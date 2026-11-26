@@ -153,7 +153,7 @@ review_cycle: 90d
 | F08 | exists | AcceptTab → 唯一 `acceptance/signoff` |
 | F09 | exists | `adr09_fde_optional_health_*` 脚本 + `fde_optional_process_contract` |
 | F10 | exists | `evaluate_fde_production_process_authorize`；**authorized=true**（朱莹 pilot） |
-| F11 | exists | `evaluate_fde_compose_long_running_authorize`；**authorized=true**（`adr_ref` + Accepted ADR） |
+| F11 | exists | authorize + `compose.fde-long-running.yml` + 烟测 PASS（`adr_ref` Accepted） |
 
 **测量：Core/Extended/Operational 项均为 exists。**  
 **徽章（2026-11-26）**：conditional `core_ready`（朱鸿林）+ `extended_ready`（朱莹）；F10–F11 authorized → **`operational_ready`**。`certified`：**否**。ADR-09 E4 未扩大。  

@@ -40,12 +40,12 @@ purpose: FDE 可选 compose 长驻专项决定（F11 adr_ref）；不扩大 ADR-
 | `ADR-FDE-SYS-v1.0` | 标准包批准 ≠ 本部署授权 |
 | F10 | 生产独立进程 authorize 独立；本 ADR 不替代 F10 |
 
-## 落地序（另 PR）
+## 落地序
 
-1. BOUNDARY：FDE 长驻 compose 文件路径 + 启停/回滚 README  
-2. 烟测：`up -d` → health → `down -v`（必跑）  
-3. 非作者批准记录：`gate_ids` 含 `F11`，`adr_ref` = 本文件相对仓根路径 → **已完成**（见 `reports/products/fde-system/v1.0/operational-approval-record.approved.json`）  
-4. 刷新 `reports/products/fde-system/v1.0/operational-gap-evidence.md`
+1. BOUNDARY：FDE 长驻 compose + 启停/回滚 README → **已完成**（`compose.fde-long-running.yml`；`ADR09_*_BOUNDARY` 序 D）  
+2. 烟测：`up -d` → health → `down -v` → **已完成**（`scripts/adr09_compose_fde_long_running_smoke.sh`）  
+3. 非作者批准记录：`gate_ids` 含 `F11`，`adr_ref` = 本文件 → **已完成**  
+4. 刷新 `reports/products/fde-system/v1.0/operational-gap-evidence.md` → **已完成**
 
 ## 签署
 

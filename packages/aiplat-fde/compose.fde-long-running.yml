@@ -1,0 +1,18 @@
+# ADR-FDE-COMPOSE-LONG-RUNNING / F11 — FDE optional compose long-running profile.
+# Boundary: ADR09_COMPOSE_LONG_RUNNING_BOUNDARY.md + ADR09_FDE_BOUNDARY.md (D)
+#
+# Formal OPTIONAL long-running. NOT forced production default. ≠ E4.
+# Canonical service def remains compose.fde-optional-health.yml (no duplicate drift).
+#
+#   docker compose -f compose.fde-long-running.yml up -d
+#   curl -fsS http://127.0.0.1:18766/health
+#   docker compose -f compose.fde-long-running.yml down -v
+#
+# Prefer host one-shot when not exercising long-running:
+#   bash scripts/adr09_fde_optional_phase_health.sh
+include:
+  - path: compose.fde-optional-health.yml
+
+services:
+  fde-optional-health:
+    restart: unless-stopped

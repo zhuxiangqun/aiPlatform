@@ -20,7 +20,7 @@ doc_type: Reference
 | Enterprise | 默认 `AIPLAT_ENTERPRISE=0` 于 Field Thin；升 enterprise 另批 |
 | MFA / 控制面 token | 联机签收走控制面既有门禁（admin MFA、platform token） |
 | 备份 | `d1_backup.sh`；回滚 `d1_rollback.sh` |
-| 探针 | `/api/core/fde/healthz` 或 ADR-09 one-shot；**不含**长驻 compose（另批） |
+| 探针 | `/api/core/fde/healthz` 或 ADR-09 one-shot；可选薄长驻 `compose.fde-long-running.yml`（F11；≠ Field 卷包） |
 
 ## 非目标（本页）
 

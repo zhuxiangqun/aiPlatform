@@ -8,7 +8,7 @@ created: 2026-11-26
 doc_id: FDE_SYS_V10_IMPL_PLAN
 last_reviewed: 2026-11-26
 purpose: 将 FDE 系统 v1.0 标准落到可认证路径（不扩大 ADR-09）
-clause_sync: "2026-11-26 · F11 Accepted + operational_ready；compose/烟测另 PR"
+clause_sync: "2026-11-26 · F11 Accepted + compose/烟测落地；operational_ready"
 ---
 # FDE 系统 v1.0 实施方案
 
@@ -22,7 +22,7 @@ clause_sync: "2026-11-26 · F11 Accepted + operational_ready；compose/烟测另
 ```text
 先锁唯一 signoff + CoreFacade + 证据字段
 再工作台 / 可选独立进程文书
-F10–F11 已批 → operational_ready；compose 文件/烟测另 PR
+F10–F11 已批 → operational_ready；compose + 烟测已落地
 ```
 
 评测绿 ≠ 签收；ImportReport ≠ 签收。
@@ -36,7 +36,7 @@ F10–F11 已批 → operational_ready；compose 文件/烟测另 PR
 | F01–F06 | **exists** + **conditional core_ready**（朱鸿林） |
 | F07–F09 | **exists** + **conditional extended_ready**（朱莹） |
 | F10 | **authorized=true**（朱莹；pilot） |
-| F11 | **authorized=true**（Accepted ADR + `adr_ref` + 朱莹） |
+| F11 | **authorized=true** + compose/烟测 PASS |
 | operational_ready | **true**（F10∧F11） |
 | certified | **否**；ADR-09 E4 未扩大 |
 
@@ -47,7 +47,7 @@ Extended：切片签收禁 `tenant_resolved_from=default`。
 
 1. Core：附录 N F01–F06 `exists`；
 2. Extended：F07–F09（对齐已有边界收口证据可引用）；
-3. Operational：F10–F11（已批；compose 落地另 PR）。
+3. Operational：F10–F11（已批；compose/烟测已落地）。
 
 ## 2. 非目标
 
@@ -66,7 +66,7 @@ Extended：切片签收禁 `tenant_resolved_from=default`。
 | P3 | 签收记录字段 + 回滚文书 | F04、F06 | **exists** → **core_ready conditional** |
 | P4 | report_id 策略 / 工作台 | F07–F08 | **exists** → **extended_ready conditional** |
 | P5 | 可选独立进程 + one-shot health | F09 | **exists**（extended 已批） |
-| P6 | 生产 authorize / 长驻另批 | Operational F10–F11 | **operational_ready** — 见 `operational-gap-evidence.md`；compose/烟测另 PR |
+| P6 | 生产 authorize / 长驻另批 | Operational F10–F11 | **operational_ready** + compose/烟测 — 见 `operational-gap-evidence.md` |
 
 ## 4. 证据目录
 

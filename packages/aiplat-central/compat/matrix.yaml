@@ -60,4 +60,5 @@ forbidden_without_adr:
   - five_process_full_split_e4
   - ontology_a3_process_split
   - evaluation_a3_process_split
-  - fde_compose_long_running
+  # fde_compose_long_running — cleared 2026-11-26 (ADR-FDE-COMPOSE-LONG-RUNNING Accepted / F11)
+  - fde_field_compose_volumes_db  # ADR-DRAFT-fde-field-compose still Draft
