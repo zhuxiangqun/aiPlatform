@@ -10,7 +10,8 @@ authority: supporting
 > 实施权威：[`docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md`](../../../../docs/architecture/plans/knowledge-system-v4.3.1-implementation-plan.md)  
 > 标准包：[`docs/standards/knowledge-system/v4.3.1/`](../../../../docs/standards/knowledge-system/v4.3.1/)  
 > **本目录是测量证据，不是第二份标准或实施方案。**  
-> **试点认证状态（lock-service，2026-11-19；2026-11-26 维持）**：Core 朱鸿林 / Extended 朱莹 / Operational 朱莹 / Full 朱向群（**conditional**：SLO 遥测已接线、窗口未达标 → **不**升 unconditional Full；未宣称准确率）。
+> **试点认证状态（lock-service，2026-11-19；2026-11-26 维持）**：Core 朱鸿林 / Extended 朱莹 / Operational 朱莹 / Full 朱向群（**conditional**：SLO 遥测已接线、窗口未达标 → **不**升 unconditional Full；未宣称准确率）。  
+> **Full unconditional 待批**：`reports/architecture/human-gates/ks-full-unconditional.pending.json`（本机 `attainment_ok=false`；见同目录残差签批包）。
 
 | 文件 | 内容 |
 |------|------|

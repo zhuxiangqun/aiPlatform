@@ -1,0 +1,21 @@
+{
+  "standard_version": "evo-compute",
+  "scope": "production claim g1_complete / g2_complete / g3_complete / e2_claimed",
+  "status": "pending",
+  "decision": "pending",
+  "approvers": [],
+  "approval_date": "",
+  "record_id": "EVO-G-COMPLETE-PRODUCTION-PENDING",
+  "blocked_by": [
+    "track_engineering_complete_only_D5",
+    "suite_locks_g_star_complete_false",
+    "no_production_holdout_certification",
+    "no_live_production_canary",
+    "fixture_ready_neq_production_claim"
+  ],
+  "prerequisite_refs": [
+    "reports/architecture/evo-compute/production-deepen-d5-evidence.md",
+    "docs/architecture/plans/aiplat-evolution-implementation-plan.md"
+  ],
+  "note": "Pending. D5 track_engineering_complete ≠ g*_complete. Require live HUMAN_GATE 100%, production holdout, real Canary/rollback, then owner sign-off before any g*_complete production claim."
+}

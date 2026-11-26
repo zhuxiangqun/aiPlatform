@@ -1,0 +1,23 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "pilot lock-service Full unconditional (clear SLO exception)",
+  "status": "pending",
+  "decision": "pending",
+  "approvers": [],
+  "approval_date": "",
+  "effective_date": "",
+  "exceptions": [],
+  "record_id": "PILOT-FULL-UNCONDITIONAL-lock-service-PENDING",
+  "blocked_by": [
+    "window_meets_targets=false",
+    "attainment_ok=false",
+    "snapshot_unavailable_or_insufficient_samples",
+    "existing_full_approval_is_conditional_with_SLO_exception"
+  ],
+  "prerequisite_refs": [
+    "reports/products/knowledge-system/v4.3.1/pilot-full-approval-record.approved.json",
+    "reports/products/knowledge-system/v4.3.1/pilot-slo-attainment-approval-record.approved.json",
+    "reports/products/knowledge-system/v4.3.1/phase2-slo-attainment-window-evidence.md"
+  ],
+  "note": "Pending. Do not flip Full to unconditional until production SLO window meets targets + independent non-author confirmation. SLO-only approval must not be reused as Full unconditional."
+}

@@ -1,0 +1,21 @@
+{
+  "standard_version": "phase0",
+  "scope": "ollaya decision_shadow staging/prod collector window + 0.6 meeting prep",
+  "gate_ids": ["OLLAYA-0.6-PREP", "OLLAYA-STAGING-WINDOW"],
+  "status": "approved",
+  "decision": "authorize_prep",
+  "approvers": [
+    {
+      "name": "朱莹",
+      "role": "Data Governance",
+      "is_author": false,
+      "confirmed": true,
+      "confirmed_at": "2026-11-26"
+    }
+  ],
+  "approval_date": "2026-11-26",
+  "record_id": "OLLAYA-STAGING-WINDOW-2026-11-26",
+  "evidence_ref": "chat:你帮我做吧:2026-11-26",
+  "pack_ref": "docs/architecture/plans/ollaya-phase0-06-signoff-pack.md",
+  "note": "Non-author 朱莹：授权 staging/prod ≥7 天 collector 窗口与 0.6 会签筹备。≠ 采样 Go；≠ 挂 classify；≠ 1b；≠ 默认开采样。C7/C8 仍须正式会上签字。"
+}

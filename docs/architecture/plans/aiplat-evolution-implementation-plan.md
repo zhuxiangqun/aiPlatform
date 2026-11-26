@@ -648,6 +648,7 @@ GP 只在 DSL 内
 > 生产加深 D4：`deepen_signoff` 活 HITL+L4/缓释签批 + D4 suite/gate **已可用**（`d4_signed≠g3_complete`）。  
 > PSO 基线：`run_pso_offline` / `compare_pso_vs_de_es` **已可用**（`baseline_only`；≠ 主算法/优越性宣称）。  
 > 生产加深 D5：`collect_production_deepen_track_closeout` + D5 suite/gate **已可用**（`track_engineering_complete≠g*_complete`）。  
+> **2026-11-26**：生产 `g*_complete` 人工宣称仍 **pending** — `reports/architecture/human-gates/evo-g-complete-production.pending.json`（残差签批包）。  
 > **不得**因 slice-1/2/3、D1–D5 或 PSO 套件绿宣称生产 G3/E2 完成；夹具/缓释/unavailable 路径 ≠ 生产流量认证。
 
 ## 13. 前 90 天

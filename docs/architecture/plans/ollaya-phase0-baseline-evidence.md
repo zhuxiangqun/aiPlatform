@@ -1,15 +1,15 @@
 ---
 doc_type: Architecture
 doc_id: OLLAYA_PHASE0_BASELINE_EVIDENCE_9292BF
-last_reviewed: 2026-11-15
+last_reviewed: 2026-11-26
 status: active
 authority: supporting
 ---
 # Ollaya 决策层 · 阶段 0 证据包（进行中）
 
-> **状态**：工程可采数已接线 · 默关 `decision_shadow` 骨架已合入并本机探测 · C6 关闭演练草稿已备 · **≠ 开采样影子 · ≠ 挂 classify · ≠ 1b 替换 · ≠ 省 token**  
+> **状态**：工程可采数已接线 · 默关 `decision_shadow` 骨架已合入并本机探测 · C6 关闭演练草稿已备 · **0.6 会签包已备**（[ollaya-phase0-06-signoff-pack.md](./ollaya-phase0-06-signoff-pack.md)）· staging 窗口窄授权已批 · **≠ 开采样影子 · ≠ 挂 classify · ≠ 1b 替换 · ≠ 省 token**  
 > **依据**：[ollaya-decision-layer-implementation-plan.md](./ollaya-decision-layer-implementation-plan.md) §4 / §0.7 有条件豁免  
-> **日期**：2026-11-08（续 · #616 合入后探测 + C6 附页）
+> **日期**：2026-11-08（续 · #616 合入后探测 + C6 附页；2026-11-26 会签包）
 
 ## 0.1 观测窗口与环境说明（模板 · 待负责人填实）
 
@@ -95,7 +95,9 @@ rg -n 'classify_with_llm\(' --glob '*.py'
 
 ## 0.6 阶段 1 工程约束评审包（待会签）
 
-设计正文：实施方案 §5–§6。本表供评审会勾选；**未签字前禁止合并影子代码**。
+> **2026-11-26**：正式会签执行包见 [ollaya-phase0-06-signoff-pack.md](./ollaya-phase0-06-signoff-pack.md)；staging 窗口窄授权见 `reports/architecture/human-gates/ollaya-staging-window-authorize.approved.json`。**采样仍 No-Go**。
+
+设计正文：实施方案 §5–§6。本表供评审会勾选；**未签字前禁止合并影子开流代码**。
 
 | # | 检查项 | 设计约定 | 评审结论 |
 |---|--------|----------|----------|
@@ -157,6 +159,6 @@ rg -n 'classify_with_llm\(' --glob '*.py'
 3. ✅ 默关 `decision_shadow` 骨架合入（#616）+ status/try-enqueue 本机探测（§0.3.1）。  
 4. ✅ C6 《一键关闭演练》工程附页：[ollaya-decision-shadow-kill-switch.md](./ollaya-decision-shadow-kill-switch.md)。  
 5. ✅ 工程建议书：[ollaya-phase0-go-nogo-recommendation.md](./ollaya-phase0-go-nogo-recommendation.md)（**采样 No-Go**；骨架豁免维持）。  
-6. staging/prod 部署后跑 collector 填真实窗口；负责人补全 0.1。  
-7. 召开 0.6 正式评审 → 书面批准后另批「挂 classify 钩子 + 开采样」。  
+6. staging/prod 部署后跑 collector 填真实窗口；负责人补全 0.1。（**2026-11-26**：窗口启动已窄授权；填表仍待运维）  
+7. 召开 0.6 正式评审（议程/勾选表见 [0.6 会签包](./ollaya-phase0-06-signoff-pack.md)）→ 书面批准后另批「挂 classify 钩子 + 开采样」。  
 8. **仅采样 Go 后** 才允许影子流量；**仅 1b 另案** 才谈替换 T3 / 省 token。

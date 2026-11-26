@@ -37,6 +37,15 @@ purpose: 阶段 0 Go/No-Go 工程建议（≠ 正式会签；≠ 开采样）
 2. 召开 0.6 正式评审并勾选 C1–C8（含隐私 C7、值班 C8）  
 3. 书面批准「挂 classify 钩子 + 开低采样」另 PR（禁止与骨架同批偷渡）
 
+## 2026-11-26 执行进度（clause-sync）
+
+| 项 | 状态 |
+|----|------|
+| 工程建议（采样 No-Go） | **维持** |
+| 0.6 会签包 | ✅ [ollaya-phase0-06-signoff-pack.md](./ollaya-phase0-06-signoff-pack.md) |
+| staging 窗口窄授权 | ✅ `reports/architecture/human-gates/ollaya-staging-window-authorize.approved.json` |
+| 真实窗口填表 / C7 / C8 / 采样 Go | ☐ 仍待 |
+
 ## 明确不交付
 
 影子延迟认证、Ollaya 准确率、默认开采样、省 token 叙事、1b 替换。
