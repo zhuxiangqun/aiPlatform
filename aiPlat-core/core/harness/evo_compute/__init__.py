@@ -4,12 +4,12 @@
   - Genome Registry / Candidate 状态机 / Fitness / Sandbox
   - 预算与安全边界 / 夹具回放 / G0–G2 出口就绪
   - DE/ES、GA、覆盖探针、冻结回归门
-  - AIS 异常检测（先检测不修复）/ G3 出口就绪
+  - AIS 异常检测（先检测不修复）/ GP 强类型 DSL / G3 出口就绪
 
 非目标：
   - 不写生产配置、不采生产流量、不宣称 E2/L4/认证
   - 不替代 ``evolution_engine.py`` 夜间 Skill 流水线
-  - 套件绿 ≠ Gate 宣称完成；AIS 不自动修复
+  - 套件绿 ≠ Gate 宣称完成；AIS 不自动修复；GP 不生成核心代码
 """
 
 from core.harness.evo_compute.ais import (
@@ -56,7 +56,18 @@ from core.harness.evo_compute.genome_registry import (
     list_genomes,
     register_genome,
 )
+from core.harness.evo_compute.gp import (
+    default_seed_program,
+    reject_core_code_payload,
+    run_gp_offline,
+    validate_dsl_program,
+)
 from core.harness.evo_compute.holdout import compare_holdout
+from core.harness.evo_compute.human_gate_audit import (
+    audit_human_gate_coverage,
+    default_full_coverage_fixture,
+)
+from core.harness.evo_compute.loops_l4 import build_loops_l4_assessment_report
 from core.harness.evo_compute.orchestrator import run_de_es_offline
 from core.harness.evo_compute.pilots import (
     list_pilot_genome_ids,
@@ -92,6 +103,8 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_g2_slice2_gate,
     evaluate_evo_compute_g2_slice3_gate,
     evaluate_evo_compute_g3_gate,
+    evaluate_evo_compute_g3_slice2_gate,
+    evaluate_evo_compute_g3_slice3_gate,
     run_evo_compute_g0_suite,
     run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
@@ -99,6 +112,8 @@ from core.harness.evo_compute.suite import (
     run_evo_compute_g2_slice3_suite,
     run_evo_compute_g2_suite,
     run_evo_compute_g3_suite,
+    run_evo_compute_g3_slice2_suite,
+    run_evo_compute_g3_slice3_suite,
 )
 
 __all__ = [
@@ -106,13 +121,17 @@ __all__ = [
     "advance_candidate_status",
     "aggregate_partition_metrics",
     "approve_budget",
+    "audit_human_gate_coverage",
+    "build_loops_l4_assessment_report",
     "check_budget",
     "compare_holdout",
     "default_ais_event_fixture",
     "default_antibody_signatures",
     "default_budget_policy",
+    "default_full_coverage_fixture",
     "default_replay_fixture",
     "default_safety_boundary",
+    "default_seed_program",
     "detect_anomalies",
     "evaluate_candidate_offline",
     "evaluate_closed_loop_baseline_gate",
@@ -130,6 +149,8 @@ __all__ = [
     "evaluate_evo_compute_g2_slice2_gate",
     "evaluate_evo_compute_g2_slice3_gate",
     "evaluate_evo_compute_g3_gate",
+    "evaluate_evo_compute_g3_slice2_gate",
+    "evaluate_evo_compute_g3_slice3_gate",
     "evaluate_g0_exit_readiness",
     "evaluate_g1_exit_readiness",
     "evaluate_g2_exit_readiness",
@@ -150,6 +171,7 @@ __all__ = [
     "rank_candidates",
     "register_genome",
     "register_pilot_genomes",
+    "reject_core_code_payload",
     "replay_candidate_offline",
     "run_closed_loop_baseline_suite",
     "run_de_es_offline",
@@ -160,10 +182,14 @@ __all__ = [
     "run_evo_compute_g2_slice3_suite",
     "run_evo_compute_g2_suite",
     "run_evo_compute_g3_suite",
+    "run_evo_compute_g3_slice2_suite",
+    "run_evo_compute_g3_slice3_suite",
     "run_ga_offline",
+    "run_gp_offline",
     "run_human_gate_canary_rollback_drill",
     "run_pilot_de_es_battery",
     "run_regression_gate",
     "set_budget_policy",
     "sign_safety_boundary",
+    "validate_dsl_program",
 ]

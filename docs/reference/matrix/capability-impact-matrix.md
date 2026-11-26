@@ -8,7 +8,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3447 capabilities (caps_count) | 3447 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3471 capabilities (caps_count) | 3471 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -42,7 +42,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 779 | evo_compute G0/G1/G2 门面入口 |
+| harness-execution-engine | §一 Harness 执行引擎 | 803 | evo_compute G0/G1/G2/G3 门面入口 |
 | knowledge-engine-ontology | §三 知识引擎（本体） | 837 | N02 ObjectType publish Facade 入口 |
 | skill-system | §六 Skill 系统 | 217 | CoreFacade 暴露 skill compat |
 | evaluation-system | §十三 评估系统 | 646 | CoreFacade 暴露 m2 deferred estimate |
@@ -135,7 +135,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 779 | 自身消费 PipelineStageConfig + StageRunner |
+| harness-execution-engine | §一 Harness 执行引擎 | 803 | 自身消费 PipelineStageConfig + StageRunner |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
 | model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
@@ -151,7 +151,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 779 | ReActLoop 运行时 |
+| harness-execution-engine | §一 Harness 执行引擎 | 803 | ReActLoop 运行时 |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | ReActLoop MoA interception |
 | memory-subsystem | §二 记忆子系统 | 59 | build_context() + save_interaction() 调用 |
 
@@ -343,11 +343,11 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/harness/execution/pipeline_engine.py** — Pipeline 阶段 Gate 检查
 - **core/server.py** — BackpressureMiddleware 挂载 + backpressure_stats 诊断
 
-### §一 Harness 执行引擎 (779 caps)
+### §一 Harness 执行引擎 (803 caps)
 
 - **core/harness/execution/pipeline_engine.py** — 自身消费 PipelineStageConfig + StageRunner
 - **core/harness/interfaces/loop.py** — ReActLoop 运行时
-- **core/api/core_facade.py** — evo_compute G0/G1/G2 门面入口
+- **core/api/core_facade.py** — evo_compute G0/G1/G2/G3 门面入口
 
 ### §三十二 Hermes压缩对标 (3 caps)
 

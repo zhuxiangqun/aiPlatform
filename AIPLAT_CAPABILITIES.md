@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4348
+total_capabilities: 4362
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -570,6 +570,15 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| signatures_fingerprint | `core/harness/evo_compute/ais.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_evo_compute_g3_slice3_gate | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
+| default_loops_gap_fixture | `core/harness/evo_compute/loops_l4.py` | ✅ | 自动同步 | 已合入 |
+| default_loops_l4_levels_fixture | `core/harness/evo_compute/loops_l4.py` | ✅ | 自动同步 | 已合入 |
+| default_candidate_audit_fixture | `core/harness/evo_compute/human_gate_audit.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_evo_compute_g3_slice2_gate | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
+| dsl_node | `core/harness/evo_compute/gp.py` | ✅ | 自动同步 | 已合入 |
+| program_fingerprint | `core/harness/evo_compute/gp.py` | ✅ | 自动同步 | 已合入 |
+| default_seed_program | `core/harness/evo_compute/gp.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_regression_case | `core/harness/evo_compute/regression.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_evo_g3_exit_readiness | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_evo_compute_g3_gate | `core/harness/evo_compute/suite.py` | ✅ | 自动同步 | 已合入 |
@@ -664,6 +673,11 @@ scan_hash: 8f9548ec24f4
 | detect_anomalies / default_antibody_signatures | `core/harness/evo_compute/ais.py` | ✅ | G3 AIS 检测-only；预注册误报预算；auto_remediate 恒 false；生成物适用：已接线 | 本批 |
 | evaluate_g3_exit_readiness / run_evo_compute_g3_suite | `core/harness/evo_compute/exit_readiness.py` / `suite.py` | ✅ | G3 出口就绪与套件；套件绿≠宣称 g3_complete；生成物适用：已接线 | 本批 |
 | detect_evo_ais_anomalies / run_evo_compute_g3_suite | `core/api/core_facade.py` | ✅ | CoreFacade G3 AIS 入口；生成物适用：已接线 | 本批 |
+| validate_dsl_program / run_gp_offline / reject_core_code_payload | `core/harness/evo_compute/gp.py` | ✅ | G3 GP 强类型 DSL 沙箱；禁止核心代码；g3_complete 恒 false；生成物适用：已接线 | 本批 |
+| run_evo_compute_g3_slice2_suite / validate_evo_gp_dsl / run_evo_gp_offline | `core/harness/evo_compute/suite.py` / `core/api/core_facade.py` | ✅ | G3 slice-2 套件与门面；套件绿≠宣称 G3/E2；生成物适用：已接线 | 本批 |
+| audit_human_gate_coverage / default_full_coverage_fixture | `core/harness/evo_compute/human_gate_audit.py` | ✅ | G3 HUMAN_GATE 100% 覆盖审计；夹具≠生产；生成物适用：已接线 | 本批 |
+| build_loops_l4_assessment_report | `core/harness/evo_compute/loops_l4.py` | ✅ | G3 闭环 L4 评估报告或 owner 缓释；certified 恒 false；生成物适用：已接线 | 本批 |
+| run_evo_compute_g3_slice3_suite / audit_evo_human_gate_coverage / build_evo_loops_l4_assessment_report | `core/harness/evo_compute/suite.py` / `core/api/core_facade.py` | ✅ | G3 slice-3 套件与门面；套件绿≠宣称 G3/E2；生成物适用：已接线 | 本批 |
 | secure_scan_zip | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | AssetSecureScanError | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | wrap_asset_install_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -5249,7 +5263,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 905 | 1 | 906 |
+| Harness 执行引擎 | 919 | 1 | 920 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
@@ -5294,7 +5308,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4337** | **11** | **4348** |
+| **总计** | **4351** | **11** | **4362** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

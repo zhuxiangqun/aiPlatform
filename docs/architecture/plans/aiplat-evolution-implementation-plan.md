@@ -27,7 +27,9 @@ last_reviewed: 2026-11-25
 > **2026-11-26**：G2 **slice-2** 已接线（库存/报告实测覆盖路径 + Facade 评测桥接）；证据 `reports/architecture/evo-compute/phase2-g2-coverage-slice2-evidence.md`。夹具达标 ≠ 生产 L4；套件 `g2_complete=false`。  
 > **2026-11-26**：G2 **slice-3** 已接线（冻结回归集自动回归门；`feeds_evolution=false`）；证据 `reports/architecture/evo-compute/phase2-g2-autoregress-slice3-evidence.md`。套件 `g2_complete=false`。  
 > **2026-11-26**：G3 **slice-1** 已接线（AIS 检测-only + 误报预算；不自动修复）；证据 `reports/architecture/evo-compute/phase3-g3-ais-slice1-evidence.md`。套件 `g3_complete=false`。  
-> **未宣称** 生产流量 holdout 认证 / 真实 Canary 上线 / E2 / 闭环已测 L4 / G3 完成；`certified`/`e2_claimed` 恒 false。
+> **2026-11-26**：G3 **slice-2** 已接线（GP 强类型 DSL 沙箱；禁止核心代码）；证据 `reports/architecture/evo-compute/phase3-g3-gp-slice2-evidence.md`。套件 `g3_complete=false`。  
+> **2026-11-26**：G3 **slice-3** 已接线（HUMAN_GATE 100% 审计 + 回滚演练复用 + 闭环 L4 评估报告/缓释）；证据 `reports/architecture/evo-compute/phase3-g3-hitl-l4-slice3-evidence.md`。套件 `g3_complete=false`。  
+> **未宣称** 生产流量 holdout 认证 / 真实 Canary 上线 / E2 / 生产闭环已测 L4 / G3 完成；`certified`/`e2_claimed` 恒 false。夹具 ready ≠ 生产宣称。
 
 ## 0. 结论先行
 
@@ -632,7 +634,9 @@ GP 只在 DSL 内
 ```
 
 > slice-1 进度：AIS 抗体签名 + `detect_anomalies`（detect-only）+ 误报预算核算 + G3 suite/gate **已可用**。  
-> **不得**因 slice-1 套件绿宣称 G3/E2 完成；GP DSL / 生产 HUMAN_GATE 100% / 闭环 L4 仍属后续切片。
+> slice-2 进度：GP `validate_dsl_program` / `run_gp_offline`（仅 DSL；拒核心代码）+ slice-2 suite/gate **已可用**。  
+> slice-3 进度：`audit_human_gate_coverage` + `build_loops_l4_assessment_report` + 回滚演练复用 + slice-3 suite/gate **已可用**。  
+> **不得**因 slice-1/2/3 套件绿宣称生产 G3/E2 完成；夹具/缓释路径 ≠ 生产流量认证。
 
 ## 13. 前 90 天
 
