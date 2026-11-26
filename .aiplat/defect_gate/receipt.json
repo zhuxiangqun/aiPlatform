@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T10:16:00+08:00",
+  "reviewed_at": "2026-11-26T10:45:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "3c9467c07c73eb70c5d9c5e64eef31585b1f05fc",
-  "diff_sha256": "d3c71eadae45fc06c4ec48cf652a1e861299effe04cbfaba4492d61a47e7138a",
-  "head_sha": "3bfc3b103904bee590ca4ba4c679f2fe65024fc3",
+  "diff_sha256": "8fa7f5de023ef76a4fdd3462c6db393267bb82f38b3d482aef32a8089e789679",
+  "head_sha": "6d1dc88d0449b6d8090f9715fee7deb5e7aed86d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Production deepen D1: ledger+live_sources; unavailable honest; canary cutover=false; g*_complete/certified/e2 false. D2–D4 then PSO registered."
+  "note": "D1 deepen + impact matrix refresh; g*_complete/certified/e2 false; canary cutover=false."
 }
