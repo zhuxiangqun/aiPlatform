@@ -2996,8 +2996,8 @@ scan_hash: 8f9548ec24f4
 | tool_discard_impl_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | tool_preview_impl_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | skill_dry_run_handler_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
-| skill_run_l1_sandbox_trial / run_l1_sandbox_trial | `core/api/core_facade.py` + `asset_compat.py` | ✅ | 外援 X07 L1 静态沙箱试调用（非 microVM）；生成物适用：已接线（Skill COMPAT） | 本批 |
-| skill_set_semantic_probe_result / set_semantic_probe_result | `core/api/core_facade.py` + `asset_compat.py` | ✅ | 外援 X08 显式语义探针（禁止自动升 L2）；生成物适用：已接线 | 本批 |
+| skill_run_l1_sandbox_trial / run_l1_sandbox_trial | `core/api/core_facade.py` + `core/harness/maintenance/asset_compat.py` | ✅ | 外援 X07 L1 静态沙箱试调用（非 microVM）；生成物适用：已接线（Skill COMPAT） | 本批 |
+| skill_set_semantic_probe_result / set_semantic_probe_result | `core/api/core_facade.py` + `core/harness/maintenance/asset_compat.py` | ✅ | 外援 X08 显式语义探针（禁止自动升 L2）；生成物适用：已接线 | 本批 |
 | skill_discard_handler_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | skill_preview_handler_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | write_handler_draft_from_script | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
@@ -4139,7 +4139,7 @@ scan_hash: 8f9548ec24f4
 | normalize_judge_report / eval_normalize_judge_report | `judge_contract.py` + `core_facade.py` | ✅ | 评测 E07 Judge 强制 `judge_id`/`calibration_ref`；空 ref≠accuracy gate；生成物适用：已接线 | 本批 |
 | eval_center_route_contract | `eval_center_route.py` + `core_facade.py` | ✅ | 评测 E08 `/eval` 路由契约（旧 diagnostics 硬切）；生成物适用：已接线（管理端 EvalCenter） | 本批 |
 | normalize_tool_mcp_subject / eval_normalize_tool_mcp_subject / McpSubjectAdapter | `interop_subject.py` + `subject_adapter.py` + facade | ✅ | 评测 E09 Tool/MCP subject；外援须 `verified_tier`；claim=false；生成物适用：已接线 | 本批 |
-| build_interop_asset_catalog / interop_build_asset_catalog | `asset_compat.py` + facade | ✅ | 外援 X09 资产目录行（claimed/verified/ui_state）；生成物适用：已接线（Workspace 列表 tip） | 本批 |
+| build_interop_asset_catalog / interop_build_asset_catalog | `core/harness/maintenance/asset_compat.py` + facade | ✅ | 外援 X09 资产目录行（claimed/verified/ui_state）；生成物适用：已接线（Workspace 列表 tip） | 本批 |
 | fde_slice_report_binding_policy / fde_workbench_signoff_surface / fde_optional_process_contract | `fde/service/extended_contracts.py` + facade | ✅ | FDE F07–F09 Extended 契约卡（非 compose 长驻授权）；生成物适用：不适用（平台交付横切） | 本批 |
 | eval_evaluate_process_split_authorize / eval_evaluate_production_sla_authorize / eval_build_dual_annotator_kappa_report | `eval/service/operational_gates.py` + facade | ✅ | 评测 E10–E12 Operational 门（默认 unauthorized；κ≠accuracy）；生成物适用：已接线 | 本批 |
 | interop_evaluate_production_authorize / interop_bind_supplier_sla | `interop_operational.py` + facade | ✅ | 外援 X10–X11 生产授权/SLA（默认 false）；生成物适用：已接线 | 本批 |
@@ -4243,7 +4243,7 @@ scan_hash: 8f9548ec24f4
 | Eval G2c self-consistency（EVAL_V1） | `core/apps/eval/service/g2c.py` + CoreFacade `eval_g2c_*` + `GET/POST …/store/{g2c-status,g2c-retest-queue,g2c-retest,g2c-report}` | ✅ | 同人二次盲测 → `intra_rater_kappa` / agreement；`claim_kind=self_consistency`；`accuracy_claim=false`；≠ G2b / inter-annotator；生成物适用：已接线（apps/eval） | 本批 |
 | Eval Center `/eval` E6（EVAL_V1） | `pages/Eval/EvalCenter.tsx` + route `/eval` + [`ENGINEERING_UNFREEZE_EVAL_E6.md`](reports/products/five-products/ops/ENGINEERING_UNFREEZE_EVAL_E6.md) | ✅ | 多 tab 评测中心；菜单唯一「评测中心」；诚实横幅禁 accuracy；生成物适用：不适用（管理端 UI） | 已合入 |
 | Eval entry consolidate | `pageManifest.ts` + `App.tsx` + 交叉链接 | ✅ | 菜单仅「评测中心」`/eval`；删除 `/diagnostics/eval` / `/platform/kb/eval` 路由（硬切，无 redirect）；Agents UI 只在 EvalCenter；生成物适用：不适用（管理端导航） | 本批 |
-| Eval D2/D3 local closeout E7（EVAL_V1） | `packages/aiplat-evaluation` d2/d3 scripts + [`EVAL_V1_E7_CLOSEOUT.md`](reports/products/five-products/ops/EVAL_V1_E7_CLOSEOUT.md) | ✅ | D2 closeout + D3 UAT dry-run；`process_split=false`；accuracy 仍禁；生成物适用：不适用（平台共宿打包） | 已合入 |
+| Eval D2/D3 local closeout E7（EVAL_V1） | `packages/aiplat-evaluation` d2/d3 scripts + [`reports/products/five-products/ops/EVAL_V1_E7_CLOSEOUT.md`](reports/products/five-products/ops/EVAL_V1_E7_CLOSEOUT.md) | ✅ | D2 closeout + D3 UAT dry-run；`process_split=false`；accuracy 仍禁；生成物适用：不适用（平台共宿打包） | 已合入 |
 | Diagnosis Service C1–C3 D1c+D2 pack（DIAGNOSIS_V1） | `core/apps/diagnosis/service/*` + CoreFacade `diagnosis_*` + `/api/platform/apps/diagnosis` + `/diagnosis` UI + `packages/aiplat-diagnosis/`（fixtures + D1/D2 scripts） | ✅ | C3：D2 cohost ops/security/perf 本地收口；`process_split=false`；无 remediate；`accuracy_claim=false`；blind fixture metrics；生成物适用：已接线（diagnosis app） | 已合入 |
 | Diagnosis C3.5 adversarial fixtures（DIAGNOSIS_V1） | `packages/aiplat-diagnosis/fixtures/dx.adv.*` + `fixture_metrics(subset=core|adversarial|all)` + `GET …/metrics/fixtures?subset=` | ✅ | ≥6 holdout；core/adversarial 分报；`accuracy_claim=false`；禁止用 core 1.00 宣称准确率；生成物适用：已接线（diagnosis app） | 本批 |
 | Evaluation D1 Thin | `packages/aiplat-evaluation` + `GET /api/core/eval/healthz`（`evaluation_healthz_payload`） | ✅ | 共宿 Central；`product_id=evaluation`；无 A3 拆分；生成物适用：不适用（平台共宿打包） | 已合入 |
@@ -4251,7 +4251,7 @@ scan_hash: 8f9548ec24f4
 | Evaluation A2 local store/migrations | `packages/aiplat-evaluation/migrations/` + `app/store/*` + `scripts/migrate_local.sh` | ✅ | 独立 SQLite `eval.store.v0`；readyz 查库；roundtrip 证明本地读写；`process_split_authorized=false`；生成物适用：不适用（评测独立 DB 验证） | 本批 |
 | Evaluation A3 local canonical API + proxy | `packages/aiplat-evaluation/app/api/store_routes.py` + `apps/eval/api/eval_upstream.py`（`AIPLAT_EVAL_SERVICE_URL`） | ✅ | 独立宿主提供 `/api/platform/apps/eval/store/*` 子集；Central 可选代理；默认 cohost；`process_split_authorized=false`；生成物适用：不适用（评测双模式验证） | 本批 |
 | Evaluation A4 local independence check | `packages/aiplat-evaluation/scripts/independence_check.sh` + `docs/a3/drills/local-eval-a3-independent-*.json` | ✅ | Central 不可达/未调用时 eval 仍可读 set/report；`environment=local`；`process_split_authorized=false`；生成物适用：不适用（评测独立性证据） | 本批 |
-| Evaluation A5 local closeout | `packages/aiplat-evaluation/scripts/{backup_local,rollback_local,a5_local_closeout}.sh` + [`A_LOCAL_CLOSEOUT.md`](packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md) | ✅ | 备份/回滚 + 契约 + 9 项验收收口；`process_split_authorized=false`；不启动 B；生成物适用：不适用（评测本地收口） | 本批 |
+| Evaluation A5 local closeout | `packages/aiplat-evaluation/scripts/{backup_local,rollback_local,a5_local_closeout}.sh` + [`packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md`](packages/aiplat-evaluation/docs/a3/A_LOCAL_CLOSEOUT.md) | ✅ | 备份/回滚 + 契约 + 9 项验收收口；`process_split_authorized=false`；不启动 B；生成物适用：不适用（评测本地收口） | 本批 |
 | Evaluation A6 local JWT auth | `packages/aiplat-evaluation/app/auth.py` + `migrations/0002_tenant_id.sql` | ✅ | standalone Bearer HS256；无 token→401；跨租户→404；`process_split_authorized=false`；Keycloak JWKS→B；生成物适用：不适用（评测本地认证） | 本批 |
 | Evaluation B0 local JWKS RS256 | `packages/aiplat-evaluation/app/auth.py` (`jwks_enabled` / `AIPLAT_EVAL_JWKS_JSON|_URL`) | ✅ | RS256 JWKS fixture/URL 校验；错误 kid/issuer→401；`process_split_authorized=false`；≠ staging authorize；生成物适用：不适用（评测认证加固） | 本批 |
 | Evaluation B1-L execute stubs 503 | `packages/aiplat-evaluation/app/api/execution_stubs.py` + `app/errors.py` | ✅ | 动态执行统一 `execution_not_migrated` 503；`environment=local`；≠ staging；生成物适用：不适用 | 本批 |
