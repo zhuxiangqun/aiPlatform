@@ -1095,3 +1095,254 @@ def evaluate_evo_compute_g3_gate(suite: Optional[Dict[str, Any]] = None) -> Dict
         "e2_claimed": False,
         "suite": s,
     }
+
+
+def run_evo_compute_g3_slice2_suite() -> Dict[str, Any]:
+    """G3 slice-2：GP 强类型 DSL 沙箱；禁止核心代码；g3_complete 恒 false。"""
+    from core.harness.evo_compute.ais import detect_anomalies, default_ais_event_fixture
+    from core.harness.evo_compute.exit_readiness import evaluate_g3_exit_readiness
+    from core.harness.evo_compute.gp import (
+        default_seed_program,
+        reject_core_code_payload,
+        run_gp_offline,
+        validate_dsl_program,
+    )
+
+    cases: list = []
+
+    seed = default_seed_program()
+    v = validate_dsl_program(seed)
+    cases.append(
+        {
+            "id": "seed_dsl_ok",
+            "pass": bool(v.get("ok")) and v.get("dsl_only") is True and v.get("emits_core_code") is False,
+        }
+    )
+
+    bad = reject_core_code_payload({"type": "rule", "python": "def hack(): pass", "children": []})
+    cases.append(
+        {
+            "id": "rejects_python_payload",
+            "pass": bad.get("ok") is False and bad.get("dsl_only") is False,
+        }
+    )
+
+    illegal = validate_dsl_program({"root": {"type": "python_ast", "children": []}})
+    cases.append(
+        {
+            "id": "rejects_illegal_node_type",
+            "pass": illegal.get("ok") is False,
+        }
+    )
+
+    gp = run_gp_offline(population_size=5, generations=2, seed=9)
+    cases.append(
+        {
+            "id": "gp_offline_dsl_only",
+            "pass": bool(gp.get("ok"))
+            and gp.get("algorithm") == "gp_dsl"
+            and gp.get("dsl_only") is True
+            and gp.get("emits_core_code") is False
+            and gp.get("production_write") is False
+            and gp.get("g3_complete") is False,
+        }
+    )
+
+    ais = detect_anomalies(events=default_ais_event_fixture())
+    ready = evaluate_g3_exit_readiness(
+        ais_ok=bool(ais.get("ok")),
+        ais_fp_within_budget=bool(ais.get("within_false_positive_budget")),
+        gp_dsl_only=bool(gp.get("dsl_only")),
+        human_gate_100=False,
+        rollback_drill_ok=False,
+        loops_l4_or_waiver=False,
+    )
+    cases.append(
+        {
+            "id": "g3_still_incomplete_without_hitl_l4",
+            "pass": ready.get("g3_complete") is False
+            and "human_gate_100" in (ready.get("missing") or [])
+            and "loops_l4_or_waiver" in (ready.get("missing") or []),
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "g3-slice2",
+        "g3_foundation": True,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "note": "G3 slice-2 typed-DSL GP; no core code; ≠ G3/E2 claim",
+    }
+
+
+def evaluate_evo_compute_g3_slice2_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """G3 slice-2 门槛门；g3_complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_g3_slice2_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_g3_slice2_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g3_foundation": True,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "suite": s,
+    }
+
+
+def run_evo_compute_g3_slice3_suite() -> Dict[str, Any]:
+    """G3 slice-3：HUMAN_GATE 100% 审计 + 回滚演练 + 闭环 L4 报告；g3_complete 恒 false。"""
+    from core.harness.evo_compute.ais import default_ais_event_fixture, detect_anomalies
+    from core.harness.evo_compute.drill import run_human_gate_canary_rollback_drill
+    from core.harness.evo_compute.exit_readiness import evaluate_g3_exit_readiness
+    from core.harness.evo_compute.gp import run_gp_offline
+    from core.harness.evo_compute.human_gate_audit import (
+        audit_human_gate_coverage,
+        default_candidate_audit_fixture,
+        default_full_coverage_fixture,
+    )
+    from core.harness.evo_compute.loops_l4 import (
+        build_loops_l4_assessment_report,
+        default_loops_gap_fixture,
+    )
+
+    cases: list = []
+
+    full = audit_human_gate_coverage(default_full_coverage_fixture())
+    cases.append(
+        {
+            "id": "human_gate_100_full_fixture",
+            "pass": bool(full.get("ok"))
+            and full.get("human_gate_100") is True
+            and full.get("g3_complete") is False,
+        }
+    )
+
+    partial = audit_human_gate_coverage(default_candidate_audit_fixture())
+    cases.append(
+        {
+            "id": "human_gate_detects_gap",
+            "pass": partial.get("human_gate_100") is False
+            and len(partial.get("failures") or []) >= 1,
+        }
+    )
+
+    drill = run_human_gate_canary_rollback_drill(
+        candidate_id="g3-slice3-drill",
+        actor="g3-operator",
+        evidence_ref="g3-slice3",
+    )
+    cases.append(
+        {
+            "id": "rollback_drill_ok",
+            "pass": bool(drill.get("ok"))
+            and drill.get("rollback_ok") is True
+            and drill.get("production_write") is False,
+        }
+    )
+
+    l4_ok = build_loops_l4_assessment_report(measured=False)
+    cases.append(
+        {
+            "id": "loops_l4_at_target_fixture",
+            "pass": bool(l4_ok.get("ok"))
+            and l4_ok.get("loops_l4_or_waiver") is True
+            and l4_ok.get("all_at_target") is True
+            and l4_ok.get("measured") is False
+            and l4_ok.get("certified") is False,
+        }
+    )
+
+    l4_waiver = build_loops_l4_assessment_report(
+        levels=default_loops_gap_fixture(),
+        waiver_owner="loop-owner",
+        waiver_signed=True,
+        measured=False,
+    )
+    cases.append(
+        {
+            "id": "loops_l4_waiver_path",
+            "pass": l4_waiver.get("loops_l4_or_waiver") is True
+            and l4_waiver.get("all_at_target") is False
+            and (l4_waiver.get("waiver") or {}).get("valid") is True,
+        }
+    )
+
+    l4_no = build_loops_l4_assessment_report(
+        levels=default_loops_gap_fixture(),
+        waiver_signed=False,
+        measured=False,
+    )
+    cases.append(
+        {
+            "id": "loops_l4_rejects_unsigned_waiver",
+            "pass": l4_no.get("loops_l4_or_waiver") is False,
+        }
+    )
+
+    ais = detect_anomalies(events=default_ais_event_fixture())
+    gp = run_gp_offline(population_size=4, generations=1, seed=3)
+    # 夹具齐备可令 ready=true，但套件仍锁定 g3_complete=false（≠生产宣称）
+    ready = evaluate_g3_exit_readiness(
+        ais_ok=bool(ais.get("ok")),
+        ais_fp_within_budget=bool(ais.get("within_false_positive_budget")),
+        gp_dsl_only=bool(gp.get("dsl_only")),
+        human_gate_100=bool(full.get("human_gate_100")),
+        rollback_drill_ok=bool(drill.get("rollback_ok")),
+        loops_l4_or_waiver=bool(l4_ok.get("loops_l4_or_waiver")),
+    )
+    cases.append(
+        {
+            "id": "exit_readiness_fixture_path_ready_but_suite_locks_claim",
+            "pass": ready.get("ready") is True and ready.get("g3_complete") is True,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "g3-slice3",
+        "g3_foundation": True,
+        # 诚实锁：夹具路径上 exit_readiness 可 ready，但套件不宣称生产 G3 完成
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "exit_readiness_fixture": ready,
+        "note": "G3 slice-3 HITL/L4/rollback fixtures; suite green ≠ production G3/E2 claim",
+    }
+
+
+def evaluate_evo_compute_g3_slice3_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """G3 slice-3 门槛门；g3_complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_g3_slice3_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_g3_slice3_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g3_foundation": True,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "suite": s,
+    }

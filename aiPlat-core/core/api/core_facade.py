@@ -21302,6 +21302,128 @@ def evaluate_evo_compute_g3_gate(suite: Optional[dict] = None) -> dict:
     return _gate(suite)
 
 
+def validate_evo_gp_dsl(program: Optional[dict] = None) -> dict:
+    """CoreFacade：校验 GP 程序是否仅含强类型 DSL。
+
+    Args:
+        program: DSL 程序。
+    """
+    from core.harness.evo_compute.gp import validate_dsl_program as _v
+
+    return _v(program)
+
+
+def run_evo_gp_offline(
+    *,
+    population_size: int = 6,
+    generations: int = 3,
+    seed: int = 42,
+    seed_program: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：离线 GP（仅 DSL；不生成核心代码）。
+
+    Args:
+        population_size: 种群。
+        generations: 代数。
+        seed: 种子。
+        seed_program: 可选种子程序。
+    """
+    from core.harness.evo_compute.gp import run_gp_offline as _run
+
+    return _run(
+        population_size=population_size,
+        generations=generations,
+        seed=seed,
+        seed_program=seed_program,
+    )
+
+
+def run_evo_compute_g3_slice2_suite() -> dict:
+    """CoreFacade：G3 slice-2 套件（GP DSL；g3_complete 恒 false）。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g3_slice2_suite as _run
+
+    return _run()
+
+
+def evaluate_evo_compute_g3_slice2_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：G3 slice-2 门槛门。
+
+    Args:
+        suite: ``run_evo_compute_g3_slice2_suite`` 回执。
+    """
+    from core.harness.evo_compute.suite import evaluate_evo_compute_g3_slice2_gate as _gate
+
+    return _gate(suite)
+
+
+def audit_evo_human_gate_coverage(
+    candidates: Optional[list] = None,
+    *,
+    require_production_path_only: bool = True,
+) -> dict:
+    """CoreFacade：生产路径候选 HUMAN_GATE 覆盖审计。
+
+    Args:
+        candidates: 候选行。
+        require_production_path_only: 仅审计批准后路径。
+    """
+    from core.harness.evo_compute.human_gate_audit import audit_human_gate_coverage as _a
+
+    return _a(
+        candidates,
+        require_production_path_only=require_production_path_only,
+    )
+
+
+def build_evo_loops_l4_assessment_report(
+    *,
+    levels: Optional[dict] = None,
+    target_level: int = 4,
+    waiver_owner: str = "",
+    waiver_signed: bool = False,
+    waiver_gap_list: Optional[list] = None,
+    measured: bool = False,
+) -> dict:
+    """CoreFacade：闭环 L4 评估报告。
+
+    Args:
+        levels: 各闭环等级。
+        target_level: 目标等级。
+        waiver_owner: 缓释 owner。
+        waiver_signed: 是否签字。
+        waiver_gap_list: 差距清单。
+        measured: 是否真实测量。
+    """
+    from core.harness.evo_compute.loops_l4 import build_loops_l4_assessment_report as _b
+
+    return _b(
+        levels=levels,
+        target_level=target_level,
+        waiver_owner=waiver_owner,
+        waiver_signed=waiver_signed,
+        waiver_gap_list=waiver_gap_list,
+        measured=measured,
+    )
+
+
+def run_evo_compute_g3_slice3_suite() -> dict:
+    """CoreFacade：G3 slice-3 套件（HITL/L4；g3_complete 恒 false）。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g3_slice3_suite as _run
+
+    return _run()
+
+
+def evaluate_evo_compute_g3_slice3_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：G3 slice-3 门槛门。
+
+    Args:
+        suite: ``run_evo_compute_g3_slice3_suite`` 回执。
+    """
+    from core.harness.evo_compute.suite import evaluate_evo_compute_g3_slice3_gate as _gate
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 

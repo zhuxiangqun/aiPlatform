@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-25T20:54:45+08:00",
+  "reviewed_at": "2026-11-26T08:56:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a2a94c861aa7040eb2e417ef090ff7fef5a18151",
-  "diff_sha256": "dca6c7fba5f87151132de0d6b8ca8c6eff6f10eab61be9fa789cda123d2239e4",
-  "head_sha": "3c9f443ad65a4e6589cf1d5f9f20d9d451fb0f78",
+  "merge_base": "28244aaebdb2486561adfbe97413e2e443bdbe3a",
+  "diff_sha256": "7a0ae402786b957ba46bccb04a8602ecf6fcfd69abe800d561ad1d9859cb4d40",
+  "head_sha": "2580b9a70e6660e8028f8faea396110e65d50799",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G1 slice-2 three-pilot DE/ES battery; g1_complete=false; zero findings"
+  "note": "G3 slice-2/3: GP dsl_only/no core code; HITL/L4 fixtures; suite g3_complete=false. Exit readiness fixture ready ≠ production claim."
 }
