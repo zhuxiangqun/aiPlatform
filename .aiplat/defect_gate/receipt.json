@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T11:12:00+08:00",
+  "reviewed_at": "2026-11-26T11:20:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "02d843a68606e4a71cca54034ea7b17902d6323b",
-  "diff_sha256": "861d4021aa62ced4b3ac8bc63a5470bf4a7b1d2c532bb63a6cf35f77bd81e9da",
-  "head_sha": "43762183d7173e2780496f06c08689dba329e377",
+  "diff_sha256": "ac67801f104d69eac2121dd32add71c572643fb6e574cae61c5a906a8d0bf317",
+  "head_sha": "b5e2d39ea8d4ab73e90ebcd2e2f3386cb015fd13",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "D2 holdout partitions rebased onto D1 main; production_traffic/certified/e2 false."
+  "note": "D2 holdout + whitepaper sync; production_traffic/certified/e2 false."
 }
