@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3436
+total_capabilities: 3447
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 768
+    caps_count: 779
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -3043,6 +3043,46 @@ domains:
         type: function
         signature: "CoreFacade evaluate_evo_compute_g2_slice3_gate"
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: default_antibody_signatures
+        type: function
+        signature: "default_antibody_signatures()→list"
+        module: aiPlat-core/core/harness/evo_compute/ais.py
+      - symbol: default_ais_event_fixture
+        type: function
+        signature: "default_ais_event_fixture()→list"
+        module: aiPlat-core/core/harness/evo_compute/ais.py
+      - symbol: detect_anomalies
+        type: function
+        signature: "detect_anomalies(events,...); auto_remediate=false"
+        module: aiPlat-core/core/harness/evo_compute/ais.py
+      - symbol: evaluate_g3_exit_readiness
+        type: function
+        signature: "evaluate_g3_exit_readiness(...)"
+        module: aiPlat-core/core/harness/evo_compute/exit_readiness.py
+      - symbol: run_evo_compute_g3_suite
+        type: function
+        signature: "run_evo_compute_g3_suite()→dict; g3_complete=false"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: evaluate_evo_compute_g3_gate
+        type: function
+        signature: "evaluate_evo_compute_g3_gate(suite=None)"
+        module: aiPlat-core/core/harness/evo_compute/suite.py
+      - symbol: detect_evo_ais_anomalies
+        type: function
+        signature: "CoreFacade detect_evo_ais_anomalies"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_g3_exit_readiness
+        type: function
+        signature: "CoreFacade evaluate_evo_g3_exit_readiness"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_evo_compute_g3_suite
+        type: function
+        signature: "CoreFacade run_evo_compute_g3_suite"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_evo_compute_g3_gate
+        type: function
+        signature: "CoreFacade evaluate_evo_compute_g3_gate"
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: continuous_midpoints
         type: function
         signature: '非 int 字段取中点默认值。'
@@ -3051,6 +3091,10 @@ domains:
         type: function
         signature: '单条回归用例：代理适应度相对用例地板。'
         module: aiPlat-core/core/harness/evo_compute/regression.py
+      - symbol: signatures_fingerprint
+        type: function
+        signature: '签名集指纹（可复现）。'
+        module: aiPlat-core/core/harness/evo_compute/ais.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

@@ -1,17 +1,22 @@
-"""受控演化计算底座（Phase 0–2 最小切片）。
+"""受控演化计算底座（Phase 0–3 最小切片）。
 
 职责：
   - Genome Registry / Candidate 状态机 / Fitness / Sandbox
-  - 预算与安全边界 / 夹具回放 / G0–G1 出口就绪
-  - DE/ES Orchestrator、三试点电池、holdout、演练
-  - 离散 GA、评测/FDE 覆盖率诚实探针、G2 出口就绪
+  - 预算与安全边界 / 夹具回放 / G0–G2 出口就绪
+  - DE/ES、GA、覆盖探针、冻结回归门
+  - AIS 异常检测（先检测不修复）/ G3 出口就绪
 
 非目标：
   - 不写生产配置、不采生产流量、不宣称 E2/L4/认证
   - 不替代 ``evolution_engine.py`` 夜间 Skill 流水线
-  - 套件绿 ≠ Gate 宣称完成；覆盖率缺测不得冒充达标
+  - 套件绿 ≠ Gate 宣称完成；AIS 不自动修复
 """
 
+from core.harness.evo_compute.ais import (
+    default_ais_event_fixture,
+    default_antibody_signatures,
+    detect_anomalies,
+)
 from core.harness.evo_compute.baseline import (
     evaluate_closed_loop_baseline_gate,
     measure_closed_loop_baseline,
@@ -42,6 +47,7 @@ from core.harness.evo_compute.exit_readiness import (
     evaluate_g0_exit_readiness,
     evaluate_g1_exit_readiness,
     evaluate_g2_exit_readiness,
+    evaluate_g3_exit_readiness,
 )
 from core.harness.evo_compute.fitness import rank_candidates
 from core.harness.evo_compute.ga import run_ga_offline
@@ -85,12 +91,14 @@ from core.harness.evo_compute.suite import (
     evaluate_evo_compute_g2_gate,
     evaluate_evo_compute_g2_slice2_gate,
     evaluate_evo_compute_g2_slice3_gate,
+    evaluate_evo_compute_g3_gate,
     run_evo_compute_g0_suite,
     run_evo_compute_g1_slice2_suite,
     run_evo_compute_g1_suite,
     run_evo_compute_g2_slice2_suite,
     run_evo_compute_g2_slice3_suite,
     run_evo_compute_g2_suite,
+    run_evo_compute_g3_suite,
 )
 
 __all__ = [
@@ -100,9 +108,12 @@ __all__ = [
     "approve_budget",
     "check_budget",
     "compare_holdout",
+    "default_ais_event_fixture",
+    "default_antibody_signatures",
     "default_budget_policy",
     "default_replay_fixture",
     "default_safety_boundary",
+    "detect_anomalies",
     "evaluate_candidate_offline",
     "evaluate_closed_loop_baseline_gate",
     "evaluate_evo_compute_g0_gate",
@@ -118,9 +129,11 @@ __all__ = [
     "default_regression_set",
     "evaluate_evo_compute_g2_slice2_gate",
     "evaluate_evo_compute_g2_slice3_gate",
+    "evaluate_evo_compute_g3_gate",
     "evaluate_g0_exit_readiness",
     "evaluate_g1_exit_readiness",
     "evaluate_g2_exit_readiness",
+    "evaluate_g3_exit_readiness",
     "evaluate_safety_readiness",
     "get_budget_policy",
     "get_genome",
@@ -146,6 +159,7 @@ __all__ = [
     "run_evo_compute_g2_slice2_suite",
     "run_evo_compute_g2_slice3_suite",
     "run_evo_compute_g2_suite",
+    "run_evo_compute_g3_suite",
     "run_ga_offline",
     "run_human_gate_canary_rollback_drill",
     "run_pilot_de_es_battery",

@@ -21228,6 +21228,80 @@ def evaluate_evo_compute_g2_slice3_gate(suite: Optional[dict] = None) -> dict:
     return _gate(suite)
 
 
+def detect_evo_ais_anomalies(
+    events: Optional[list] = None,
+    *,
+    signatures: Optional[list] = None,
+    false_positive_budget: float = 0.05,
+    labeled_false_positives: Optional[list] = None,
+) -> dict:
+    """CoreFacade：AIS 异常检测（只读；不自动修复）。
+
+    Args:
+        events: 事件列表。
+        signatures: 可选抗体。
+        false_positive_budget: 预注册误报预算。
+        labeled_false_positives: 已标注误报 hit_id。
+    """
+    from core.harness.evo_compute.ais import detect_anomalies as _d
+
+    return _d(
+        events,
+        signatures=signatures,
+        false_positive_budget=false_positive_budget,
+        labeled_false_positives=labeled_false_positives,
+    )
+
+
+def evaluate_evo_g3_exit_readiness(
+    *,
+    ais_ok: bool = False,
+    ais_fp_within_budget: bool = False,
+    gp_dsl_only: bool = False,
+    human_gate_100: bool = False,
+    rollback_drill_ok: bool = False,
+    loops_l4_or_waiver: bool = False,
+) -> dict:
+    """CoreFacade：G3 出口就绪。
+
+    Args:
+        ais_ok: AIS 可用。
+        ais_fp_within_budget: 误报在预算内。
+        gp_dsl_only: GP 仅 DSL。
+        human_gate_100: 生产候选全经 HUMAN_GATE。
+        rollback_drill_ok: 回滚演练。
+        loops_l4_or_waiver: 闭环 L4 或缓释。
+    """
+    from core.harness.evo_compute.exit_readiness import evaluate_g3_exit_readiness as _r
+
+    return _r(
+        ais_ok=ais_ok,
+        ais_fp_within_budget=ais_fp_within_budget,
+        gp_dsl_only=gp_dsl_only,
+        human_gate_100=human_gate_100,
+        rollback_drill_ok=rollback_drill_ok,
+        loops_l4_or_waiver=loops_l4_or_waiver,
+    )
+
+
+def run_evo_compute_g3_suite() -> dict:
+    """CoreFacade：G3 最小套件（AIS；g3_complete 恒 false）。"""
+    from core.harness.evo_compute.suite import run_evo_compute_g3_suite as _run
+
+    return _run()
+
+
+def evaluate_evo_compute_g3_gate(suite: Optional[dict] = None) -> dict:
+    """CoreFacade：G3 门槛门。
+
+    Args:
+        suite: ``run_evo_compute_g3_suite`` 回执。
+    """
+    from core.harness.evo_compute.suite import evaluate_evo_compute_g3_gate as _gate
+
+    return _gate(suite)
+
+
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
 

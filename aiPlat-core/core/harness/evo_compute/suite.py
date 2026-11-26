@@ -968,3 +968,130 @@ def evaluate_evo_compute_g2_slice3_gate(
         "e2_claimed": False,
         "suite": s,
     }
+
+
+def run_evo_compute_g3_suite() -> Dict[str, Any]:
+    """G3 最小套件：AIS 检测-only + 误报预算；``g3_complete`` 恒 false。"""
+    from core.harness.evo_compute.ais import (
+        default_ais_event_fixture,
+        default_antibody_signatures,
+        detect_anomalies,
+    )
+    from core.harness.evo_compute.exit_readiness import evaluate_g3_exit_readiness
+
+    cases: list = []
+    sigs = default_antibody_signatures()
+    cases.append(
+        {
+            "id": "antibodies_ready",
+            "pass": len(sigs) >= 4
+            and all(str(s.get("antibody_id") or "").strip() for s in sigs),
+        }
+    )
+
+    clean = detect_anomalies(events=[{"event_id": "n", "event_type": "ok", "text": "hi"}])
+    cases.append(
+        {
+            "id": "clean_no_hits",
+            "pass": bool(clean.get("ok"))
+            and int(clean.get("n_hits") or 0) == 0
+            and clean.get("auto_remediate") is False
+            and clean.get("g3_complete") is False,
+        }
+    )
+
+    det = detect_anomalies(events=default_ais_event_fixture())
+    kinds = {h.get("kind") for h in (det.get("hits") or [])}
+    cases.append(
+        {
+            "id": "detects_four_kinds",
+            "pass": bool(det.get("ok"))
+            and int(det.get("n_hits") or 0) >= 4
+            and {
+                "execution_anomaly",
+                "prompt_injection",
+                "cross_tenant",
+                "knowledge_conflict",
+            }.issubset(kinds)
+            and det.get("auto_remediate") is False
+            and det.get("production_write") is False,
+        }
+    )
+
+    # 标注全部命中为误报 → 超出默认 5% 预算
+    all_hits = [h["hit_id"] for h in (det.get("hits") or [])]
+    over = detect_anomalies(
+        events=default_ais_event_fixture(),
+        labeled_false_positives=all_hits,
+        false_positive_budget=0.05,
+    )
+    cases.append(
+        {
+            "id": "fp_budget_enforced",
+            "pass": over.get("within_false_positive_budget") is False
+            and float(over.get("false_positive_rate") or 0) > 0.05,
+        }
+    )
+
+    # 零误报标注 → 预算内
+    within = detect_anomalies(
+        events=default_ais_event_fixture(),
+        labeled_false_positives=[],
+        false_positive_budget=0.05,
+    )
+    cases.append(
+        {
+            "id": "fp_budget_ok_when_unlabeled",
+            "pass": within.get("within_false_positive_budget") is True,
+        }
+    )
+
+    ready = evaluate_g3_exit_readiness(
+        ais_ok=bool(det.get("ok")),
+        ais_fp_within_budget=bool(within.get("within_false_positive_budget")),
+        gp_dsl_only=False,
+        human_gate_100=False,
+        rollback_drill_ok=False,
+        loops_l4_or_waiver=False,
+    )
+    cases.append(
+        {
+            "id": "g3_exit_incomplete_without_gp_hitl",
+            "pass": ready.get("g3_complete") is False
+            and "gp_dsl_only" in (ready.get("missing") or [])
+            and "human_gate_100" in (ready.get("missing") or []),
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "g3-slice1",
+        "g3_foundation": True,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "note": "G3 slice-1 AIS detect-only; suite green ≠ G3/E2 claim",
+    }
+
+
+def evaluate_evo_compute_g3_gate(suite: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """G3 门槛门：套件全过；g3_complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_g3_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_g3_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g3_foundation": True,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "suite": s,
+    }

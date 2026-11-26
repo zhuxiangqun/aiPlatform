@@ -2,10 +2,9 @@ layer: core
 rationale: |
   Harness 子模块目录（evo_compute）。受控演化计算底座（Genome Registry /
   Fitness / Sandbox / Candidate 状态机 / 闭环 KPI 基线 / 三试点 /
-  预算硬上限 / 安全边界 / 夹具回放 / G0 出口就绪 / DE-ES Orchestrator /
-  holdout 确认 / Human Gate·Canary·回滚演练 / G1 出口就绪 / 离散 GA /
-  评测·FDE 覆盖探针与库存实测 / 冻结回归自动门 / G2 出口就绪）。符合
+  预算硬上限 / 安全边界 / 夹具回放 / G0–G2 出口就绪 / DE-ES / GA /
+  覆盖探针 / 冻结回归门 / AIS 异常检测-only / G3 出口就绪）。符合
   boundary-standard.md §3.1——Harness 是 AI Runtime Kernel，本目录为执行
   基础设施的一部分。不写生产配置、不采生产流量、不自动批准预算/安全、
-  不宣称 E2 / G1/G2 默认出口完成；夹具达标 ≠ 生产 L4；回归分不回流进化。
+  不宣称 E2 / G0–G3 默认出口完成；AIS 先检测不修复；夹具 ≠ 生产 L4。
 known_debt: []

@@ -140,3 +140,47 @@ def evaluate_g2_exit_readiness(
         "e2_claimed": False,
         "note": "G2 exit requires measured eval/FDE coverage; suite green ≠ claim",
     }
+
+
+def evaluate_g3_exit_readiness(
+    *,
+    ais_ok: bool = False,
+    ais_fp_within_budget: bool = False,
+    gp_dsl_only: bool = False,
+    human_gate_100: bool = False,
+    rollback_drill_ok: bool = False,
+    loops_l4_or_waiver: bool = False,
+) -> Dict[str, Any]:
+    """评估 Phase 3 / G3 出口条件是否齐备。
+
+    Args:
+        ais_ok: AIS 检测路径可用。
+        ais_fp_within_budget: 误报在预注册预算内。
+        gp_dsl_only: GP 仅 DSL（slice-1 可 false）。
+        human_gate_100: 生产候选 100% HUMAN_GATE。
+        rollback_drill_ok: 回滚演练通过。
+        loops_l4_or_waiver: 闭环 L4 或 owner 缓释。
+
+    Returns:
+        回执；全部满足时 ``g3_complete`` 可为 True；certified/e2 恒 false。
+    """
+    checks = {
+        "ais_ok": bool(ais_ok),
+        "ais_fp_within_budget": bool(ais_fp_within_budget),
+        "gp_dsl_only": bool(gp_dsl_only),
+        "human_gate_100": bool(human_gate_100),
+        "rollback_drill_ok": bool(rollback_drill_ok),
+        "loops_l4_or_waiver": bool(loops_l4_or_waiver),
+    }
+    all_ok = all(checks.values())
+    return {
+        "ok": True,
+        "ready": all_ok,
+        "checks": checks,
+        "missing": [k for k, v in checks.items() if not v],
+        "g3_complete": all_ok,
+        "g3_foundation": True,
+        "certified": False,
+        "e2_claimed": False,
+        "note": "G3 exit; AIS slice-1 alone ≠ claim; suite green ≠ g3_complete",
+    }
