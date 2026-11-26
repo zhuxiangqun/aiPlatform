@@ -16,7 +16,8 @@ purpose: FDE 系统 v1.0 Operational（F10–F11）测量；默认未授权；�
 | F11 compose 长驻 | **exists** | `evaluate_fde_compose_long_running_authorize`；须批准 + `adr_ref`；标准正文未授权 |
 
 **当前 F10 authorized=true**（朱莹批准 `operational-approval-record.approved.json`，仅 `gate_ids=[F10]`）。  
-**F11 / bundle `operational_ready=false`**（未批 compose；不扩大 ADR-09）。
+**F11 / bundle `operational_ready=false`**：专项 ADR 草稿  
+`docs/decisions/products/five-products/ADR-FDE-COMPOSE-LONG-RUNNING.md` 为 **Proposed**（≠ Accepted）；Accepted + 非作者批准 + `adr_ref` 后才可 unlock。不扩大 ADR-09 E4。
 
 ```bash
 pytest aiPlat-core/core/tests/unit/test_apps/test_fde_operational_f10_f11.py -q

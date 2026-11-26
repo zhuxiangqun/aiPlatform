@@ -191,13 +191,13 @@ v1.0 Core MUST：`agent`、`skill`。
 | E07 | exists | `normalize_judge_report` + `run_e4_calibration` 显式 `calibration_ref` |
 | E08 | exists | `/eval` EvalCenter + `eval_center_route_contract`；旧 diagnostics 硬切 |
 | E09 | exists | `normalize_tool_mcp_subject` + `McpSubjectAdapter`；外援须 `verified_tier` |
-| E10 | exists | `evaluate_eval_process_split_authorize`；**authorized=false** |
-| E11 | exists | `evaluate_eval_production_sla_authorize`；**authorized=false** |
+| E10 | exists | `evaluate_eval_process_split_authorize`；**authorized=true**（朱莹 pilot；见批准记录） |
+| E11 | exists | `evaluate_eval_production_sla_authorize`；**authorized=true**（须 `sla_ref`） |
 | E12 | exists | `build_dual_annotator_kappa_report`；κ≠accuracy |
 
-**测量：Core E01–E06 / Extended E07–E09 / Operational E10–E12 均为 exists。**  
-**authorized / operational_ready：false**（pending 批准）。正式 `*_ready` 徽章：待非作者复核。`certified`：否。  
-证据：`core-gap-evidence.md` · `extended-gap-evidence.md` · `operational-gap-evidence.md`。
+**测量：Core/Extended/Operational 项均为 exists。**  
+**徽章（2026-11-26 clause-sync）**：conditional `core_ready`（朱鸿林）+ `extended_ready`（朱莹）；E10–E11 authorized → `operational_ready`；E12 不构成 accuracy。`certified`：**否**。  
+证据：`core|extended|operational-gap-evidence.md` + `*-approval-record.approved.json`。
 
 ---
 

@@ -178,10 +178,10 @@ ImportReport MUST 含：`asset_id`、`verified_tier`、`actor`、`tenant_id`、`
 | X07 | exists | `run_l1_sandbox_trial` 静态试跑 + `compat_evidence_refs` |
 | X08 | exists | `set_semantic_probe_result` 显式探针；禁自动升 L2 |
 | X09 | exists | `build_interop_asset_catalog` + Workspace 四列表 claimed/verified tip |
-| X10 | exists | `evaluate_interop_production_authorize`；**authorized=false** |
-| X11 | exists | `bind_supplier_sla`；**bound=false**（无批准） |
+| X10 | exists | `evaluate_interop_production_authorize`；**authorized=true**（朱莹 pilot） |
+| X11 | exists | `bind_supplier_sla`；**bound=true**（须批准 + `sla_ref`/`vendor_id`） |
 
-**测量：Core/Extended/Operational 项均为 exists；X10–X11 authorized=false。**  
-正式徽章待非作者复核。`certified`：否。  
+**测量：Core/Extended/Operational 项均为 exists。**  
+**徽章（2026-11-26 clause-sync）**：conditional `core_ready`（朱鸿林）+ `extended_ready`（朱莹）；X10–X11 → `operational_ready`。`certified`：**否**（≠ L2 auto-grant）。  
 §C.1 映射表已补；L2 仅 `semantic_probe_passed`。  
-证据：`core|extended|operational-gap-evidence.md`。
+证据：`core|extended|operational-gap-evidence.md` + `*-approval-record.approved.json`。

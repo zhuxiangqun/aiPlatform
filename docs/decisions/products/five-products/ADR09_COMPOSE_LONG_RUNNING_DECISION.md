@@ -26,7 +26,7 @@ doc_type: Report
 |------|------|
 | `compose.adr10-diagnosis-mvp.yml`（`run --rm`） | one-shot 保留；长驻为**另文件/另 profile**，不覆盖 |
 | `compose.gate3-pi-thin.yml` / `compose.pi-thin-optional.yml` | 试点/可选仍有效；长驻升格须 BOUNDARY 分 PR |
-| FDE / 本体 / 控制面 | 仅健康探针 one-shot 已有；长驻 compose 另立 |
+| FDE / 本体 / 控制面 | 仅健康探针 one-shot 已有；长驻 compose 另立（FDE 专项草稿：`ADR-FDE-COMPOSE-LONG-RUNNING.md` · Proposed） |
 
 ## 后续（另 PR）
 

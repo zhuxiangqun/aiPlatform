@@ -13,7 +13,7 @@ last_reviewed: 2026-11-26
 
 > **状态**：已批准标准（2026-11-26）；**2026-12-01 生效**。  
 > 结构对齐知识体系 v4.3.1。  
-> **诚实边界**：标准批准 ≠ 实现 `certified`；compose 长驻仍须另批 ADR-09。正式 `core_ready`（conditional）：朱鸿林 Security 已复核（`reports/products/fde-system/v1.0/core-approval-record.approved.json`）。
+> **诚实边界**：标准批准 ≠ 实现 `certified`。正式 `core_ready` / `extended_ready`（conditional）已批；F10 authorized；**F11 compose 长驻**须 `ADR-FDE-COMPOSE-LONG-RUNNING` **Accepted**（现为 Proposed：`docs/decisions/products/five-products/ADR-FDE-COMPOSE-LONG-RUNNING.md`）。
 
 - [技术白皮书](./technical-whitepaper.md)
 - [规范性附录](./normative-appendix.md)

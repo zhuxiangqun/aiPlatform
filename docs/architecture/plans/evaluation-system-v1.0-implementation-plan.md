@@ -8,6 +8,7 @@ created: 2026-11-26
 doc_id: EVAL_SYS_V10_IMPL_PLAN
 last_reviewed: 2026-11-26
 purpose: 将评测系统 v1.0 标准落到可认证路径（非标准正文）
+clause_sync: "2026-11-26 · 对齐非作者 Core/Extended/Operational 批准记录"
 ---
 # 评测系统 v1.0 实施方案
 
@@ -15,7 +16,8 @@ purpose: 将评测系统 v1.0 标准落到可认证路径（非标准正文）
 > - `docs/standards/evaluation-system/v1.0/technical-whitepaper.md`
 > - `docs/standards/evaluation-system/v1.0/normative-appendix.md`
 >
-> 本文是实施计划，不是标准正文，也不是当前实现状态声明。  
+> 本文是实施计划，不是标准正文。  
+> **实现徽章以** `reports/products/evaluation-system/v1.0/*-approval-record.approved.json` **与 gap 证据为准**（clause-sync）。  
 > 承接：`eval-v1-charter.md`、五产品 Evaluation 模块现状。
 
 ## 0. 结论先行
@@ -28,14 +30,16 @@ purpose: 将评测系统 v1.0 标准落到可认证路径（非标准正文）
 
 套件绿 ≠ accuracy；preview UI ≠ certified。
 
-### 0.1 代码证据基线（2026-11-26 · 刷新）
+### 0.1 代码证据基线（2026-11-26 · clause-sync）
 
-测量：`reports/products/evaluation-system/v1.0/core-gap-evidence.md`。
+测量与批准：`reports/products/evaluation-system/v1.0/`。
 
-| Core | 测量 |
+| 层 | 状态 |
 |---|---|
-| E01–E06 | **exists** |
-| 正式 core_ready | 待非作者复核附录 N |
+| E01–E06 | **exists** + **conditional core_ready**（朱鸿林 / `core-approval-record.approved.json`） |
+| E07–E09 | **exists** + **conditional extended_ready**（朱莹 / `extended-approval-record.approved.json`） |
+| E10–E11 | **authorized=true**（朱莹 / `operational-approval-record.approved.json`；pilot SLA） |
+| E12 | κ 报告 exists；`accuracy_claim=false` |
 | certified | **否** |
 
 已收口：`normalize_evidence_refs`；claims_gate / attach_plan 三指纹绑定。
@@ -60,9 +64,9 @@ purpose: 将评测系统 v1.0 标准落到可认证路径（非标准正文）
 | P1 | Canonical API 收敛 + shim | E01–E02 | **exists** |
 | P2 | Case Pack + live hash | E03 | **exists** |
 | P3 | 归因报告 + 默认 claim_eligible=false | E04–E05 | **exists（已收口 E04）** |
-| P4 | Gate 指纹绑定 | E06 | **exists（已收口）** → 待复核 core_ready |
-| P5 | Judge 校准 / `/eval` / Tool·MCP | Extended E07–E09 | **exists（测量）** — 见 `extended-gap-evidence.md` |
-| P6 | A3 / SLA / κ | Operational E10–E12 | **exists（门禁）**；authorized=false — 见 `operational-gap-evidence.md` |
+| P4 | Gate 指纹绑定 | E06 | **exists** → **core_ready conditional** |
+| P5 | Judge 校准 / `/eval` / Tool·MCP | Extended E07–E09 | **exists** → **extended_ready conditional** |
+| P6 | A3 / SLA / κ | Operational E10–E12 | **E10–E11 authorized**；E12 κ≠accuracy — 见 `operational-gap-evidence.md` |
 
 ## 4. 证据目录
 

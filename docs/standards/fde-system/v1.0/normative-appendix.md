@@ -152,9 +152,10 @@ review_cycle: 90d
 | F07 | exists | `validate_slice_signoff_reports` + 切片签收禁 default tenant |
 | F08 | exists | AcceptTab → 唯一 `acceptance/signoff` |
 | F09 | exists | `adr09_fde_optional_health_*` 脚本 + `fde_optional_process_contract` |
-| F10 | exists | `evaluate_fde_production_process_authorize`；**authorized=false** |
-| F11 | exists | `evaluate_fde_compose_long_running_authorize`；须 `adr_ref`；**authorized=false** |
+| F10 | exists | `evaluate_fde_production_process_authorize`；**authorized=true**（朱莹 pilot） |
+| F11 | exists | `evaluate_fde_compose_long_running_authorize`；须 `adr_ref`；**authorized=false**（ADR 草稿 Proposed） |
 
-**测量：Core/Extended/Operational 项均为 exists；F10–F11 authorized=false；compose 长驻=否。**  
-正式徽章待非作者复核。`certified`：否。ADR-09 边界未扩大。  
-证据：`core|extended|operational-gap-evidence.md`。
+**测量：Core/Extended/Operational 项均为 exists。**  
+**徽章（2026-11-26 clause-sync）**：conditional `core_ready`（朱鸿林）+ `extended_ready`（朱莹）；F10 authorized；**F11 / bundle `operational_ready` 仍 false**。`certified`：**否**。ADR-09 边界未扩大。  
+F11 专项草稿：`docs/decisions/products/five-products/ADR-FDE-COMPOSE-LONG-RUNNING.md`（**Proposed ≠ Accepted**）。  
+证据：`core|extended|operational-gap-evidence.md` + `*-approval-record.approved.json`。
