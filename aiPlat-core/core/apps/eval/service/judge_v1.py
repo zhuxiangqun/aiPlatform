@@ -268,12 +268,17 @@ def run_e4_calibration(
             "accuracy_claim": False,
         },
     )
-    return {
+    raw = {
         "ok": True,
         "judge_id": JUDGE_V1_ID,
         "set_id": set_id,
         "report_id": report["id"],
+        "calibration_ref": report["id"],
+        "calibrated": True,
         "metrics": metrics,
         "report": report,
         "accuracy_claim": False,
     }
+    from core.apps.eval.service.judge_contract import normalize_judge_report
+
+    return normalize_judge_report(raw)

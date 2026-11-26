@@ -397,9 +397,14 @@ const WorkspaceMCP: React.FC = () => {
         if (!ui) return <span className="text-xs text-gray-500">—</span>;
         const cls =
           ui === '现在就能用' ? 'text-green-400' : ui === '不能用' ? 'text-red-400' : 'text-amber-400';
+        const tip = [
+          tier,
+          record.compat?.claimed_tier && `claimed=${record.compat.claimed_tier}`,
+          record.compat?.verified_tier && `verified=${record.compat.verified_tier}`,
+        ].filter(Boolean).join(' · ');
         return (
           <div className="flex flex-col gap-0.5 items-start">
-            <span className={`text-xs ${cls}`} title={tier}>{ui}</span>
+            <span className={`text-xs ${cls}`} title={tip || tier}>{ui}</span>
             {tier === 'gated' && (
               <button
                 type="button"

@@ -3,19 +3,19 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-11-26T05:21:15Z"
+generated_at: "2026-11-26T10:07:49Z"
 source: AIPLAT_CAPABILITIES.md
 doc_type: Report
-source_sha256: "1cbd005841a0e05a0866c18f5ca1e031d44ca34234ec75752fa4750217bb64bf"
+source_sha256: "51fe83f2bfbc571a41c22b3462e2121f0730898293484481d7efd8a3c1be7b21"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
-total_capabilities: 4393
+total_capabilities: 4410
 capabilities_version: "30.14"
 capabilities_last_updated: "2026-11-25"
 language: zh-CN
 packaging: executive-digest
 ---
 
-<!-- whitepaper_stamp source_sha256=1cbd005841a0e05a0866c18f5ca1e031d44ca34234ec75752fa4750217bb64bf scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=4393 -->
+<!-- whitepaper_stamp source_sha256=51fe83f2bfbc571a41c22b3462e2121f0730898293484481d7efd8a3c1be7b21 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=4410 -->
 
 # aiPlat 平台现状白皮书
 
@@ -47,15 +47,15 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-11-26T05:21:15Z` |
-| CAPABILITIES SHA-256 | `1cbd005841a0e05a0866c18f5ca1e031d44ca34234ec75752fa4750217bb64bf` |
+| 生成时间 (UTC) | `2026-11-26T10:07:49Z` |
+| CAPABILITIES SHA-256 | `51fe83f2bfbc571a41c22b3462e2121f0730898293484481d7efd8a3c1be7b21` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.14` |
 | CAPABILITIES last_updated | `2026-11-25` |
-| frontmatter total_capabilities | `4393` |
-| CAPABILITIES 内 ✅ 计数 | 4415 |
+| frontmatter total_capabilities | `4410` |
+| CAPABILITIES 内 ✅ 计数 | 4432 |
 | CAPABILITIES 内 ⚠️ 计数 | 28 |
-| 能力表行（估） | 4402 |
+| 能力表行（估） | 4419 |
 | 包装模式 | executive-digest（不含完整能力路径表） |
 
 ## 1. 平台定位（现状摘要）
@@ -64,7 +64,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 
 用业务语言概括：aiPlat 把「能跑 Agent」扩展成「能交付、能治理、能积累知识」的平台。
 
-当前能力登记总量约 **4393** 项（✅≈4415 · ⚠️≈28，以 CAPABILITIES 扫描为准）。对外论证时不必通读路径表，可按下面五块理解：
+当前能力登记总量约 **4410** 项（✅≈4432 · ⚠️≈28，以 CAPABILITIES 扫描为准）。对外论证时不必通读路径表，可按下面五块理解：
 
 1. **执行与编排**：多阶段流水线、ReAct 循环、多 Agent 协作——把任务跑完，而不是只聊一轮。
 2. **记忆与知识**：会话记忆 + 企业知识/本体/RAG——回答有出处、可跨会话。
@@ -104,14 +104,14 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 213 | 0 | 213 |
+| Skill 系统 | 215 | 0 | 215 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 177 | 1 | 178 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 601 | 0 | 601 |
+| 评估系统 | 614 | 0 | 614 |
 | MCP 协议 | 11 | 0 | 11 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -140,10 +140,10 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | 闭环执行层 | 7 | 0 | 7 |
 | 知识编译与OKF | 0 | 0 | 0 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
-| Skill 目录标准化 | 7 | 0 | 7 |
+| Skill 目录标准化 | 9 | 0 | 9 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4382** | **11** | **4393** |
+| **总计** | **4399** | **11** | **4410** |
 
 ## 2.5 对标、评级与五维白皮书体系
 
@@ -254,14 +254,14 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | 四、RAG 检索 | 62 | 1 | — |
 | 四附、知识基础设施（Knowledge） | 30 | 0 | — |
 | 五、Agent 系统 | 315 | 0 | — |
-| 六、Skill 系统 | 215 | 3 | — |
+| 六、Skill 系统 | 217 | 3 | — |
 | 七、安全与治理 | 126 | 1 | — |
 | 八、可观测性 | 43 | 0 | — |
 | 九、模型基础设施 | 46 | 0 | — |
 | 十、部署与运维 | 23 | 0 | — |
 | 十一、扩展与学习 | 183 | 2 | — |
 | 十二、Gate 系统 | 177 | 1 | — |
-| 十三、评估系统 | 603 | 0 | — |
+| 十三、评估系统 | 616 | 0 | — |
 | 十四、MCP 协议 | 11 | 0 | — |
 | 十四附、A2A 协议 (Agent-to-Agent) | 9 | 0 | — |
 | 十五、文档智能 | 27 | 0 | — |
@@ -291,7 +291,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | 三十九、知识编译与 OKF 导出 (Karpathy LLM Wiki 对齐) | 8 | 0 | — |
 | 四十、对话→Wiki 自动管线 (CodeAlmanac 对齐) | 6 | 0 | — |
 | 四十一、Web 工具归并 (Firecrawl 对齐) | 4 | 0 | — |
-| 四十一、Skill 目录标准化与验收 (文章对齐) | 7 | 0 | — |
+| 四十一、Skill 目录标准化与验收 (文章对齐) | 9 | 0 | — |
 | 四十一、E2E端到端验证 | 18 | 0 | — |
 
 <!-- END_GENERATED_FROM_AIPLAT_CAPABILITIES -->

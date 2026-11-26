@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4393
+total_capabilities: 4406
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -2987,6 +2987,8 @@ scan_hash: 8f9548ec24f4
 | tool_discard_impl_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | tool_preview_impl_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | skill_dry_run_handler_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| skill_run_l1_sandbox_trial / run_l1_sandbox_trial | `core/api/core_facade.py` + `asset_compat.py` | ✅ | 外援 X07 L1 静态沙箱试调用（非 microVM）；生成物适用：已接线（Skill COMPAT） | 本批 |
+| skill_set_semantic_probe_result / set_semantic_probe_result | `core/api/core_facade.py` + `asset_compat.py` | ✅ | 外援 X08 显式语义探针（禁止自动升 L2）；生成物适用：已接线 | 本批 |
 | skill_discard_handler_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | skill_preview_handler_draft | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | write_handler_draft_from_script | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
@@ -3841,6 +3843,10 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_fde_compose_long_running_authorize | `core/apps/fde/service/operational_contracts.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_fde_production_process_authorize | `core/apps/fde/service/operational_contracts.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_interop_production_authorize | `core/harness/maintenance/interop_operational.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_eval_process_split_authorize | `core/apps/eval/service/operational_gates.py` | ✅ | 自动同步 | 已合入 |
 | diagnosis_fixture_metrics | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | diagnosis_run_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | diagnosis_collect | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4121,6 +4127,14 @@ scan_hash: 8f9548ec24f4
 | run_e5_gate | `core/apps/eval/service/gate_v1.py` | ✅ | 自动同步 | 已合入 |
 | eval_run_e4_calibration | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | run_e4_calibration | `core/apps/eval/service/judge_v1.py` | ✅ | 自动同步 | 已合入 |
+| normalize_judge_report / eval_normalize_judge_report | `judge_contract.py` + `core_facade.py` | ✅ | 评测 E07 Judge 强制 `judge_id`/`calibration_ref`；空 ref≠accuracy gate；生成物适用：已接线 | 本批 |
+| eval_center_route_contract | `eval_center_route.py` + `core_facade.py` | ✅ | 评测 E08 `/eval` 路由契约（旧 diagnostics 硬切）；生成物适用：已接线（管理端 EvalCenter） | 本批 |
+| normalize_tool_mcp_subject / eval_normalize_tool_mcp_subject / McpSubjectAdapter | `interop_subject.py` + `subject_adapter.py` + facade | ✅ | 评测 E09 Tool/MCP subject；外援须 `verified_tier`；claim=false；生成物适用：已接线 | 本批 |
+| build_interop_asset_catalog / interop_build_asset_catalog | `asset_compat.py` + facade | ✅ | 外援 X09 资产目录行（claimed/verified/ui_state）；生成物适用：已接线（Workspace 列表 tip） | 本批 |
+| fde_slice_report_binding_policy / fde_workbench_signoff_surface / fde_optional_process_contract | `fde/service/extended_contracts.py` + facade | ✅ | FDE F07–F09 Extended 契约卡（非 compose 长驻授权）；生成物适用：不适用（平台交付横切） | 本批 |
+| eval_evaluate_process_split_authorize / eval_evaluate_production_sla_authorize / eval_build_dual_annotator_kappa_report | `eval/service/operational_gates.py` + facade | ✅ | 评测 E10–E12 Operational 门（默认 unauthorized；κ≠accuracy）；生成物适用：已接线 | 本批 |
+| interop_evaluate_production_authorize / interop_bind_supplier_sla | `interop_operational.py` + facade | ✅ | 外援 X10–X11 生产授权/SLA（默认 false）；生成物适用：已接线 | 本批 |
+| fde_evaluate_production_process_authorize / fde_evaluate_compose_long_running_authorize | `fde/service/operational_contracts.py` + facade | ✅ | FDE F10–F11（须批准；F11 须 adr_ref；不扩大 ADR-09）；生成物适用：不适用 | 本批 |
 | eval_bootstrap_e3_gold | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_list_exam_sets / eval_run_agent_exam | `core/api/core_facade.py` + `agent_exam_ops.py` | ✅ | Agent 评测（绑用例集→dry/live）+ 可归因报告；生成物适用：已接线（apps/eval UI） | 本批 |
 | EvalExamSuitePanel / buildDimensionMatrix / BUILTIN_EXAM_SUITE | `EvalExamSuitePanel.tsx` + `examSuite.ts` | ✅ | Agent 本地标准冒烟（含 multi_turn + normal 复跑）+ 本机模型前置 + 维度矩阵；high_risk 无确认≠安全通过；空工具轨迹≠通过；tool_failure 不宣称 tools/trajectory 覆盖；线上/κ 未测；accuracy_claim=false；生成物适用：已接线（评测 Agent） | 本批 |
@@ -4160,6 +4174,7 @@ scan_hash: 8f9548ec24f4
 | run_typed_plan_exam / workflow-plan-exam / model-plan-exam / dataset-plan-exam | `typed_plan_exam.py` + CoreFacade + `POST /evaluation/{workflow,model,dataset}-plan-exam` | ✅ | Workflow/Model 词面 oracle；Dataset=`dataset_assert` 夹具表；≠ pipeline/模型榜/KB；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
 | run_system_plan_exam / eval_run_system_plan_exam / system-plan-exam | `system_plan_ops.py` + CoreFacade + `POST /evaluation/system-plan-exam` | ✅ | System 组合 L3–L4：默认 prompt/workflow/model/dataset basic；`runtime_parts` 归档；异质不压档；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
 | evaluate_l5_claims_gate / claims-gate / claims_policy_stub | `claims_gate.py` + CoreFacade + `POST /evaluation/claims-gate` + Plan `claims_policy` | ✅ | L5 范围声明门禁：默认 false；fixture/mixed/不完整覆盖不可解禁；须 explicit_authorize；生成物适用：已接线（评测 API） | 本批 |
+| normalize_evidence_refs + fingerprints_bound（E04/E06） | `claims_gate.py` + `attach_evaluation_plan` + attributable report | ✅ | 统一 evidence_refs；gate 强制 plan/manifest/execution 三指纹；生成物适用：已接线 | 本批 |
 | resolve_agent_eval_profile / derive_capability_hints | `eval_profile_resolve.py` + `POST /evaluation/resolve-eval-profile` + compile-plan 自动注入 | ✅ | 显式 `config.eval_profile` 优先；`derived_hints` 须标来源/低置信，仅建议选题，禁止单独驱动 N/A/静默漏测；禁止 agent_id 分支；生成物适用：已接线 | 本批 |
 | countMatrixStatuses / paperMatchDecision | `examSuite.ts` | ✅ | 五态计数 + 读 match_report；生成物适用：已接线（正式报告） | 本批 |
 | ensure_builtin_skill_eval_suites / builtin_trigger_demo | `skill_evals_ops.py` + `POST …/suites/ensure-builtin` + Skills 空态按钮 | ✅ | list 自动/一键登记内置触发样例（内嵌 skills_override）；run 自动注入 override；生成物适用：已接线 | 本批 |
@@ -5257,6 +5272,8 @@ scan_hash: 8f9548ec24f4
 |------|------|:---:|------|------|
 | SkillRegistry._load_extras | apps/skills/registry.py | ✅ | 扫描 references/scripts/assets 子目录资源 | 已合入 |
 | SkillVerifier | apps/skills/skill_verify.py | ✅ | 5项自动化验收: 可识别/可调用/输出稳定/格式一致/内容符合 | 已合入 |
+| verify_skill_acceptance | `core/api/core_facade.py` | ✅ | CoreFacade 封装 SkillVerifier；platform FDE 禁止直导 skills；生成物适用：已接线 | 本批 |
+| enrich_compat_claim_tiers / compute_asset_tree_checksum | `harness/maintenance/asset_compat.py` | ✅ | 外援 X03 claimed/verified + X01 checksum；跳级 half_import；生成物适用：已接线 | 本批 |
 | GET /skills/{id}/verify | platform/apps/fde/api/fde.py | ✅ | Skill 验收报告端点 | 已合入 |
 | GET /skills/{id}/extras | platform/apps/fde/api/fde.py | ✅ | Skill 子目录资源查询 | 已合入 |
 | POST /skills/install | platform/apps/fde/api/fde.py | ✅ | 从URL或路径安装Skill | 已合入 |
@@ -5300,14 +5317,14 @@ scan_hash: 8f9548ec24f4
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 213 | 0 | 213 |
+| Skill 系统 | 215 | 0 | 215 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 177 | 1 | 178 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 601 | 0 | 601 |
+| 评估系统 | 610 | 0 | 610 |
 | MCP 协议 | 11 | 0 | 11 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -5336,10 +5353,10 @@ scan_hash: 8f9548ec24f4
 | 闭环执行层 | 7 | 0 | 7 |
 | 知识编译与OKF | 0 | 0 | 0 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
-| Skill 目录标准化 | 7 | 0 | 7 |
+| Skill 目录标准化 | 9 | 0 | 9 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4382** | **11** | **4393** |
+| **总计** | **4395** | **11** | **4406** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

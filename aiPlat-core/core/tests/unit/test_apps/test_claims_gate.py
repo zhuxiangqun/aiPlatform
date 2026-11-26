@@ -18,6 +18,8 @@ def _full_scope(**overrides):
         "object_version": "v1",
         "runtime_tier": "workspace_execute",
         "plan_id": "plan-xyz",
+        "manifest_hash": "sha256:manifest-test",
+        "execution_fingerprint": "sha256:exec-test",
         "set_ids": ["default/normal"],
         "oracle_types": ["lexical_must_contain"],
         "dimensions": ["task_result"],
@@ -27,9 +29,29 @@ def _full_scope(**overrides):
         "runtime_claim": True,
         "human_review": True,
         "claim_eligible": True,
+        "evidence_refs": [{"kind": "fixture", "id": "claims-gate-test"}],
     }
     base.update(overrides)
     return base
+
+
+def test_missing_fingerprints_block_accuracy():
+    scope = _full_scope()
+    del scope["manifest_hash"]
+    del scope["execution_fingerprint"]
+    r = evaluate_l5_claims_gate(scope, explicit_authorize=True)
+    assert r["accuracy_claim"] is False
+    assert "scope.manifest_hash" in r["missing"]
+    assert "scope.execution_fingerprint" in r["missing"]
+    assert r["gates"]["fingerprints_bound"] is False
+
+
+def test_full_gates_expose_evidence_refs_and_fingerprints():
+    r = evaluate_l5_claims_gate(_full_scope(), explicit_authorize=True)
+    assert r["gates"]["fingerprints_bound"] is True
+    assert r["gates"]["dimensions_present"] is True
+    assert r["evidence_refs"]
+    assert r["fingerprints"]["plan_id"] == "plan-xyz"
 
 
 def test_claims_policy_stub_always_false():

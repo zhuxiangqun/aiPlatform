@@ -1,0 +1,23 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "aiPlat external-interop standard package v1.0",
+  "status": "approved",
+  "approvers": [
+    "Architecture Review: 朱向群 (author)",
+    "Security: 朱鸿林",
+    "Data Governance: 朱莹",
+    "Product: 朱向群 (author)"
+  ],
+  "approval_date": "2026-11-26",
+  "effective_date": "2026-12-01",
+  "exceptions": [],
+  "conflict_waiver": {
+    "author_is_approver": true,
+    "author_roles": ["Architecture Review", "Product"],
+    "accepted_by": ["Security: 朱鸿林", "Data Governance: 朱莹"],
+    "rationale": "朱向群为 v1.0 作者，同时担任 Architecture Review 与 Product；Security/Data Governance 由非作者批准，记录职责分离豁免（对齐 KS v4.3.1）。"
+  },
+  "decision": "approved",
+  "record_id": "ADR-EXT-INTEROP-v1.0-2026-11-26",
+  "honesty": "Approves the standard package (requirements). Does NOT certify implementation; formal core_ready / certified remain separate."
+}

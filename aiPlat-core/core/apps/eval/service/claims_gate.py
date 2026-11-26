@@ -23,11 +23,16 @@ _REQUIRED_SCOPE_KEYS = (
     "object_version",
     "runtime_tier",
     "plan_id",
+    "manifest_hash",
+    "execution_fingerprint",
     "set_ids",
     "oracle_types",
     "dimensions",
     "sample_n",
 )
+
+# 附录 N E06：门禁须绑定三指纹（plan / manifest / execution）
+_FINGERPRINT_KEYS = ("plan_id", "manifest_hash", "execution_fingerprint")
 
 
 def _as_list(v: Any) -> List[str]:
@@ -41,6 +46,33 @@ def _as_list(v: Any) -> List[str]:
     return [str(v).strip()] if str(v).strip() else []
 
 
+def normalize_evidence_refs(raw: Any) -> List[Any]:
+    """归一化为 ``evidence_refs`` 列表（附录 N E04）。
+
+    Args:
+        raw: 原始证据引用（list / 单值 / None）。
+
+    Returns:
+        非空引用列表；非法输入 → ``[]``。
+    """
+    if raw is None:
+        return []
+    if isinstance(raw, (list, tuple)):
+        out: List[Any] = []
+        for x in raw:
+            if x is None or x == "":
+                continue
+            if isinstance(x, Mapping):
+                out.append(dict(x))
+            else:
+                out.append(x)
+        return out
+    if isinstance(raw, Mapping):
+        return [dict(raw)]
+    s = str(raw).strip()
+    return [s] if s else []
+
+
 def evaluate_l5_claims_gate(
     evidence: Optional[Mapping[str, Any]] = None,
     *,
@@ -49,8 +81,8 @@ def evaluate_l5_claims_gate(
     """Evaluate whether scope-bound L5 claims *may* be authorized.
 
     Args:
-        evidence: evidence 参数。
-        explicit_authorize: explicit_authorize 参数。
+        evidence: 范围证据；须含 plan_id / manifest_hash / execution_fingerprint。
+        explicit_authorize: 是否显式授权解锁 accuracy/sufficiency claim。
     """
     ev = dict(evidence or {})
     missing: List[str] = []
@@ -112,18 +144,29 @@ def evaluate_l5_claims_gate(
     if not dimensions:
         missing.append("scope.dimensions")
 
+    fingerprints = {
+        "plan_id": str(ev.get("plan_id") or ""),
+        "manifest_hash": str(ev.get("manifest_hash") or ""),
+        "execution_fingerprint": str(ev.get("execution_fingerprint") or ""),
+    }
+    fingerprints_complete = all(bool(fingerprints[k]) for k in _FINGERPRINT_KEYS)
+
     scope = {
         "object_type": str(ev.get("object_type") or ""),
         "object_id": str(ev.get("object_id") or ""),
         "object_version": str(ev.get("object_version") or ""),
         "runtime_tier": runtime_tier,
-        "plan_id": str(ev.get("plan_id") or ""),
+        "plan_id": fingerprints["plan_id"],
+        "manifest_hash": fingerprints["manifest_hash"],
+        "execution_fingerprint": fingerprints["execution_fingerprint"],
         "set_ids": set_ids,
         "oracle_types": oracle_types,
         "dimensions": dimensions,
         "sample_n": sample_n,
         "min_sample_n": min_n,
     }
+
+    evidence_refs = normalize_evidence_refs(ev.get("evidence_refs"))
 
     gates_ok = not missing and not failed
     # Sufficiency additionally wants human_review or calibrated rubric flag
@@ -147,8 +190,11 @@ def evaluate_l5_claims_gate(
     return {
         "schema": CLAIMS_GATE_SCHEMA,
         "scope": scope,
+        "fingerprints": fingerprints,
+        "evidence_refs": evidence_refs,
         "gates": {
             "scope_complete": not any(m.startswith("scope.") for m in missing),
+            "fingerprints_bound": fingerprints_complete,
             "has_run_evidence": has_run,
             "complete_coverage": untested_n == 0,
             "non_fixture_runtime": not (
@@ -158,6 +204,8 @@ def evaluate_l5_claims_gate(
             "sample_n_met": sample_n >= min_n,
             "claim_eligible": bool(ev.get("claim_eligible")),
             "human_review_or_calibrated_rubric": sufficiency_extra_ok,
+            "dimensions_present": bool(dimensions),
+            "evidence_refs_present": bool(evidence_refs),
         },
         "missing": missing,
         "failed": failed,
@@ -173,7 +221,8 @@ def evaluate_l5_claims_gate(
             "note": (
                 "L5 claims are scope-bound only; default false. "
                 "authorize requires explicit_authorize + all gates. "
-                "fixture/dry/mixed/incomplete coverage never unlock."
+                "fixture/dry/mixed/incomplete coverage never unlock. "
+                "Gate binds plan_id+manifest_hash+execution_fingerprint (E06)."
             ),
             "unlock_ref": "eval-object-contract-and-plan.md§0.5+§0.9",
         },

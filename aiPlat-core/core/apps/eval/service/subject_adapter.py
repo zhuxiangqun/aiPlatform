@@ -1691,6 +1691,7 @@ class ToolSubjectAdapter:
 
     Not in OBJECT_TYPES yet; contract is Subject-local. claim_eligible always false.
     Live tools / real MCP deferred (runtime_tier=fixture only).
+    E09：外援引用须经 ``normalize_tool_mcp_subject`` 绑定 ``verified_tier``。
     """
 
     subject_kind = "tool"
@@ -1707,6 +1708,8 @@ class ToolSubjectAdapter:
         roles: Optional[Sequence[str]] = None,
         eval_profile: Optional[Mapping[str, Any]] = None,
         source_refs: Optional[Sequence[str]] = None,
+        verified_tier: str = "",
+        interop_ref: str = "",
     ) -> Dict[str, Any]:
         """构建 Tool/MCP Subject 本地契约（未注册 OBJECT_TYPES；claim 恒 false）。
 
@@ -1719,6 +1722,8 @@ class ToolSubjectAdapter:
             roles: 角色序列。
             eval_profile: 评测画像。
             source_refs: 来源引用。
+            verified_tier: 外援 verified 层（E09）。
+            interop_ref: 外援资产引用；非空时须有 verified_tier。
 
         Returns:
             契约 dict（含 honesty 声明）。
@@ -1733,7 +1738,7 @@ class ToolSubjectAdapter:
             caps = resolve_capability_ids(
                 list(profile.get("capabilities") or []), fail_closed=False
             )
-        return {
+        base = {
             "schema": ADAPTER_SCHEMA,
             "subject_kind": self.subject_kind,
             "object_type_registered": False,
@@ -1756,6 +1761,31 @@ class ToolSubjectAdapter:
                 "mock tool_trace ≠ live tools / real MCP"
             ),
         }
+        vt = str(verified_tier or profile.get("verified_tier") or "").strip()
+        iref = str(interop_ref or profile.get("interop_ref") or "").strip()
+        if vt or iref:
+            from core.apps.eval.service.interop_subject import normalize_tool_mcp_subject
+
+            bound = normalize_tool_mcp_subject(
+                {
+                    "subject_kind": self.subject_kind,
+                    "subject_id": base["object_id"],
+                    "verified_tier": vt,
+                    "interop_ref": iref,
+                    "claimed_tier": profile.get("claimed_tier"),
+                }
+            )
+            base["verified_tier"] = bound.get("verified_tier")
+            base["claimed_tier"] = bound.get("claimed_tier")
+            base["interop_ref"] = bound.get("interop_ref")
+            base["tier_claim_illegal"] = bound.get("tier_claim_illegal")
+        return base
+
+
+class McpSubjectAdapter(ToolSubjectAdapter):
+    """MCP subject（E09）：复用 Tool fixture 路径；subject_kind=mcp。"""
+
+    subject_kind = "mcp"
 
     def capability_catalog(self) -> List[Dict[str, Any]]:
         """返回 Tool/MCP v1 可测能力目录。
@@ -2304,6 +2334,7 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "code_review": CodeReviewSubjectAdapter(),
     "session": SessionSubjectAdapter(),
     "tool": ToolSubjectAdapter(),
+    "mcp": McpSubjectAdapter(),
     "multi_agent": MultiAgentSubjectAdapter(),
 }
 

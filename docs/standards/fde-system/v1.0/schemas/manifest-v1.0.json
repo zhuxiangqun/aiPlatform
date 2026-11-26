@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "bundle": "fde-system.v1.0.schema.json",
+  "defs": [
+    "signoff_request",
+    "signoff_record",
+    "delivery_artifact",
+    "approval_record"
+  ],
+  "checklist": "conformance-checklist.yaml",
+  "status": "approved",
+  "compatible_with": ["1.0.0"],
+  "note": "Schema approval ≠ implementation certified / core_ready formal sign-off; ADR-09 deploy boundary still binds"
+}

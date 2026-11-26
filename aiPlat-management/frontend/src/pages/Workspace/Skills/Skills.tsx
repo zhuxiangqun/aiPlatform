@@ -264,7 +264,12 @@ const WorkspaceSkills: React.FC = () => {
             : ui === '不能用'
               ? 'text-red-400'
               : 'text-amber-400';
-        return <span className={`text-xs ${cls}`} title={record.compat?.tier || ''}>{ui}</span>;
+        const tip = [
+          record.compat?.tier,
+          record.compat?.claimed_tier && `claimed=${record.compat.claimed_tier}`,
+          record.compat?.verified_tier && `verified=${record.compat.verified_tier}`,
+        ].filter(Boolean).join(' · ');
+        return <span className={`text-xs ${cls}`} title={tip || ''}>{ui}</span>;
       },
     },
     {

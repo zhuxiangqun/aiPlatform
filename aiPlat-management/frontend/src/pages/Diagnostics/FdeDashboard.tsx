@@ -3965,7 +3965,12 @@ const AcceptTab: React.FC<{
       const r = await fetch(API('/acceptance/signoff'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spec_id: specId, signed_by: fdeName }),
+        body: JSON.stringify({
+          spec_id: specId,
+          signed_by: fdeName,
+          // 后端仍会从 header/default 兜底；显式字段便于多租户审计
+          tenant_id: (typeof localStorage !== 'undefined' && localStorage.getItem('aiplat_tenant_id')) || undefined,
+        }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {

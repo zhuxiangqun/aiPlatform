@@ -319,16 +319,38 @@ def attach_evaluation_plan(out: Dict[str, Any], plan: Mapping[str, Any]) -> Dict
     """Stamp Plan fields onto an eval response (shared report contract).
 
     Args:
-        out: out 参数。
-        plan: plan 参数。
+        out: 评测响应 dict（原地增强后返回）。
+        plan: Evaluation Plan（含指纹与 pack_refs）。
     """
     if not isinstance(out, dict):
         return out
-    from core.apps.eval.service.claims_gate import pack_claim_disclosure_from_plan
+    from core.apps.eval.service.claims_gate import (
+        normalize_evidence_refs,
+        pack_claim_disclosure_from_plan,
+    )
 
     p = dict(plan or {})
     out["evaluation_plan"] = p
     out["plan_id"] = p.get("plan_id")
+    # 附录 N E06：报告面绑定三指纹
+    out["manifest_hash"] = p.get("manifest_hash")
+    out["execution_fingerprint"] = p.get("execution_fingerprint")
+    out["fingerprints"] = {
+        "plan_id": str(p.get("plan_id") or ""),
+        "manifest_hash": str(p.get("manifest_hash") or ""),
+        "execution_fingerprint": str(p.get("execution_fingerprint") or ""),
+    }
+    # 附录 N E04：统一 evidence_refs（保留已有，并补 plan 指纹引用）
+    refs = normalize_evidence_refs(out.get("evidence_refs"))
+    for key, kind in (
+        ("plan_id", "plan_id"),
+        ("manifest_hash", "manifest_hash"),
+        ("execution_fingerprint", "execution_fingerprint"),
+    ):
+        val = str(p.get(key) or "").strip()
+        if val:
+            refs.append({"kind": kind, "id": val})
+    out["evidence_refs"] = refs
     if p.get("target_contract") is not None:
         out["target_contract"] = p.get("target_contract")
     if p.get("match_report") is not None:

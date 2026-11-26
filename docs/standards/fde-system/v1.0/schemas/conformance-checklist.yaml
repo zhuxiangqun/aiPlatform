@@ -1,0 +1,65 @@
+# FDE 系统 v1.0 附录 N 机读清单
+standard_id: FDE_SYS_V10
+version: "1.0.0"
+updated: "2026-11-26"
+items:
+  - id: F01
+    level: Core
+    requirement: "唯一 signoff 入口"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: F02
+    level: Core
+    requirement: "无平行验收 API"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: F03
+    level: Core
+    requirement: "CoreFacade 访问 core；无 harness 直连"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: F04
+    level: Core
+    requirement: "签收记录含 actor/tenant/时间"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: F05
+    level: Core
+    requirement: "路由前缀 /api/platform/apps/fde"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: F06
+    level: Core
+    requirement: "回滚到共部署路径可文档化"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: F07
+    level: Extended
+    requirement: "切片 report_id 绑定策略"
+    severity: SHOULD
+    measurement_2026_11_26: exists
+  - id: F08
+    level: Extended
+    requirement: "工作台完整签收面"
+    severity: SHOULD
+    measurement_2026_11_26: exists
+  - id: F09
+    level: Extended
+    requirement: "可选独立进程文书 + health"
+    severity: SHOULD
+    measurement_2026_11_26: exists
+  - id: F10
+    level: Operational
+    requirement: "生产独立进程 authorize"
+    severity: MAY
+    measurement_2026_11_26: exists
+    authorized_2026_11_26: false
+  - id: F11
+    level: Operational
+    requirement: "compose 长驻（另批 ADR）"
+    severity: MAY
+    measurement_2026_11_26: exists
+    authorized_2026_11_26: false
+core_ready_rule: "F01-F06 all exists + non-author review"
+certified_rule: "non-author approval + evidence pack; never from measurement alone"
+adr09_note: "Deploy boundary still governed by ADR09_FDE_BOUNDARY; this standard does not authorize compose long-running"

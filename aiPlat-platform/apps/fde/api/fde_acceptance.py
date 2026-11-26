@@ -1,11 +1,10 @@
 """FDE Acceptance — delivery acceptance checklist generation and signoff (split from fde.py lines 650-768)."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
-
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 
 import json, time, os
 from datetime import datetime, timezone
@@ -14,6 +13,37 @@ import logging
 router = APIRouter(tags=["fde-acceptance"])
 
 _acceptance_records: Dict[str, dict] = {}
+
+
+def _tenant_for_signoff(
+    body: Dict[str, Any],
+    request: Request,
+    x_tenant: Optional[str],
+) -> tuple[str, str]:
+    """解析签收租户（body → header → 默认域）。
+
+    Args:
+        body: 签收请求体。
+        request: FastAPI Request。
+        x_tenant: ``X-AIPLAT-TENANT-ID`` 头。
+
+    Returns:
+        ``(tenant_id, resolved_from)``，``resolved_from`` 为 body|header|default。
+    """
+    tid = str((body or {}).get("tenant_id") or "").strip()
+    if tid:
+        return tid, "body"
+    if x_tenant and str(x_tenant).strip():
+        return str(x_tenant).strip(), "header"
+    header = str(request.headers.get("X-AIPLAT-TENANT-ID") or "").strip()
+    if header:
+        return header, "header"
+    try:
+        from core.api.core_facade import DomainRouter
+
+        return str(DomainRouter.default_tenant()), "default"
+    except Exception:
+        return "default", "default"
 
 
 def _security_preflight_checklist_item() -> dict:
@@ -161,11 +191,17 @@ async def acceptance_checklist(spec_id: str = Query("")):
 
 
 @router.post("/acceptance/signoff", response_model=FdeStatusResponse)
-async def acceptance_signoff(body: Dict[str, Any]):
+async def acceptance_signoff(
+    request: Request,
+    body: Dict[str, Any],
+    x_aiplat_tenant_id: Optional[str] = Header(None, alias="X-AIPLAT-TENANT-ID"),
+):
     """记录交付验收签收。
 
     Args:
-        body: 请求体。
+        request: FastAPI Request（租户头兜底）。
+        body: 请求体（可含 ``tenant_id`` / ``signed_by``）。
+        x_aiplat_tenant_id: 租户头。
     """
     from core.api.core_facade import fde_preflight_signoff_gate
 
@@ -198,11 +234,32 @@ async def acceptance_signoff(body: Dict[str, Any]):
     signed_by = str(body.get("signed_by") or "fde").strip()
     notes = str(body.get("notes") or "").strip()
     decision = str(body.get("acceptance_decision") or body.get("decision") or "accepted").strip()
+    tenant_id, tenant_from = _tenant_for_signoff(
+        body if isinstance(body, dict) else {},
+        request,
+        x_aiplat_tenant_id,
+    )
+    # Extended：切片签收禁止 tenant_resolved_from=default（须 body/header 显式）
+    require_explicit = os.environ.get(
+        "AIPLAT_FDE_SIGNOFF_REQUIRE_EXPLICIT_TENANT", ""
+    ).strip().lower() in ("1", "true", "yes", "on")
+    if (slice_gate.get("required") or require_explicit) and tenant_from == "default":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "fde.explicit_tenant_required",
+                "detail": "slice/production signoff requires tenant_id in body or X-AIPLAT-TENANT-ID",
+                "tenant_resolved_from": tenant_from,
+            },
+        )
 
     record = {
         "spec_id": spec_id,
         "scenario_id": str(body.get("scenario_id") or spec_id).strip(),
+        "tenant_id": tenant_id,
+        "tenant_resolved_from": tenant_from,
         "signed_by": signed_by,
+        "actor_id": signed_by,
         "notes": notes,
         "acceptance_decision": decision,
         "evidence_report_ids": list(slice_gate.get("report_ids") or []),

@@ -1,0 +1,12 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "external-interop operational X10 X11",
+  "gate_ids": ["X10", "X11"],
+  "status": "pending",
+  "approvers": [],
+  "decision": null,
+  "sla_ref": null,
+  "vendor_id": null,
+  "record_id": "EXT-INTEROP-V10-OPERATIONAL-pending",
+  "note": "Production authorize + supplier SLA bind require non-author approval."
+}

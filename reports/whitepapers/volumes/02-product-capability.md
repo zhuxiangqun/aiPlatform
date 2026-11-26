@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-26T05:21:15Z"
+generated_at: "2026-11-26T10:07:49Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "1cbd005841a0e05a0866c18f5ca1e031d44ca34234ec75752fa4750217bb64bf"
+caps_sha256: "51fe83f2bfbc571a41c22b3462e2121f0730898293484481d7efd8a3c1be7b21"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=1cbd005841a0e05a0866c18f5ca1e031d44ca34234ec75752fa4750217bb64bf scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=51fe83f2bfbc571a41c22b3462e2121f0730898293484481d7efd8a3c1be7b21 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-26T05:21:15Z` |
-| CAPABILITIES sha256 | `1cbd005841a0…` |
+| 生成时间 (UTC) | `2026-11-26T10:07:49Z` |
+| CAPABILITIES sha256 | `51fe83f2bfbc…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1320,14 +1320,14 @@ _(节选；全文见权威源)_
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 213 | 0 | 213 |
+| Skill 系统 | 215 | 0 | 215 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 177 | 1 | 178 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 601 | 0 | 601 |
+| 评估系统 | 614 | 0 | 614 |
 | MCP 协议 | 11 | 0 | 11 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -1356,10 +1356,10 @@ _(节选；全文见权威源)_
 | 闭环执行层 | 7 | 0 | 7 |
 | 知识编译与OKF | 0 | 0 | 0 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
-| Skill 目录标准化 | 7 | 0 | 7 |
+| Skill 目录标准化 | 9 | 0 | 9 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4382** | **11** | **4393** |
+| **总计** | **4399** | **11** | **4410** |
 
 ### 3.2 上手路径（节选）
 
@@ -1490,7 +1490,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3532 capabilities (caps_count) | 3532 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3563 capabilities (caps_count) | 3563 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1526,8 +1526,8 @@ git pull origin main
 |--------|---------|:---:|--------|
 | harness-execution-engine | §一 Harness 执行引擎 | 864 | evo_compute G0/G1/G2/G3 + production deepen 门面入口 |
 | knowledge-engine-ontology | §三 知识引擎（本体） | 837 | N02 ObjectType publish Facade 入口 |
-| skill-system | §六 Skill 系统 | 217 | CoreFacade 暴露 skill compat |
-| evaluation-system | §十三 评估系统 | 646 | CoreFacade 暴露 m2 deferred estimate |
+| skill-system | §六 Skill 系统 | 224 | CoreFacade 暴露 skill compat |
+| evaluation-system | §十三 评估系统 | 669 | CoreFacade 暴露 m2 deferred estimate |
 | diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
 | tool-ecosystem | §十六 工具生态 | 76 | CoreFacade 暴露 tool compat |
 | a2a-protocol | §十四附 A2A 协议 | 2 | CoreFacade 再导出 A2A 能力 |
@@ -1542,7 +1542,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 333 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 334 | Agent REST 端点 |
 
 ##### core/api/routers/diagnostics.py
 
@@ -1624,7 +1624,7 @@ git pull origin main
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
 | management-and-quality | §二十五 管理 & 质量 | 119 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
-| agent-system | §五 Agent 系统 | 333 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 334 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | extension-and-learning | §十一 扩展
 

@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/fde-system/v1.0",
+  "title": "aiPlat FDE System Standard Schemas v1.0",
+  "description": "Normative JSON Schemas for fde-system v1.0. Field authority: normative-appendix.md. Schema approval ≠ implementation certified.",
+  "type": "object",
+  "$defs": {
+    "signoff_request": {
+      "type": "object",
+      "required": ["signed_by"],
+      "properties": {
+        "spec_id": { "type": "string" },
+        "scenario_id": { "type": "string" },
+        "signed_by": { "type": "string", "minLength": 1 },
+        "tenant_id": { "type": "string" },
+        "notes": { "type": "string" },
+        "acceptance_decision": { "type": "string" },
+        "decision": { "type": "string" },
+        "evidence_report_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "report_id": { "type": "string" },
+        "for_slice": { "type": ["boolean", "string"] }
+      },
+      "additionalProperties": true,
+      "patternProperties": { "^x-": {} }
+    },
+    "signoff_record": {
+      "type": "object",
+      "required": [
+        "spec_id",
+        "tenant_id",
+        "signed_by",
+        "actor_id",
+        "signed_at"
+      ],
+      "properties": {
+        "spec_id": { "type": "string", "minLength": 1 },
+        "scenario_id": { "type": "string" },
+        "tenant_id": { "type": "string", "minLength": 1 },
+        "tenant_resolved_from": {
+          "type": "string",
+          "enum": ["body", "header", "default"]
+        },
+        "signed_by": { "type": "string", "minLength": 1 },
+        "actor_id": { "type": "string", "minLength": 1 },
+        "signed_at": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" },
+        "acceptance_decision": { "type": "string" },
+        "evidence_report_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "for_slice": { "type": "boolean" },
+        "record_id": { "type": "string" },
+        "checklist": { "type": "object" },
+        "preflight_gate": { "type": "object" }
+      },
+      "additionalProperties": true,
+      "patternProperties": { "^x-": {} }
+    },
+    "delivery_artifact": {
+      "type": "object",
+      "required": ["artifact_id", "kind"],
+      "properties": {
+        "artifact_id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "tenant_id": { "type": "string" },
+        "spec_id": { "type": "string" },
+        "uri": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": true,
+      "patternProperties": { "^x-": {} }
+    },
+    "approval_record": {
+      "type": "object",
+      "required": [
+        "standard_version",
+        "scope",
+        "status",
+        "approvers",
+        "approval_date",
+        "effective_date",
+        "decision",
+        "record_id"
+      ],
+      "properties": {
+        "standard_version": { "type": "string" },
+        "scope": { "type": "string" },
+        "status": { "enum": ["pending", "approved", "rejected"] },
+        "approvers": { "type": "array", "items": { "type": "string" } },
+        "approval_date": { "type": "string" },
+        "effective_date": { "type": "string" },
+        "exceptions": { "type": "array" },
+        "conflict_waiver": { "type": "object" },
+        "decision": { "type": "string" },
+        "record_id": { "type": "string" },
+        "honesty": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

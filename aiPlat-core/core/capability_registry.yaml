@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3532
+total_capabilities: 3563
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -7154,7 +7154,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 333
+    caps_count: 334
     provides:
       - symbol: "finalize_agent_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -7919,6 +7919,10 @@ domains:
         type: function
         signature: 'pack_claim_disclosure_from_plan(plan)→Dict pack_kind+claim_eligible'
         module: aiPlat-core/core/apps/eval/service/claims_gate.py
+      - symbol: normalize_evidence_refs
+        type: function
+        signature: 'normalize_evidence_refs(raw)→List; appendix N E04 evidence_refs normalize'
+        module: aiPlat-core/core/apps/eval/service/claims_gate.py
       - symbol: generate_cases_from_template
         type: function
         signature: 'generate_cases_from_template(template,variants?)→List[case]'
@@ -8492,7 +8496,7 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 217
+    caps_count: 224
     provides:
       - symbol: "finalize_skill_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -8526,6 +8530,22 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
         type: function
         signature: "skill_dry_run_handler_draft(skill_dir)→dict; CoreFacade §5.4"
+      - symbol: "run_l1_sandbox_trial"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "run_l1_sandbox_trial(skill_dir)→aiplat.l1_sandbox_trial.v0; X07 static"
+      - symbol: "set_semantic_probe_result"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "set_semantic_probe_result(skill_dir,*,passed,evidence_refs?)→dict; X08"
+      - symbol: "skill_run_l1_sandbox_trial"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "skill_run_l1_sandbox_trial(skill_dir)→dict; CoreFacade X07"
+      - symbol: "skill_set_semantic_probe_result"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "skill_set_semantic_probe_result(skill_dir,*,passed,...)→dict; CoreFacade X08"
       - symbol: "preview_tool_impl_draft"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
@@ -8578,6 +8598,14 @@ domains:
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "write_handler_draft_from_script(skill_dir, script_rel)→Path; draft only"
+      - symbol: "enrich_compat_claim_tiers"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "enrich_compat_claim_tiers(compat)→dict; claimed/verified L0-L2 (X03)"
+      - symbol: "compute_asset_tree_checksum"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "compute_asset_tree_checksum(root)→sha256:hex; manifest checksum (X01)"
       - symbol: "skill_asset_compat_finalize"
         module: aiPlat-core/core/api/core_facade.py
         type: function
@@ -8586,6 +8614,10 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
         type: function
         signature: "skill_enable_handler_draft(skill_dir)→dict"
+      - symbol: "verify_skill_acceptance"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "verify_skill_acceptance(skill_id)→dict; SkillVerifier via CoreFacade"
       - symbol: "SkillRegistry"
         module: core/apps/skills/registry.py
         type: class
@@ -10390,7 +10422,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 646
+    caps_count: 669
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -12740,6 +12772,98 @@ domains:
         type: "function"
         signature: "run_e4_calibration(tenant_id, set_id?, k=3, ...)→Dict calibration report"
         module: "core/apps/eval/service/judge_v1.py"
+      - symbol: "normalize_judge_report"
+        type: "function"
+        signature: "normalize_judge_report(raw?, *, default_judge_id='')→Dict; E07"
+        module: "core/apps/eval/service/judge_contract.py"
+      - symbol: "eval_normalize_judge_report"
+        type: "function"
+        signature: "eval_normalize_judge_report(raw?, *, default_judge_id='')→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "eval_center_route_contract"
+        type: "function"
+        signature: "eval_center_route_contract()→Dict canonical /eval; E08"
+        module: "core/api/core_facade.py"
+      - symbol: "normalize_tool_mcp_subject"
+        type: "function"
+        signature: "normalize_tool_mcp_subject(raw?, *, require_verified_tier=False)→Dict; E09"
+        module: "core/apps/eval/service/interop_subject.py"
+      - symbol: "eval_normalize_tool_mcp_subject"
+        type: "function"
+        signature: "eval_normalize_tool_mcp_subject(raw?, ...)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "build_interop_asset_catalog"
+        type: "function"
+        signature: "build_interop_asset_catalog(entries?)→aiplat.interop_asset_catalog.v0; X09"
+        module: "core/harness/maintenance/asset_compat.py"
+      - symbol: "interop_build_asset_catalog"
+        type: "function"
+        signature: "interop_build_asset_catalog(entries?)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "fde_slice_report_binding_policy"
+        type: "function"
+        signature: "fde_slice_report_binding_policy()→Dict; F07"
+        module: "core/api/core_facade.py"
+      - symbol: "fde_workbench_signoff_surface"
+        type: "function"
+        signature: "fde_workbench_signoff_surface()→Dict; F08"
+        module: "core/api/core_facade.py"
+      - symbol: "fde_optional_process_contract"
+        type: "function"
+        signature: "fde_optional_process_contract()→Dict; F09"
+        module: "core/api/core_facade.py"
+      - symbol: "evaluate_eval_process_split_authorize"
+        type: "function"
+        signature: "evaluate_eval_process_split_authorize(*, approval_record_path?)→Dict; E10"
+        module: "core/apps/eval/service/operational_gates.py"
+      - symbol: "build_dual_annotator_kappa_report"
+        type: "function"
+        signature: "build_dual_annotator_kappa_report(pairs?, ...)→Dict; E12"
+        module: "core/apps/eval/service/operational_gates.py"
+      - symbol: "eval_evaluate_process_split_authorize"
+        type: "function"
+        signature: "eval_evaluate_process_split_authorize(*, approval_record_path?)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "eval_evaluate_production_sla_authorize"
+        type: "function"
+        signature: "eval_evaluate_production_sla_authorize(*, approval_record_path?, sla_ref='')→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "eval_build_dual_annotator_kappa_report"
+        type: "function"
+        signature: "eval_build_dual_annotator_kappa_report(pairs?, ...)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "evaluate_interop_production_authorize"
+        type: "function"
+        signature: "evaluate_interop_production_authorize(*, approval_record_path?)→Dict; X10"
+        module: "core/harness/maintenance/interop_operational.py"
+      - symbol: "bind_supplier_sla"
+        type: "function"
+        signature: "bind_supplier_sla(compat?, *, sla_ref='', ...)→Dict; X11"
+        module: "core/harness/maintenance/interop_operational.py"
+      - symbol: "interop_evaluate_production_authorize"
+        type: "function"
+        signature: "interop_evaluate_production_authorize(*, approval_record_path?)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "interop_bind_supplier_sla"
+        type: "function"
+        signature: "interop_bind_supplier_sla(compat?, *, sla_ref='', ...)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "evaluate_fde_production_process_authorize"
+        type: "function"
+        signature: "evaluate_fde_production_process_authorize(*, approval_record_path?)→Dict; F10"
+        module: "core/apps/fde/service/operational_contracts.py"
+      - symbol: "evaluate_fde_compose_long_running_authorize"
+        type: "function"
+        signature: "evaluate_fde_compose_long_running_authorize(*, approval_record_path?)→Dict; F11"
+        module: "core/apps/fde/service/operational_contracts.py"
+      - symbol: "fde_evaluate_production_process_authorize"
+        type: "function"
+        signature: "fde_evaluate_production_process_authorize(*, approval_record_path?)→Dict"
+        module: "core/api/core_facade.py"
+      - symbol: "fde_evaluate_compose_long_running_authorize"
+        type: "function"
+        signature: "fde_evaluate_compose_long_running_authorize(*, approval_record_path?)→Dict"
+        module: "core/api/core_facade.py"
       - symbol: "eval_run_e4_calibration"
         type: "function"
         signature: "eval_run_e4_calibration(tenant_id='eval-v1', k=3, ...)→Dict"

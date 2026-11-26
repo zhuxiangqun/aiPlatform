@@ -8,7 +8,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3532 capabilities (caps_count) | 3532 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3563 capabilities (caps_count) | 3563 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -44,8 +44,8 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 |--------|---------|:---:|--------|
 | harness-execution-engine | §一 Harness 执行引擎 | 864 | evo_compute G0/G1/G2/G3 + production deepen 门面入口 |
 | knowledge-engine-ontology | §三 知识引擎（本体） | 837 | N02 ObjectType publish Facade 入口 |
-| skill-system | §六 Skill 系统 | 217 | CoreFacade 暴露 skill compat |
-| evaluation-system | §十三 评估系统 | 646 | CoreFacade 暴露 m2 deferred estimate |
+| skill-system | §六 Skill 系统 | 224 | CoreFacade 暴露 skill compat |
+| evaluation-system | §十三 评估系统 | 669 | CoreFacade 暴露 m2 deferred estimate |
 | diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
 | tool-ecosystem | §十六 工具生态 | 76 | CoreFacade 暴露 tool compat |
 | a2a-protocol | §十四附 A2A 协议 | 2 | CoreFacade 再导出 A2A 能力 |
@@ -60,7 +60,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 333 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 334 | Agent REST 端点 |
 
 ### core/api/routers/diagnostics.py
 
@@ -142,7 +142,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
 | management-and-quality | §二十五 管理 & 质量 | 119 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
-| agent-system | §五 Agent 系统 | 333 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 334 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
@@ -177,7 +177,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 217 | compute_skill_compat 合流 ContentGate |
+| skill-system | §六 Skill 系统 | 224 | compute_skill_compat 合流 ContentGate |
 
 ### core/harness/memory/manager.py
 
@@ -256,7 +256,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 217 | skill install 跑 finalize_skill_compat |
+| skill-system | §六 Skill 系统 | 224 | skill install 跑 finalize_skill_compat |
 
 ### core/server.py
 
@@ -287,7 +287,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/apps/agents/discovery.py** — AgentDiscovery 实现/导出
 - **core/api/core_facade.py** — CoreFacade 再导出 A2A 能力
 
-### §五 Agent 系统 (333 caps)
+### §五 Agent 系统 (334 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 调度 Agent
 - **core/api/routers/agents.py** — Agent REST 端点
@@ -323,7 +323,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 - **core/harness/multimodal/integrator.py** — 多模态集成消费 VideoParser
 
-### §十三 评估系统 (646 caps)
+### §十三 评估系统 (669 caps)
 
 - **core/api/core_facade.py** — CoreFacade 暴露 m2 deferred estimate
 
@@ -444,7 +444,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/api/routers/adapters.py** — /model-override 端点
 - **core/api/routers/diagnostics.py** — adoption-metrics 附带 Howl 干预次数
 
-### §六 Skill 系统 (217 caps)
+### §六 Skill 系统 (224 caps)
 
 - **core/management/skill_installer.py** — skill install 跑 finalize_skill_compat
 - **core/api/core_facade.py** — CoreFacade 暴露 skill compat

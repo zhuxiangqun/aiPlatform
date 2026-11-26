@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/external-interop/v1.0",
+  "title": "aiPlat External Interop Standard Schemas v1.0",
+  "description": "Normative JSON Schemas for external-interop v1.0. Field authority: normative-appendix.md. Schema approval ≠ implementation certified.",
+  "type": "object",
+  "$defs": {
+    "compat_level": {
+      "type": "string",
+      "enum": ["L0", "L1", "L2", "unknown"]
+    },
+    "evidence_ref": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "type": "string", "minLength": 1 },
+            "id": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "external_asset_manifest": {
+      "type": "object",
+      "required": [
+        "asset_id",
+        "asset_kind",
+        "version",
+        "source",
+        "checksum",
+        "compat_claim",
+        "tenant_scope"
+      ],
+      "properties": {
+        "asset_id": { "type": "string", "minLength": 1 },
+        "asset_kind": {
+          "type": "string",
+          "enum": [
+            "agent_pack",
+            "skill_pack",
+            "tool_spec",
+            "mcp_server",
+            "prompt_pack"
+          ]
+        },
+        "version": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "checksum": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:"
+        },
+        "compat_claim": { "$ref": "#/$defs/compat_level" },
+        "capabilities": { "type": "array", "items": { "type": "string" } },
+        "tenant_scope": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true,
+      "patternProperties": { "^x-": {} }
+    },
+    "compat_verdict": {
+      "type": "object",
+      "required": ["claimed_tier", "verified_tier", "compat_tier"],
+      "properties": {
+        "claimed_tier": { "$ref": "#/$defs/compat_level" },
+        "verified_tier": { "$ref": "#/$defs/compat_level" },
+        "compat_tier": { "$ref": "#/$defs/compat_level" },
+        "tier": {
+          "type": "string",
+          "description": "Implementation tier (prompt_ready/mapped/…); see appendix §C.1"
+        },
+        "schedulable": { "type": "boolean" },
+        "tier_claim_illegal": { "type": "boolean" },
+        "half_import": { "type": "boolean" },
+        "compat_evidence_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence_ref" }
+        },
+        "issues": { "type": "array" }
+      },
+      "additionalProperties": true,
+      "patternProperties": { "^x-": {} }
+    },
+    "import_report": {
+      "type": "object",
+      "required": ["schema", "assets", "import_failed", "status"],
+      "properties": {
+        "schema": { "type": "string", "const": "aiplat.install_report.v0" },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind", "id"],
+            "properties": {
+              "kind": { "type": "string" },
+              "id": { "type": "string" },
+              "claimed_tier": { "$ref": "#/$defs/compat_level" },
+              "verified_tier": { "$ref": "#/$defs/compat_level" },
+              "checksum": { "type": "string" },
+              "schedulable": { "type": "boolean" },
+              "half_import": { "type": "boolean" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "import_failed": { "type": "boolean" },
+        "status": { "enum": ["ok", "import_failed"] },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "half_import_ids": { "type": "array", "items": { "type": "string" } },
+        "actor": { "type": "string" },
+        "tenant_id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence_ref" }
+        }
+      },
+      "additionalProperties": true,
+      "patternProperties": { "^x-": {} }
+    },
+    "approval_record": {
+      "type": "object",
+      "required": [
+        "standard_version",
+        "scope",
+        "status",
+        "approvers",
+        "approval_date",
+        "effective_date",
+        "decision",
+        "record_id"
+      ],
+      "properties": {
+        "standard_version": { "type": "string" },
+        "scope": { "type": "string" },
+        "status": { "enum": ["pending", "approved", "rejected"] },
+        "approvers": { "type": "array", "items": { "type": "string" } },
+        "approval_date": { "type": "string" },
+        "effective_date": { "type": "string" },
+        "exceptions": { "type": "array" },
+        "conflict_waiver": { "type": "object" },
+        "decision": { "type": "string" },
+        "record_id": { "type": "string" },
+        "honesty": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

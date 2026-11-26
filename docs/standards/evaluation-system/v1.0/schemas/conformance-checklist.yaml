@@ -1,0 +1,72 @@
+# 评测系统 v1.0 附录 N 机读清单
+# 权威叙述：../normative-appendix.md §N
+# measurement ≠ certified；formal core_ready 须非作者复核
+standard_id: EVAL_SYS_V10
+version: "1.0.0"
+updated: "2026-11-26"
+items:
+  - id: E01
+    level: Core
+    requirement: "唯一入口 /api/platform/apps/eval"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: E02
+    level: Core
+    requirement: "Plan + sample_manifest fail closed"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: E03
+    level: Core
+    requirement: "Case Pack hash + live 校验"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: E04
+    level: Core
+    requirement: "结果含维度分与证据引用"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: E05
+    level: Core
+    requirement: "默认 claim_eligible=false"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: E06
+    level: Core
+    requirement: "门禁绑定指纹"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: E07
+    level: Extended
+    requirement: "Judge 校准报告"
+    severity: SHOULD
+    measurement_2026_11_26: exists
+  - id: E08
+    level: Extended
+    requirement: "评测中心 /eval"
+    severity: SHOULD
+    measurement_2026_11_26: exists
+  - id: E09
+    level: Extended
+    requirement: "Tool/MCP subject"
+    severity: SHOULD
+    measurement_2026_11_26: exists
+  - id: E10
+    level: Operational
+    requirement: "A3 process_split 授权"
+    severity: MAY
+    measurement_2026_11_26: exists
+    authorized_2026_11_26: false
+  - id: E11
+    level: Operational
+    requirement: "生产 SLA / authorize"
+    severity: MAY
+    measurement_2026_11_26: exists
+    authorized_2026_11_26: false
+  - id: E12
+    level: Operational
+    requirement: "双人标注 κ 报告"
+    severity: MAY
+    measurement_2026_11_26: exists
+    authorized_2026_11_26: false
+core_ready_rule: "E01-E06 all exists + non-author review"
+certified_rule: "non-author approval + evidence pack; never from measurement alone"

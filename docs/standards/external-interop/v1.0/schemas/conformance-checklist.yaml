@@ -1,0 +1,64 @@
+# 外援互通 v1.0 附录 N 机读清单
+standard_id: EXT_INTEROP_V10
+version: "1.0.0"
+updated: "2026-11-26"
+items:
+  - id: X01
+    level: Core
+    requirement: "Manifest + checksum 校验"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: X02
+    level: Core
+    requirement: "L0 解析 fail closed"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: X03
+    level: Core
+    requirement: "claimed/verified tier 分离"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: X04
+    level: Core
+    requirement: "PolicyGate 不绕过"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: X05
+    level: Core
+    requirement: "ImportReport + 审计"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: X06
+    level: Core
+    requirement: "半导入禁止"
+    severity: MUST
+    measurement_2026_11_26: exists
+  - id: X07
+    level: Extended
+    requirement: "L1 沙箱试调用"
+    severity: SHOULD
+    measurement_2026_11_26: exists
+  - id: X08
+    level: Extended
+    requirement: "L2 语义探针 + 显式判定"
+    severity: SHOULD
+    measurement_2026_11_26: exists
+  - id: X09
+    level: Extended
+    requirement: "资产目录 UX"
+    severity: SHOULD
+    measurement_2026_11_26: exists
+  - id: X10
+    level: Operational
+    requirement: "生产 authorize"
+    severity: MAY
+    measurement_2026_11_26: exists
+    authorized_2026_11_26: false
+  - id: X11
+    level: Operational
+    requirement: "供应商 SLA 绑定"
+    severity: MAY
+    measurement_2026_11_26: exists
+    authorized_2026_11_26: false
+core_ready_rule: "X01-X06 all exists + non-author review"
+certified_rule: "non-author approval + evidence pack; never from measurement alone"

@@ -1,0 +1,11 @@
+{
+  "standard_version": "1.0.0",
+  "scope": "evaluation-system operational E10 E11",
+  "gate_ids": ["E10", "E11"],
+  "status": "pending",
+  "approvers": [],
+  "decision": null,
+  "sla_ref": null,
+  "record_id": "EVAL-SYS-V10-OPERATIONAL-pending",
+  "note": "Non-author approval required to flip authorized; env flags alone insufficient. E12 κ report exists without this record."
+}

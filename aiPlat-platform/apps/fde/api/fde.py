@@ -3511,10 +3511,9 @@ async def verify_skill(skill_id: str):
     Args:
         skill_id: Skill ID。
     """
-    from core.apps.skills.skill_verify import SkillVerifier
-    verifier = SkillVerifier()
-    report = verifier.verify(skill_id)
-    return report.to_dict()
+    from core.api.core_facade import verify_skill_acceptance
+
+    return verify_skill_acceptance(skill_id)
 
 
 @router.get("/skills/{skill_id}/extras")
@@ -3524,7 +3523,8 @@ async def get_skill_extras(skill_id: str):
     Args:
         skill_id: Skill ID。
     """
-    from core.apps.skills.registry import get_skill_registry
+    from core.api.core_facade import get_skill_registry
+
     reg = get_skill_registry()
     return reg.get_extras(skill_id)
 
@@ -3537,7 +3537,7 @@ async def install_skill(payload: dict = Body(...)):
         payload: 载荷 dict。
     """
     import os, shutil
-    from core.apps.skills.registry import get_skill_registry
+    from core.api.core_facade import get_skill_registry
 
     source = payload.get("url", "") or payload.get("path", "")
     skill_name = payload.get("skill_name", "")

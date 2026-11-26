@@ -442,6 +442,20 @@ def get_skill_registry() -> Any:
     return get_skill_registry()
 
 
+def verify_skill_acceptance(skill_id: str) -> Dict[str, Any]:
+    """Run SkillVerifier five-check acceptance and return a report dict.
+
+    Args:
+        skill_id: Skill identifier to verify.
+
+    Returns:
+        VerifyReport.to_dict() payload (checks / overall / suggestion).
+    """
+    from core.apps.skills.skill_verify import SkillVerifier
+
+    return SkillVerifier().verify(str(skill_id or "")).to_dict()
+
+
 def get_system_diagnostician() -> Any:
     """Get SystemDiagnostician for cross-subsystem health checks."""
     from core.harness.knowledge.system_diagnostician import SystemDiagnostician
@@ -16038,6 +16052,268 @@ def eval_run_e4_calibration(
     return run_e4_calibration(tenant_id=tenant_id, set_id=set_id, k=k, limit=limit)
 
 
+def eval_normalize_judge_report(
+    raw: Optional[Dict[str, Any]] = None,
+    *,
+    default_judge_id: str = "",
+) -> Dict[str, Any]:
+    """评测标准 E07：归一化 Judge 输出（强制 judge_id / calibration_ref 显式字段）。
+
+    Args:
+        raw: 原始 judge 报告。
+        default_judge_id: 缺省 judge_id。
+    """
+    from core.apps.eval.service.judge_contract import normalize_judge_report
+
+    return normalize_judge_report(raw, default_judge_id=default_judge_id)
+
+
+def eval_center_route_contract() -> Dict[str, Any]:
+    """评测标准 E08：评测中心 `/eval` 路由契约（非 accuracy 声明）。
+
+    Returns:
+        canonical UI / API 前缀与旧路径硬切说明。
+    """
+    from core.apps.eval.service.eval_center_route import eval_center_route_contract as _fn
+
+    return _fn()
+
+
+def eval_normalize_tool_mcp_subject(
+    raw: Optional[Dict[str, Any]] = None,
+    *,
+    require_verified_tier: bool = False,
+) -> Dict[str, Any]:
+    """评测标准 E09：Tool/MCP subject + 外援 verified_tier 绑定。
+
+    Args:
+        raw: 原始 subject。
+        require_verified_tier: 强制 verified_tier。
+    """
+    from core.apps.eval.service.interop_subject import normalize_tool_mcp_subject
+
+    return normalize_tool_mcp_subject(
+        raw, require_verified_tier=require_verified_tier
+    )
+
+
+def interop_build_asset_catalog(entries=None) -> Dict[str, Any]:
+    """外援互通 X09：构建资产目录（claimed/verified/ui_state）。
+
+    Args:
+        entries: ``[{kind, asset_id, compat?|path?}, ...]``。
+    """
+    from core.harness.maintenance.asset_compat import build_interop_asset_catalog
+
+    return build_interop_asset_catalog(entries)
+
+
+def fde_slice_report_binding_policy() -> Dict[str, Any]:
+    """FDE Extended F07：切片 report_id 绑定策略卡。"""
+    from core.apps.fde.service.extended_contracts import fde_slice_report_binding_policy as _fn
+
+    return _fn()
+
+
+def fde_workbench_signoff_surface() -> Dict[str, Any]:
+    """FDE Extended F08：工作台签收面契约。"""
+    from core.apps.fde.service.extended_contracts import fde_workbench_signoff_surface as _fn
+
+    return _fn()
+
+
+def fde_optional_process_contract() -> Dict[str, Any]:
+    """FDE Extended F09：可选独立进程 + health 文书（非长驻授权）。"""
+    from core.apps.fde.service.extended_contracts import fde_optional_process_contract as _fn
+
+    return _fn()
+
+
+def eval_evaluate_process_split_authorize(
+    *,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """评测 Operational E10：A3 process_split 授权门（默认 false）。
+
+    Args:
+        approval_record_path: 非作者批准 JSON。
+    """
+    from core.apps.eval.service.operational_gates import (
+        evaluate_eval_process_split_authorize,
+    )
+
+    return evaluate_eval_process_split_authorize(
+        approval_record_path=approval_record_path
+    )
+
+
+def eval_evaluate_production_sla_authorize(
+    *,
+    approval_record_path: Optional[str] = None,
+    sla_ref: str = "",
+) -> Dict[str, Any]:
+    """评测 Operational E11：生产 SLA authorize（默认 false）。
+
+    Args:
+        approval_record_path: 非作者批准 JSON。
+        sla_ref: SLA 引用。
+    """
+    from core.apps.eval.service.operational_gates import (
+        evaluate_eval_production_sla_authorize,
+    )
+
+    return evaluate_eval_production_sla_authorize(
+        approval_record_path=approval_record_path, sla_ref=sla_ref
+    )
+
+
+def eval_build_dual_annotator_kappa_report(
+    pairs=None,
+    *,
+    scope: str = "",
+    annotator_a: str = "annotator_a",
+    annotator_b: str = "annotator_b",
+) -> Dict[str, Any]:
+    """评测 Operational E12：双人标注 κ 报告（accuracy_claim=false）。
+
+    Args:
+        pairs: ``(a_pass, b_pass)`` 序列。
+        scope: 范围说明。
+        annotator_a: 标注者 A。
+        annotator_b: 标注者 B。
+    """
+    from core.apps.eval.service.operational_gates import build_dual_annotator_kappa_report
+
+    return build_dual_annotator_kappa_report(
+        pairs, scope=scope, annotator_a=annotator_a, annotator_b=annotator_b
+    )
+
+
+def eval_evaluate_operational_bundle(
+    *,
+    approval_record_path: Optional[str] = None,
+    sla_ref: str = "",
+    kappa_pairs=None,
+) -> Dict[str, Any]:
+    """评测 Operational E10–E12 汇总门。
+
+    Args:
+        approval_record_path: 批准路径。
+        sla_ref: E11 SLA。
+        kappa_pairs: E12 成对标签。
+    """
+    from core.apps.eval.service.operational_gates import evaluate_eval_operational_bundle
+
+    return evaluate_eval_operational_bundle(
+        approval_record_path=approval_record_path,
+        sla_ref=sla_ref,
+        kappa_pairs=kappa_pairs,
+    )
+
+
+def interop_evaluate_production_authorize(
+    *,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """外援 Operational X10：生产 authorize（默认 false）。
+
+    Args:
+        approval_record_path: 非作者批准 JSON。
+    """
+    from core.harness.maintenance.interop_operational import (
+        evaluate_interop_production_authorize,
+    )
+
+    return evaluate_interop_production_authorize(
+        approval_record_path=approval_record_path
+    )
+
+
+def interop_bind_supplier_sla(
+    compat=None,
+    *,
+    sla_ref: str = "",
+    vendor_id: str = "",
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """外援 Operational X11：供应商 SLA 绑定。
+
+    Args:
+        compat: 可选 COMPAT。
+        sla_ref: SLA 引用。
+        vendor_id: 供应商。
+        approval_record_path: 批准路径。
+    """
+    from core.harness.maintenance.interop_operational import bind_supplier_sla
+
+    return bind_supplier_sla(
+        compat,
+        sla_ref=sla_ref,
+        vendor_id=vendor_id,
+        approval_record_path=approval_record_path,
+    )
+
+
+def interop_evaluate_operational_bundle(
+    *,
+    approval_record_path: Optional[str] = None,
+    sla_ref: str = "",
+    vendor_id: str = "",
+) -> Dict[str, Any]:
+    """外援 Operational X10–X11 汇总门。
+
+    Args:
+        approval_record_path: 批准路径。
+        sla_ref: X11 SLA。
+        vendor_id: 供应商。
+    """
+    from core.harness.maintenance.interop_operational import (
+        evaluate_interop_operational_bundle,
+    )
+
+    return evaluate_interop_operational_bundle(
+        approval_record_path=approval_record_path,
+        sla_ref=sla_ref,
+        vendor_id=vendor_id,
+    )
+
+
+def fde_evaluate_production_process_authorize(
+    *,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """FDE Operational F10：生产独立进程 authorize（默认 false）。
+
+    Args:
+        approval_record_path: 非作者批准 JSON。
+    """
+    from core.apps.fde.service.operational_contracts import (
+        evaluate_fde_production_process_authorize,
+    )
+
+    return evaluate_fde_production_process_authorize(
+        approval_record_path=approval_record_path
+    )
+
+
+def fde_evaluate_compose_long_running_authorize(
+    *,
+    approval_record_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """FDE Operational F11：compose 长驻授权（须另批 ADR；默认 false）。
+
+    Args:
+        approval_record_path: 批准 JSON（须含 adr_ref）。
+    """
+    from core.apps.fde.service.operational_contracts import (
+        evaluate_fde_compose_long_running_authorize,
+    )
+
+    return evaluate_fde_compose_long_running_authorize(
+        approval_record_path=approval_record_path
+    )
+
+
 def eval_run_e5_gate(
     *,
     mode: str = "pr",
@@ -17541,6 +17817,42 @@ def skill_dry_run_handler_draft(skill_dir: str):
     from core.apps.skills.asset_compat import dry_run_handler_draft
 
     return dry_run_handler_draft(skill_dir)
+
+
+def skill_run_l1_sandbox_trial(skill_dir: str):
+    """外援互通 X07：L1 沙箱试调用（静态；不 exec）。
+
+    Args:
+        skill_dir: Skill 目录路径。
+    """
+    from core.apps.skills.asset_compat import run_l1_sandbox_trial
+
+    return run_l1_sandbox_trial(skill_dir)
+
+
+def skill_set_semantic_probe_result(
+    skill_dir: str,
+    *,
+    passed: bool,
+    evidence_refs=None,
+    probe_id: str = "",
+):
+    """外援互通 X08：显式语义探针结果（禁止自动升 L2）。
+
+    Args:
+        skill_dir: Skill 目录路径。
+        passed: 探针是否通过。
+        evidence_refs: 证据引用；``passed=True`` 时必填。
+        probe_id: 可选探针标识。
+    """
+    from core.apps.skills.asset_compat import set_semantic_probe_result
+
+    return set_semantic_probe_result(
+        skill_dir,
+        passed=passed,
+        evidence_refs=evidence_refs,
+        probe_id=probe_id,
+    )
 
 
 def agent_asset_compat_finalize(agent_dir: str, *, source=None, adapt_summary=None):

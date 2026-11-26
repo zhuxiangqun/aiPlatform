@@ -42,24 +42,198 @@ _TOOL_SCHEDULABLE = {TIER_MAPPED}
 # connected 仅当 policy.tool_allowlist 非空才默认可调度（最小权限 v0）
 _MCP_SCHEDULABLE = {TIER_CONNECTED, TIER_GATED}
 
+# 标准包 L0/L1/L2 ↔ 实现 tier（附录 C 映射；L2 仅显式语义探针）
+_COMPAT_LEVEL_RANK = {"unknown": 0, "L0": 1, "L1": 2, "L2": 3}
+_IMPL_TIER_TO_LEVEL = {
+    TIER_BLOCKED: "unknown",
+    TIER_NEEDS_HANDLER: "L0",
+    TIER_PROMPT_READY: "L1",
+    TIER_HANDLER_READY: "L1",
+    TIER_TOOL_MAPPED: "L1",
+    TIER_NEEDS_BINDING: "L0",
+    TIER_PERSONA_READY: "L1",
+    TIER_BOUND_READY: "L1",
+    TIER_NEEDS_IMPL: "L0",
+    TIER_SCHEMA_ONLY: "L0",
+    TIER_MAPPED: "L1",
+    TIER_CONNECTABLE: "L0",
+    TIER_CONNECTED: "L1",
+    TIER_GATED: "L1",
+}
+
+
+def normalize_compat_level(raw: Any) -> str:
+    """将宣称/验证层归一为 L0|L1|L2|unknown。
+
+    Args:
+        raw: 原始 compat 层字段（如 ``L1`` / ``l1`` / ``prompt_ready``）。
+
+    Returns:
+        标准层或 ``unknown``。
+    """
+    s = str(raw or "").strip()
+    if not s:
+        return "unknown"
+    up = s.upper().replace(" ", "")
+    if up in _COMPAT_LEVEL_RANK:
+        return up if up != "UNKNOWN" else "unknown"
+    # 允许用实现 tier 名作为宣称输入
+    mapped = _IMPL_TIER_TO_LEVEL.get(s.lower()) or _IMPL_TIER_TO_LEVEL.get(s)
+    return mapped if mapped else "unknown"
+
+
+def verified_compat_level(
+    tier: Any,
+    *,
+    schedulable: bool = False,
+    semantic_probe_passed: bool = False,
+) -> str:
+    """由实现 tier 推导 verified_tier（默认最高 L1；L2 须探针）。
+
+    Args:
+        tier: 实现侧 COMPAT ``tier``。
+        schedulable: 是否可调度。
+        semantic_probe_passed: 显式语义探针通过才可升 L2。
+
+    Returns:
+        ``L0`` / ``L1`` / ``L2`` / ``unknown``。
+    """
+    base = _IMPL_TIER_TO_LEVEL.get(str(tier or "").strip(), "unknown")
+    if semantic_probe_passed and base == "L1" and bool(schedulable):
+        return "L2"
+    return base
+
+
+def compute_asset_tree_checksum(root: Path | str) -> str:
+    """资产树内容 checksum（sha256:hex），用于 Manifest 校验（X01）。
+
+    Args:
+        root: 资产目录。
+
+    Returns:
+        ``sha256:<hex>``；空树或不可读 → ``sha256:`` 空摘要。
+    """
+    import hashlib
+
+    base = Path(root)
+    h = hashlib.sha256()
+    if not base.is_dir():
+        return "sha256:" + h.hexdigest()
+    paths: List[Path] = []
+    for p in sorted(base.rglob("*")):
+        if not p.is_file():
+            continue
+        # 跳过易变/生成物噪声
+        if p.name in {COMPAT_FILENAME, ".DS_Store"} or p.suffix == ".pyc":
+            continue
+        paths.append(p)
+    for p in paths:
+        rel = p.relative_to(base).as_posix().encode("utf-8")
+        h.update(rel)
+        h.update(b"\0")
+        try:
+            h.update(p.read_bytes())
+        except OSError:
+            h.update(b"unreadable")
+        h.update(b"\n")
+    return "sha256:" + h.hexdigest()
+
+
+def enrich_compat_claim_tiers(compat: Dict[str, Any]) -> Dict[str, Any]:
+    """写入 claimed_tier / verified_tier；宣称高于验证则拒升（X03）。
+
+    Args:
+        compat: COMPAT dict（原地增强）。
+
+    Returns:
+        同一 dict。
+    """
+    if not isinstance(compat, dict):
+        return compat
+    tier = compat.get("tier")
+    sched = bool(compat.get("schedulable"))
+    probe = bool(compat.get("semantic_probe_passed"))
+    verified = verified_compat_level(
+        tier, schedulable=sched, semantic_probe_passed=probe
+    )
+
+    claimed_raw = compat.get("claimed_tier") or compat.get("compat_claim")
+    src = compat.get("source") if isinstance(compat.get("source"), Mapping) else {}
+    if not claimed_raw and isinstance(src, Mapping):
+        claimed_raw = (
+            src.get("claimed_tier")
+            or src.get("compat_claim")
+            or src.get("compat_tier")
+        )
+    adapt = compat.get("adapt_summary") if isinstance(compat.get("adapt_summary"), Mapping) else {}
+    if not claimed_raw and isinstance(adapt, Mapping):
+        claimed_raw = adapt.get("claimed_tier") or adapt.get("compat_claim")
+
+    claimed = normalize_compat_level(claimed_raw) if claimed_raw else verified
+    illegal = _COMPAT_LEVEL_RANK.get(claimed, 0) > _COMPAT_LEVEL_RANK.get(verified, 0)
+
+    issues = list(compat.get("issues") or [])
+    if illegal:
+        issues.append(
+            {
+                "code": "interop.tier_claim_illegal",
+                "severity": "error",
+                "message": (
+                    f"claimed_tier={claimed} > verified_tier={verified}; "
+                    "refuse upgrade (appendix X03)"
+                ),
+            }
+        )
+        # 半导入语义：宣称跳级视作不完整导入标记
+        compat["half_import"] = True
+        compat["tier_claim_illegal"] = True
+
+    compat["issues"] = issues
+    compat["claimed_tier"] = claimed
+    compat["verified_tier"] = verified
+    compat["compat_tier"] = verified  # 对外权威 = 验证层
+    compat.setdefault("compat_evidence_refs", [])
+    if verified in ("L1", "L2") and not compat["compat_evidence_refs"]:
+        compat["compat_evidence_refs"] = [
+            {"kind": "impl_tier", "id": str(tier or "")},
+            {"kind": "schedulable", "id": str(sched).lower()},
+        ]
+    return compat
+
 
 def _read_frontmatter(skill_dir: Path) -> Dict[str, Any]:
+    """Best-effort frontmatter（兼容旧调用）；严格 L0 请用 ``_read_skill_manifest``。"""
+    fm, _err = _read_skill_manifest(skill_dir)
+    return fm
+
+
+def _read_skill_manifest(skill_dir: Path) -> tuple[Dict[str, Any], Optional[str]]:
+    """读取 SKILL.md frontmatter；失败返回错误码（X02 fail closed）。
+
+    Args:
+        skill_dir: Skill 目录。
+
+    Returns:
+        ``(frontmatter, error_code)``；成功时 ``error_code`` 为 None。
+    """
     md = skill_dir / "SKILL.md"
     if not md.is_file():
-        return {}
+        return {}, "interop.manifest_invalid"
     raw = md.read_text(encoding="utf-8", errors="replace")
     if not raw.startswith("---"):
-        return {}
+        return {}, "interop.manifest_invalid"
     parts = raw.split("---", 2)
     if len(parts) < 3:
-        return {}
+        return {}, "interop.manifest_invalid"
     try:
         import yaml
 
         fm = yaml.safe_load(parts[1]) or {}
-        return fm if isinstance(fm, dict) else {}
+        if not isinstance(fm, dict):
+            return {}, "interop.manifest_invalid"
+        return fm, None
     except Exception:
-        return {}
+        return {}, "interop.manifest_invalid"
 
 
 def compute_skill_compat(
@@ -76,7 +250,39 @@ def compute_skill_compat(
         adapt_summary: adapt_summary 参数。
     """
     root = Path(skill_dir)
-    fm = _read_frontmatter(root)
+    fm, parse_err = _read_skill_manifest(root)
+    if parse_err:
+        out: Dict[str, Any] = {
+            "schema": COMPAT_SCHEMA,
+            "asset_kind": "skill",
+            "tier": TIER_BLOCKED,
+            "execution_surface": "none",
+            "schedulable": False,
+            "issues": [
+                {
+                    "code": parse_err,
+                    "severity": "error",
+                    "message": "SKILL.md missing or frontmatter unparseable — L0 fail closed",
+                }
+            ],
+            "mappings": [],
+            "dependencies": {"required": [], "missing": [], "cycle": False},
+            "missing_critical": ["manifest"],
+            "upgrade": {"recommended": "fix_manifest", "auto_generated_artifacts": []},
+            "ui_state": UI_BLOCKED,
+            "handler_sandbox": handler_sandbox_status(),
+            "half_import": True,
+        }
+        if source:
+            out["source"] = source
+        if adapt_summary:
+            out["adapt_summary"] = {
+                k: adapt_summary.get(k)
+                for k in ("adapted", "pattern", "actions", "reason")
+                if k in adapt_summary
+            }
+        return enrich_compat_claim_tiers(out)
+
     has_handler = (root / "handler.py").is_file()
     has_draft = (root / HANDLER_DRAFT).is_file()
     tools = fm.get("tools") if isinstance(fm.get("tools"), list) else []
@@ -181,7 +387,7 @@ def compute_skill_compat(
         apply_content_gate_to_compat(out, scan_skill_dir(skill_name, root / "SKILL.md"))
     except Exception as exc:
         logger.warning("content_gate apply failed for %s: %s", root, exc)
-    return out
+    return enrich_compat_claim_tiers(out)
 
 
 def write_skill_compat(skill_dir: Path | str, compat: Dict[str, Any]) -> Path:
@@ -323,6 +529,14 @@ def finalize_skill_compat(
         source: source 参数。
     """
     compat = compute_skill_compat(skill_dir, source=source, adapt_summary=adapt_summary)
+    checksum = compute_asset_tree_checksum(skill_dir)
+    compat["checksum"] = checksum
+    compat["manifest"] = {
+        "checksum": checksum,
+        "asset_kind": "skill_pack",
+        "source": (source or {}).get("source") if isinstance(source, Mapping) else None,
+    }
+    enrich_compat_claim_tiers(compat)
     write_skill_compat(skill_dir, compat)
     return compat
 
@@ -493,29 +707,34 @@ def discard_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
     }
 
 
-def dry_run_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
-    """§5.4 可选试跑：静态编译 + execute 签名检查（不执行任意代码）。
+def _static_py_handler_trial(path: Path) -> Dict[str, Any]:
+    """对单个 .py（handler 或 draft）做静态 compile + execute 签名检查。
 
     Args:
-        skill_dir: Skill 目录路径。
+        path: Python 源文件路径。
 
     Returns:
-        ``compile_ok`` / ``has_execute``；失败时 ``ok=False`` 并带 ``errors``。
+        ``ok`` / ``compile_ok`` / ``has_execute`` / ``errors`` / 指纹字段。
     """
     import ast
     import hashlib
     import re
 
-    root = Path(skill_dir)
-    draft = root / HANDLER_DRAFT
-    if not draft.is_file():
-        return {"ok": False, "error": "no_handler_draft", "compile_ok": False, "has_execute": False}
-    text = draft.read_text(encoding="utf-8", errors="replace")
+    if not path.is_file():
+        return {
+            "ok": False,
+            "error": "no_handler_file",
+            "compile_ok": False,
+            "has_execute": False,
+            "errors": ["missing_file"],
+            "path": str(path),
+        }
+    text = path.read_text(encoding="utf-8", errors="replace")
     errors: List[str] = []
     compile_ok = False
     has_execute = False
     try:
-        compile(text, str(draft), "exec")
+        compile(text, str(path), "exec")
         compile_ok = True
         tree = ast.parse(text)
         for node in ast.walk(tree):
@@ -528,14 +747,197 @@ def dry_run_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
         errors.append(f"syntax:{exc.msg}@{exc.lineno}")
     if compile_ok and not has_execute:
         errors.append("missing_execute")
+    ok = compile_ok and has_execute
     return {
-        "ok": compile_ok and has_execute,
-        "error": None if (compile_ok and has_execute) else (errors[0] if errors else "dry_run_failed"),
+        "ok": ok,
+        "error": None if ok else (errors[0] if errors else "dry_run_failed"),
         "compile_ok": compile_ok,
         "has_execute": has_execute,
         "errors": errors,
+        "path": str(path),
         "draft_sha256_16": hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
         "note": "static_only: compile+execute signature; no runtime exec",
+    }
+
+
+def dry_run_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
+    """§5.4 可选试跑：静态编译 + execute 签名检查（不执行任意代码）。
+
+    Args:
+        skill_dir: Skill 目录路径。
+
+    Returns:
+        ``compile_ok`` / ``has_execute``；失败时 ``ok=False`` 并带 ``errors``。
+    """
+    root = Path(skill_dir)
+    draft = root / HANDLER_DRAFT
+    if not draft.is_file():
+        return {"ok": False, "error": "no_handler_draft", "compile_ok": False, "has_execute": False}
+    return _static_py_handler_trial(draft)
+
+
+def run_l1_sandbox_trial(skill_dir: Path | str) -> Dict[str, Any]:
+    """X07：L1 沙箱试调用（静态；不 exec 任意代码）。
+
+    优先试 ``handler.py``，否则 ``handler.py.draft``；纯 prompt/L1 可调度资产
+    走结构+COMPAT 试跑（``trial_kind=structure_only``）。
+
+    Args:
+        skill_dir: Skill 目录。
+
+    Returns:
+        ``aiplat.l1_sandbox_trial.v0`` 报告；成功时写回 ``compat_evidence_refs``。
+    """
+    root = Path(skill_dir)
+    handler = root / "handler.py"
+    draft = root / HANDLER_DRAFT
+    trial: Dict[str, Any]
+    trial_kind: str
+    if handler.is_file():
+        trial = _static_py_handler_trial(handler)
+        trial_kind = "static_handler"
+    elif draft.is_file():
+        trial = _static_py_handler_trial(draft)
+        trial_kind = "static_handler_draft"
+    else:
+        compat_probe = read_skill_compat(root) or compute_skill_compat(root)
+        tier = str(compat_probe.get("tier") or "")
+        sched = bool(compat_probe.get("schedulable"))
+        if sched and tier in _SCHEDULABLE:
+            trial = {
+                "ok": True,
+                "error": None,
+                "compile_ok": None,
+                "has_execute": None,
+                "errors": [],
+                "note": "structure_only: COMPAT schedulable L1; no handler body",
+            }
+            trial_kind = "structure_only"
+        else:
+            return {
+                "schema": "aiplat.l1_sandbox_trial.v0",
+                "ok": False,
+                "error": "interop.l1_trial_no_target",
+                "trial_kind": "none",
+                "compat_level_hint": "L0",
+                "evidence_refs": [],
+                "note": "no handler/draft and not schedulable L1",
+            }
+
+    evidence_refs: List[str] = []
+    if trial.get("ok"):
+        fp = trial.get("draft_sha256_16") or "structure"
+        evidence_refs.append(f"l1_sandbox_trial:{root.name}:{trial_kind}:{fp}")
+
+    out: Dict[str, Any] = {
+        "schema": "aiplat.l1_sandbox_trial.v0",
+        "ok": bool(trial.get("ok")),
+        "error": trial.get("error"),
+        "trial_kind": trial_kind,
+        "compile_ok": trial.get("compile_ok"),
+        "has_execute": trial.get("has_execute"),
+        "errors": list(trial.get("errors") or []),
+        "evidence_refs": evidence_refs,
+        "compat_level_hint": "L1" if trial.get("ok") else "L0",
+        "note": trial.get("note")
+        or "X07 static sandbox trial; not runtime isolation / not L2",
+        "honesty": "run_l1_sandbox_trial≠microVM；成功≠L2/certified",
+    }
+    if trial.get("draft_sha256_16"):
+        out["target_sha256_16"] = trial["draft_sha256_16"]
+    if trial.get("path"):
+        out["target_path"] = trial["path"]
+
+    if out["ok"]:
+        compat = read_skill_compat(root) or compute_skill_compat(root)
+        refs = [str(x) for x in (compat.get("compat_evidence_refs") or []) if str(x).strip()]
+        for r in evidence_refs:
+            if r not in refs:
+                refs.append(r)
+        compat["compat_evidence_refs"] = refs
+        compat["l1_sandbox_trial"] = {
+            "ok": True,
+            "trial_kind": trial_kind,
+            "evidence_refs": evidence_refs,
+        }
+        enrich_compat_claim_tiers(compat)
+        write_skill_compat(root, compat)
+        out["compat"] = compat
+        out["verified_tier"] = compat.get("verified_tier")
+    return out
+
+
+def set_semantic_probe_result(
+    skill_dir: Path | str,
+    *,
+    passed: bool,
+    evidence_refs: Optional[List[str]] = None,
+    probe_id: str = "",
+) -> Dict[str, Any]:
+    """X08：显式写入 ``semantic_probe_passed``（禁止自动升 L2）。
+
+    ``passed=True`` 时 ``evidence_refs`` MUST 非空，否则 fail-closed。
+
+    Args:
+        skill_dir: Skill 目录。
+        passed: 探针是否通过。
+        evidence_refs: 证据引用列表。
+        probe_id: 可选探针标识。
+
+    Returns:
+        含更新后 ``compat`` / ``verified_tier``；失败带 ``interop.*`` 错误码。
+    """
+    root = Path(skill_dir)
+    refs = [str(x).strip() for x in (evidence_refs or []) if str(x).strip()]
+    if passed and not refs:
+        return {
+            "ok": False,
+            "error": "interop.l2_probe_evidence_required",
+            "semantic_probe_passed": False,
+            "note": "X08: passed=True requires non-empty evidence_refs",
+        }
+
+    compat = read_skill_compat(root) or compute_skill_compat(root)
+    # 未达 L1 可调度时，禁止宣称探针升 L2
+    base_verified = verified_compat_level(
+        compat.get("tier"),
+        schedulable=bool(compat.get("schedulable")),
+        semantic_probe_passed=False,
+    )
+    if passed and base_verified != "L1":
+        return {
+            "ok": False,
+            "error": "interop.l2_probe_requires_l1",
+            "semantic_probe_passed": False,
+            "base_verified_tier": base_verified,
+            "note": "X08: semantic probe only after verified L1+schedulable",
+        }
+
+    compat["semantic_probe_passed"] = bool(passed)
+    compat["semantic_probe"] = {
+        "passed": bool(passed),
+        "probe_id": str(probe_id or "").strip() or None,
+        "evidence_refs": refs,
+        "explicit": True,
+    }
+    if refs:
+        existing = [str(x) for x in (compat.get("compat_evidence_refs") or []) if str(x).strip()]
+        for r in refs:
+            if r not in existing:
+                existing.append(r)
+        compat["compat_evidence_refs"] = existing
+
+    enrich_compat_claim_tiers(compat)
+    write_skill_compat(root, compat)
+    return {
+        "ok": True,
+        "schema": "aiplat.l2_semantic_probe.v0",
+        "semantic_probe_passed": bool(passed),
+        "verified_tier": compat.get("verified_tier"),
+        "compat_tier": compat.get("compat_tier"),
+        "evidence_refs": refs,
+        "compat": compat,
+        "honesty": "set_semantic_probe_result is explicit only; never auto-promote to L2",
     }
 
 
@@ -782,7 +1184,7 @@ def compute_agent_compat(
         out["adapt_summary"] = {
             k: adapt_summary.get(k) for k in ("adapted", "pattern", "actions", "reason") if k in adapt_summary
         }
-    return out
+    return enrich_compat_claim_tiers(out)
 
 
 def write_agent_compat(agent_dir: Path | str, compat: Dict[str, Any]) -> Path:
@@ -836,6 +1238,13 @@ def finalize_agent_compat(
         source: source 参数。
     """
     compat = compute_agent_compat(agent_dir, source=source, adapt_summary=adapt_summary)
+    checksum = compute_asset_tree_checksum(agent_dir)
+    compat["checksum"] = checksum
+    compat["manifest"] = {
+        "checksum": checksum,
+        "asset_kind": "agent_pack",
+    }
+    enrich_compat_claim_tiers(compat)
     write_agent_compat(agent_dir, compat)
     return compat
 
@@ -1132,7 +1541,7 @@ def compute_mcp_compat(
         out["adapt_summary"] = {
             k: adapt_summary.get(k) for k in ("adapted", "pattern", "actions", "reason") if k in adapt_summary
         }
-    return out
+    return enrich_compat_claim_tiers(out)
 
 
 def wrap_untrusted_mcp_tool_description(
@@ -1234,6 +1643,10 @@ def finalize_mcp_compat(
     compat = compute_mcp_compat(
         mcp_dir, source=source, adapt_summary=adapt_summary, connection_status=connection_status
     )
+    checksum = compute_asset_tree_checksum(mcp_dir)
+    compat["checksum"] = checksum
+    compat["manifest"] = {"checksum": checksum, "asset_kind": "mcp_server"}
+    enrich_compat_claim_tiers(compat)
     write_mcp_compat(mcp_dir, compat)
     return compat
 
@@ -1699,7 +2112,7 @@ def compute_tool_compat(
         out["adapt_summary"] = {
             k: adapt_summary.get(k) for k in ("adapted", "pattern", "actions", "reason") if k in adapt_summary
         }
-    return out
+    return enrich_compat_claim_tiers(out)
 
 
 def write_tool_compat(tool_py: Path | str, compat: Dict[str, Any]) -> Path:
@@ -1745,6 +2158,11 @@ def finalize_tool_compat(
         mapped_to=mapped_to,
         mcp_projection=mcp_projection,
     )
+    root = Path(tool_py).parent if Path(tool_py).is_file() else Path(tool_py)
+    checksum = compute_asset_tree_checksum(root)
+    compat["checksum"] = checksum
+    compat["manifest"] = {"checksum": checksum, "asset_kind": "tool_spec"}
+    enrich_compat_claim_tiers(compat)
     write_tool_compat(tool_py, compat)
     return compat
 
@@ -2025,9 +2443,23 @@ def normalize_asset_report_row(
         "issues": list(iss),
     }
     # Preserve useful extras without inventing contract fields
-    for k in ("reason", "chat_ok", "full_ok"):
+    for k in (
+        "reason",
+        "chat_ok",
+        "full_ok",
+        "claimed_tier",
+        "verified_tier",
+        "compat_tier",
+        "checksum",
+        "half_import",
+        "tier_claim_illegal",
+        "compat_evidence_refs",
+    ):
         if k in src and k not in out:
             out[k] = src[k]
+    # 若行上仅有实现 tier，补 claimed/verified（报告面 X03）
+    if "verified_tier" not in out:
+        enrich_compat_claim_tiers(out)
     return out
 
 
@@ -2133,7 +2565,7 @@ def apply_majority_import_gate(
     warnings: Optional[List[str]] = None,
     threshold: float = DEFAULT_MAJORITY_BLOCKED_RATIO,
 ) -> Dict[str, Any]:
-    """Mark import_failed when majority of assets are blocked; raise warnings.
+    """Mark import_failed when majority blocked or any half_import（X06）。
 
     Args:
         assets: Asset report rows.
@@ -2141,7 +2573,7 @@ def apply_majority_import_gate(
         threshold: Majority ratio threshold.
 
     Returns:
-        ``{import_failed, ratio, warnings, assets}`` with normalized assets.
+        ``{import_failed, ratio, warnings, assets, half_import_ids}``。
     """
     norm = [normalize_asset_report_row(a) for a in (assets or [])]
     warns = list(warnings or [])
@@ -2152,9 +2584,110 @@ def apply_majority_import_gate(
         if msg not in warns:
             warns.append(msg)
         warns.append("P0:导入无意义-多数资产不能用")
+    half_ids = [
+        str(a.get("id") or "")
+        for a in norm
+        if a.get("half_import") or a.get("tier_claim_illegal")
+    ]
+    half_ids = [x for x in half_ids if x]
+    if half_ids:
+        failed = True
+        msg = "interop.half_import_forbidden:" + ",".join(half_ids[:8])
+        if msg not in warns:
+            warns.append(msg)
+        warns.append("X06:半导入/跳级宣称禁止")
     return {
         "import_failed": failed,
         "ratio": ratio,
         "warnings": warns,
         "assets": norm,
+        "half_import_ids": half_ids,
+    }
+
+
+def normalize_interop_catalog_row(
+    *,
+    kind: str,
+    asset_id: str,
+    compat: Optional[Mapping[str, Any]] = None,
+    path: str = "",
+) -> Dict[str, Any]:
+    """X09：单条资产目录行（claimed/verified/ui_state）。
+
+    Args:
+        kind: ``skill`` / ``agent`` / ``tool`` / ``mcp``。
+        asset_id: 资产 ID。
+        compat: COMPAT dict（可空）。
+        path: 可选目录路径。
+
+    Returns:
+        ``aiplat.interop_asset_catalog_row.v0``。
+    """
+    c = dict(compat or {})
+    if c and ("verified_tier" not in c or "claimed_tier" not in c):
+        enrich_compat_claim_tiers(c)
+    return {
+        "schema": "aiplat.interop_asset_catalog_row.v0",
+        "kind": str(kind or "").strip(),
+        "asset_id": str(asset_id or "").strip(),
+        "tier": c.get("tier"),
+        "claimed_tier": c.get("claimed_tier"),
+        "verified_tier": c.get("verified_tier") or c.get("compat_tier"),
+        "ui_state": c.get("ui_state"),
+        "schedulable": bool(c.get("schedulable")) if "schedulable" in c else None,
+        "semantic_probe_passed": bool(c.get("semantic_probe_passed")),
+        "path": str(path or "").strip() or None,
+        "honesty": "catalog row ≠ L2/certified; ui_state is Workspace honesty only",
+    }
+
+
+def build_interop_asset_catalog(
+    entries: Optional[List[Mapping[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """X09：从条目列表构建外援资产目录（版本/来源/层）。
+
+    每条至少 ``kind`` + ``asset_id``；可选 ``compat`` 或 ``path``（读 COMPAT.yaml）。
+
+    Args:
+        entries: 目录条目序列。
+
+    Returns:
+        ``{schema, items, count, by_kind}``。
+    """
+    rows: List[Dict[str, Any]] = []
+    for ent in entries or []:
+        if not isinstance(ent, Mapping):
+            continue
+        kind = str(ent.get("kind") or "").strip()
+        aid = str(ent.get("asset_id") or ent.get("id") or "").strip()
+        path = str(ent.get("path") or "").strip()
+        compat = ent.get("compat") if isinstance(ent.get("compat"), Mapping) else None
+        if compat is None and path:
+            p = Path(path)
+            if kind == "tool" and p.is_file():
+                compat = read_tool_compat(p) or compute_tool_compat(p)
+            elif p.is_dir():
+                if kind == "agent":
+                    compat = read_agent_compat(p) or compute_agent_compat(p)
+                elif kind == "mcp":
+                    compat = read_mcp_compat(p) or compute_mcp_compat(p)
+                else:
+                    compat = read_skill_compat(p) or compute_skill_compat(p)
+        if not kind or not aid:
+            continue
+        rows.append(
+            normalize_interop_catalog_row(
+                kind=kind, asset_id=aid, compat=compat, path=path
+            )
+        )
+    by_kind: Dict[str, int] = {}
+    for r in rows:
+        k = str(r.get("kind") or "?")
+        by_kind[k] = by_kind.get(k, 0) + 1
+    return {
+        "schema": "aiplat.interop_asset_catalog.v0",
+        "items": rows,
+        "count": len(rows),
+        "by_kind": by_kind,
+        "honesty": "X09 catalog UX data; not import authorize / not certified",
     }

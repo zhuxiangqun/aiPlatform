@@ -1902,6 +1902,37 @@ def build_attributable_report(
             "robustness": robustness,
             "interaction": interaction,
         },
+        # 附录 N E04：统一证据引用键（与 claims_gate / eval_protocol 对齐）
+        "evidence_refs": [
+            {"kind": "agent_id", "id": aid},
+            *([{"kind": "set_id", "id": sid}] if sid else []),
+            *([{"kind": "run_id", "id": str(raw.get("run_id"))}] if raw.get("run_id") else []),
+            *(
+                [{"kind": "plan_id", "id": str(raw.get("plan_id"))}]
+                if raw.get("plan_id")
+                else []
+            ),
+            *(
+                [{"kind": "manifest_hash", "id": str(raw.get("manifest_hash"))}]
+                if raw.get("manifest_hash")
+                else []
+            ),
+            *(
+                [
+                    {
+                        "kind": "execution_fingerprint",
+                        "id": str(raw.get("execution_fingerprint")),
+                    }
+                ]
+                if raw.get("execution_fingerprint")
+                else []
+            ),
+        ],
+        "fingerprints": {
+            "plan_id": str(raw.get("plan_id") or ""),
+            "manifest_hash": str(raw.get("manifest_hash") or ""),
+            "execution_fingerprint": str(raw.get("execution_fingerprint") or ""),
+        },
         "attribution": _collect_attribution(
             task,
             tools,
@@ -1981,6 +2012,15 @@ def build_attributable_report_from_agent(
             },
             "publish": {"allowed": False, "decision": "no_data", "veto": False, "reasons": []},
             "dimensions": {},
+            "evidence_refs": (
+                [{"kind": "agent_id", "id": aid}]
+                + ([{"kind": "set_id", "id": want}] if want else [])
+            ),
+            "fingerprints": {
+                "plan_id": "",
+                "manifest_hash": "",
+                "execution_fingerprint": "",
+            },
             "attribution": [],
             "conclusion": {
                 "publish_allowed": False,
