@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T10:16:00+08:00",
+  "reviewed_at": "2026-11-26T10:29:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "3c9467c07c73eb70c5d9c5e64eef31585b1f05fc",
-  "diff_sha256": "d3c71eadae45fc06c4ec48cf652a1e861299effe04cbfaba4492d61a47e7138a",
-  "head_sha": "3bfc3b103904bee590ca4ba4c679f2fe65024fc3",
+  "diff_sha256": "ee807a694ed2d558d95e89143f7f5c1d3e5e29d2cb31ab25abe4cb464c8976e2",
+  "head_sha": "5e4e594923af76ebd7280c9ab396a0dc908921c2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Production deepen D1: ledger+live_sources; unavailable honest; canary cutover=false; g*_complete/certified/e2 false. D2–D4 then PSO registered."
+  "note": "Production deepen D2 holdout partitions; dataset|surrogate|unavailable labeled; production_traffic=false. Stacks on D1 (#1071)."
 }
