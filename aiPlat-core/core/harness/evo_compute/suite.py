@@ -1531,3 +1531,136 @@ def evaluate_evo_compute_production_deepen_slice1_gate(
         "e2_claimed": False,
         "suite": s,
     }
+
+
+def run_evo_compute_production_deepen_slice2_suite() -> Dict[str, Any]:
+    """生产加深 D2：版本化 holdout 分区 → compare_holdout；Gate 宣称恒 false。"""
+    from core.harness.evo_compute.holdout import compare_holdout
+    from core.harness.evo_compute.holdout_dataset import (
+        HOLDOUT_DATASET_VERSION,
+        load_holdout_partition,
+    )
+    from core.harness.evo_compute.pilots import register_pilot_genomes
+
+    register_pilot_genomes(persist=False)
+    cases: list = []
+    gid = "routing.weights.v1"
+
+    part = load_holdout_partition(gid, prefer_disk=False, allow_seed_fallback=True)
+    cases.append(
+        {
+            "id": "holdout_seed_available",
+            "pass": part.get("available") is True
+            and part.get("source") == "dataset_seed"
+            and part.get("dataset_version") == HOLDOUT_DATASET_VERSION
+            and part.get("production_traffic") is False,
+        }
+    )
+
+    miss = load_holdout_partition(
+        "nonexistent.genome.v0", prefer_disk=False, allow_seed_fallback=True
+    )
+    cases.append(
+        {
+            "id": "unknown_genome_unavailable",
+            "pass": miss.get("available") is False and miss.get("source") == "unavailable",
+        }
+    )
+
+    baseline = {
+        "semantic_weight": 0.5,
+        "cost_weight": 0.3,
+        "latency_weight": 0.2,
+    }
+    challenger = {
+        "semantic_weight": 0.55,
+        "cost_weight": 0.25,
+        "latency_weight": 0.2,
+    }
+    cmp_ds = compare_holdout(
+        genome_id=gid,
+        baseline_genes=baseline,
+        challenger_genes=challenger,
+        holdout_partition=part,
+        allow_surrogate_fallback=False,
+    )
+    cases.append(
+        {
+            "id": "compare_uses_dataset",
+            "pass": cmp_ds.get("ok") is True
+            and str(cmp_ds.get("source") or "").startswith("dataset")
+            and cmp_ds.get("production_traffic") is False
+            and cmp_ds.get("certified") is False
+            and cmp_ds.get("e2_claimed") is False
+            and cmp_ds.get("dataset_version") == HOLDOUT_DATASET_VERSION,
+        }
+    )
+
+    cmp_surr = compare_holdout(
+        genome_id=gid,
+        baseline_genes=baseline,
+        challenger_genes=challenger,
+        holdout_partition={"available": False, "batches": []},
+        allow_surrogate_fallback=True,
+    )
+    cases.append(
+        {
+            "id": "surrogate_fallback_labeled",
+            "pass": cmp_surr.get("source") == "surrogate"
+            and cmp_surr.get("production_traffic") is False,
+        }
+    )
+
+    cmp_none = compare_holdout(
+        genome_id=gid,
+        baseline_genes=baseline,
+        challenger_genes=challenger,
+        holdout_partition={"available": False, "batches": []},
+        allow_surrogate_fallback=False,
+    )
+    cases.append(
+        {
+            "id": "unavailable_without_fallback",
+            "pass": cmp_none.get("available") is False
+            and cmp_none.get("source") == "unavailable"
+            and cmp_none.get("significant") is False,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "production-deepen-d2",
+        "g1_foundation": True,
+        "g1_complete": False,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_traffic": False,
+        "note": "production deepen D2 holdout partitions; ≠ production traffic / gate claim",
+    }
+
+
+def evaluate_evo_compute_production_deepen_slice2_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """生产加深 D2 门槛门；complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_production_deepen_slice2_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_production_deepen_slice2_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "g1_foundation": True,
+        "g1_complete": False,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "suite": s,
+    }
