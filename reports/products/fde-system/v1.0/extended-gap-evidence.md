@@ -20,7 +20,7 @@ purpose: FDE 系统 v1.0 附录 N Extended（F07–F09）代码证据盘点；�
 | F07–F09 测量 | **exists** |
 | 正式 extended_ready | **是（conditional）**：朱莹非作者复核（`extended-approval-record.approved.json`） |
 | certified | **否** |
-| compose 长驻（F11） | **否**（ADR-09；须另批） |
+| compose 长驻（F11） | **否**（`ADR-FDE-COMPOSE-LONG-RUNNING` Proposed ≠ Accepted） |
 | F10 生产独立 authorize | **是**（operational-approval-record；朱莹） |
 
 ## F07–F09
