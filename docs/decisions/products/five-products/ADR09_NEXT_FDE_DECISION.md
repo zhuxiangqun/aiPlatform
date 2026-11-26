@@ -37,3 +37,8 @@ doc_type: Report
 ## 签署
 
 架构 × 业务 × FDE R（兼任）· 2026-10-26 · **仅 FDE；compose 长驻 / 本体 / 控制面仍须另批**
+
+## 后续覆盖（clause-sync · 2026-11-26）
+
+本决定当时 **不含** compose 长驻仍成立为历史范围。FDE 可选长驻已由专项  
+`ADR-FDE-COMPOSE-LONG-RUNNING.md`（**Accepted**）另批覆盖；本体 / 控制面 / E4 仍须另批。

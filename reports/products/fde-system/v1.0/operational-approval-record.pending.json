@@ -7,5 +7,5 @@
   "decision": null,
   "adr_ref": null,
   "record_id": "FDE-SYS-V10-OPERATIONAL-pending",
-  "note": "F10 production process authorize + F11 compose long-running need non-author approval; F11 also requires adr_ref. Does not expand ADR-09."
+  "note": "Superseded by operational-approval-record.approved.json (F10+F11; approver: 朱莹; adr_ref Accepted)."
 }

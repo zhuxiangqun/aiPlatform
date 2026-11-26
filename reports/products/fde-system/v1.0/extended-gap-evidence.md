@@ -10,8 +10,8 @@ purpose: FDE 系统 v1.0 附录 N Extended（F07–F09）代码证据盘点；�
 
 # FDE 系统 v1.0 — Extended 差距证据（测量）
 
-> **性质**：测量报告。不扩大 ADR-09；compose 长驻仍未授权。  
-> **刷新**：2026-11-26 Extended F07–F09 收口后。
+> **性质**：测量报告。Extended 层；F11 authorize 见 operational 证据。  
+> **刷新**：2026-11-26 Extended F07–F09 收口后（F11 授权不改本层）。
 
 ## 总判定
 
@@ -20,7 +20,7 @@ purpose: FDE 系统 v1.0 附录 N Extended（F07–F09）代码证据盘点；�
 | F07–F09 测量 | **exists** |
 | 正式 extended_ready | **是（conditional）**：朱莹非作者复核（`extended-approval-record.approved.json`） |
 | certified | **否** |
-| compose 长驻（F11） | **否**（`ADR-FDE-COMPOSE-LONG-RUNNING` Proposed ≠ Accepted） |
+| compose 长驻（F11） | **是（operational）**：见 `operational-gap-evidence.md` / Accepted ADR |
 | F10 生产独立 authorize | **是**（operational-approval-record；朱莹） |
 
 ## F07–F09

@@ -1,25 +1,26 @@
 ---
 doc_type: Decision
 doc_id: ADR-FDE-COMPOSE-LONG-RUNNING
-status: proposed
+status: accepted
 authority: decision
 created: 2026-11-26
 last_reviewed: 2026-11-26
+accepted_at: 2026-11-26
 language: zh-CN
-purpose: FDE 可选 compose 长驻专项决定（F11 adr_ref 候选）；不扩大 ADR-09 E4
+purpose: FDE 可选 compose 长驻专项决定（F11 adr_ref）；不扩大 ADR-09 E4
 ---
 
 # ADR — FDE compose 长驻（可选运维 profile）
 
-- **状态**：**Proposed**（未 Accepted；不得写入 F11 批准记录 `adr_ref` 冒充已授权）  
-- **关联**：`ADR09_NEXT_FDE_DECISION.md`（FDE 批立时 **不含** compose 长驻）；`ADR09_COMPOSE_LONG_RUNNING_DECISION.md`（通用长驻轨已含，但 FDE「另立」）；FDE 系统标准 v1.0 附录 N **F11**  
-- **目标**：在 Accepted 后，允许 F11 批准记录引用本文件路径作为 `adr_ref`，使 `evaluate_fde_compose_long_running_authorize` 可 `authorized=true`（仍须非作者批准 JSON）
+- **状态**：**Accepted（窄）** · 2026-11-26  
+- **关联**：`ADR09_NEXT_FDE_DECISION.md`（FDE 批立时 **不含** compose 长驻；本 ADR 覆盖该「不含」）；`ADR09_COMPOSE_LONG_RUNNING_DECISION.md`（通用长驻轨已含，本 ADR 补 FDE 产品行）；FDE 系统标准 v1.0 附录 N **F11**  
+- **目标**：允许 F11 批准记录引用本文件路径作为 `adr_ref`，使 `evaluate_fde_compose_long_running_authorize` 可 `authorized=true`（须非作者批准 JSON）
 
-## 批准句（Accepted 时填写）
+## 批准句（Accepted）
 
 > 批准 **FDE compose 长驻**（可选 profile）。范围：仅 FDE 交付面可选长驻 compose；**不含**强制生产默认、超边界 E4、第二 Identity/PolicyGate、一次五产品长驻。
 
-## 授权 / 禁止（拟）
+## 授权 / 禁止
 
 | 项 | |
 |----|--|
@@ -34,25 +35,24 @@ purpose: FDE 可选 compose 长驻专项决定（F11 adr_ref 候选）；不扩�
 
 | 既有 | 关系 |
 |------|------|
-| `ADR09_NEXT_FDE_DECISION` | 当时 **不含** 长驻；本 ADR 为后续专项，Accepted 后才覆盖该「不含」 |
+| `ADR09_NEXT_FDE_DECISION` | 当时 **不含** 长驻；本 ADR 为后续专项，**Accepted 后覆盖**该「不含」 |
 | `ADR09_COMPOSE_LONG_RUNNING_*` | 通用轨已落地 **Pi Thin**；本 ADR 补 **FDE** 产品行，不一次写满五套 |
 | `ADR-FDE-SYS-v1.0` | 标准包批准 ≠ 本部署授权 |
 | F10 | 生产独立进程 authorize 独立；本 ADR 不替代 F10 |
 
-## 落地序（Accepted 后另 PR）
+## 落地序（另 PR）
 
 1. BOUNDARY：FDE 长驻 compose 文件路径 + 启停/回滚 README  
 2. 烟测：`up -d` → health → `down -v`（必跑）  
-3. 非作者批准记录：`gate_ids` 含 `F11`，`adr_ref` = 本文件相对仓根路径  
+3. 非作者批准记录：`gate_ids` 含 `F11`，`adr_ref` = 本文件相对仓根路径 → **已完成**（见 `reports/products/fde-system/v1.0/operational-approval-record.approved.json`）  
 4. 刷新 `reports/products/fde-system/v1.0/operational-gap-evidence.md`
 
 ## 签署
 
 | 角色 | 姓名 | 状态 |
 |------|------|------|
-| 架构 | （待） | Proposed |
-| 业务 / FDE R | （待） | Proposed |
-| Security（建议） | 朱鸿林 | 待 |
-| Data Governance（建议） | 朱莹 | 待 |
+| 架构 / 业务 | 对话「批准 F11」· 2026-11-26 | **Accepted** |
+| Data Governance（非作者） | 朱莹 | **Confirmed**（批准 JSON） |
+| Security（建议） | 朱鸿林 | 可选复核；不阻断 F11 authorize |
 
-**诚实锁**：Proposed ≠ authorized。门禁在无 Accepted + 批准 JSON 前保持 `F11 authorized=false`。
+**诚实锁**：Accepted + 非作者批准 JSON + `adr_ref` → `F11 authorized` 可 true；仍 ≠ `certified`；≠ 强制生产默认；≠ E4。

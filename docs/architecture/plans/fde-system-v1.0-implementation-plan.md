@@ -8,21 +8,21 @@ created: 2026-11-26
 doc_id: FDE_SYS_V10_IMPL_PLAN
 last_reviewed: 2026-11-26
 purpose: 将 FDE 系统 v1.0 标准落到可认证路径（不扩大 ADR-09）
-clause_sync: "2026-11-26 · 对齐非作者批准；F11 仍开；ADR 草稿已立"
+clause_sync: "2026-11-26 · F11 Accepted + operational_ready；compose/烟测另 PR"
 ---
 # FDE 系统 v1.0 实施方案
 
 > 依据：`docs/standards/fde-system/v1.0/` 标准包。  
 > 承接：`ADR09_FDE_BOUNDARY.md`、`ADR09_NEXT_FDE_DECISION.md`、Gate3 签收绑定。  
 > 非标准正文。**实现徽章以** `reports/products/fde-system/v1.0/*-approval-record.approved.json` **为准**（clause-sync）。  
-> **F11**：草稿 `docs/decisions/products/five-products/ADR-FDE-COMPOSE-LONG-RUNNING.md`（**Proposed**；未 Accepted → 门禁仍 unauthorized）。
+> **F11**：`docs/decisions/products/five-products/ADR-FDE-COMPOSE-LONG-RUNNING.md`（**Accepted**）+ 批准 JSON → authorized。
 
 ## 0. 结论先行
 
 ```text
 先锁唯一 signoff + CoreFacade + 证据字段
 再工作台 / 可选独立进程文书
-F10 已批；F11 compose 长驻须专项 ADR Accepted 后才可 authorize
+F10–F11 已批 → operational_ready；compose 文件/烟测另 PR
 ```
 
 评测绿 ≠ 签收；ImportReport ≠ 签收。
@@ -36,8 +36,9 @@ F10 已批；F11 compose 长驻须专项 ADR Accepted 后才可 authorize
 | F01–F06 | **exists** + **conditional core_ready**（朱鸿林） |
 | F07–F09 | **exists** + **conditional extended_ready**（朱莹） |
 | F10 | **authorized=true**（朱莹；pilot） |
-| F11 | **authorized=false**（须 `ADR-FDE-COMPOSE-LONG-RUNNING` Accepted + `adr_ref`） |
-| certified | **否**；ADR-09 边界未扩大 |
+| F11 | **authorized=true**（Accepted ADR + `adr_ref` + 朱莹） |
+| operational_ready | **true**（F10∧F11） |
+| certified | **否**；ADR-09 E4 未扩大 |
 
 已收口：signoff 写 `tenant_id`；skills 路径经 CoreFacade。  
 Extended：切片签收禁 `tenant_resolved_from=default`。
@@ -46,13 +47,13 @@ Extended：切片签收禁 `tenant_resolved_from=default`。
 
 1. Core：附录 N F01–F06 `exists`；
 2. Extended：F07–F09（对齐已有边界收口证据可引用）；
-3. Operational：F10–F11（另批）。
+3. Operational：F10–F11（已批；compose 落地另 PR）。
 
 ## 2. 非目标
 
 - 新建第二套验收系统；
 - 拆本体 / 控制面；
-- 未另批 compose 长驻；
+- 强制生产默认长驻 / E4；
 - 把 FDE 做成评测中心。
 
 ## 3. 阶段
@@ -64,8 +65,8 @@ Extended：切片签收禁 `tenant_resolved_from=default`。
 | P2 | CoreFacade / 无 harness 直连证明 | F03 | **exists（已收口）** |
 | P3 | 签收记录字段 + 回滚文书 | F04、F06 | **exists** → **core_ready conditional** |
 | P4 | report_id 策略 / 工作台 | F07–F08 | **exists** → **extended_ready conditional** |
-| P5 | 可选独立进程 + one-shot health | F09 | **exists**（extended 已批）；compose 长驻仍否 |
-| P6 | 生产 authorize / 长驻另批 | Operational F10–F11 | **F10 authorized**；**F11 仍否**（ADR Proposed）— 见 `operational-gap-evidence.md` |
+| P5 | 可选独立进程 + one-shot health | F09 | **exists**（extended 已批） |
+| P6 | 生产 authorize / 长驻另批 | Operational F10–F11 | **operational_ready** — 见 `operational-gap-evidence.md`；compose/烟测另 PR |
 
 ## 4. 证据目录
 

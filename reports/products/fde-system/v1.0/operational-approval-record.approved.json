@@ -1,7 +1,7 @@
 {
   "standard_version": "1.0.0",
-  "scope": "fde-system operational F10 only",
-  "gate_ids": ["F10"],
+  "scope": "fde-system operational F10 F11",
+  "gate_ids": ["F10", "F11"],
   "status": "approved",
   "decision": "authorize",
   "approvers": [
@@ -13,8 +13,8 @@
       "confirmed_at": "2026-11-26"
     }
   ],
-  "adr_ref": null,
+  "adr_ref": "docs/decisions/products/five-products/ADR-FDE-COMPOSE-LONG-RUNNING.md",
   "approval_date": "2026-11-26",
-  "record_id": "FDE-SYS-V10-OPERATIONAL-F10-2026-11-26",
-  "note": "Non-author 朱莹已批准 F10 生产独立进程 authorize（pilot）。F11 compose 长驻故意未批：不扩大 ADR-09；须另批 ADR + adr_ref 才可 authorized。"
+  "record_id": "FDE-SYS-V10-OPERATIONAL-F10-F11-2026-11-26",
+  "note": "Non-author 朱莹：F10 生产独立进程 authorize（pilot，既有）+ 对话「批准 F11」后 F11 compose 长驻 authorize。adr_ref=ADR-FDE-COMPOSE-LONG-RUNNING（Accepted）。≠ certified；≠ 强制生产默认；≠ E4。"
 }
