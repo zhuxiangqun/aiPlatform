@@ -37,7 +37,7 @@ pack_ready≠gate claim
 
 ## 后续
 
-PSO 离线对照（生产加深完成后）。
+PSO 离线对照 → ✅；工程轨收口 → ✅ D5（`production-deepen-d5-evidence.md`）。
 
 ## 验证
 

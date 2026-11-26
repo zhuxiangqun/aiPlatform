@@ -156,6 +156,7 @@ rg -n 'classify_with_llm\(' --glob '*.py'
 2. ✅ §0.6.1 工程自评草稿已备（≠ 会签）。  
 3. ✅ 默关 `decision_shadow` 骨架合入（#616）+ status/try-enqueue 本机探测（§0.3.1）。  
 4. ✅ C6 《一键关闭演练》工程附页：[ollaya-decision-shadow-kill-switch.md](./ollaya-decision-shadow-kill-switch.md)。  
-5. staging/prod 部署后跑 collector 填真实窗口；负责人补全 0.1。  
-6. 召开 0.6 正式评审 → 书面批准后另批「挂 classify 钩子 + 开采样」。  
-7. **仅采样 Go 后** 才允许影子流量；**仅 1b 另案** 才谈替换 T3 / 省 token。
+5. ✅ 工程建议书：[ollaya-phase0-go-nogo-recommendation.md](./ollaya-phase0-go-nogo-recommendation.md)（**采样 No-Go**；骨架豁免维持）。  
+6. staging/prod 部署后跑 collector 填真实窗口；负责人补全 0.1。  
+7. 召开 0.6 正式评审 → 书面批准后另批「挂 classify 钩子 + 开采样」。  
+8. **仅采样 Go 后** 才允许影子流量；**仅 1b 另案** 才谈替换 T3 / 省 token。

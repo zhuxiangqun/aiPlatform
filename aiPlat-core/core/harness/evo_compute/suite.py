@@ -2105,3 +2105,113 @@ def evaluate_evo_compute_pso_baseline_gate(
         "production_write": False,
         "suite": s,
     }
+
+
+def run_evo_compute_production_deepen_slice5_suite() -> Dict[str, Any]:
+    """生产加深 D5：D1–D4 + PSO 工程轨收口；Gate 宣称恒 false。"""
+    from core.harness.evo_compute.deepen_closeout import (
+        collect_production_deepen_track_closeout,
+        evaluate_production_deepen_track_closeout,
+    )
+
+    cases: list = []
+    pack = collect_production_deepen_track_closeout(run_suites=True)
+    cases.append(
+        {
+            "id": "track_engineering_complete",
+            "pass": pack.get("track_engineering_complete") is True
+            and pack.get("g3_complete") is False
+            and pack.get("certified") is False
+            and pack.get("e2_claimed") is False
+            and pack.get("production_write") is False
+            and pack.get("production_traffic") is False,
+        }
+    )
+    slices = pack.get("slices") or {}
+    for key in ("d1", "d2", "d3", "d4", "pso"):
+        cases.append(
+            {
+                "id": f"slice_{key}_ok",
+                "pass": bool((slices.get(key) or {}).get("ok")),
+            }
+        )
+
+    # 注入 Gate 泄漏 → 收口拒
+    leaked = dict(pack.get("slice_detail") or {})
+    bad_d1 = dict(leaked.get("d1") or {})
+    bad_d1["g3_complete"] = True
+    denied = collect_production_deepen_track_closeout(
+        d1=bad_d1,
+        d2=leaked.get("d2"),
+        d3=leaked.get("d3"),
+        d4=leaked.get("d4"),
+        pso=leaked.get("pso"),
+        run_suites=False,
+    )
+    cases.append(
+        {
+            "id": "gate_claim_leak_blocks_closeout",
+            "pass": denied.get("track_engineering_complete") is False
+            and any(
+                "gate_claim_leak" in str(m)
+                for m in (denied.get("missing") or [])
+            ),
+        }
+    )
+
+    readiness = evaluate_production_deepen_track_closeout(pack)
+    cases.append(
+        {
+            "id": "readiness_ready_not_gate",
+            "pass": readiness.get("ok") is True
+            and readiness.get("ready") is True
+            and readiness.get("g3_complete") is False
+            and readiness.get("certified") is False,
+        }
+    )
+
+    passed = sum(1 for c in cases if c["pass"])
+    return {
+        "ok": passed == len(cases),
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+        "slice": "production-deepen-d5",
+        "track_engineering_complete": bool(pack.get("track_engineering_complete")),
+        "g1_foundation": True,
+        "g1_complete": False,
+        "g2_complete": False,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "production_traffic": False,
+        "pack": pack,
+        "note": "production deepen D5 track closeout; ≠ g*_complete / E2 / certified",
+    }
+
+
+def evaluate_evo_compute_production_deepen_slice5_gate(
+    suite: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """生产加深 D5 门槛门；complete/certified/e2 恒 false。
+
+    Args:
+        suite: ``run_evo_compute_production_deepen_slice5_suite`` 回执。
+    """
+    s = suite if suite is not None else run_evo_compute_production_deepen_slice5_suite()
+    ok = bool(s.get("ok")) and int(s.get("passed") or 0) == int(s.get("total") or -1)
+    return {
+        "ok": ok,
+        "passed": ok,
+        "track_engineering_complete": bool(s.get("track_engineering_complete")),
+        "g1_foundation": True,
+        "g1_complete": False,
+        "g2_complete": False,
+        "g3_complete": False,
+        "certified": False,
+        "e2_claimed": False,
+        "production_write": False,
+        "production_traffic": False,
+        "suite": s,
+    }

@@ -22229,6 +22229,61 @@ def evaluate_evo_compute_production_deepen_slice4_gate(
     return _gate(suite)
 
 
+def collect_evo_production_deepen_track_closeout(
+    *,
+    run_suites: bool = True,
+) -> dict:
+    """CoreFacade：组装 D5 生产加深轨收口包。
+
+    Args:
+        run_suites: 是否现场跑 D1–D4+PSO suite。
+    """
+    from core.harness.evo_compute.deepen_closeout import (
+        collect_production_deepen_track_closeout as _c,
+    )
+
+    return _c(run_suites=run_suites)
+
+
+def evaluate_evo_production_deepen_track_closeout(
+    pack: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：D5 收口就绪评估（ready ≠ Gate）。
+
+    Args:
+        pack: 预组装收口包。
+    """
+    from core.harness.evo_compute.deepen_closeout import (
+        evaluate_production_deepen_track_closeout as _e,
+    )
+
+    return _e(pack)
+
+
+def run_evo_compute_production_deepen_slice5_suite() -> dict:
+    """CoreFacade：生产加深 D5 套件。"""
+    from core.harness.evo_compute.suite import (
+        run_evo_compute_production_deepen_slice5_suite as _run,
+    )
+
+    return _run()
+
+
+def evaluate_evo_compute_production_deepen_slice5_gate(
+    suite: Optional[dict] = None,
+) -> dict:
+    """CoreFacade：生产加深 D5 门槛门。
+
+    Args:
+        suite: D5 suite 回执。
+    """
+    from core.harness.evo_compute.suite import (
+        evaluate_evo_compute_production_deepen_slice5_gate as _gate,
+    )
+
+    return _gate(suite)
+
+
 def run_evo_pso_offline(
     *,
     genome_id: str,

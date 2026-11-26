@@ -16,7 +16,8 @@ authority: supporting
 
 > **2026-08-25 复核增补**：①宪法测试**大部分已修复（现 1 失败）**——`test_import_graph_is_dag_between_layers` 检出 `aiPlat-platform/api/routers/channels.py:96` 导入 `aiPlat-app/channels/adapter.py`（platform→app 跨层导入，P1-A4 afac159c，2026-08-19 引入）；②§1.3 的 2 条真问题（meta_agent、wiring 测试）**均已闭环**——MetaAgent 已原生实现于 2026-08-18（P0-C7，1d2fb323）；③verify_capability_consumers 接线确认在 `.github/workflows/architecture-guard.yml:45` 与 `scripts/architecture_guard.sh` §73。pre-commit 框架未装（§5）与图索引漏检（§11）两处残余项不变。
 
-> **2026-11-26 clause-sync（pre-commit）**：§5「pre-commit 框架未安装」**关闭**。权威安装：`bash scripts/install_git_hooks.sh` → 薄包装 `.git/hooks/pre-commit` → 始终 `exec scripts/pre-commit-hook.sh`（与 `.pre-commit-config.yaml` 的 `aiplat-comprehensive` 同源）。可选 `pre-commit install` 亦走同一脚本。残余仅：规则自检黄金样本、图索引不含未提交新文件（§11）。
+> **2026-11-26 clause-sync（pre-commit）**：§5「pre-commit 框架未安装」**关闭**。权威安装：「bash scripts/install_git_hooks.sh」 → 薄包装 `.git/hooks/pre-commit` → 始终 「exec scripts/pre-commit-hook.sh」（与 `.pre-commit-config.yaml` 的 `aiplat-comprehensive` 同源）。可选 `pre-commit install` 亦走同一脚本。  
+> **2026-11-26 clause-sync（黄金样本）**：§8「规则自检黄金样本未建」**部分关闭**——`scripts/rule_golden_sample.py` 已接线 `architecture_guard.sh`（日常检查 1+2）；`--verify` 完整命中验证仍为可选慢路径/CI。残余增强：图索引不含未提交新文件（§11）。
 
 ---
 
@@ -28,9 +29,9 @@ authority: supporting
 | **是否合理（成本/收益）** | ✅ 合理 | 全量扫描秒级~分钟级，pre-commit 用 --quick 平衡；收益（防回归）> 成本 |
 | **是否完备（覆盖面）** | ⚠️ 部分完备 → ✅ **已补齐（2026-08-19 复核）** | 124 error 规则覆盖导入/职责/内核/接线等主维度；**能力登记双源已统一（351f816a：registry 1032 vs docs 1039，口径差异非缺失）**、verify_capability_consumers **已进 CI**（P1-B2） |
 | **是否已实现（接线生效）** | ✅ 基本实现 → ✅ **实现（2026-08-19 复核）** | 真实生效链：git hook → architecture_guard.sh → .py ratchet + 图索引 + evidence 验证；CI 有独立 job；verify_capability_consumers 已入 architecture-guard.yml:45 |
-| **如何运作** | 见 §5 执行链路图 | 多层：薄包装 git hook → `scripts/pre-commit-hook.sh`（+ 可选 pre-commit 框架）→ CI(全量) → capability_convergence |
+| **如何运作** | 见 §5 执行链路图 | 多层：薄包装 git hook → 「scripts/pre-commit-hook.sh」（+ 可选 pre-commit 框架）→ CI(全量) → capability_convergence |
 
-**一句话总结**：这套体系**真实存在、真实接线、真实能阻断**（不是文档口号），核心引擎（ArchYAMLRule + 图索引 + ratchet）设计合理；**2026-08-19 复核：首版发现的 1 个系统性检测 bug（12 条规则 OR 语法错误）已修复（93b7c25c），2 个接线缺口（verify_capability_consumers 未进 CI、能力登记数字不一致）均已闭环（P1-B2 进 CI / 351f816a 口径统一），宪法测试从 24 failed 修复为 143 passed 全绿**（2026-08-25 复核：大部分已修复，现 1 失败——`channels.py:96` 跨层导入，P1-A4 引入）。**2026-11-26**：pre-commit 安装路径已统一（`install_git_hooks.sh` / `.pre-commit-config.yaml`）。残余增强：规则自检黄金样本、图索引不含未提交新文件（§8/§11）。
+**一句话总结**：这套体系**真实存在、真实接线、真实能阻断**（不是文档口号），核心引擎（ArchYAMLRule + 图索引 + ratchet）设计合理；**2026-08-19 复核：首版发现的 1 个系统性检测 bug（12 条规则 OR 语法错误）已修复（93b7c25c），2 个接线缺口（verify_capability_consumers 未进 CI、能力登记数字不一致）均已闭环（P1-B2 进 CI / 351f816a 口径统一），宪法测试从 24 failed 修复为 143 passed 全绿**（2026-08-25 复核：大部分已修复，现 1 失败——`channels.py:96` 跨层导入，P1-A4 引入）。**2026-11-26**：pre-commit 安装路径已统一（「install_git_hooks.sh」 / `.pre-commit-config.yaml`）。残余增强：规则自检黄金样本、图索引不含未提交新文件（§8/§11）。
 
 ---
 
@@ -165,7 +166,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 ## 5. 执行链路（如何运作）——多层强制，但有双轨与缺口 → **2026-08-19 复核**
 
 > **2026-08-19 复核**：接线问题 2（CI 跑 DEPRECATED caller_verify.sh）**已解决**——CI wiring job 改为 verify_capability_consumers.sh（architecture-guard.yml:45，P1-B2）；接线问题 3（verify_capability_consumers 未接线）**已解决**（同上 + architecture_guard.sh:463）。接线问题 1（pre-commit 框架未安装）当时标残余。  
-> **2026-11-26 clause-sync**：接线问题 1 **关闭**——`scripts/install_git_hooks.sh` 安装薄包装 → `scripts/pre-commit-hook.sh`；`.pre-commit-config.yaml` 的 `aiplat-comprehensive` 同入口。执行链路现状如下。
+> **2026-11-26 clause-sync**：接线问题 1 **关闭**——`scripts/install_git_hooks.sh` 安装薄包装 → 「scripts/pre-commit-hook.sh」；`.pre-commit-config.yaml` 的 `aiplat-comprehensive` 同入口。执行链路现状如下。
 
 ```
 开发者 commit
@@ -183,7 +184,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 **执行链核心**：`architecture_guard.sh`（shell 聚合）→ 并行跑 `guard_ast_behavior.py` + `guard_frontend.py` + **`architecture_guard.py`（ratchet 主引擎）** + `capability_convergence.py` + `verify_claude_md_evidence.py` → 聚合 FAIL 计数 → 退出码阻断。
 
 **发现的接线问题（首版）→ 2026-08-19 复核状态**：
-1. **pre-commit 框架未安装** → **✅ 已关闭（2026-11-26）**：`install_git_hooks.sh` + `.pre-commit-config.yaml` → 同一 `scripts/pre-commit-hook.sh`
+1. **pre-commit 框架未安装** → **✅ 已关闭（2026-11-26）**：「install_git_hooks.sh」 + `.pre-commit-config.yaml` → 同一 「scripts/pre-commit-hook.sh」
 2. **CI 跑 `caller_verify.sh`**（architecture-guard.yml wiring job）但该脚本已标记 **DEPRECATED** → **✅ 已解决**：CI wiring job 改跑 verify_capability_consumers.sh（architecture-guard.yml:45）
 3. **verify_capability_consumers.sh 完全未接线**（既不在 hook 也不在 CI）→ **✅ 已解决（P1-B2）**：architecture-guard.yml:45 + architecture_guard.sh:463
 4. git hook 用 `--quick`（跳过非关键）——CI 才全量，本地防的是"快违规"（维持）
@@ -219,7 +220,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 | **P1** | 消除能力登记双源差：统一由 capability_registry 生成 CAPABILITIES 统计 | 1 天 | 两文件数字一致 | ✅ **已落地（351f816a，P0-C4）**：registry 1032 / docs 1039，口径统一（登记 vs 扫描） |
 | **P1** | verify_capability_consumers.sh 接入 CI（architecture-guard.yml wiring job）替代已废弃的 caller_verify.sh | 0.5 天 | CI wiring job 跑新脚本 | ✅ **已落地（P1-B2）**：architecture-guard.yml:45 + architecture_guard.sh:463 |
 | **P1** | 启用 verify_claude_md_evidence --strict | 0.5 天 | 存量补齐 verify 注释后开启 | ✅ **已落地（P1-B3）**：--strict 25 passed |
-| **P2** | 安装 pre-commit 框架使 .pre-commit-config.yaml 生效（或合并进手工 git hook） | 0.5 天 | 两套 hook 统一 | ✅ **已关闭（2026-11-26）**：`install_git_hooks.sh` + `.pre-commit-config.yaml` 同源 |
+| **P2** | 安装 pre-commit 框架使 .pre-commit-config.yaml 生效（或合并进手工 git hook） | 0.5 天 | 两套 hook 统一 | ✅ **已关闭（2026-11-26）**：「install_git_hooks.sh」 + `.pre-commit-config.yaml` 同源 |
 | **P2** | `--write-baseline` 增加 review 门禁（防滥用泄压阀） | 0.5 天 | baseline 变更需审批记录 | ✅ **已落地（P2-B2）**：--write-baseline review 门禁 |
 
 > **2026-08-19 复核总结**：7 项建议中 **6 项已落地**（P0×2、P1×3、P2×1），当时余 "pre-commit 框架"。  
@@ -238,7 +239,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
   - 宪法测试 24 failed → **143 passed + 1 skipped 全绿**（8c6a5154 宪法修复 + P0-A1/A3 收敛）——治理体系检测到的真违规**已全部修复**（**2026-08-25 复核：大部分已修复，现 1 失败**——新增违规 `channels.py:96` platform→app 跨层导入，P1-A4 afac159c 引入，体系仍能检出新增违规）
   - 能力登记双源差 → **已统一（351f816a）**：registry 1032 / docs 1039（口径差异非缺失）
   - verify_capability_consumers 未接线 → **已进 CI（P1-B2）**
-- ⚠️ **残余增强**：规则自检黄金样本未建、图索引不含未提交新文件（见 §8/§11）；pre-commit 安装路径 **已关闭（2026-11-26）**
+- ⚠️ **残余增强**：图索引不含未提交新文件（§11）；规则黄金样本日常检查 **已接线**（`rule_golden_sample.py`；`--verify` 仍可选）；pre-commit 安装路径 **已关闭（2026-11-26）**
 
 **最尖锐的发现（保留）**：一个自称"172 规则唯一工程化治理"的系统，其守卫**自己的 12 条规则曾因语法错误从未正确执行过**——"治理体系的自我治理"缺失（rules 无 schema 校验、无黄金样本测试）。**2026-08-19 复核：语法缺陷已修复（93b7c25c），但"规则自检机制"（每条 grep_required 规则用"肯定命中样本"验证可达性）仍未建立**——建议作为下一步治理债务跟进，否则治理体系仍可能重演"看似在治理，实则部分规则从未生效"。
 
@@ -384,7 +385,7 @@ pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
 
 | 报告的断言 | 受阴性盲区影响？ | 说明 |
 |---|---|---|
-| "治理体系真实存在、真实接线、真实能阻断" | ✅（2026-11-26） | 阻断能力已验证；hook 真源 `install_git_hooks.sh` → `pre-commit-hook.sh`（与 config 同源） |
+| "治理体系真实存在、真实接线、真实能阻断" | ✅（2026-11-26） | 阻断能力已验证；hook 真源 「install_git_hooks.sh」 → 「pre-commit-hook.sh」（与 config 同源） |
 | "12 条规则从未正确执行" | ❌ 无 | 直接复现，阳性结论 |
 | "宪法 24 项违规待修复" | ❌ 无 | 独立断言，阳性结论 |
 | "修复后误报消除、真问题浮出" | ❌ 无 | 修复前后守卫输出对比，阳性结论 |
