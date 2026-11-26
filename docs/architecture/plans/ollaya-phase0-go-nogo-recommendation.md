@@ -4,7 +4,7 @@ doc_id: OLLAYA_PHASE0_GO_NOGO_RECOMMENDATION
 status: recommendation
 authority: supporting
 created: 2026-11-26
-last_reviewed: 2026-11-26
+last_reviewed: 2026-11-27
 language: zh-CN
 purpose: 阶段 0 Go/No-Go 工程建议（≠ 正式会签；≠ 开采样）
 ---
@@ -12,9 +12,10 @@ purpose: 阶段 0 Go/No-Go 工程建议（≠ 正式会签；≠ 开采样）
 # Ollaya 阶段 0 · Go/No-Go 工程建议
 
 > 依据：`ollaya-decision-layer-implementation-plan.md` §0.7；证据包 `ollaya-phase0-baseline-evidence.md`。  
-> **性质**：工程建议书。**不是** 0.6 正式会签，**不是** 批准开采样 / 挂 classify / 进 1b。
+> **性质**：工程建议书。**不是** 0.6 正式会签，**不是** 批准开采样 / 挂 classify / 进 1b。  
+> Prep 单入口：`reports/architecture/human-gates/2026-11-27-prep-pack.md`。
 
-## 建议结论（2026-11-26）
+## 建议结论（2026-11-26 · 2026-11-27 维持）
 
 | 轨 | 建议 | 理由 |
 |----|------|------|
@@ -46,6 +47,7 @@ purpose: 阶段 0 Go/No-Go 工程建议（≠ 正式会签；≠ 开采样）
 | staging 窗口窄授权 | ✅ `reports/architecture/human-gates/ollaya-staging-window-authorize.approved.json` |
 | 日采 harness + Day-0 台账 | ✅ `scripts/ollaya_phase0_daily_collect.sh` + `ollaya-window-ledger.md`（**dev**；≠ staging Go） |
 | staging/prod 满窗 / C7 / C8 / 采样 Go | ☐ 仍待 |
+| 2026-11-27 Prep 单（可打印） | ✅ `reports/architecture/human-gates/ollaya-06-meeting-prep-sheet.md`；Day-1 日采 SKIP（core 离线） |
 
 ## 明确不交付
 

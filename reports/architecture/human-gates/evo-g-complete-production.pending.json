@@ -17,5 +17,7 @@
     "reports/architecture/evo-compute/production-deepen-d5-evidence.md",
     "docs/architecture/plans/aiplat-evolution-implementation-plan.md"
   ],
-  "note": "Pending. D5 track_engineering_complete ≠ g*_complete. Require live HUMAN_GATE 100%, production holdout, real Canary/rollback, then owner sign-off before any g*_complete production claim."
+  "refreshed_at": "2026-11-27",
+  "prep_sheet": "reports/architecture/human-gates/evo-g-complete-prep-sheet.md",
+  "note": "Pending. D5 track_engineering_complete ≠ g*_complete. Require live HUMAN_GATE 100%, production holdout, real Canary/rollback, then owner sign-off before any g*_complete production claim. 2026-11-27: g1/g2/g3 exit ready=false; certified/e2 false."
 }

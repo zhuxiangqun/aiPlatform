@@ -19,5 +19,7 @@
     "reports/products/knowledge-system/v4.3.1/pilot-slo-attainment-approval-record.approved.json",
     "reports/products/knowledge-system/v4.3.1/phase2-slo-attainment-window-evidence.md"
   ],
-  "note": "Pending. Do not flip Full to unconditional until production SLO window meets targets + independent non-author confirmation. SLO-only approval must not be reused as Full unconditional."
+  "refreshed_at": "2026-11-27",
+  "prep_sheet": "reports/architecture/human-gates/ks-full-unconditional-prep-sheet.md",
+  "note": "Pending. Do not flip Full to unconditional until production SLO window meets targets + independent non-author confirmation. SLO-only approval must not be reused as Full unconditional. 2026-11-27 remeasure: attainment_ok=false wiring_ok=false certified=false."
 }

@@ -4,16 +4,17 @@ doc_id: OLLAYA_PHASE0_06_SIGNOFF_PACK
 status: active
 authority: supporting
 created: 2026-11-26
-last_reviewed: 2026-11-26
+last_reviewed: 2026-11-27
 language: zh-CN
 purpose: Ollaya 0.6 正式会签执行包（≠ 采样 Go；≠ 挂 classify）
 ---
 
 # Ollaya 阶段 0 · 0.6 正式会签包
 
-> 触发：对话「你帮我做吧」（2026-11-26）。  
+> 触发：对话「你帮我做吧」（2026-11-26）；Prep 单续 `[2026-11-27-prep-pack.md](../../../reports/architecture/human-gates/2026-11-27-prep-pack.md)`。  
 > 依据：`ollaya-phase0-baseline-evidence.md` §0.6–0.7；`ollaya-phase0-go-nogo-recommendation.md`。  
-> **性质**：会签筹备与窄授权执行包。**不是** 采样 Go，**不是** 挂 classify，**不是** 进 1b。
+> **性质**：会签筹备与窄授权执行包。**不是** 采样 Go，**不是** 挂 classify，**不是** 进 1b。  
+> 可打印 Prep：`reports/architecture/human-gates/ollaya-06-meeting-prep-sheet.md`。
 
 ## 1. 今日窄批准（已记录）
 
