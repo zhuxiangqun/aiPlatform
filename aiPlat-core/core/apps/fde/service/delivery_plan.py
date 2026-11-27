@@ -415,11 +415,23 @@ def refresh_delivery_plan_progress(
     return plan
 
 
+def _normalize_source_kind(kind: Optional[str]) -> str:
+    """规范化需求来源：paste | upload。
+
+    Args:
+        kind: 调用方传入的来源标记。
+    """
+    k = (kind or "paste").strip().lower()
+    return "upload" if k in ("upload", "file", "upload_file") else "paste"
+
+
 def _instantiate_skeleton(
     customer_namespace: str,
     title: str,
     requirement_text: str,
     delivery_type: str,
+    source_kind: str = "paste",
+    source_filename: str = "",
 ) -> Dict[str, Any]:
     """由骨架实例化计划（未填 LLM）。
 
@@ -428,6 +440,8 @@ def _instantiate_skeleton(
         title: 计划标题。
         requirement_text: 需求（仅用于 hash）。
         delivery_type: new_domain|standard。
+        source_kind: paste 或 upload。
+        source_filename: 上传文件名（仅元数据，不存原文）。
     """
     sk = load_delivery_plan_skeleton()
     phases: List[Dict[str, Any]] = []
@@ -455,15 +469,20 @@ def _instantiate_skeleton(
                 "steps": steps,
             }
         )
+    kind = _normalize_source_kind(source_kind)
+    fname = (source_filename or "").strip()[:200]
+    source: Dict[str, Any] = {
+        "kind": kind,
+        "title": title or "未命名交付计划",
+        "text_sha256": _sha256_text(requirement_text),
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    if kind == "upload" and fname:
+        source["filename"] = fname
     plan = {
         "plan_id": str(uuid.uuid4()),
         "customer_namespace": customer_namespace,
-        "source": {
-            "kind": "paste",
-            "title": title or "未命名交付计划",
-            "text_sha256": _sha256_text(requirement_text),
-            "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        },
+        "source": source,
         "summary": {
             "delivery_type": delivery_type,
             "phase0_days": 7,
@@ -633,6 +652,8 @@ async def generate_delivery_plan(
     requirement_text: str,
     title: str = "",
     pipeline_snapshot: Optional[Dict[str, Any]] = None,
+    source_kind: str = "paste",
+    source_filename: str = "",
 ) -> Dict[str, Any]:
     """生成交付计划：骨架 + LLM 填空；LLM 失败仍返回骨架。
 
@@ -641,6 +662,8 @@ async def generate_delivery_plan(
         requirement_text: 需求文本（当次请求，不落盘原文）。
         title: 计划标题。
         pipeline_snapshot: 当前 pipeline 布尔快照。
+        source_kind: 需求来源 paste|upload。
+        source_filename: 上传文件名（元数据）。
 
     Returns:
         含 ``llm_ok`` / 可选 ``llm_error`` 的 plan。
@@ -651,7 +674,14 @@ async def generate_delivery_plan(
         raise ValueError("requirement_text too short (min 20 chars)")
 
     delivery_type = _heuristic_delivery_type(text)
-    plan = _instantiate_skeleton(ns, title.strip(), text, delivery_type)
+    plan = _instantiate_skeleton(
+        ns,
+        title.strip(),
+        text,
+        delivery_type,
+        source_kind=source_kind,
+        source_filename=source_filename,
+    )
 
     fill, err = await _llm_fill(ns, title.strip(), text)
     if fill:

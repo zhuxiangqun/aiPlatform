@@ -50,6 +50,8 @@ async def generate_delivery_plan(req: DeliveryPlanGenerateRequest) -> FdeItemRes
             requirement_text=text,
             title=(req.title or "").strip(),
             pipeline_snapshot=_snapshot_dict(req.pipeline_snapshot),
+            source_kind=(req.source_kind or "paste").strip(),
+            source_filename=(req.source_filename or "").strip(),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
