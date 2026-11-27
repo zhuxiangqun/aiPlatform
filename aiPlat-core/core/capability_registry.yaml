@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3614
+total_capabilities: 3632
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -7194,7 +7194,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 375
+    caps_count: 393
     provides:
       - symbol: "finalize_agent_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -8687,6 +8687,78 @@ domains:
         type: function
         signature: '读取已存计划。'
         module: aiPlat-core/core/apps/fde/service/delivery_plan.py
+      - symbol: purpose_bind_enabled
+        type: function
+        signature: '顾问是否允许读取已批准的 purpose 绑定。'
+        module: aiPlat-core/core/harness/digital_human/consultant_purpose_bind.py
+      - symbol: load_purpose_bind
+        type: function
+        signature: '读取绑定回执；无文件返回 None。'
+        module: aiPlat-core/core/harness/digital_human/consultant_purpose_bind.py
+      - symbol: purpose_bind_brief_line
+        type: function
+        signature: '简报一行。'
+        module: aiPlat-core/core/harness/digital_human/consultant_purpose_bind.py
+      - symbol: default_consultant_holdout_cases
+        type: function
+        signature: '顾问冻结 holdout：心智种子题（结构完整性，非模型打分）。'
+        module: aiPlat-core/core/harness/digital_human/consultant_sft_gate.py
+      - symbol: sharegpt_to_messages_jsonl
+        type: function
+        signature: 'ShareGPT conversations → OpenAI-style messages JSONL（DatasetManager 校验格式）。'
+        module: aiPlat-core/core/harness/digital_human/consultant_sft_loop.py
+      - symbol: count_curated_in_export
+        type: function
+        signature: '统计策展导出文件样本数。'
+        module: aiPlat-core/core/harness/digital_human/consultant_sft_loop.py
+      - symbol: propose_knowledge_evolve
+        type: function
+        signature: '知识案例 → knowledge_evolve 待批。'
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+      - symbol: propose_eval_coverage
+        type: function
+        signature: '评测覆盖缺口 → eval_coverage 待批。'
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+      - symbol: propose_fde_evolve
+        type: function
+        signature: 'FDE 证据/自演进草稿 → fde_evolve 待批。'
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+      - symbol: load_inventory_file
+        type: function
+        signature: '读 ~/.aiplat/digital_human/{name}.json 库存（covered/required）。'
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+      - symbol: apply_domain_evolution_proposal
+        type: function
+        signature: '有界应用三域提案（回执 + 知识域尽力 enqueue，仍 auto_apply=false）。'
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+      - symbol: domain_evolution_brief_line
+        type: function
+        signature: '简报：三域待批提案计数。'
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+      - symbol: get_evolution_proposal
+        type: function
+        signature: '按 id 取提案。'
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+      - symbol: pending_human_gate_count
+        type: function
+        signature: '待人工批准的提案数。'
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+      - symbol: evolution_proposals_brief_line
+        type: function
+        signature: '简报一行：待批进化提案。'
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+      - symbol: parse_evolution_decide_utterance
+        type: function
+        signature: '解析「批准第N条 / 拒绝第N条 / 批准 <id>」。'
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+      - symbol: evo_pilot_candidates_brief_line
+        type: function
+        signature: '简报：evo 台账生产路径候选 + 小朱 pilot 待批。'
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+      - symbol: try_handle_evolution_utterance
+        type: function
+        signature: '若用户话是批准/拒绝指令则处理并返回口述结果，否则 None。'
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
