@@ -219,15 +219,15 @@ flowchart LR
 
 目标：小朱像「可见的进化生命体」——能说清学了什么、待批什么；**不是**生产无门禁自主改核心。
 
-**五域机读目标**（`evolution_goals.py`，简报一行「五域进化目标」）：
+**五域机读目标**（`evolution_goals.py`，简报一行「五域进化目标」；管理端显示中文 title/description）：
 
-| goal_id | 达标 |
-|---|---|
-| `consultant.sft_quality.v1` | 好评率≥0.7 且样本够 + 结构 holdout（AND） |
-| `eval.coverage.v1` | 覆盖率≥0.90 |
-| `fde.evidence.v1` | 证据覆盖≥0.95 |
-| `knowledge.case_fitness.v1` | mean(reward_ema)≥0.8 且待批不过堆积 |
-| `evo.pilot_sandbox.v1` | 三试点均有可回放候选（≠生产最优） |
+| 可读名 | goal_id | 达标 |
+|---|---|---|
+| 小朱答得怎么样 | `consultant.sft_quality.v1` | 好评率≥0.7 且样本够 + 结构 holdout（AND） |
+| 该测的能力测全了没 | `eval.coverage.v1` | 覆盖率≥0.90 |
+| 交付清单做到哪了 | `fde.evidence.v1` | 证据覆盖≥0.95 |
+| 沉淀的经验靠谱吗 | `knowledge.case_fitness.v1` | mean(reward_ema)≥0.8 且待批不过堆积 |
+| 试点试验准备好了没 | `evo.pilot_sandbox.v1` | 三试点均有可回放候选（≠生产最优） |
 
 提案 payload 挂 `goal_id` + `goal_progress`；`e5_claimed` 恒 false。
 

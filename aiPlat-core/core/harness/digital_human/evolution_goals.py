@@ -54,6 +54,11 @@ def _goal_specs() -> Dict[str, Dict[str, Any]]:
         GOAL_CONSULTANT_SFT: {
             "goal_id": GOAL_CONSULTANT_SFT,
             "domain": "consultant",
+            "title": "小朱答得怎么样",
+            "description": (
+                "看大家给小朱回答的好评够不够；样本够且好评过线后，"
+                "才考虑用这些对话去做「精调训练」提案（仍要人批，不会偷偷改线上选模）。"
+            ),
             "metric": "good_rate",
             "threshold": CONSULTANT_GOOD_RATE_THRESHOLD,
             "how_measured": "trajectories quality good/(good+bad); AND structural holdout",
@@ -67,6 +72,11 @@ def _goal_specs() -> Dict[str, Dict[str, Any]]:
         GOAL_EVAL_COVERAGE: {
             "goal_id": GOAL_EVAL_COVERAGE,
             "domain": "eval",
+            "title": "该测的能力测全了没",
+            "description": (
+                "对照「该覆盖的能力清单」，已经测到的占比。"
+                "偏低说明还有大片能力没验过，不适合宣称评测已闭环。"
+            ),
             "metric": "coverage",
             "threshold": float(EVAL_THRESHOLD),
             "how_measured": "eval_inventory covered_ids/required_ids",
@@ -76,6 +86,11 @@ def _goal_specs() -> Dict[str, Dict[str, Any]]:
         GOAL_FDE_EVIDENCE: {
             "goal_id": GOAL_FDE_EVIDENCE,
             "domain": "fde",
+            "title": "交付清单做到哪了",
+            "description": (
+                "对照客户交付步骤清单，已有证据/已完成的步骤占比。"
+                "偏低说明现场交付证据还不齐，不是「系统已全自动交付」。"
+            ),
             "metric": "coverage",
             "threshold": float(FDE_THRESHOLD),
             "how_measured": "delivery_plan skeleton steps done vs required",
@@ -85,6 +100,11 @@ def _goal_specs() -> Dict[str, Dict[str, Any]]:
         GOAL_KNOWLEDGE_FITNESS: {
             "goal_id": GOAL_KNOWLEDGE_FITNESS,
             "domain": "knowledge",
+            "title": "沉淀的经验靠谱吗",
+            "description": (
+                "看高价值知识案例的平均质量，以及待审案例会不会堆太多。"
+                "偏低或「还缺数据」时，说明经验库还撑不起自动入图。"
+            ),
             "metric": "mean_reward_ema",
             "threshold": KNOWLEDGE_FITNESS_THRESHOLD,
             "how_measured": "mean reward_ema of high-reward cases; pending backlog alert",
@@ -94,6 +114,11 @@ def _goal_specs() -> Dict[str, Dict[str, Any]]:
         GOAL_EVO_PILOT: {
             "goal_id": GOAL_EVO_PILOT,
             "domain": "evo_pilot",
+            "title": "试点试验准备好了没",
+            "description": (
+                "三个试点配置是否都有可回放的候选方案。"
+                "只在沙箱里试，默认不会接到全局线上路由；达标 ≠ 生产最优。"
+            ),
             "metric": "pilot_ready_ratio",
             "threshold": 1.0,
             "how_measured": "3 pilot genomes each have HUMAN_GATE|APPROVED|APPLIED proposal",
@@ -385,6 +410,20 @@ _MEASURE_FN = {
 }
 
 
+def _human_label_fields(goal_id: str) -> Dict[str, Any]:
+    """附带管理端可读的中文标题与说明（机读 id 仍保留）。
+
+    Args:
+        goal_id: 五域 goal id。
+    """
+    spec = get_evolution_goal(goal_id) or {}
+    return {
+        "domain": spec.get("domain"),
+        "title": spec.get("title") or goal_id,
+        "description": spec.get("description") or "",
+    }
+
+
 def measure_evolution_goal(goal_id: str) -> Dict[str, Any]:
     """测量单域目标进度。
 
@@ -395,6 +434,7 @@ def measure_evolution_goal(goal_id: str) -> Dict[str, Any]:
         value/meets/evidence + 诚实锁字段；未知 id 时 ok=false。
     """
     gid = (goal_id or "").strip()
+    labels = _human_label_fields(gid)
     fn = _MEASURE_FN.get(gid)
     if not fn:
         return {
@@ -402,11 +442,15 @@ def measure_evolution_goal(goal_id: str) -> Dict[str, Any]:
             "goal_id": gid,
             "reason": "unknown_goal_id",
             "meets": False,
+            **labels,
             **_base_honesty(),
         }
     try:
         row = fn()
         row["measured_at"] = int(time.time())
+        # 测量函数可能未带 title；统一补齐可读字段
+        for k, v in labels.items():
+            row.setdefault(k, v)
         return row
     except Exception as e:
         logger.debug("measure %s failed", gid, exc_info=True)
@@ -416,6 +460,7 @@ def measure_evolution_goal(goal_id: str) -> Dict[str, Any]:
             "reason": f"measure_failed:{e}",
             "value": 0.0,
             "meets": False,
+            **labels,
             **_base_honesty(),
         }
 

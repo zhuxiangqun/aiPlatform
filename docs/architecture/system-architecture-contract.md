@@ -8,7 +8,7 @@ scope_in: management/app/platform/core/infra 跨层边界与 MUST 契约
 scope_out: 层内实现细节、业务 SOP、生成白皮书
 owner: 朱向群
 version: 2.4
-last_reviewed: 2026-11-27
+last_reviewed: 2026-11-28
 review_cycle: 90d
 ---
 
@@ -20,6 +20,7 @@ review_cycle: 90d
 > 全景摘要见 [`overview.md`](./overview.md)（非规范）；层边界判定见 [`boundary-standard.md`](./boundary-standard.md)。
 
 > 2026-11-12：Wiki router 的 F821 导入修复，不改变跨层运行时契约。
+> 2026-11-28：自进化状态五域目标增加可读 title/description（`evolution_goals` + EvolutionStatus UI）；不改变 run_id/trace_id/request_id、鉴权透传或生产选模语义。`clause-sync`
 > 2026-11-27：小朱/五域自进化状态台账（`digital_human/evolution_*` + `/diagnostics/evolution-status` + 有界 rollback）；HUMAN_GATE 本地 jsonl，不改变 run_id/trace_id/request_id、鉴权透传或生产选模语义。`clause-sync`
 > 2026-11-14：Python 可读性注释/docstring 全仓清零（含 platform auth/tenant/gateway 与 core harness），不改变跨层运行时契约、鉴权透传或 run/trace 语义。`clause-sync`
 > 2026-11-14：文档诚实对齐——平台对外仅为 REST（GraphQL/平台 WS 未实现）；MCP 仅在 core；FDEBuilderOrchestrator 已归档。不改变跨层运行时契约。`clause-sync`
