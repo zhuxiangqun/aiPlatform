@@ -24,6 +24,8 @@ def test_list_five_goals(monkeypatch, tmp_path):
     for r in rows:
         assert r.get("auto_apply") is False
         assert "non_goals" in r
+        assert str(r.get("title") or "").strip()
+        assert str(r.get("description") or "").strip()
 
 
 def test_measure_all_honesty(monkeypatch, tmp_path):
@@ -37,6 +39,8 @@ def test_measure_all_honesty(monkeypatch, tmp_path):
     for g in snap["goals"]:
         assert g.get("e5_claimed") is False
         assert g.get("feeds_production_routing") is False
+        assert str(g.get("title") or "").strip()
+        assert g.get("goal_id")
 
 
 def test_curated_good_rate(monkeypatch, tmp_path):

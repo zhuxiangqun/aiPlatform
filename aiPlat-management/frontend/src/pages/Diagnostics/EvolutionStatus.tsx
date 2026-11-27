@@ -15,6 +15,7 @@ type GoalRow = {
   goal_id?: string;
   domain?: string;
   title?: string;
+  description?: string;
   meets?: boolean | null;
   value?: number | string | null;
   baseline_missing?: boolean;
@@ -170,7 +171,13 @@ const EvolutionStatus: React.FC = () => {
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-slate-300">五域目标进度</h2>
+        <div>
+          <h2 className="text-sm font-medium text-slate-300">五域目标进度</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            五域 = 小朱自进化盯的 5 件事（答得好不好、测全没、交付齐没、经验靠谱吗、试点备好没）。
+            「还缺数据」表示样本/库存不够，先补材料再看进度。
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {goals.length === 0 && (
             <Card>
@@ -182,27 +189,32 @@ const EvolutionStatus: React.FC = () => {
           {goals.map((g) => (
             <Card key={g.goal_id || g.title}>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-slate-200 truncate">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-sm font-medium text-slate-100 leading-snug">
                     {g.title || g.goal_id || '目标'}
                   </span>
                   {g.meets === true ? (
                     <Badge variant="success">达标</Badge>
                   ) : g.baseline_missing ? (
-                    <Badge variant="warning">缺测</Badge>
+                    <Badge variant="warning">还缺数据</Badge>
                   ) : (
                     <Badge variant="default">未达标</Badge>
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="text-xs text-slate-400 space-y-1">
-                <div>id：{g.goal_id || '—'}</div>
+              <CardContent className="text-xs text-slate-400 space-y-2">
+                {g.description ? (
+                  <p className="text-slate-400 leading-relaxed">{g.description}</p>
+                ) : null}
                 <div>
-                  数值：{g.value == null ? '—' : String(g.value)}
-                  {g.threshold != null ? ` / 阈值 ${g.threshold}` : ''}
+                  当前进度：{g.value == null ? '—' : String(g.value)}
+                  {g.threshold != null ? `（达标线 ≥ ${g.threshold}）` : ''}
                 </div>
                 <div>更新：{fmtTs(g.measured_at)}</div>
-                {g.reason ? <div className="truncate">{g.reason}</div> : null}
+                {g.reason ? <div className="text-amber-400/90">{g.reason}</div> : null}
+                <div className="text-[11px] text-slate-600 font-mono truncate" title={g.goal_id}>
+                  机读 id：{g.goal_id || '—'}
+                </div>
               </CardContent>
             </Card>
           ))}

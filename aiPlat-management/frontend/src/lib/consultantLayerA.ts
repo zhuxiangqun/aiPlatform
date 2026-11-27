@@ -74,8 +74,14 @@ export const EVOLUTION_STATUS_GLOSSARY: Gloss[] = [
   {
     term: '自进化状态',
     aliases: ['/diagnostics/evolution-status', '进化台账'],
-    meaning: '五域目标+小朱提案时间线；待批可拒、已应用可有界回滚；不是 FDE 演进 Tab，也不宣称 E5',
+    meaning:
+      '五域=答得好不好/测全没/交付齐没/经验靠谱吗/试点备好没；待批可拒、已应用可有界回滚；不宣称 E5、不改线上选模',
   },
+  { term: '小朱答得怎么样', aliases: ['consultant.sft_quality.v1'], meaning: '好评够不够；够了才考虑精调训练提案（仍要人批）' },
+  { term: '该测的能力测全了没', aliases: ['eval.coverage.v1'], meaning: '能力清单已测到的占比' },
+  { term: '交付清单做到哪了', aliases: ['fde.evidence.v1'], meaning: '客户交付步骤证据/完成占比' },
+  { term: '沉淀的经验靠谱吗', aliases: ['knowledge.case_fitness.v1'], meaning: '高价值知识案例质量与待审堆积' },
+  { term: '试点试验准备好了没', aliases: ['evo.pilot_sandbox.v1'], meaning: '三试点是否都有沙箱可回放候选（≠生产最优）' },
   { term: 'pendingCount', aliases: ['待批数'], meaning: 'HUMAN_GATE 待批提案数' },
   { term: 'appliedCount', aliases: ['已应用数'], meaning: '已 APPLIED、可回滚的提案数' },
   { term: 'goalMetCount', aliases: ['达标目标'], meaning: '当前测量达标的五域目标数' },
