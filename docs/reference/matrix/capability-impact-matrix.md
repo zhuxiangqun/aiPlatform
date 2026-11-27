@@ -8,7 +8,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3576 capabilities (caps_count) | 3576 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3582 capabilities (caps_count) | 3582 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -60,7 +60,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 338 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 344 | Agent REST 端点 |
 
 ### core/api/routers/diagnostics.py
 
@@ -142,7 +142,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
 | management-and-quality | §二十五 管理 & 质量 | 119 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
-| agent-system | §五 Agent 系统 | 338 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 344 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
@@ -287,7 +287,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/apps/agents/discovery.py** — AgentDiscovery 实现/导出
 - **core/api/core_facade.py** — CoreFacade 再导出 A2A 能力
 
-### §五 Agent 系统 (338 caps)
+### §五 Agent 系统 (344 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 调度 Agent
 - **core/api/routers/agents.py** — Agent REST 端点

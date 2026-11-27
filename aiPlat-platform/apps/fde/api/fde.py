@@ -118,6 +118,11 @@ try:
 except ImportError:
     pass  # noqa: optional-dependency
 try:
+    from .fde_delivery_plan import router as _delivery_plan_router
+    router.include_router(_delivery_plan_router)
+except ImportError:
+    pass  # noqa: optional-dependency
+try:
     from .fde_sessions_v2 import router as _sessions_v2_router
     router.include_router(_sessions_v2_router)
 except ImportError:
