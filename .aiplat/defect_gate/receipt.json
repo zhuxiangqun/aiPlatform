@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-27T23:50:20+08:00",
+  "reviewed_at": "2026-11-28T00:31:51+08:00",
   "base_ref": "origin/main",
-  "merge_base": "d9d04d009e8b73b973bb3db7e52b77570c434d06",
-  "diff_sha256": "8fc893877b84402cfa4b8c8ebef365d93903d121198947be7b93cb37b56d7afc",
-  "head_sha": "f7e81161847f8da5b052d2472464da9f945a6117",
+  "merge_base": "aefb32ea2bbf36cac28e628449c77b4d86a4f537",
+  "diff_sha256": "c3196e7a371c963957985471ecbb0128836ac884e0494af1cd678712b90a74a8",
+  "head_sha": "ff55eb80dc9b595caa5d1823428b3884f4e7aad2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Bridge test facade mocks + whitepaper sync. Local lock only."
+  "note": "Five-goal Chinese title/description on evolution status; research-doc freshness bump. Local lock only."
 }
