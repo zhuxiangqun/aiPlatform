@@ -85,7 +85,7 @@ def knowledge_target_state_summary(
 def propose_from_low_rated_trajectories(
     *,
     limit: int = 5,
-    tenant_id: str = "default",
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """扫描低好评轨迹，自动生成 seed_qa 待批（有 user 问句时）。
 

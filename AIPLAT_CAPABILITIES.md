@@ -2667,6 +2667,9 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| knowledge_target_state_summary | `core/harness/digital_human/evolution_optimize.py` | ✅ | 自动同步 | 已合入 |
+| measure_curated_feedback_rate | `core/harness/digital_human/evolution_goals.py` | ✅ | 自动同步 | 已合入 |
+| get_evolution_goal | `core/harness/digital_human/evolution_goals.py` | ✅ | 自动同步 | 已合入 |
 | try_handle_evolution_utterance | `core/harness/digital_human/evolution_proposals.py` | ✅ | 自动同步 | 已合入 |
 | parse_evolution_decide_utterance | `core/harness/digital_human/evolution_proposals.py` | ✅ | 自动同步 | 已合入 |
 | evolution_proposals_brief_line | `core/harness/digital_human/evolution_proposals.py` | ✅ | 自动同步 | 已合入 |

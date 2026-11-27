@@ -152,9 +152,7 @@ def _pick_provider():
 
 
 def _resolve_base_model() -> str:
-    env = (os.getenv("AIPLAT_DH_SFT_BASE_MODEL") or "").strip()
-    if env:
-        return env
+    """解析微调基座模型：只走 best_model_for_purpose（禁止硬编码/直读 MODEL env）。"""
     try:
         from core.harness.utils.model_injection import best_model_for_purpose
 
@@ -163,7 +161,7 @@ def _resolve_base_model() -> str:
             return str(m).strip()
     except Exception:
         logger.debug("base model resolve failed", exc_info=True)
-    return "deepseek-chat"
+    return ""
 
 
 def maybe_submit_digital_human_sft(
@@ -301,6 +299,9 @@ def maybe_submit_digital_human_sft(
 
         imported = ds_mgr.import_jsonl(dataset_id, messages_jsonl)
         base_model = _resolve_base_model()
+        if not base_model:
+            result["reason"] = "no_base_model"
+            return result
         ts = time.strftime("%Y%m%d%H%M")
         job = job_mgr.create(
             JobCreateRequest(

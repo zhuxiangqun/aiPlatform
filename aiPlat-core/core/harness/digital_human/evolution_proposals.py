@@ -144,7 +144,7 @@ def create_evolution_proposal(
     title: str,
     summary: str = "",
     payload: Optional[Dict[str, Any]] = None,
-    tenant_id: str = "default",
+    tenant_id: str = "",
     session_id: str = "",
     status: str = STATUS_HUMAN_GATE,
 ) -> Dict[str, Any]:
@@ -197,7 +197,7 @@ def maybe_propose_from_feedback(
     *,
     rating: str,
     correction: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = "",
     session_id: str = "",
 ) -> Dict[str, Any]:
     """反馈后 best-effort 写入提案（纠偏→seed_qa；有用→habit_promotion 可选）。
@@ -543,7 +543,7 @@ def maybe_propose_purpose_bind(
     model: str = "",
     purpose: str = "auto",
     source_proposal_id: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = "",
     session_id: str = "",
 ) -> Dict[str, Any]:
     """在 sft_promote 通过后创建 purpose_bind 待批（防抖同 job）。
@@ -587,7 +587,7 @@ def maybe_propose_purpose_bind(
 
 def propose_purpose_bind_from_latest(
     *,
-    tenant_id: str = "default",
+    tenant_id: str = "",
     session_id: str = "",
 ) -> Dict[str, Any]:
     """从最近 APPLIED 的 sft_promote 或 SFT 状态文件申请 purpose_bind。
@@ -722,7 +722,7 @@ def propose_pilot_config(
     summary: str = "",
     candidate_id: str = "",
     skill_name: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = "",
     session_id: str = "",
 ) -> Dict[str, Any]:
     """为 evo 三试点之一创建 pilot_config 待批提案。
@@ -783,7 +783,7 @@ def propose_pilot_config(
     )
 
 
-def ensure_pilot_config_proposals(*, tenant_id: str = "default") -> Dict[str, Any]:
+def ensure_pilot_config_proposals(*, tenant_id: str = "") -> Dict[str, Any]:
     """确保三试点各有一条待批或已存在提案（幂等）。
 
     Args:

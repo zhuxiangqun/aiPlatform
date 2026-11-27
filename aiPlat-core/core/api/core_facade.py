@@ -22667,7 +22667,7 @@ def create_digital_human_evolution_proposal(
     title: str,
     summary: str = "",
     payload: dict | None = None,
-    tenant_id: str = "default",
+    tenant_id: str = "",
     session_id: str = "",
     status: str = "HUMAN_GATE",
 ):
@@ -22753,7 +22753,7 @@ def propose_digital_human_pilot_config(
     genome_id: str,
     title: str = "",
     summary: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = "",
     session_id: str = "",
 ):
     """为 evo 三试点创建 pilot_config 待批提案。
@@ -22774,7 +22774,7 @@ def propose_digital_human_pilot_config(
     )
 
 
-def ensure_digital_human_pilot_proposals(*, tenant_id: str = "default"):
+def ensure_digital_human_pilot_proposals(*, tenant_id: str = ""):
     """幂等确保三试点各有待批提案。
 
     Args:
@@ -22803,7 +22803,7 @@ def propose_digital_human_purpose_bind(
     model: str = "",
     purpose: str = "auto",
     source_proposal_id: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = "",
     session_id: str = "",
     from_latest: bool = False,
 ):
@@ -22852,7 +22852,7 @@ def scan_digital_human_domain_evolution(
     knowledge_cases: list | None = None,
     include_evolver_snapshot: bool = True,
     use_fixtures_if_empty: bool = False,
-    tenant_id: str = "default",
+    tenant_id: str = "",
 ):
     """扫描 FDE/评测/知识缺口并写入 HUMAN_GATE 提案。
 
@@ -22924,7 +22924,7 @@ def measure_digital_human_evolution_goals():
     return measure_all_evolution_goals()
 
 
-def propose_digital_human_low_rated_seeds(*, limit: int = 5, tenant_id: str = "default"):
+def propose_digital_human_low_rated_seeds(*, limit: int = 5, tenant_id: str = ""):
     """从低好评轨迹生成 seed_qa 待批草稿。
 
     Args:

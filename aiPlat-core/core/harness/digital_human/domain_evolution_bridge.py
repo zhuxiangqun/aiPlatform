@@ -65,7 +65,7 @@ def propose_knowledge_evolve(
     domain_id: str = "",
     reward_ema: float = 0.0,
     note: str = "",
-    tenant_id: str = "default",
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """知识案例 → knowledge_evolve 待批。
 
@@ -124,7 +124,7 @@ def propose_eval_coverage(
     missing_ids: Optional[Sequence[str]] = None,
     baseline_missing: bool = False,
     source: str = "scan",
-    tenant_id: str = "default",
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """评测覆盖缺口 → eval_coverage 待批。
 
@@ -187,7 +187,7 @@ def propose_fde_evolve(
     coverage: Optional[float] = None,
     baseline_missing: bool = False,
     missing_ids: Optional[Sequence[str]] = None,
-    tenant_id: str = "default",
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """FDE 证据/自演进草稿 → fde_evolve 待批。
 
@@ -596,7 +596,7 @@ def scan_domain_evolution_proposals(
     knowledge_cases: Optional[Sequence[Dict[str, Any]]] = None,
     include_evolver_snapshot: bool = True,
     use_fixtures_if_empty: bool = False,
-    tenant_id: str = "default",
+    tenant_id: str = "",
 ) -> Dict[str, Any]:
     """扫描三域并幂等写入待批提案。
 
