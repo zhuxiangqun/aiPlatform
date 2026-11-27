@@ -149,7 +149,7 @@ def test_refresh_eval_inventory_from_capability(monkeypatch, tmp_path):
         }
 
     monkeypatch.setattr(
-        "core.apps.eval.service.capability_coverage_fill.analyze_capability_coverage",
+        "core.api.core_facade.eval_analyze_capability_coverage",
         fake_analyze,
     )
     r = refresh_domain_inventories(persist=True)
@@ -188,7 +188,7 @@ def test_build_fde_inventory_from_delivery_plans(monkeypatch, tmp_path):
         }
 
     monkeypatch.setattr(
-        "core.apps.fde.service.delivery_plan.load_delivery_plan_skeleton",
+        "core.api.core_facade.load_fde_delivery_plan_skeleton",
         fake_skel,
     )
     plans = tmp_path / "fde_delivery_plans"
@@ -229,7 +229,7 @@ def test_build_fde_inventory_from_delivery_plans(monkeypatch, tmp_path):
         return {"ok": True, "gaps": [{"capability_id": "cap.x", "ok": False}]}
 
     monkeypatch.setattr(
-        "core.apps.eval.service.capability_coverage_fill.analyze_capability_coverage",
+        "core.api.core_facade.eval_analyze_capability_coverage",
         fake_analyze,
     )
     r = refresh_domain_inventories(persist=True)

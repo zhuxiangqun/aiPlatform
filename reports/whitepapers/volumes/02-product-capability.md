@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-27T15:01:33Z"
+generated_at: "2026-11-27T15:31:57Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "32631a5fe1466b479e79a44ab65e6a2ba174767b1fdd229115dcc46eea9e7824"
+caps_sha256: "dccd7cb460e6a956c25d4871fc40a54001e3c1a5da5df125de5750eedd1cd4cb"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=32631a5fe1466b479e79a44ab65e6a2ba174767b1fdd229115dcc46eea9e7824 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=dccd7cb460e6a956c25d4871fc40a54001e3c1a5da5df125de5750eedd1cd4cb scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-27T15:01:33Z` |
-| CAPABILITIES sha256 | `32631a5fe146…` |
+| 生成时间 (UTC) | `2026-11-27T15:31:57Z` |
+| CAPABILITIES sha256 | `dccd7cb460e6…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1330,7 +1330,7 @@ _(节选；全文见权威源)_
 | 知识引擎（本体） | 912 | 9 | 921 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 375 | 0 | 375 |
+| Agent 系统 | 378 | 0 | 378 |
 | Skill 系统 | 215 | 0 | 215 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
@@ -1370,7 +1370,7 @@ _(节选；全文见权威源)_
 | Skill 目录标准化 | 9 | 0 | 9 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4465** | **11** | **4476** |
+| **总计** | **4468** | **11** | **4479** |
 
 ### 3.2 上手路径（节选）
 
