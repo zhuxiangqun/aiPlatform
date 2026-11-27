@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-26T20:52:44+08:00",
+  "reviewed_at": "2026-11-27T10:21:19+08:00",
   "base_ref": "origin/main",
-  "merge_base": "99539ab10aa976c97f9b17e7648d60b7695f5b7f",
-  "diff_sha256": "2356b4b7da8ec9df5986d965fdda389b336a527797656bfc08ce8a97bf098c1c",
-  "head_sha": "18947a9890f7e7bcec6f318af4621be12d96113f",
+  "merge_base": "fb73e131370b74919dc3a0aa13d84439144f791c",
+  "diff_sha256": "b426938262a7f2605012273f5405551ecf4c67d81bf7526c88ecf62a156fb9c9",
+  "head_sha": "cb3c3643cb7b4b3d572850166a32c1f0683e6a90",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "D5 track closeout + Ollaya No-Go docs; five-check clean. Local lock only."
+  "note": "Zero findings on FDE delivery-plan commits. LLM fail→skeleton+llm_ok=false; auto patch→422; progress from pipeline/manual only. Local lock only."
 }
