@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3651
+total_capabilities: 3654
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -7194,7 +7194,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 412
+    caps_count: 415
     provides:
       - symbol: "finalize_agent_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -8835,6 +8835,18 @@ domains:
         type: function
         signature: '若用户话是批准/拒绝指令则处理并返回口述结果，否则 None。'
         module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+      - symbol: get_evolution_goal
+        type: function
+        signature: '按 id 取目标规格。'
+        module: aiPlat-core/core/harness/digital_human/evolution_goals.py
+      - symbol: measure_curated_feedback_rate
+        type: function
+        signature: '统计轨迹策展好评率 good/(good+bad)。'
+        module: aiPlat-core/core/harness/digital_human/evolution_goals.py
+      - symbol: knowledge_target_state_summary
+        type: function
+        signature: '知识案例目标态摘要（写入提案 guidance，非自动改图）。'
+        module: aiPlat-core/core/harness/digital_human/evolution_optimize.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
