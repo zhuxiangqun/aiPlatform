@@ -74,6 +74,10 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     ("harness/execution/meta_tool.py", "apps/tools/code"),
     # KNOWN_DEBT: on_error_reflector → FDE case recorder (lazy; pending DomainRouter callback)
     ("harness/infrastructure/hooks/on_error_reflector.py", "apps/fde/service/k_wave_case"),
+    # KNOWN_DEBT: consultant SFT 闭环暂直导 finetune（与 auto_trigger 同类；待 CoreFacade 收敛）
+    ("harness/digital_human/consultant_sft_loop.py", "apps/finetune/schemas"),
+    ("harness/digital_human/consultant_sft_loop.py", "apps/finetune/job_manager"),
+    ("harness/digital_human/consultant_sft_loop.py", "apps/finetune/dataset_manager"),
 }
 
 # Mirror integration.py allowlist onto package path (CI rglob hits __init__.py)

@@ -325,12 +325,13 @@ def build_fde_inventory_from_delivery_plans() -> Dict[str, Any]:
         ``{required_ids, covered_ids, source, plan_count, ok}``；骨架失败时 ``ok=False``。
     """
     try:
-        from core.apps.fde.service.delivery_plan import load_delivery_plan_skeleton
+        # 为什么：harness 禁止直导 apps/；经 CoreFacade 消费 delivery_plan
+        from core.api.core_facade import load_fde_delivery_plan_skeleton
     except Exception as e:
         return {"ok": False, "reason": f"import_delivery_plan:{e}", "required_ids": [], "covered_ids": []}
 
     try:
-        sk = load_delivery_plan_skeleton() or {}
+        sk = load_fde_delivery_plan_skeleton() or {}
     except Exception as e:
         return {"ok": False, "reason": f"skeleton_load_failed:{e}", "required_ids": [], "covered_ids": []}
 
@@ -416,11 +417,10 @@ def refresh_domain_inventories(
         out["eval"] = {"ok": True, "source": "existing_file", **existing_ev}
     else:
         try:
-            from core.apps.eval.service.capability_coverage_fill import (
-                analyze_capability_coverage,
-            )
+            # 为什么：harness 禁止直导 apps/；经 CoreFacade 消费 capability coverage
+            from core.api.core_facade import eval_analyze_capability_coverage
 
-            report = analyze_capability_coverage()
+            report = eval_analyze_capability_coverage()
             gaps = report.get("gaps") if isinstance(report, dict) else None
             required: List[str] = []
             covered: List[str] = []
