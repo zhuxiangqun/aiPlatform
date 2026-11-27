@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-27T23:03:06+08:00",
+  "reviewed_at": "2026-11-27T23:24:11+08:00",
   "base_ref": "origin/main",
   "merge_base": "d9d04d009e8b73b973bb3db7e52b77570c434d06",
-  "diff_sha256": "18fad4171d46c637edb6518c392ad0e272518e0e7dece7d99235f3a9c1e7f1a2",
-  "head_sha": "ee156e472b5a51518a76f2a9de0deec326e3e2f1",
+  "diff_sha256": "87408bd305e4a1f8d5dcf8b5e123457c9dfa5944611af641cecb0651c61d0e6d",
+  "head_sha": "fb871a434be060e8d81017df2d16fd675427d2ae",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs clause-sync + whitepaper refresh for contracts-guard/Code References. Local lock only."
+  "note": "Boundary fix: CoreFacade for delivery/coverage; allowlist consultant_sft finetune. Local lock only."
 }
