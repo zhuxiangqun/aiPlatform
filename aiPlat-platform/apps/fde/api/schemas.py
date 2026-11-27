@@ -66,6 +66,8 @@ class DeliveryPlanGenerateRequest(BaseModel):
     customer_namespace: str
     requirement_text: str
     title: str = ""
+    source_kind: str = "paste"
+    source_filename: str = ""
     pipeline_snapshot: Optional[DeliveryPlanPipelineSnapshot] = None
 
 

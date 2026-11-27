@@ -2,11 +2,23 @@
  * FDE 交付计划 Tab — 粘贴需求生成实施计划，并与 pipeline 联动检查进度。
  * 完成度仅反映本计划 checklist，≠ ⑦签收 / ≠ 顶部八步全部完成。
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, toast } from '../../components/ui';
-import { ChevronDown, ChevronRight, ClipboardList, ExternalLink, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, ClipboardList, ExternalLink, FileUp, RefreshCw, Upload } from 'lucide-react';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
+
+/** 浏览器可直接按文本读取的需求文件后缀（不落服务端原文）。 */
+const TEXT_REQ_EXTS = new Set([
+  '.md', '.markdown', '.txt', '.text', '.rst', '.csv', '.tsv',
+  '.json', '.yaml', '.yml', '.html', '.htm', '.xml', '.log',
+]);
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+
+function fileExt(name: string): string {
+  const i = name.lastIndexOf('.');
+  return i >= 0 ? name.slice(i).toLowerCase() : '';
+}
 
 export type DeliveryPlanTabKey =
   | 'customers'
@@ -48,7 +60,13 @@ type PlanPhase = {
 type DeliveryPlan = {
   plan_id?: string;
   customer_namespace?: string;
-  source?: { title?: string; text_sha256?: string; created_at?: string };
+  source?: {
+    kind?: string;
+    title?: string;
+    filename?: string;
+    text_sha256?: string;
+    created_at?: string;
+  };
   summary?: {
     delivery_type?: string;
     phase0_days?: number;
@@ -61,6 +79,8 @@ type DeliveryPlan = {
   llm_error?: string;
   plan?: null;
 };
+
+type InputMode = 'paste' | 'upload';
 
 function unwrapPlan(payload: any): DeliveryPlan | null {
   const d = payload?.data ?? payload;
@@ -85,10 +105,14 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [requirementText, setRequirementText] = useState('');
+  const [inputMode, setInputMode] = useState<InputMode>('paste');
+  const [uploadedName, setUploadedName] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [plan, setPlan] = useState<DeliveryPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const ns = (customerNamespace || '').trim();
 
@@ -124,21 +148,46 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
     return `实施计划完成度 ${pct}%（${d}/${t}）— ≠ ⑦签收 / ≠ 顶部八步全部完成`;
   }, [plan, pct]);
 
-  const onPickFile = (file: File | null) => {
+  const ingestRequirementFile = useCallback((file: File | null) => {
     if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast?.error?.('文件过大（上限 2MB）');
+      return;
+    }
+    const name = file.name || 'requirement.txt';
+    const ext = fileExt(name);
+    if (!TEXT_REQ_EXTS.has(ext) && !/^text\//i.test(file.type || '') && file.type !== 'application/json') {
+      toast?.error?.('仅支持文本类需求文件（.md / .txt / .json / .yaml 等）');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const text = String(reader.result || '');
+      if (text.trim().length < 20) {
+        toast?.error?.('文件内容过短（至少 20 字）');
+        return;
+      }
+      // 粗检：大量空字节/替换符通常是二进制
+      const sample = text.slice(0, 4000);
+      const bad = (sample.match(/\u0000|\uFFFD/g) || []).length;
+      if (bad > 5) {
+        toast?.error?.('无法读取为纯文本，请另存为 .md / .txt 后再上传');
+        return;
+      }
       setRequirementText(text);
-      if (!title) setTitle(file.name.replace(/\.md$/i, ''));
+      setUploadedName(name);
+      setInputMode('upload');
+      setTitle((prev) => prev || name.replace(/\.[^.]+$/, ''));
+      toast?.success?.(`已载入：${name}`);
     };
+    reader.onerror = () => toast?.error?.('读取文件失败');
     reader.readAsText(file);
-  };
+  }, []);
 
   const generate = async () => {
     if (!ns) return;
     if (requirementText.trim().length < 20) {
-      toast?.error?.('需求文本至少 20 字');
+      toast?.error?.(inputMode === 'upload' ? '请先上传有效需求文件' : '需求文本至少 20 字');
       return;
     }
     setGenerating(true);
@@ -150,6 +199,8 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
           customer_namespace: ns,
           title: title.trim() || '未命名交付计划',
           requirement_text: requirementText,
+          source_kind: uploadedName ? 'upload' : 'paste',
+          source_filename: uploadedName || '',
           pipeline_snapshot: pipeline,
         }),
       });
@@ -245,36 +296,103 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
         <p className="text-xs text-gray-500">
           客户：{customerName || ns}（{ns}）。骨架固定为 FDE 八步+新建域插段；LLM 仅填空。不落盘需求原文。
         </p>
-        <div className="grid gap-2 md:grid-cols-[1fr_auto] items-end">
-          <label className="text-xs text-gray-400 block">
-            计划标题
-            <input
-              className="mt-1 w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-100"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="例如：AI面试官 PoC"
-            />
-          </label>
-          <label className="text-xs text-gray-400">
-            本地 .md
-            <input
-              type="file"
-              accept=".md,.txt,text/markdown,text/plain"
-              className="mt-1 block w-full text-xs text-gray-400"
-              onChange={(e) => onPickFile(e.target.files?.[0] || null)}
-            />
-          </label>
-        </div>
         <label className="text-xs text-gray-400 block">
-          客户需求（粘贴 SRS / 访谈纪要）
-          <textarea
-            className="mt-1 w-full h-36 rounded border border-gray-700 bg-gray-800 p-2 text-xs text-gray-200 font-mono resize-y"
-            value={requirementText}
-            onChange={(e) => setRequirementText(e.target.value)}
-            placeholder="粘贴客户需求规格或关键摘要（至少 20 字）…"
+          计划标题
+          <input
+            className="mt-1 w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-100"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="例如：AI面试官 PoC"
           />
         </label>
-        <div className="flex flex-wrap gap-2">
+
+        <div className="flex gap-1 rounded-md border border-gray-700/60 p-0.5 w-fit">
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-xs rounded ${
+              inputMode === 'paste' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
+            }`}
+            onClick={() => setInputMode('paste')}
+          >
+            粘贴需求
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-xs rounded inline-flex items-center gap-1 ${
+              inputMode === 'upload' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
+            }`}
+            onClick={() => setInputMode('upload')}
+          >
+            <FileUp className="w-3.5 h-3.5" />
+            上传文件
+          </button>
+        </div>
+
+        {inputMode === 'paste' ? (
+          <label className="text-xs text-gray-400 block">
+            粘贴 SRS / 访谈纪要 / 需求摘要（至少 20 字）
+            <textarea
+              className="mt-1 w-full h-36 rounded border border-gray-700 bg-gray-800 p-2 text-xs text-gray-200 font-mono resize-y"
+              value={requirementText}
+              onChange={(e) => {
+                setRequirementText(e.target.value);
+                setUploadedName(null);
+              }}
+              placeholder="直接粘贴客户需求规格…"
+            />
+          </label>
+        ) : (
+          <div
+            className={`rounded border border-dashed px-4 py-6 text-center transition-colors ${
+              dragOver ? 'border-blue-400 bg-blue-950/30' : 'border-gray-600 bg-gray-800/40'
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              ingestRequirementFile(e.dataTransfer.files?.[0] || null);
+            }}
+          >
+            <Upload className="w-6 h-6 mx-auto text-gray-400 mb-2" />
+            <p className="text-sm text-gray-300">拖放需求文件到此处，或点击选择</p>
+            <p className="text-xs text-gray-500 mt-1">
+              支持 .md / .txt / .markdown / .json / .yaml 等纯文本（≤2MB；不落盘原文）
+            </p>
+            {uploadedName && (
+              <p className="text-xs text-green-400 mt-2">已载入：{uploadedName}（{requirementText.length} 字）</p>
+            )}
+            <div className="mt-3">
+              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                选择文件
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".md,.markdown,.txt,.text,.rst,.csv,.tsv,.json,.html,.htm,.xml,.log,.yml,.yaml,text/*,application/json"
+                className="hidden"
+                onChange={(e) => {
+                  ingestRequirementFile(e.target.files?.[0] || null);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+            {requirementText.trim().length >= 20 && (
+              <details className="mt-3 text-left">
+                <summary className="text-xs text-gray-500 cursor-pointer">预览已载入文本</summary>
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-900/80 p-2 text-[11px] text-gray-400 whitespace-pre-wrap">
+                  {requirementText.slice(0, 4000)}
+                  {requirementText.length > 4000 ? '\n…' : ''}
+                </pre>
+              </details>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 items-center">
           <Button size="sm" variant="default" disabled={generating} onClick={() => void generate()}>
             {generating ? '生成中…' : '生成计划'}
           </Button>
@@ -282,6 +400,12 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
             <RefreshCw className={`w-3.5 h-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
             刷新进度
           </Button>
+          {uploadedName && (
+            <span className="text-xs text-gray-500">来源：上传 {uploadedName}</span>
+          )}
+          {!uploadedName && requirementText.trim() && (
+            <span className="text-xs text-gray-500">来源：粘贴</span>
+          )}
         </div>
       </div>
 
@@ -293,6 +417,9 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
               <span className="ml-2 text-xs text-gray-500">
                 {plan.summary?.delivery_type === 'new_domain' ? '新建域交付' : '标准交付'}
                 {typeof plan.summary?.phase0_days === 'number' ? ` · 建议 ${plan.summary.phase0_days} 人日` : ''}
+                {plan.source?.kind === 'upload'
+                  ? ` · 上传${plan.source?.filename ? ` ${plan.source.filename}` : ''}`
+                  : ' · 粘贴'}
                 {plan.llm_ok === false ? ' · 骨架模式' : plan.llm_ok ? ' · LLM 已填空' : ''}
               </span>
             </div>
