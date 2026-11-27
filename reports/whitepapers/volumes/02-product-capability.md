@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-27T14:28:39Z"
+generated_at: "2026-11-27T15:01:33Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "8a9806c03b8a7f7ff5dd3bf22ea996af565c3861bcc307d686eb3499db04fd5c"
+caps_sha256: "32631a5fe1466b479e79a44ab65e6a2ba174767b1fdd229115dcc46eea9e7824"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=8a9806c03b8a7f7ff5dd3bf22ea996af565c3861bcc307d686eb3499db04fd5c scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=32631a5fe1466b479e79a44ab65e6a2ba174767b1fdd229115dcc46eea9e7824 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-27T14:28:39Z` |
-| CAPABILITIES sha256 | `8a9806c03b8a…` |
+| 生成时间 (UTC) | `2026-11-27T15:01:33Z` |
+| CAPABILITIES sha256 | `32631a5fe146…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1501,7 +1501,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3651 capabilities (caps_count) | 3654 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3654 capabilities (caps_count) | 3654 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1553,7 +1553,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 412 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 415 | Agent REST 端点 |
 
 ##### core/api/routers/diagnostics.py
 
@@ -1635,7 +1635,7 @@ git pull origin main
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
 | management-and-quality | §二十五 管理 & 质量 | 119 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
-| agent-system | §五 Agent 系统 | 412 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 415 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | extension-and-learning | §十一 扩展
 
