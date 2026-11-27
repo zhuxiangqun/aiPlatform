@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-27T21:32:40+08:00",
+  "reviewed_at": "2026-11-27T22:29:37+08:00",
   "base_ref": "origin/main",
   "merge_base": "d9d04d009e8b73b973bb3db7e52b77570c434d06",
-  "diff_sha256": "e28a4c8837f1f57e21be9be795fe47fa73f8a120a4bb056367928e045fbc1fc4",
-  "head_sha": "99ee813eb93f9b803d0782f02c6e99c8238b3ee6",
+  "diff_sha256": "25734a9541d1654d6025b3ab9398814431e6b6b3e628bc05845251749484f788",
+  "head_sha": "48ef299532e58cad25dffaa11f8835990e2276ed",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "FDE inventory auto-gen prefers delivery_plan skeleton+plans; scan only_missing avoids overwriting manual inventories; e5_claimed/production_write stay false. Local lock only."
+  "note": "Evolution status console + goals/optimize + bounded rollback; residual: undo is best-effort then ledger ROLLED_BACK. Local lock only."
 }
