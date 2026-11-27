@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3582
+total_capabilities: 3583
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -7190,7 +7190,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 344
+    caps_count: 345
     provides:
       - symbol: "finalize_agent_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -8559,6 +8559,10 @@ domains:
         type: function
         signature: '汇总 F10–F11。'
         module: aiPlat-core/core/apps/fde/service/operational_contracts.py
+      - symbol: load_delivery_plan
+        type: function
+        signature: '读取已存计划。'
+        module: aiPlat-core/core/apps/fde/service/delivery_plan.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
