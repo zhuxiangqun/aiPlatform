@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-27T23:24:11+08:00",
+  "reviewed_at": "2026-11-27T23:24:21+08:00",
   "base_ref": "origin/main",
   "merge_base": "d9d04d009e8b73b973bb3db7e52b77570c434d06",
-  "diff_sha256": "87408bd305e4a1f8d5dcf8b5e123457c9dfa5944611af641cecb0651c61d0e6d",
-  "head_sha": "fb871a434be060e8d81017df2d16fd675427d2ae",
+  "diff_sha256": "7f85bbd8d0b99700e0230c5f06681e911fcbeaeebbb0aa681908815c7f3b89ec",
+  "head_sha": "09e9cebc650222a1799816feb82983c4c5b1783a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Boundary fix: CoreFacade for delivery/coverage; allowlist consultant_sft finetune. Local lock only."
+  "note": "Boundary fix + CAPABILITIES sync. Local lock only."
 }
