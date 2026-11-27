@@ -252,11 +252,14 @@ def maybe_propose_sft_promote(sft_result: Optional[Dict[str, Any]]) -> Dict[str,
     sample_count = sft_result.get("converted_count")
     if sample_count is None:
         sample_count = sft_result.get("sample_count")
+    from core.harness.digital_human.evolution_goals import goal_progress_for_kind
+
+    gp = goal_progress_for_kind("sft_promote")
     return create_evolution_proposal(
         kind="sft_promote",
         title=f"微调任务可审：{job_id[:16]}",
         summary=(
-            f"Job {job_id} 已提交。批准前过顾问 holdout 门；通过后仅指引 /infra/finetune，"
+            f"Job {job_id} 已提交。批准前过顾问 holdout+好评率门；通过后仅指引 /infra/finetune，"
             "不会自动改 best_model_for_purpose。"
         ),
         payload={
@@ -266,6 +269,8 @@ def maybe_propose_sft_promote(sft_result: Optional[Dict[str, Any]]) -> Dict[str,
             "base_model": sft_result.get("base_model"),
             "sample_count": sample_count,
             "guidance": "到 /infra/finetune 审评测后再绑定；顾问 Chat 仍走 best_model_for_purpose。",
+            "goal_id": gp.get("goal_id"),
+            "goal_progress": gp,
         },
     )
 
@@ -744,6 +749,13 @@ def propose_pilot_config(
     for row in list_evolution_proposals(kind="pilot_config", status=STATUS_HUMAN_GATE, limit=50):
         if str((row.get("payload") or {}).get("genome_id") or "") == gid:
             return {"ok": False, "reason": "already_pending", "proposal": row}
+    from core.harness.digital_human.evolution_goals import goal_progress_for_kind
+    from core.harness.digital_human.evolution_optimize import (
+        optimize_pilot_genes_sandbox,
+    )
+
+    gp = goal_progress_for_kind("pilot_config")
+    opt = optimize_pilot_genes_sandbox(gid)
     return create_evolution_proposal(
         kind="pilot_config",
         title=title or f"试点参数：{gid}",
@@ -756,6 +768,15 @@ def propose_pilot_config(
             "genome_id": gid,
             "candidate_id": (candidate_id or "").strip(),
             "skill_name": (skill_name or _pilot_skill_name(gid)).strip(),
+            "best_genes": opt.get("best_genes"),
+            "sandbox_optimize": {
+                "ok": opt.get("ok"),
+                "use_global_router": False,
+                "production_write": False,
+                "e5_claimed": False,
+            },
+            "goal_id": gp.get("goal_id"),
+            "goal_progress": gp,
         },
         tenant_id=tenant_id,
         session_id=session_id,
@@ -912,6 +933,99 @@ def decide_evolution_proposal(
     if out.get("ok"):
         out["apply_result"] = apply_result
         out["production_model_changed"] = False
+    return out
+
+
+def _bounded_undo(proposal: Dict[str, Any], *, reason: str) -> Dict[str, Any]:
+    """按 kind 有界撤销已应用副作用（诚实：不宣称可逆一切）。"""
+    kind = str(proposal.get("kind") or "")
+    pid = str(proposal.get("id") or "")
+    undo: Dict[str, Any] = {"kind": kind, "actions": []}
+    if kind == "purpose_bind":
+        try:
+            from core.harness.digital_human.consultant_purpose_bind import void_purpose_bind
+
+            r = void_purpose_bind(proposal_id=pid, reason=reason)
+            undo["actions"].append({"void_purpose_bind": r})
+        except Exception as e:
+            undo["actions"].append({"void_purpose_bind_error": str(e)[:120]})
+    elif kind == "seed_qa":
+        # 追加作废标记行，不物理删除审计
+        try:
+            path = _approved_seed_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            marker = {
+                "voided": True,
+                "proposal_id": pid,
+                "reason": (reason or "")[:200],
+                "at": int(time.time()),
+            }
+            with path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(marker, ensure_ascii=False) + "\n")
+            undo["actions"].append({"seed_void_marker": True})
+        except Exception as e:
+            undo["actions"].append({"seed_void_error": str(e)[:120]})
+    elif kind == "pilot_config":
+        undo["actions"].append(
+            {
+                "pilot_note": "sandbox canary only; global router untouched",
+                "use_global_router": False,
+            }
+        )
+    else:
+        # sft_promote / domain kinds：台账回滚即可（本就不改生产路由/图）
+        undo["actions"].append(
+            {
+                "ledger_only": True,
+                "note": "no production routing/ontology auto-apply to reverse",
+            }
+        )
+    undo["production_model_changed"] = False
+    undo["e5_claimed"] = False
+    return undo
+
+
+def rollback_evolution_proposal(
+    *,
+    proposal_id: str,
+    actor: str = "user",
+    reason: str = "",
+) -> Dict[str, Any]:
+    """将已应用/已批准提案回滚为 ROLLED_BACK，并尽力有界撤销。
+
+    Args:
+        proposal_id: 提案 id。
+        actor: 操作人。
+        reason: 纠偏原因（必填建议）。
+    """
+    pid = (proposal_id or "").strip()
+    if not pid:
+        return {"ok": False, "reason": "missing_id"}
+    target = get_evolution_proposal(pid)
+    if not target:
+        return {"ok": False, "reason": "not_found"}
+    cur = str(target.get("status") or "")
+    if cur not in (STATUS_APPLIED, STATUS_APPROVED):
+        return {"ok": False, "reason": "not_rollbackable", "status": cur}
+    why = (reason or "").strip() or "wrong_direction"
+    undo = _bounded_undo(target, reason=why)
+
+    def _rb(obj: Dict[str, Any]) -> None:
+        obj["status"] = STATUS_ROLLED_BACK
+        obj["decision"] = {
+            "actor": actor,
+            "at": int(time.time()),
+            "decision": "rollback",
+            "reason": why[:300],
+        }
+        obj["rollback_result"] = undo
+        obj["production_model_changed"] = False
+
+    out = _update_proposal(pid, _rb)
+    if out.get("ok"):
+        out["rollback_result"] = undo
+        out["production_model_changed"] = False
+        out["e5_claimed"] = False
     return out
 
 

@@ -38,6 +38,42 @@ def _clear_purpose_bind_for_tests() -> None:
         path.unlink()
 
 
+def void_purpose_bind(*, proposal_id: str = "", reason: str = "") -> Dict[str, Any]:
+    """作废当前 purpose 绑定文件（有界回滚；不改全局选模）。
+
+    Args:
+        proposal_id: 若非空，仅当文件内 proposal_id 匹配才删除。
+        reason: 作废原因。
+    """
+    path = _bind_path()
+    if not path.is_file():
+        return {"ok": True, "voided": False, "reason": "no_bind_file"}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.debug("void_purpose_bind: bind json unreadable", exc_info=True)
+        data = {}
+    want = (proposal_id or "").strip()
+    if want and str((data or {}).get("proposal_id") or "").strip() not in ("", want):
+        return {
+            "ok": True,
+            "voided": False,
+            "reason": "proposal_id_mismatch",
+            "production_model_changed": False,
+        }
+    try:
+        path.unlink()
+    except OSError as e:
+        return {"ok": False, "voided": False, "reason": str(e)}
+    return {
+        "ok": True,
+        "voided": True,
+        "reason": (reason or "rolled_back")[:200],
+        "production_model_changed": False,
+        "feeds_global_routing": False,
+    }
+
+
 def write_purpose_bind(
     *,
     model: str = "",

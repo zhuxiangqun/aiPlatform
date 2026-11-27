@@ -30,6 +30,7 @@ export const LAYER_A_DEEP_ROUTES: LayerADeepRoute[] = [
   { route: '/diagnostics/runs', label: '运行记录' },
   { route: '/diagnostics/observability', label: '可观测性' },
   { route: '/diagnostics/production-depth', label: '生产深度' },
+  { route: '/diagnostics/evolution-status', label: '自进化状态', hint: 'EvolutionStatus.tsx' },
   { route: '/ontology-editor', label: '本体编辑器（可重定向到 knowledge/business?tab=editor）' },
   { route: '/approval', label: '资产审批' },
   { route: '/app/sessions', label: '会话管理' },

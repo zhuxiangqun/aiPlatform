@@ -47,7 +47,19 @@ def test_feedback_seed_qa_and_approve(monkeypatch, tmp_path):
 
 def test_sft_promote_honesty_lock(monkeypatch, tmp_path):
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    monkeypatch.setenv("AIPLAT_TRAJECTORY_DIR", str(tmp_path / "traj"))
     monkeypatch.delenv("AIPLAT_DH_SFT_PROMOTE_SKIP_GATE", raising=False)
+    monkeypatch.setattr(
+        "core.harness.digital_human.evolution_goals.measure_curated_feedback_rate",
+        lambda: {
+            "ok": True,
+            "baseline_missing": False,
+            "good_rate": 0.9,
+            "good": 9,
+            "bad": 1,
+            "rated": 10,
+        },
+    )
     _clear_proposals_for_tests()
     r = maybe_propose_sft_promote(
         {
@@ -60,6 +72,7 @@ def test_sft_promote_honesty_lock(monkeypatch, tmp_path):
         }
     )
     assert r["ok"] is True
+    assert r["proposal"]["payload"].get("goal_id") == "consultant.sft_quality.v1"
     pid = r["proposal"]["id"]
     decided = decide_evolution_proposal(decision="approve", proposal_id=pid)
     assert decided["ok"] is True
@@ -159,6 +172,7 @@ def test_pilot_config_sandbox_bridge(monkeypatch, tmp_path):
 
     pending = list_evolution_proposals(kind="pilot_config", status=STATUS_HUMAN_GATE, limit=10)
     assert len(pending) == 3
+    assert all(p.get("payload", {}).get("goal_id") == "evo.pilot_sandbox.v1" for p in pending)
     decided = decide_evolution_proposal(decision="approve", proposal_id=pending[0]["id"])
     assert decided["ok"] is True
     assert decided["production_model_changed"] is False

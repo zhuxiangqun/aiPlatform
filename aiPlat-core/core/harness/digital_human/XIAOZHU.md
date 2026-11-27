@@ -78,6 +78,7 @@ SSOT：`aiPlat-management/frontend/src/lib/consultantLayerARoutes.ts`（与本�
 | `/diagnostics/runs` | `consultantLayerA` runs 包 |
 | `/diagnostics/observability` | `consultantLayerA` observability 包 |
 | `/diagnostics/production-depth` | `consultantLayerA` production-depth 包 |
+| `/diagnostics/evolution-status` | `consultantLayerA` evolution-status 包 + `EvolutionStatus.tsx` |
 | `/ontology-editor` | `consultantLayerA` ontology 包 |
 | `/approval` | `consultantLayerA` approval 包 + 实况计数 |
 | `/app/sessions` | `consultantLayerA` sessions 包 + 会话计数 |
@@ -218,21 +219,55 @@ flowchart LR
 
 目标：小朱像「可见的进化生命体」——能说清学了什么、待批什么；**不是**生产无门禁自主改核心。
 
+**五域机读目标**（`evolution_goals.py`，简报一行「五域进化目标」）：
+
+| goal_id | 达标 |
+|---|---|
+| `consultant.sft_quality.v1` | 好评率≥0.7 且样本够 + 结构 holdout（AND） |
+| `eval.coverage.v1` | 覆盖率≥0.90 |
+| `fde.evidence.v1` | 证据覆盖≥0.95 |
+| `knowledge.case_fitness.v1` | mean(reward_ema)≥0.8 且待批不过堆积 |
+| `evo.pilot_sandbox.v1` | 三试点均有可回放候选（≠生产最优） |
+
+提案 payload 挂 `goal_id` + `goal_progress`；`e5_claimed` 恒 false。
+
+**Phase B 最小优化闭环**（`evolution_optimize.py`，结果只进 HUMAN_GATE/沙箱）：
+
+| 域 | 自动草稿 | 仍禁止 |
+|---|---|---|
+| 顾问 | 低好评轨迹 → `seed_qa`（扫描/Facade） | 自动 `purpose_bind` 生效 |
+| 评测 | `remediation_plan` 补测清单 | 改 runs_eval 策略 |
+| FDE | `completion_plan` 步骤补齐序 | 自动改 plan status |
+| 知识 | `target_state_summary` + fitness | `auto_apply` 入图 |
+| 试点 | 沙箱短程 DE → `best_genes` | `use_global_router` |
+
 | 环 | 自动？ | 入口 |
 |---|---|---|
 | 快环·习性笔记 | 自动生效 | `remember_*` |
 | 中环·策展 SFT Job | 达标可自动提 Job | `maybe_submit_digital_human_sft` |
-| 慢环·升生产/巩固 | **须人批** | `create/decide_evolution_proposal`；WS `evolution_list` / `evolution_decide`；口令「批准第N条」 |
+| 慢环·升生产/巩固 | **须人批** | `create/decide_evolution_proposal`；WS `evolution_list` / `evolution_decide`；口令「批准第N条」；管理端 `/diagnostics/evolution-status` |
 | 平台 evo 试点 | ✅ Phase2 | `propose_pilot_config` / `ensure_pilot_config_proposals`；批准 → `record_human_gate_decision` + **沙箱** `request_evo_canary_cutover(use_global_router=False)` |
 | FDE/评测/知识 | ✅ 三域桥+活源 | 扫描读 `eval_inventory.json`/`fde_inventory.json` + 高奖励案例；浮层「扫描领域进化」；知识批准尽力 `maybe_enqueue`（仍 auto_apply=false） |
 
 提案类型：`habit_promotion` | `seed_qa` | `sft_promote` | `purpose_bind` | `constitution_patch` | `pilot_config` | `knowledge_evolve` | `eval_coverage` | `fde_evolve`。  
-状态词对齐 evo：`HUMAN_GATE` → `APPROVED|REJECTED` → `APPLIED`。  
+状态词对齐 evo：`HUMAN_GATE` → `APPROVED|REJECTED` → `APPLIED` →（纠偏）`ROLLED_BACK`。  
 诚实锁：`production_model_changed` 恒 false；`sft_promote` 批准前过 `evaluate_sft_promote_gate`（种子 holdout 结构门）；通过才 APPLIED，失败保持 APPROVED；通过后链式生成 `purpose_bind` 待批（第二道人批）。  
 `purpose_bind` 批准 → 写 `purpose_bind.json` 回执；**默认不改选模**；仅 `AIPLAT_DH_PURPOSE_BIND=1` 时顾问热路径可读绑定模型（仍不改全局 `best_model_for_purpose`）。  
 紧急跳过评测门：`AIPLAT_DH_SFT_PROMOTE_SKIP_GATE=1`（仍不改选模）。  
 试点 **默认不** `use_global_router`。  
 口令：「准备试点提案」→ 三试点幂等待批；「申请绑定」→ `purpose_bind`；「扫描领域进化」→ FDE/评测/知识待批；「批准第N条」→ 有界应用。
+
+**管理端可见面 + 方向纠偏**（`evolution_status.py` + `/diagnostics/evolution-status`）：
+
+| 阶段 | 动作 | 效果 |
+|---|---|---|
+| 待批 `HUMAN_GATE` | **拒绝** | → `REJECTED`；不落地 |
+| 已 `APPLIED` / `APPROVED` | **回滚**（填原因） | → `ROLLED_BACK`；有界撤销（`seed_qa` 作废标记；`purpose_bind` 删回执；`pilot_config`/SFT/三域仅台账+回执） |
+| 习性笔记偏了 | `remember_correction` / 新 `seed_qa` | 追加纠正，不删历史 |
+
+聚合 API：`get_evolution_status_snapshot` / `GET /api/core/digital-human/evolution/status`（goals + proposals + timeline；`e5_claimed=false`）。  
+决定/回滚：`POST .../proposals/{id}/decide`、`POST .../proposals/{id}/rollback`。  
+非目标：不宣称可逆远端 SFT Job 权重；不自动改 `best_model_for_purpose`；不把本页当作 FDE evolution Tab 唯一入口。
 
 ### 3.7 执行与工具
 
@@ -278,6 +313,7 @@ registry 无 `platform_consultant` 时用 `materials_chat`。降级仍注入 `_c
 - `core/tests/unit/test_harness/test_digital_human/test_consultant_personal.py`
 - `core/tests/unit/test_harness/test_digital_human/test_consultant_sft_loop.py`
 - `core/tests/unit/test_harness/test_digital_human/test_evolution_proposals.py`
+- `core/tests/unit/test_harness/test_digital_human/test_evolution_status.py`
 - `core/tests/unit/test_harness/test_digital_human/test_consultant_sft_gate.py`
 - `core/tests/unit/test_harness/test_digital_human/test_consultant_purpose_bind.py`
 - `core/tests/unit/test_harness/test_digital_human/test_domain_evolution_bridge.py`
@@ -335,7 +371,10 @@ aiPlat-core/core/harness/digital_human/
   consultant_knowledge.py
   consultant_reload.py       # AGENT.md / 心智卡 mtime 热重载
   consultant_sft_loop.py     # 策展达标自动提 Job（不切路由）
-  evolution_proposals.py     # 受控进化提案台账 + HUMAN_GATE
+  evolution_proposals.py     # 受控进化提案台账 + HUMAN_GATE + rollback
+  evolution_status.py        # 管理端聚合快照（goals/timeline）
+  evolution_goals.py         # 五域机读目标
+  evolution_optimize.py      # Phase B 最小优化闭环草稿
   consultant_sft_gate.py     # sft_promote 最小 holdout 门
   consultant_purpose_bind.py # 第二道人批绑定回执（env 门控）
   domain_evolution_bridge.py # FDE/评测/知识 → HUMAN_GATE 提案桥

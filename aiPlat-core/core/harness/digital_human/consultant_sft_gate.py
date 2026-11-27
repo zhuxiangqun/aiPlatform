@@ -8,11 +8,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from core.utils.paths import get_aiplat_home
+
+logger = logging.getLogger("aiplat.digital_human.sft_gate")
 
 # 冻结版本；用例变更必须升版
 DH_SFT_HOLDOUT_VERSION = "dh_sft_holdout_v1"
@@ -169,6 +172,72 @@ def evaluate_sft_promote_gate(
             }
         )
 
+    # 策展好评率 KPI（与结构 holdout AND；缺测时不放行）
+    good_rate_meta: Dict[str, Any] = {}
+    try:
+        from core.harness.digital_human.evolution_goals import (
+            CONSULTANT_GOOD_RATE_THRESHOLD,
+            GOAL_CONSULTANT_SFT,
+            measure_curated_feedback_rate,
+            _min_sft_samples,
+        )
+
+        rate = measure_curated_feedback_rate()
+        good_rate_meta = dict(rate)
+        good_rate_meta["goal_id"] = GOAL_CONSULTANT_SFT
+        thr = float(CONSULTANT_GOOD_RATE_THRESHOLD)
+        min_rated = int(_min_sft_samples())
+        # 载荷可覆盖声明的 good_rate（测试/离线）
+        if pl.get("good_rate") is not None:
+            try:
+                declared = float(pl.get("good_rate"))
+                rate = {
+                    "baseline_missing": False,
+                    "good_rate": declared,
+                    "rated": int(pl.get("rated_count") or pl.get("sample_count") or min_rated),
+                    "good": 0,
+                    "bad": 0,
+                }
+                good_rate_meta["declared"] = declared
+            except (TypeError, ValueError):
+                # 非法 good_rate 载荷忽略，改走轨迹测量
+                logger.debug("sft gate: ignore invalid payload good_rate", exc_info=True)
+        if rate.get("baseline_missing"):
+            checks.append(
+                {
+                    "id": "good_rate",
+                    "ok": False,
+                    "reason": "baseline_missing",
+                    "threshold": thr,
+                }
+            )
+        else:
+            gr = float(rate.get("good_rate") or 0.0)
+            rated_n = int(rate.get("rated") or 0)
+            ok_rate = gr >= thr and rated_n >= min_rated
+            checks.append(
+                {
+                    "id": "good_rate",
+                    "ok": ok_rate,
+                    "reason": (
+                        "ok"
+                        if ok_rate
+                        else f"need>={thr:.0%} rated>={min_rated} got={gr:.2%} n={rated_n}"
+                    ),
+                    "threshold": thr,
+                    "good_rate": gr,
+                    "rated": rated_n,
+                }
+            )
+    except Exception as e:
+        checks.append(
+            {
+                "id": "good_rate",
+                "ok": False,
+                "reason": f"good_rate_check_failed:{e}",
+            }
+        )
+
     skipped = _skip_gate_enabled()
     structural_ok = all(c.get("ok") for c in checks)
     passed = True if skipped else structural_ok
@@ -183,14 +252,17 @@ def evaluate_sft_promote_gate(
         "case_results": results,
         "n_cases": len(cases),
         "n_failed": len(failed),
+        "good_rate": good_rate_meta,
+        "goal_id": "consultant.sft_quality.v1",
         "production_model_changed": False,
         "feeds_production_routing": False,
         "production_sample": False,
+        "e5_claimed": False,
         "note": (
             "skip_gate_env"
             if skipped
             else (
-                "holdout_structure_ok; still human /infra/finetune to bind"
+                "holdout+good_rate_ok; still human /infra/finetune to bind"
                 if passed
                 else "eval_gate_failed; APPROVED without APPLIED"
             )

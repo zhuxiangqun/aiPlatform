@@ -70,6 +70,18 @@ export const PRODUCTION_DEPTH_GLOSSARY: Gloss[] = [
   { term: '刷新', aliases: ['重新检查'], meaning: '重新拉取生产深度检查结果' },
 ];
 
+export const EVOLUTION_STATUS_GLOSSARY: Gloss[] = [
+  {
+    term: '自进化状态',
+    aliases: ['/diagnostics/evolution-status', '进化台账'],
+    meaning: '五域目标+小朱提案时间线；待批可拒、已应用可有界回滚；不是 FDE 演进 Tab，也不宣称 E5',
+  },
+  { term: 'pendingCount', aliases: ['待批数'], meaning: 'HUMAN_GATE 待批提案数' },
+  { term: 'appliedCount', aliases: ['已应用数'], meaning: '已 APPLIED、可回滚的提案数' },
+  { term: 'goalMetCount', aliases: ['达标目标'], meaning: '当前测量达标的五域目标数' },
+  { term: '回滚', aliases: ['rollback', '纠偏'], meaning: 'APPLIED→ROLLED_BACK 有界撤销；不改全局选模' },
+];
+
 export const SESSIONS_GLOSSARY: Gloss[] = [
   { term: '会话管理', aliases: ['/app/sessions'], meaning: '跨渠道用户对话会话列表与结束；不是工作区 Agent 编辑页' },
   { term: 'active', aliases: ['活跃'], meaning: '会话仍在进行，可结束' },
@@ -149,6 +161,7 @@ export const runsGlossaryText = () => pack(RUNS_GLOSSARY);
 export const observabilityGlossaryText = () => pack(OBSERVABILITY_GLOSSARY);
 export const ontologyGlossaryText = () => pack(ONTOLOGY_GLOSSARY);
 export const productionDepthGlossaryText = () => pack(PRODUCTION_DEPTH_GLOSSARY);
+export const evolutionStatusGlossaryText = () => pack(EVOLUTION_STATUS_GLOSSARY);
 export const approvalGlossaryText = () => pack(APPROVAL_GLOSSARY);
 export const sessionsGlossaryText = () => pack(SESSIONS_GLOSSARY);
 export const knowledgeBusinessGlossaryText = () => pack(KNOWLEDGE_BUSINESS_GLOSSARY);

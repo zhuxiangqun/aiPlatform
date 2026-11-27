@@ -104,6 +104,7 @@ export const menuItems: MenuEntry[] = [
     { key: '/diagnostics/control-profile', icon: Cpu, label: '控制画像' },
     { key: '/diagnostics/observability', icon: Monitor, label: '可观测性' },
     { key: '/diagnostics/production-depth', icon: Shield, label: '生产深度', roles: ['admin','developer','operator'] },
+    { key: '/diagnostics/evolution-status', icon: Sparkles, label: '自进化状态', roles: ['admin','developer','operator','fde'] },
     // ── 排查与追踪 ──
     { key: '_sub_troubleshoot', subLabel: '排查与追踪' },
     { key: '/diagnostics/traces', icon: Network, label: '链路追踪' },
@@ -312,6 +313,7 @@ export const PAGE_PURPOSE: Record<string, string> = {
   '/diagnostics/control-profile': '控制画像：ControlProfile 与工具白名单',
   '/diagnostics/observability': '可观测性：指标/日志/链路聚合',
   '/diagnostics/production-depth': '生产深度+架构健康（反思/Docker/事件/向量/契约 + Policy/旁路/plan_execute/Router/CRAG/Autonomous）',
+  '/diagnostics/evolution-status': '自进化状态：五域目标进度、提案时间线；待批拒绝或已应用有界回滚（≠E5、不改生产选模）',
   '/diagnostics/traces': '链路追踪：请求与执行轨迹',
   '/diagnostics/runs': '运行记录：Agent/Skill 运行历史与失败摘要',
   '/diagnostics/run-comparison': '运行对比：两次运行差异',

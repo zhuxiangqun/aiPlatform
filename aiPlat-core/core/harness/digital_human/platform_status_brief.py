@@ -869,6 +869,19 @@ def _dh_domain_evolution_line() -> str:
         return "领域进化(FDE/评测/知识): (简报未见)"
 
 
+def _dh_evolution_goals_line() -> str:
+    """五域机读进化目标进度一行。"""
+    try:
+        from core.harness.digital_human.evolution_goals import (
+            evolution_goals_brief_line,
+        )
+
+        return evolution_goals_brief_line()
+    except Exception:
+        logger.debug("dh evolution goals brief failed", exc_info=True)
+        return "五域进化目标: (简报未见)"
+
+
 def _experience_feedback_line() -> str:
     """rule_id + status counts only. Never content body."""
     path = _aiplat_home() / "experience_feedback.json"
@@ -1954,6 +1967,7 @@ def build_platform_status_brief(
             _dh_evo_pilot_line(),
             _dh_purpose_bind_line(),
             _dh_domain_evolution_line(),
+            _dh_evolution_goals_line(),
             _experience_feedback_line(),
             f"图示文件 ({len(diagrams)}): "
             + _summarize_names(diagrams, limit=name_limit)

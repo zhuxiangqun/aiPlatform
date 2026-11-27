@@ -85,6 +85,15 @@ def propose_knowledge_evolve(
     existing = _already_pending("knowledge_evolve", fingerprint)
     if existing:
         return {"ok": False, "reason": "already_pending", "proposal": existing}
+    from core.harness.digital_human.evolution_goals import goal_progress_for_kind
+    from core.harness.digital_human.evolution_optimize import (
+        knowledge_target_state_summary,
+    )
+
+    gp = goal_progress_for_kind("knowledge_evolve")
+    target = knowledge_target_state_summary(
+        case_id=cid, domain_id=domain_id, reward_ema=float(reward_ema or 0)
+    )
     return create_evolution_proposal(
         kind="knowledge_evolve",
         title=f"知识演化：{cid[:24]}",
@@ -97,8 +106,12 @@ def propose_knowledge_evolve(
             "case_id": cid,
             "domain_id": domain_id,
             "reward_ema": reward_ema,
+            "fitness": float(reward_ema or 0),
             "note": (note or "")[:200],
-            "guidance": "经 CoreFacade.evolve_ontology_from_case / ontology 审阅；auto_apply=false",
+            "target_state_summary": target,
+            "guidance": target + "；auto_apply=false",
+            "goal_id": gp.get("goal_id"),
+            "goal_progress": gp,
         },
         tenant_id=tenant_id,
     )
@@ -136,7 +149,12 @@ def propose_eval_coverage(
     existing = _already_pending("eval_coverage", fingerprint)
     if existing:
         return {"ok": False, "reason": "already_pending", "proposal": existing}
+    from core.harness.digital_human.evolution_goals import goal_progress_for_kind
+    from core.harness.digital_human.evolution_optimize import build_eval_remediation_plan
+
     title = "评测覆盖缺测" if baseline_missing else f"评测覆盖缺口 {coverage:.0%}<{threshold:.0%}"
+    gp = goal_progress_for_kind("eval_coverage")
+    remediation = build_eval_remediation_plan(miss)
     return create_evolution_proposal(
         kind="eval_coverage",
         title=title,
@@ -153,6 +171,9 @@ def propose_eval_coverage(
             "baseline_missing": baseline_missing,
             "source": source,
             "guidance": "补 inventory/capability report → measure_eval_coverage；不自动改 runs_eval 策略",
+            "remediation_plan": remediation,
+            "goal_id": gp.get("goal_id"),
+            "goal_progress": gp,
         },
         tenant_id=tenant_id,
     )
@@ -192,6 +213,11 @@ def propose_fde_evolve(
     existing = _already_pending("fde_evolve", fingerprint)
     if existing:
         return {"ok": False, "reason": "already_pending", "proposal": existing}
+    from core.harness.digital_human.evolution_goals import goal_progress_for_kind
+    from core.harness.digital_human.evolution_optimize import build_fde_completion_plan
+
+    gp = goal_progress_for_kind("fde_evolve")
+    completion = build_fde_completion_plan(miss)
     return create_evolution_proposal(
         kind="fde_evolve",
         title=f"FDE 演化：{(reason or 'review')[:40]}",
@@ -208,6 +234,9 @@ def propose_fde_evolve(
             "baseline_missing": baseline_missing,
             "missing_ids": miss,
             "guidance": "审 SystemEvolver 草稿/证据缺口；SolutionArchetype 须人批；不宣称 E5",
+            "completion_plan": completion,
+            "goal_id": gp.get("goal_id"),
+            "goal_progress": gp,
         },
         tenant_id=tenant_id,
     )
@@ -746,6 +775,30 @@ def scan_domain_evolution_proposals(
             created.append(f"knowledge_evolve:{cid}")
         else:
             skipped.append({"domain": "knowledge", "reason": str(r.get("reason")), "case_id": cid})
+
+    # —— Phase B1：低好评轨迹 → seed_qa 草稿（人批；不改选模）——
+    if not use_fixtures_if_empty:
+        try:
+            from core.harness.digital_human.evolution_optimize import (
+                propose_from_low_rated_trajectories,
+            )
+
+            low = propose_from_low_rated_trajectories(limit=5, tenant_id=tenant_id)
+            live_meta["low_rated"] = {
+                "created": len(low.get("created") or []),
+                "skipped": int(low.get("skipped") or 0),
+            }
+            for pid in low.get("created") or []:
+                created.append(f"seed_qa:{pid}")
+            details.append(
+                {
+                    "domain": "consultant",
+                    "ok": bool(low.get("ok")),
+                    "created_n": len(low.get("created") or []),
+                }
+            )
+        except Exception:
+            logger.debug("low-rated trajectory scan failed", exc_info=True)
 
     from core.harness.digital_human.evolution_proposals import pending_human_gate_count
 

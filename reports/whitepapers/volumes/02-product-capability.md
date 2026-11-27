@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-27T13:24:25Z"
+generated_at: "2026-11-27T14:26:38Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "fbbc0eb33d8b036863ab1244d93713289d4b6843d5ba00cbe8c3028d01101b88"
+caps_sha256: "8a9806c03b8a7f7ff5dd3bf22ea996af565c3861bcc307d686eb3499db04fd5c"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=fbbc0eb33d8b036863ab1244d93713289d4b6843d5ba00cbe8c3028d01101b88 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=8a9806c03b8a7f7ff5dd3bf22ea996af565c3861bcc307d686eb3499db04fd5c scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-27T13:24:25Z` |
-| CAPABILITIES sha256 | `fbbc0eb33d8b…` |
+| 生成时间 (UTC) | `2026-11-27T14:26:38Z` |
+| CAPABILITIES sha256 | `8a9806c03b8a…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -1330,7 +1330,7 @@ _(节选；全文见权威源)_
 | 知识引擎（本体） | 912 | 9 | 921 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 349 | 0 | 349 |
+| Agent 系统 | 375 | 0 | 375 |
 | Skill 系统 | 215 | 0 | 215 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
@@ -1370,7 +1370,7 @@ _(节选；全文见权威源)_
 | Skill 目录标准化 | 9 | 0 | 9 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4439** | **11** | **4450** |
+| **总计** | **4465** | **11** | **4476** |
 
 ### 3.2 上手路径（节选）
 
@@ -1501,7 +1501,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3614 capabilities (caps_count) | 3614 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3651 capabilities (caps_count) | 3651 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1553,7 +1553,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 375 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 412 | Agent REST 端点 |
 
 ##### core/api/routers/diagnostics.py
 
@@ -1635,7 +1635,7 @@ git pull origin main
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
 | management-and-quality | §二十五 管理 & 质量 | 119 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
-| agent-system | §五 Agent 系统 | 375 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 412 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | extension-and-learning | §十一 扩展
 

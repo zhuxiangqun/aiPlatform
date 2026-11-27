@@ -33,6 +33,15 @@ def test_scan_fixtures_create_and_approve(monkeypatch, tmp_path):
     assert "eval_coverage" in kinds
     assert "fde_evolve" in kinds
     assert "knowledge_evolve" in kinds
+    goal_by_kind = {
+        "eval_coverage": "eval.coverage.v1",
+        "fde_evolve": "fde.evidence.v1",
+        "knowledge_evolve": "knowledge.case_fitness.v1",
+    }
+    for p in pending:
+        k = p.get("kind")
+        if k in goal_by_kind:
+            assert p.get("payload", {}).get("goal_id") == goal_by_kind[k]
     assert "待批" in domain_evolution_brief_line() or "领域进化" in domain_evolution_brief_line()
 
     # 批准一条

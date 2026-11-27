@@ -22598,6 +22598,10 @@ from core.harness.digital_human.evolution_proposals import (  # noqa: boundary �
     pending_human_gate_count,
     propose_pilot_config,
     propose_purpose_bind_from_latest,
+    rollback_evolution_proposal,
+)
+from core.harness.digital_human.evolution_status import (  # noqa: boundary — CoreFacade canonical re-export
+    get_evolution_status_snapshot,
 )
 from core.harness.digital_human.consultant_sft_gate import (  # noqa: boundary — CoreFacade canonical re-export
     evaluate_sft_promote_gate,
@@ -22612,6 +22616,15 @@ from core.harness.digital_human.domain_evolution_bridge import (  # noqa: bounda
     build_fde_inventory_from_delivery_plans,
     refresh_domain_inventories,
     scan_domain_evolution_proposals,
+)
+from core.harness.digital_human.evolution_goals import (  # noqa: boundary — CoreFacade canonical re-export
+    list_evolution_goals,
+    measure_all_evolution_goals,
+    measure_evolution_goal,
+)
+from core.harness.digital_human.evolution_optimize import (  # noqa: boundary — CoreFacade canonical re-export
+    optimize_pilot_genes_sandbox,
+    propose_from_low_rated_trajectories,
 )
 
 
@@ -22704,6 +22717,35 @@ def decide_digital_human_evolution_proposal(
         actor=actor,
         apply=apply,
     )
+
+
+def rollback_digital_human_evolution_proposal(
+    *,
+    proposal_id: str,
+    actor: str = "user",
+    reason: str = "",
+):
+    """回滚已应用/已批准进化提案（有界撤销；永不改生产选模）。
+
+    Args:
+        proposal_id: 提案 id。
+        actor: 操作人。
+        reason: 纠偏原因。
+    """
+    return rollback_evolution_proposal(
+        proposal_id=proposal_id,
+        actor=actor,
+        reason=reason,
+    )
+
+
+def get_digital_human_evolution_status(*, limit: int = 50):
+    """五域目标 + 提案台账 + 时间线聚合快照（管理端可见面）。
+
+    Args:
+        limit: 提案/时间线条数上限。
+    """
+    return get_evolution_status_snapshot(limit=limit)
 
 
 def propose_digital_human_pilot_config(
@@ -22853,3 +22895,49 @@ def build_digital_human_fde_inventory():
         build_fde_inventory_from_delivery_plans 结果。
     """
     return build_fde_inventory_from_delivery_plans()
+
+
+def list_digital_human_evolution_goals():
+    """列出五域机读进化目标规格。
+
+    Returns:
+        list_evolution_goals 结果。
+    """
+    return list_evolution_goals()
+
+
+def measure_digital_human_evolution_goal(goal_id: str):
+    """测量单域进化目标进度。
+
+    Args:
+        goal_id: 如 consultant.sft_quality.v1。
+    """
+    return measure_evolution_goal(goal_id)
+
+
+def measure_digital_human_evolution_goals():
+    """测量全部五域进化目标进度。
+
+    Returns:
+        measure_all_evolution_goals 汇总 dict。
+    """
+    return measure_all_evolution_goals()
+
+
+def propose_digital_human_low_rated_seeds(*, limit: int = 5, tenant_id: str = "default"):
+    """从低好评轨迹生成 seed_qa 待批草稿。
+
+    Args:
+        limit: 最多新建条数。
+        tenant_id: 租户。
+    """
+    return propose_from_low_rated_trajectories(limit=limit, tenant_id=tenant_id)
+
+
+def optimize_digital_human_pilot_genes(genome_id: str):
+    """沙箱短程 DE 优化试点基因（不切全局路由）。
+
+    Args:
+        genome_id: 试点 genome id。
+    """
+    return optimize_pilot_genes_sandbox(genome_id)

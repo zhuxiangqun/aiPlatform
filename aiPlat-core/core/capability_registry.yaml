@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3632
+total_capabilities: 3651
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -7194,7 +7194,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 393
+    caps_count: 412
     provides:
       - symbol: "finalize_agent_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -7304,6 +7304,26 @@ domains:
         module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
         type: function
         signature: "decide_evolution_proposal(*,decision,...)→Dict HUMAN_GATE 有界应用"
+      - symbol: "rollback_evolution_proposal"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "rollback_evolution_proposal(*,proposal_id,actor,reason)→Dict APPLIED→ROLLED_BACK"
+      - symbol: "get_evolution_status_snapshot"
+        module: aiPlat-core/core/harness/digital_human/evolution_status.py
+        type: function
+        signature: "get_evolution_status_snapshot(*,limit)→Dict goals+proposals+timeline"
+      - symbol: "void_purpose_bind"
+        module: aiPlat-core/core/harness/digital_human/consultant_purpose_bind.py
+        type: function
+        signature: "void_purpose_bind(*,proposal_id,reason)→Dict 作废绑定回执"
+      - symbol: "get_digital_human_evolution_status"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "get_digital_human_evolution_status(*,limit) CoreFacade 状态快照"
+      - symbol: "rollback_digital_human_evolution_proposal"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "rollback_digital_human_evolution_proposal(*,proposal_id,actor,reason) CoreFacade"
       - symbol: "maybe_propose_from_feedback"
         module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
         type: function
@@ -7388,6 +7408,62 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
         type: function
         signature: "build_digital_human_fde_inventory CoreFacade"
+      - symbol: "list_evolution_goals"
+        module: aiPlat-core/core/harness/digital_human/evolution_goals.py
+        type: function
+        signature: "list_evolution_goals()→List 五域机读目标规格"
+      - symbol: "measure_evolution_goal"
+        module: aiPlat-core/core/harness/digital_human/evolution_goals.py
+        type: function
+        signature: "measure_evolution_goal(goal_id)→Dict 单域进度"
+      - symbol: "measure_all_evolution_goals"
+        module: aiPlat-core/core/harness/digital_human/evolution_goals.py
+        type: function
+        signature: "measure_all_evolution_goals()→Dict 五域汇总"
+      - symbol: "evolution_goals_brief_line"
+        module: aiPlat-core/core/harness/digital_human/evolution_goals.py
+        type: function
+        signature: "evolution_goals_brief_line()→str 简报一行"
+      - symbol: "goal_progress_for_kind"
+        module: aiPlat-core/core/harness/digital_human/evolution_goals.py
+        type: function
+        signature: "goal_progress_for_kind(kind)→Dict 提案挂载进度"
+      - symbol: "list_digital_human_evolution_goals"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "list_digital_human_evolution_goals CoreFacade"
+      - symbol: "measure_digital_human_evolution_goal"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "measure_digital_human_evolution_goal CoreFacade"
+      - symbol: "measure_digital_human_evolution_goals"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "measure_digital_human_evolution_goals CoreFacade"
+      - symbol: "propose_from_low_rated_trajectories"
+        module: aiPlat-core/core/harness/digital_human/evolution_optimize.py
+        type: function
+        signature: "propose_from_low_rated_trajectories(*,limit,tenant_id)→Dict"
+      - symbol: "build_eval_remediation_plan"
+        module: aiPlat-core/core/harness/digital_human/evolution_optimize.py
+        type: function
+        signature: "build_eval_remediation_plan(missing_ids)→List"
+      - symbol: "build_fde_completion_plan"
+        module: aiPlat-core/core/harness/digital_human/evolution_optimize.py
+        type: function
+        signature: "build_fde_completion_plan(missing_ids)→List"
+      - symbol: "optimize_pilot_genes_sandbox"
+        module: aiPlat-core/core/harness/digital_human/evolution_optimize.py
+        type: function
+        signature: "optimize_pilot_genes_sandbox(genome_id)→Dict 沙箱DE"
+      - symbol: "propose_digital_human_low_rated_seeds"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "propose_digital_human_low_rated_seeds CoreFacade"
+      - symbol: "optimize_digital_human_pilot_genes"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "optimize_digital_human_pilot_genes CoreFacade"
       - symbol: "scan_digital_human_domain_evolution"
         module: aiPlat-core/core/api/core_facade.py
         type: function
