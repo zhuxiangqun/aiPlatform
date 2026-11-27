@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4419
+total_capabilities: 4427
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -2666,6 +2666,7 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| save_delivery_plan | `core/apps/fde/service/delivery_plan.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_fde_operational_bundle | `core/apps/fde/service/operational_contracts.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_eval_operational_bundle | `core/apps/eval/service/operational_gates.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_eval_production_sla_authorize | `core/apps/eval/service/operational_gates.py` | ✅ | 自动同步 | 已合入 |
@@ -2927,6 +2928,13 @@ scan_hash: 8f9548ec24f4
 | list_delivery_sessions | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
 | get_delivery_session | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
 | load_delivery_template | `core/apps/fde/service/delivery_pipeline_session.py` | ✅ | 自动同步 | 已合入 |
+| generate_delivery_plan | `core/apps/fde/service/delivery_plan.py` | ✅ | 需求文本→FDE 实施计划（骨架+LLM 填空）；生成物适用：已接线（FDE 工作台「交付计划」Tab / CoreFacade） | 本批 |
+| get_delivery_plan | `core/apps/fde/service/delivery_plan.py` | ✅ | 读取/可选刷新交付计划进度；生成物适用：已接线 | 本批 |
+| refresh_delivery_plan_progress | `core/apps/fde/service/delivery_plan.py` | ✅ | 按 pipeline_snapshot 重算步骤 status/pct（禁假进度）；生成物适用：已接线 | 本批 |
+| patch_delivery_plan_step | `core/apps/fde/service/delivery_plan.py` | ✅ | 人工勾选无 auto_check 步骤；生成物适用：已接线 | 本批 |
+| load_delivery_plan_skeleton | `core/apps/fde/service/delivery_plan.py` | ✅ | 加载八步+新建域固定骨架；生成物适用：已接线 | 本批 |
+| generate_fde_delivery_plan / get_fde_delivery_plan / patch_fde_delivery_plan_step | `core/api/core_facade.py` | ✅ | CoreFacade 交付计划入口；生成物适用：已接线 | 本批 |
+| POST/GET /delivery-plan* | `aiPlat-platform/apps/fde/api/fde_delivery_plan.py` | ✅ | 管理端交付计划 API；生成物适用：已接线（FDE Dashboard） | 本批 |
 | run_fde_agent_one_shot | `core/apps/fde/service/agent.py` | ✅ | 自动同步 | 已合入 |
 | ClarifyTurnInput | `core/apps/fde/service/clarify_dialog.py` | ✅ | 自动同步 | 已合入 |
 | run_clarify_turn | `core/apps/fde/service/clarify_dialog.py` | ✅ | 自动同步 | 已合入 |
@@ -5325,7 +5333,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 911 | 9 | 920 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 319 | 0 | 319 |
+| Agent 系统 | 327 | 0 | 327 |
 | Skill 系统 | 215 | 0 | 215 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
@@ -5365,7 +5373,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 9 | 0 | 9 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4408** | **11** | **4419** |
+| **总计** | **4416** | **11** | **4427** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

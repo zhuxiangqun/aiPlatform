@@ -8,12 +8,13 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
 import ReasoningTracePanel from './ReasoningTracePanel';
-import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil, Zap, GitBranch, GitCommit, GitFork, FileText, Play, BookOpen, Mic, Shield } from 'lucide-react';
+import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, ClipboardList, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil, Zap, GitBranch, GitCommit, GitFork, Play, Mic, Shield } from 'lucide-react';
 import CapabilityBoundary from './CapabilityBoundary';
 import FloatingFeedback from './FloatingFeedback';
 import WeeklyReport from './WeeklyReport';
 import GrillPanel from '../../components/grilling/GrillPanel';
 import RapidInsightTab from './RapidInsightTab';
+import FdeDeliveryPlanTab from './FdeDeliveryPlanTab';
 import SimulationPanel from './SimulationPanel';
 import LineageViewer from './LineageViewer';
 import PurposeContext from '../../components/security/PurposeContext';
@@ -346,6 +347,7 @@ actions:
 // ── FDE 流程步骤 (按 FDE 七项能力 → 运营监控) ──
 const FDE_STEPS = [
   { key: 'customers',  label: '① 业务认知', icon: Users,      hint: '了解客户业务模式、痛点、关键流程' },
+  { key: 'plan',       label: '交付计划',   icon: ClipboardList, hint: '粘贴需求生成 FDE 实施计划，并检查进度（≠签收）' },
   { key: 'capability', label: '② 评估域',   icon: Target,      hint: '查看各域数据成熟度、可用Skill、已知缺口' },
   { key: 'assess',     label: '③ 问题重构', icon: FileText,    hint: 'field_assessment 诊断 → 表层需求翻译为真实问题' },
   { key: 'poc',        label: '④ 验证价值', icon: Wrench,      hint: '行业模板 + 数据注入 → 快速POC验证 ROI' },
@@ -858,6 +860,22 @@ const FdeDashboard: React.FC = () => {
           onSelect={handleCustomerSelect}
           diagnosis={diagnosis}
           selectedName={customer?.name || null}
+        />
+      )}
+      {tab === 'plan' && (
+        <FdeDeliveryPlanTab
+          customerNamespace={customer?.namespace || customer?.name || null}
+          customerName={customer?.name || ''}
+          pipeline={{
+            customer: !!customer,
+            domain: !!domain,
+            diagnosis: !!diagnosis,
+            pocProfile: !!pocProfile,
+            deployVersion: !!deployVersion,
+            canaryResult: !!canaryResult?.passed,
+            adopted,
+          }}
+          onGotoTab={(t) => setTab(t as TabKey)}
         />
       )}
       {tab === 'capability' && (

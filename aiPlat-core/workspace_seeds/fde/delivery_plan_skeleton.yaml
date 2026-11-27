@@ -1,0 +1,152 @@
+# FDE 交付计划固定骨架 — LLM 只填空，不得增删 phase/step id
+version: 1
+phases:
+  - id: gate0
+    title: Gate0 决策锁定
+    fde_tab: customers
+    steps:
+      - id: gate0.deploy_mode
+        title: 锁定部署模式（online / hybrid / airgap）
+        ops:
+          - 打开①业务认知，确认客户 IT 能否访问外网
+          - 写入客户 Profile 部署模式字段
+        auto_check: null
+      - id: gate0.latency
+        title: 锁定一期性能/并发验收口径
+        ops:
+          - 与客户确认 PoC 单路 vs 生产多路
+          - 将 P95 延迟写入决策表（禁止口头口径漂移）
+        auto_check: null
+      - id: gate0.compliance
+        title: 锁定合规与授权门槛
+        ops:
+          - 确认授权文案、数据留存、opt-out/转人工通道
+          - 行前执行安全预检
+        auto_check: null
+      - id: gate0.scope
+        title: 锁定一期 In/Out 范围
+        ops:
+          - 确认一期功能裁剪与明确不做项
+          - 写入 Profile 描述或附件决策表
+        auto_check: null
+  - id: fde1
+    title: ① 业务认知
+    fde_tab: customers
+    steps:
+      - id: fde1.customer
+        title: 创建并切换客户 Profile
+        ops:
+          - FDE 工作台① → 新建客户 → 切换至此
+          - 补齐行业、痛点、决策人
+        auto_check: customer
+  - id: domain_new
+    title: 新建域（插段）
+    fde_tab: capability
+    steps:
+      - id: domain_new.yaml
+        title: 编写并加载域本体 YAML
+        ops:
+          - 打开 /knowledge/business 或复制参考域 YAML
+          - 定义核心实体/关系/状态机并校验加载
+        auto_check: null
+      - id: domain_new.seed
+        title: 注入脱敏种子数据
+        ops:
+          - 准备 10～20 条脱敏样例
+          - 运行种子注入并在工作台可见
+        auto_check: null
+  - id: fde2
+    title: ② 评估域
+    fde_tab: capability
+    steps:
+      - id: fde2.domain
+        title: 选择/确认业务域
+        ops:
+          - ②评估域选中目标域
+          - 如实记录可复用能力与缺口
+        auto_check: domain
+  - id: fde3
+    title: ③ 问题重构
+    fde_tab: assess
+    steps:
+      - id: fde3.diagnosis
+        title: 生成并审核诊断报告
+        ops:
+          - ③输入结构化问题描述并运行诊断
+          - 人工审核后进入下游
+        auto_check: diagnosis
+  - id: factory
+    title: 应用工厂并行
+    fde_tab: poc
+    steps:
+      - id: factory.project
+        title: 在应用工厂创建/推进项目
+        ops:
+          - 打开 /app/factory 创建项目
+          - 按诊断方案拆表面并接线最小可演示路径
+        auto_check: null
+  - id: fde4
+    title: ④ 验证价值
+    fde_tab: poc
+    steps:
+      - id: fde4.poc
+        title: POC 模板加载与判定通过
+        ops:
+          - ④加载 POC 模板并注入演示数据
+          - 客户技术对接人确认方向后写入 pocProfile
+        auto_check: pocProfile
+      - id: fde4.gp1
+        title: 黄金路径 GP1 演示通过
+        ops:
+          - 按脚本跑通主成功路径
+        auto_check: null
+      - id: fde4.gp2
+        title: 黄金路径 GP2（边界/复核）演示
+        ops:
+          - 跑通边界或人工复核分支（可 stub）
+        auto_check: null
+      - id: fde4.gp3
+        title: 黄金路径 GP3（降级/负例）演示
+        ops:
+          - 验证降级或无授权等负例行为
+        auto_check: null
+  - id: fde5
+    title: ⑤ 快速构建
+    fde_tab: deploy
+    steps:
+      - id: fde5.deploy
+        title: 生成部署/离线包版本
+        ops:
+          - ⑤按部署模式打包
+          - 记录 deployVersion
+        auto_check: deployVersion
+  - id: fde6
+    title: ⑥ 评测护栏
+    fde_tab: canary
+    steps:
+      - id: fde6.canary
+        title: 灰度/评测通过
+        ops:
+          - ⑥运行灰度与质量门
+          - 未达标不进入签收
+        auto_check: canaryResult
+  - id: fde7
+    title: ⑦ 验收移交
+    fde_tab: accept
+    steps:
+      - id: fde7.adopted
+        title: 客户签收完成
+        ops:
+          - ⑦对照签收清单逐项确认
+          - 生成交付手册并签收（≠ Org /org/pilot）
+        auto_check: adopted
+  - id: fde8
+    title: ⑧ 运营监控
+    fde_tab: evolution
+    steps:
+      - id: fde8.monitor
+        title: 启动运营监控与护航
+        ops:
+          - ⑧按客户 namespace 过滤指标
+          - 启动首月护航跟踪
+        auto_check: null

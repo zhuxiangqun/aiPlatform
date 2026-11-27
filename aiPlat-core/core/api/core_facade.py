@@ -17699,6 +17699,14 @@ from core.apps.fde.service.delivery_pipeline_session import (  # noqa: boundary 
     load_delivery_template as load_fde_delivery_template,
     start_delivery_session as start_fde_delivery_session,
 )
+from core.apps.fde.service.delivery_plan import (  # noqa: boundary — CoreFacade canonical re-export
+    generate_delivery_plan as generate_fde_delivery_plan,
+    get_delivery_plan as get_fde_delivery_plan,
+    load_delivery_plan_skeleton as load_fde_delivery_plan_skeleton,
+    patch_delivery_plan_step as patch_fde_delivery_plan_step,
+    refresh_delivery_plan_progress as refresh_fde_delivery_plan_progress,
+    save_delivery_plan as save_fde_delivery_plan,
+)
 from core.apps.fde.service.security_preflight import (  # noqa: boundary
     get_latest_preflight as get_fde_security_preflight_latest,
     list_preflight_runs as list_fde_security_preflight_runs,

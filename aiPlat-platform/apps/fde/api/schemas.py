@@ -48,3 +48,35 @@ class FdeDashboardResponse(BaseModel):
     training: Dict[str, Any] = {}
     timeline: List[Dict[str, Any]] = []
     last_updated: str = ""
+
+
+class DeliveryPlanPipelineSnapshot(BaseModel):
+    """FDE 八步 pipeline 布尔快照（交付计划进度联动）。"""
+    customer: bool = False
+    domain: bool = False
+    diagnosis: bool = False
+    pocProfile: bool = False
+    deployVersion: bool = False
+    canaryResult: bool = False
+    adopted: bool = False
+
+
+class DeliveryPlanGenerateRequest(BaseModel):
+    """POST /delivery-plan/generate — 由需求文本生成实施计划。"""
+    customer_namespace: str
+    requirement_text: str
+    title: str = ""
+    pipeline_snapshot: Optional[DeliveryPlanPipelineSnapshot] = None
+
+
+class DeliveryPlanRefreshRequest(BaseModel):
+    """POST /delivery-plan/refresh — 按 pipeline 重算进度。"""
+    customer_namespace: str
+    pipeline_snapshot: Optional[DeliveryPlanPipelineSnapshot] = None
+
+
+class DeliveryPlanStepPatchRequest(BaseModel):
+    """PATCH /delivery-plan/steps/{step_id} — 人工勾选（仅 auto_check 为空）。"""
+    customer_namespace: str
+    manual_done: bool = True
+    pipeline_snapshot: Optional[DeliveryPlanPipelineSnapshot] = None

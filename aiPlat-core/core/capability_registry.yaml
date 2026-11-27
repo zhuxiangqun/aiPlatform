@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3576
+total_capabilities: 3583
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -7190,7 +7190,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 338
+    caps_count: 345
     provides:
       - symbol: "finalize_agent_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -7494,6 +7494,30 @@ domains:
         module: aiPlat-core/core/apps/fde/service/delivery_pipeline_session.py
         type: function
         signature: "list_delivery_sessions(limit)"
+      - symbol: "generate_delivery_plan"
+        module: aiPlat-core/core/apps/fde/service/delivery_plan.py
+        type: function
+        signature: "async generate_delivery_plan(customer_namespace, requirement_text, title=, pipeline_snapshot=)"
+      - symbol: "get_delivery_plan"
+        module: aiPlat-core/core/apps/fde/service/delivery_plan.py
+        type: function
+        signature: "get_delivery_plan(customer_namespace, pipeline_snapshot=, refresh=)"
+      - symbol: "refresh_delivery_plan_progress"
+        module: aiPlat-core/core/apps/fde/service/delivery_plan.py
+        type: function
+        signature: "refresh_delivery_plan_progress(plan, pipeline_snapshot=)"
+      - symbol: "patch_delivery_plan_step"
+        module: aiPlat-core/core/apps/fde/service/delivery_plan.py
+        type: function
+        signature: "patch_delivery_plan_step(customer_namespace, step_id, manual_done, pipeline_snapshot=)"
+      - symbol: "load_delivery_plan_skeleton"
+        module: aiPlat-core/core/apps/fde/service/delivery_plan.py
+        type: function
+        signature: "load_delivery_plan_skeleton()"
+      - symbol: "save_delivery_plan"
+        module: aiPlat-core/core/apps/fde/service/delivery_plan.py
+        type: function
+        signature: "save_delivery_plan(plan)"
       - symbol: "list_evolve_proposals"
         module: aiPlat-core/core/apps/fde/service/evolve_proposal_gate.py
         type: function
@@ -8535,6 +8559,10 @@ domains:
         type: function
         signature: '汇总 F10–F11。'
         module: aiPlat-core/core/apps/fde/service/operational_contracts.py
+      - symbol: load_delivery_plan
+        type: function
+        signature: '读取已存计划。'
+        module: aiPlat-core/core/apps/fde/service/delivery_plan.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
