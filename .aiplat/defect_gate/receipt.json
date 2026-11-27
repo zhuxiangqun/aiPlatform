@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-28T00:31:51+08:00",
+  "reviewed_at": "2026-11-28T00:35:48+08:00",
   "base_ref": "origin/main",
   "merge_base": "aefb32ea2bbf36cac28e628449c77b4d86a4f537",
-  "diff_sha256": "c3196e7a371c963957985471ecbb0128836ac884e0494af1cd678712b90a74a8",
-  "head_sha": "ff55eb80dc9b595caa5d1823428b3884f4e7aad2",
+  "diff_sha256": "3ca9b6cc5b59026a667991c2acea1a6fc100c442511971f47db3259377023f92",
+  "head_sha": "4e9b97cafa4a4e418e18026ca2435bc2b61f9476",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Five-goal Chinese title/description on evolution status; research-doc freshness bump. Local lock only."
+  "note": "clause-sync for evolution goal labels. Local lock only."
 }
