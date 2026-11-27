@@ -3,18 +3,18 @@ doc_type: Contract
 status: active
 authority: supporting
 doc_id: FDE_ONTOLOGY_AGENT_OPS_MANUAL_C26119
-last_reviewed: 2026-11-15
+last_reviewed: 2026-11-27
 ---
 # 操作手册：管理端创建本体 + Agent（含 FDE 工作台）
 
 | 字段 | 值 |
 |------|-----|
 | 文档 ID | `FDE-ONTOLOGY-AGENT-OPS-2026-09` |
-| 版本 | v1.2 |
-| 日期 | 2026-09-20 |
-| 关联 | [`FDE_PHASE5_CUSTOMER_ONBOARDING.md`](./FDE_PHASE5_CUSTOMER_ONBOARDING.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](_archive/ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](_archive/ONTOLOGY_PPT_SCENARIOS.md)（v3.7） · [`ONTOLOGY_EXECUTABLE_MODEL.md`](_archive/ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_NARRATIVE.md`](_archive/ONTOLOGY_NARRATIVE.md) · [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md) |
+| 版本 | v1.3 |
+| 日期 | 2026-11-27 |
+| 关联 | [`FDE_PHASE5_CUSTOMER_ONBOARDING.md`](./FDE_PHASE5_CUSTOMER_ONBOARDING.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](_archive/ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](_archive/ONTOLOGY_PPT_SCENARIOS.md)（v3.7） · [`ONTOLOGY_EXECUTABLE_MODEL.md`](_archive/ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_NARRATIVE.md`](_archive/ONTOLOGY_NARRATIVE.md) · [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md) · [FDE guides](../guides/fde/README.md) |
 | 原则 | **以管理端真实菜单/按钮为准**；FDE 不做「新建域 / 新建 Agent」 |
-| 同步 | v1.2：补 it-ops 组织试点/签收准备入口交叉引用（≠ FDE 交付签收单） |
+| 同步 | v1.3：补「交付计划」Tab / Gate0 / 应用工厂并行；与 `FDE_STEPS` 对齐（clause-sync） |
 
 ---
 
@@ -24,15 +24,18 @@ last_reviewed: 2026-11-15
 |----|:----:|------|
 | 菜单 / 路由（业务本体 · FDE · Agent） | ✅ | `pageManifest.ts` 与 §0 表一致 |
 | FDE ⑦ AcceptTab 种图/动作/表CSV/三柱 | ✅ | `FdeDashboard.tsx` 按钮与 §3.1 一致 |
+| **FDE「交付计划」Tab** | ✅ | `FDE_STEPS` 含 `plan`；`FdeDeliveryPlanTab.tsx`；骨架含 Gate0 / 新建域 / 应用工厂并行；不依赖诊断 |
 | 应用库 Agent 创建 / 从模板安装 | ✅ | `/workspace/agents` · `Agents.tsx` |
 | 知识工厂 confirm→提案→apply | ✅ | 业务本体 `?tab=factory` |
 | 域脚手架 CLI | ✅ | `scripts/new_domain_scaffold.py` |
 | **域管理「新建域」API** | ✅ 已修 | UI 曾打 `/api/core/domains`（404）；已改为 `/api/core/wiki/ontology/domains`（与 `wiki.py` 一致）。编辑器路径仍推荐：`/api/platform/apps/ontology-editor/domains` |
-| FDE 工作台内嵌本手册 | ❌ | ⑦ 无链到本文；⑤ POC 页有「POC 操作手册」→ 已归档的 `docs/guides/fde/_archive/fde-poc-playbook.md`（**不是**本文） |
+| FDE 工作台内嵌本手册全文 | ❌ | ⑦ 无链到本文全文；日常 SOP 见 [`guides/fde/02`](../guides/fde/02-fde-delivery.md)；④「POC 操作手册」≠ 本文 |
 | 与 PPT / PLAYBOOK 版本引用 | ✅ v1.1 | 链到 PPT v3.7、PLAYBOOK v1.3 |
 | it-ops 组织试点 / 签收准备 | ✅ 交叉引用 | 入口 `/org/pilot`；权威 [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md)。**不是** FDE ⑦ 交付签收单 |
 
-**结论**：流程口径大体已与当前实现一致；v1.0 最大漂移是「新建域」API 路径，已在代码 + 本文修正。企业交付请用**本文**，勿用 POC 归档手册。
+**结论**：建域 / Agent 路径仍以本文为准；**现场八步 + 交付计划**以 [`guides/fde`](../guides/fde/README.md) + 画面为准。勿用 `_archive` POC playbook 当总手册。
+
+验证：`grep -n "key: 'plan'" aiPlat-management/frontend/src/pages/Diagnostics/FdeDashboard.tsx`；`grep -n "id: gate0\\|id: factory" aiPlat-core/workspace_seeds/fde/delivery_plan_skeleton.yaml`。
 
 ---
 
@@ -40,8 +43,10 @@ last_reviewed: 2026-11-15
 
 | 你要做的事 | 正确入口（侧边栏） | 路由 | FDE 工作台？ |
 |------------|-------------------|------|:------------:|
-| **新建域本体（说明书）** | 知识 → **业务本体** → 域管理 / 编辑器 | `/knowledge/business` | ❌ 仅链接出去 |
-| **演进已有域（抽取→提案 apply）** | 业务本体 → **工厂流水线** | `/knowledge/business?tab=factory` | ① 可链到工厂 |
+| **新建域本体（说明书）** | 知识 → **业务本体** → 域管理 / 编辑器 | `/knowledge/business` | ❌ 仅链接出去；计划「新建域插段」亦指向此处 |
+| **演进已有域（抽取→提案 apply）** | 业务本体 → **工厂流水线** | `/knowledge/business?tab=factory` | ① / 计划可链出 |
+| **生成实施 checklist（交付计划）** | AI 应用工厂 → **FDE 工作台** → **交付计划** | `/diagnostics/fde`（Tab `plan`） | ✅ 粘贴/上传→生成计划；Gate0 手勾 |
+| **应用工厂并行建可演示应用** | AI 应用工厂 → **应用工厂** | `/app/factory` | 计划插段「应用工厂并行」打开；≠ FDE④ 本身 |
 | **种演示图 / 点动作硬门** | AI 应用工厂 → **FDE 工作台** → ⑦ 验收 | `/diagnostics/fde` | ✅ |
 | **新建应用库 Agent** | AI 应用工厂 → **Agent** | `/workspace/agents` | ❌ 仅有「创建指南」文案 |
 | **it-ops 组织试点 / 签收准备**（八闸门·剧本） | 仪表盘 → **组织试点** | `/org/pilot` | ❌ ⑦ 可有 Org L5 面板，签收准备以试点页为准 |
@@ -53,11 +58,13 @@ last_reviewed: 2026-11-15
 **推荐新人顺序**
 
 ```text
-1 业务本体：新建域 → 加类/关系 → 发布
+1 业务本体：新建域 → 加类/关系 → 发布（若已有域可跳过）
 2 （可选）注册 customer_action YAML
-3 FDE ①：建客户 Profile，②：绑域
-4 FDE ⑦：种图 + 点分诊等动作（验证硬门）
-5 Agent 页：创建或从模板安装 Agent
+3 FDE ①：建客户 Profile 并「切换至此」
+4 FDE「交付计划」：上传/粘贴需求 → 生成计划 → Gate0 手勾
+5 FDE ②：绑交付域（域名≠客户名）→ ③ 诊断 → ④ POC；工厂可并行 /app/factory
+6 FDE ⑦：种图 + 点分诊等动作（验证硬门）→ 签收
+7 Agent 页：创建或从模板安装 Agent（按需）
 ```
 
 ---

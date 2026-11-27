@@ -17,6 +17,49 @@ const ALL_MENU_KEYS: string[] = (() => {
   return keys;
 })();
 
+/** 菜单项是否对应当前路由（导出供单测）。无 query 的 key 忽略页面多余 search（如 ?tab=）。 */
+export function menuItemMatchesLocation(
+  menuKey: string,
+  pathname: string,
+  search: string,
+): boolean {
+  if (!menuKey) return false;
+  const full = pathname + search;
+  if (full === menuKey) return true;
+  if (menuKey.includes('?tab=')) {
+    const keyPath = menuKey.split('?')[0];
+    const keyTab = new URLSearchParams(menuKey.split('?')[1] || '').get('tab');
+    const curTab = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get('tab');
+    if (pathname === keyPath && keyTab && keyTab === curTab) return true;
+  }
+  // Plain path key: highlight when pathname matches even if URL has extra ?tab=
+  if (!menuKey.includes('?') && pathname === menuKey) return true;
+  // Prefix: parent highlight only when no sibling exact path exists
+  if (!menuKey.includes('?') && pathname.startsWith(menuKey + '/')) {
+    const exactChild = ALL_MENU_KEYS.some(
+      (key) => !key.includes('?') && key.startsWith(menuKey + '/') && pathname === key,
+    );
+    if (!exactChild) return true;
+  }
+  return false;
+}
+
+/** 当前路由应展开的一级分组 */
+export function groupsToExpandForLocation(pathname: string, search: string): string[] {
+  const out: string[] = [];
+  for (const group of menuItems) {
+    if (!('group' in group)) continue;
+    for (const item of group.items) {
+      if (item.subLabel) continue;
+      if (menuItemMatchesLocation(item.key, pathname, search)) {
+        out.push(group.group);
+        break;
+      }
+    }
+  }
+  return out;
+}
+
 
 // ── Role-based sidebar visibility ──────────────────────────────────────
 
@@ -112,32 +155,31 @@ const AppLayout: React.FC = () => {
 
   // URL-based auto-expand + role-based advanced tools default expand
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
-    const expanded = new Set<string>();
-    const path = location.pathname + location.search;
-    for (const group of menuItems) {
-      if (!('group' in group)) continue;
-      for (const item of group.items) {
-        if (item.subLabel) continue;
-        if (path.startsWith(item.key) || path === item.key) {
-          expanded.add(group.group); break;
-        }
-        // Handle /platform/kb?tab=xxx pattern
-        if (item.key.includes('?') && path.startsWith(item.key.split('?')[0])) {
-          const tabA = new URLSearchParams(item.key.split('?')[1]).get('tab');
-          const tabB = new URLSearchParams(location.search).get('tab');
-          if (tabA && tabB && tabA === tabB) {
-            expanded.add(group.group); break;
-          }
-        }
-      }
-    }
-    // 🆕 Advanced tools: admin/dev/fde get diagnostics group expanded by default
+    const expanded = new Set(groupsToExpandForLocation(location.pathname, location.search));
+    // Advanced tools: admin/dev/fde get diagnostics group expanded by default
     const role = getRole();
     if (['admin', 'developer', 'fde'].includes(role)) {
       expanded.add('diagnostics');
     }
     return expanded;
   });
+
+  // 路由变化时展开含当前页的一级组（修复：只高亮一级、子项折叠看不见/不带高亮）
+  useEffect(() => {
+    const need = groupsToExpandForLocation(location.pathname, location.search);
+    if (need.length === 0) return;
+    setExpandedGroups((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const g of need) {
+        if (!next.has(g)) {
+          next.add(g);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [location.pathname, location.search]);
 
   // Role-based default landing page redirect
   useEffect(() => {
@@ -160,26 +202,8 @@ const AppLayout: React.FC = () => {
     });
   };
 
-   const isActive = (path: string) => {
-     if (!path) return false;
-     // Exact match
-     if (location.pathname + location.search === path) return true;
-     // Handle /platform/kb?tab=xxx matching
-     if (path.includes('?tab=')) {
-       const keyPath = path.split('?')[0];
-       const keyTab = new URLSearchParams(path.split('?')[1]).get('tab');
-       const curTab = new URLSearchParams(location.search).get('tab');
-       if (location.pathname === keyPath && keyTab === curTab) return true;
-     }
-      // Prefix match: highlight parent. Skip if any item exactly matches current path.
-      if (!path.includes('?') && location.pathname.startsWith(path + '/')) {
-        const exactChild = ALL_MENU_KEYS.some(key =>
-          key.startsWith(path + '/') && location.pathname === key
-        );
-        if (!exactChild) return true;
-      }
-      return false;
-    };
+  const isActive = (path: string) =>
+    menuItemMatchesLocation(path, location.pathname, location.search);
 
   // ── Pre-compute filtered sidebar menu ───────────────────────
   const role = getRole();

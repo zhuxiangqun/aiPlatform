@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 3583
+total_capabilities: 3614
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -3741,7 +3741,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 837
+    caps_count: 838
     provides:
       - symbol: "fde_graph_tenant"
         type: "function"
@@ -3844,6 +3844,10 @@ domains:
         module: core/harness/knowledge/wiki_engine.py
         type: module
         signature: "write_page, search_pages, generate_index_md, list_all_pages, read_page"
+      - symbol: "build_wiki_graph"
+        module: core/api/core_facade.py
+        type: function
+        signature: "wiki_engine.build_graph re-export (≠ code_graph.build_graph); category/keyword/source/max_nodes"
       - symbol: "assert_manual_wiki_write_allowed"
         module: core/harness/knowledge/wiki_read_model.py
         type: function
@@ -7190,7 +7194,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 345
+    caps_count: 375
     provides:
       - symbol: "finalize_agent_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -7276,6 +7280,126 @@ domains:
         module: aiPlat-core/core/harness/digital_human/consultant_personal.py
         type: function
         signature: "从对话轮次写入持久笔记"
+      - symbol: "remember_correction"
+        module: aiPlat-core/core/harness/digital_human/consultant_personal.py
+        type: function
+        signature: "remember_correction(correction,*,tenant_id)→bool 纠偏入库"
+      - symbol: "maybe_submit_digital_human_sft"
+        module: aiPlat-core/core/harness/digital_human/consultant_sft_loop.py
+        type: function
+        signature: "maybe_submit_digital_human_sft(*,force,dry_run)→Dict 策展达标自动提交微调"
+      - symbol: "submit_digital_human_curated_sft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "submit_digital_human_curated_sft(*,force,dry_run) CoreFacade 薄封装"
+      - symbol: "create_evolution_proposal"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "create_evolution_proposal(*,kind,title,...)→Dict 小朱进化提案"
+      - symbol: "list_evolution_proposals"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "list_evolution_proposals(*,status,kind,limit)→List"
+      - symbol: "decide_evolution_proposal"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "decide_evolution_proposal(*,decision,...)→Dict HUMAN_GATE 有界应用"
+      - symbol: "maybe_propose_from_feedback"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "maybe_propose_from_feedback(*,rating,correction,...)→Dict"
+      - symbol: "maybe_propose_sft_promote"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "maybe_propose_sft_promote(sft_result)→Dict Job成功→sft_promote"
+      - symbol: "list_digital_human_evolution_proposals"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "list_digital_human_evolution_proposals CoreFacade"
+      - symbol: "create_digital_human_evolution_proposal"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "create_digital_human_evolution_proposal CoreFacade"
+      - symbol: "decide_digital_human_evolution_proposal"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "decide_digital_human_evolution_proposal CoreFacade 永不改选模"
+      - symbol: "propose_pilot_config"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "propose_pilot_config(*,genome_id,...)→Dict 三试点待批"
+      - symbol: "ensure_pilot_config_proposals"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "ensure_pilot_config_proposals(*,tenant_id)→Dict 幂等三试点"
+      - symbol: "propose_digital_human_pilot_config"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "propose_digital_human_pilot_config CoreFacade"
+      - symbol: "ensure_digital_human_pilot_proposals"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "ensure_digital_human_pilot_proposals CoreFacade"
+      - symbol: "evaluate_sft_promote_gate"
+        module: aiPlat-core/core/harness/digital_human/consultant_sft_gate.py
+        type: function
+        signature: "evaluate_sft_promote_gate(*,proposal,payload)→Dict holdout结构门"
+      - symbol: "evaluate_digital_human_sft_promote_gate"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "evaluate_digital_human_sft_promote_gate CoreFacade 永不改选模"
+      - symbol: "write_purpose_bind"
+        module: aiPlat-core/core/harness/digital_human/consultant_purpose_bind.py
+        type: function
+        signature: "write_purpose_bind(*,model,purpose,...)→Dict 绑定回执"
+      - symbol: "active_consultant_bind_meta"
+        module: aiPlat-core/core/harness/digital_human/consultant_purpose_bind.py
+        type: function
+        signature: "active_consultant_bind_meta()→Dict env门控顾问覆盖"
+      - symbol: "maybe_propose_purpose_bind"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "maybe_propose_purpose_bind(*,job_id,...)→Dict 第二道人批"
+      - symbol: "propose_purpose_bind_from_latest"
+        module: aiPlat-core/core/harness/digital_human/evolution_proposals.py
+        type: function
+        signature: "propose_purpose_bind_from_latest(*,tenant_id,session_id)→Dict"
+      - symbol: "scan_domain_evolution_proposals"
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+        type: function
+        signature: "scan_domain_evolution_proposals(...)→Dict FDE/评测/知识扫描"
+      - symbol: "collect_live_knowledge_cases"
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+        type: function
+        signature: "collect_live_knowledge_cases(*,min_reward,limit)→List"
+      - symbol: "build_fde_inventory_from_delivery_plans"
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+        type: function
+        signature: "build_fde_inventory_from_delivery_plans()→Dict 骨架+计划→FDE库存"
+      - symbol: "refresh_domain_inventories"
+        module: aiPlat-core/core/harness/digital_human/domain_evolution_bridge.py
+        type: function
+        signature: "refresh_domain_inventories(*,persist,only_missing)→Dict 刷新eval/fde库存"
+      - symbol: "refresh_digital_human_domain_inventories"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "refresh_digital_human_domain_inventories CoreFacade"
+      - symbol: "build_digital_human_fde_inventory"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "build_digital_human_fde_inventory CoreFacade"
+      - symbol: "scan_digital_human_domain_evolution"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "scan_digital_human_domain_evolution CoreFacade"
+      - symbol: "propose_digital_human_purpose_bind"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "propose_digital_human_purpose_bind CoreFacade"
+      - symbol: "get_digital_human_purpose_bind"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "get_digital_human_purpose_bind() 只读回执"
       - symbol: "refresh_consultant_prompt"
         module: aiPlat-core/core/harness/digital_human/consultant_reload.py
         type: function

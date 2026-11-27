@@ -1,7 +1,7 @@
 ---
 doc_type: Guide
 doc_id: DOC_02_FDE_DELIVERY_8E3DA2
-last_reviewed: 2026-11-15
+last_reviewed: 2026-11-27
 status: active
 authority: supporting
 ---
@@ -11,38 +11,43 @@ authority: supporting
 
 > **目标角色**：日常 FDE 交付工程师
 > **前置条件**：已完成[快速入门](./01-fde-quickstart.md)
-> **访问地址**：`http://localhost:5173/diagnostics/fde` → 点击 "FDE Dashboard"
+> **访问地址**：`http://localhost:5173/diagnostics/fde`
 > **模板**：[交付手册模板](./templates/fde-delivery-manual.md) · **方法论**：[05](./05-fde-implementation-process.md) · **契约**：[FDE_WORKBENCH_CONTRACT](../../contracts/FDE_WORKBENCH_CONTRACT.md)
+> **画面真源**：`aiPlat-management/frontend/src/pages/Diagnostics/FdeDashboard.tsx`（`FDE_STEPS`）· 计划骨架 `aiPlat-core/workspace_seeds/fde/delivery_plan_skeleton.yaml`
 
 ---
 
 ## 一、概述
 
-FDE 工作台按 **九步主流程（10 个 Tab）** 组织，覆盖从"了解客户"到"运营监控"的完整链路。
+FDE 工作台以 **①–⑧ 编号主路径** 为核心，并插入 **交付计划** Tab（及 ⑥b / ⑨）。覆盖从了解客户到运营监控；勿与「九步=恰好九个 Tab」旧口径死磕——以画面 Tab 为准。
 
-### 九步主流程（Append-only Pipeline）
+### 主路径（Append-only Pipeline + 交付计划）
 
 ```
-① 业务认知 → ② 评估域 → ③ 问题重构 → ④ 验证价值 →
-⑤ 快速构建 → ⑥ 评测护栏 → ⑦ 验收移交 → ⑧ 运营监控
-    ↓ 选客户           ↓ 选域               ↓ 诊断完成
-    传给 ② ⑧          传给 ③ ④            回显到 ①
+① 业务认知 → 【交付计划】→ ② 评估域 → ③ 问题重构 → ④ 验证价值 →
+     选客户      生成实施清单        选域           诊断           POC
+⑤ 平台离线包 → ⑥ 评测护栏 → ⑥b 上线前检查 → ⑦ 验收移交 → ⑧ 运营监控
+（另有 ⑨ 快速认知）
 ```
 
-**核心机制**：10 个 Tab 通过 Append-only Pipeline 串联。每个 Tab 只写入一个 key，读取上游 key 时不可修改。Tab 栏上方有流程进度指示条——各步骤标注 Tab 编号（`客户 ① → 域 ② → … → 监控 ⑧`），已完成显示绿色 ✓，当前所在蓝色高亮，未开始为灰色。
+**核心机制**：编号步通过 pipeline key 串联（`customer` / `domain` / `diagnosis` / …）；Tab 栏进度条显示完成 ✓。  
+**交付计划**另存 checklist（可含 Gate0 / 新建域 / 应用工厂插段），进度与 pipeline `auto_check` 或手勾对齐；**完成度 ≠ ⑦ 签收**。
 
 ### Agent 与 Skill 对应表
 
 | 步骤 | Tab | 进度条 | Agent | Skill | 写入 | 读取上游 |
 |:---:|------|:---:|------|------|:---|:---|
 | ① | 业务认知 | `客户 ①` | 业务分析师 | `customer_profile_creator` | `customer` | — |
+| — | **交付计划** | （清单） | —（骨架+LLM 填空） | — | `~/.aiplat/fde_delivery_plans/{ns}.json` | `customer`；**不依赖** `diagnosis` |
 | ② | 评估域 | `域 ②` | 方案架构师（后台自动匹配） | `domain_assessor` | `domain` | `customer.industry` |
 | ③ | 问题重构 | `诊断 ③` | 方案架构师 | `domain_assessor`, `field_assessment` | `diagnosis` | `domain.id` |
 | ④ | 验证价值 | `POC ④` | 交付工程师（AI执行注入 + FDE人工判定结果） | `poc_data_inject` | `pocProfile` | `domain` |
-| ⑤ | 快速构建 | `部署 ⑤` | 交付工程师 | `package_builder` | `deployVersion` | `pocProfile`, `customer.deploy` |
+| ⑤ | 平台离线包 | `部署 ⑤` | 交付工程师 | `package_builder` | `deployVersion` | `pocProfile`, `customer.deploy` |
 | ⑥ | 评测护栏 | `灰度 ⑥` | 交付工程师 | `canary_runner` | `canaryResult` | `deployVersion` |
+| ⑥b | 上线前检查 | `预检` | — | security Phase B/C dry-run | 预检门 | 签收硬门 |
 | ⑦ | 验收移交 | `验收 ⑦` | 交付经理 | `acceptance_checker`, `manual_generator` | `adopted` | `canaryResult`, `diagnosis`, `customer` |
 | ⑧ | 运营监控 | `监控 ⑧` | 交付经理（持续运维） | — | — | `customer.namespace`, `adopted` |
+| ⑨ | 快速认知 | — | — | — | — | 材料投喂（可并行） |
 
 > **AI 澄清引擎**（`_clarify()`）为系统内置能力，无需注册为 Skill。当 FDE 在任意步骤提交反馈时自动触发多轮对话澄清，帮助定位阻塞根因。详见 [本文 §五](#五反馈机制ai-澄清引擎)。
 
@@ -52,7 +57,7 @@ FDE 工作台提供两种执行方式。**工作流模式即 FDE Builder**：选
 
 | 模式 | 如何切换 | 进度条格式 | 适合场景 |
 |:---|:---|:---|:---|
-| **自由模式**（默认） | 下拉选 "自由模式" | `客户 ① → 域 ② → … → 监控 ⑧`（8 步） | 非标交付，FDE 手动切换 Tab |
+| **自由模式**（默认） | 下拉选 "自由模式" | `客户 ① → … → 监控 ⑧`（含交付计划等 Tab） | 非标交付，FDE 手动切换 Tab |
 | **工作流模式（FDE Builder）** | 下拉选 "FDE 标准交付 v1" | `BA ① → SA ②③ → DE ④⑤⑥ → DM ⑦⑧`（4 步） | 标准交付，Agent 自动流转，FDE 审核确认 |
 
 > 工作流模式详见 [本文 §六](#六工作流模式多-agent-协作)。
@@ -114,7 +119,42 @@ FDE 工作台提供两种执行方式。**工作流模式即 FDE Builder**：选
 
 ---
 
+### 交付计划 — 需求 → 实施清单（Tab `plan`）
+
+**目标**：在①选好客户后，把 SRS/访谈纪要变成可勾选的实施清单（FDE 八步骨架 + 插段）。**不是**⑦ 客户交付手册，也**不必**先跑③诊断。
+
+**操作**：
+
+1. 确认页顶绿条「当前客户」正确（错误客户会读写错 `namespace` 的计划文件）。
+2. 打开 **交付计划** Tab → 粘贴需求或上传单个文本文件（.md/.txt/.yaml 等，≥20 字，≤2MB；原文不落盘）。
+3. 点 **生成计划**。成功后下方出现阶段列表与完成度；标题行可含「上传 {文件名} · LLM 已填空」。
+4. 切走再回来：计划从 API 重载；需求草稿/文件名靠浏览器 session 草稿 + `plan.source.filename` 回显（空输入框但计划仍在属正常）。
+5. 做完对应 Tab 后点 **刷新进度**；无 `auto:` 的步骤谈定后手勾。
+
+**骨架插段（非 ①–⑧ 编号）**：
+
+| 阶段 | 做什么 | 怎么完成 |
+|------|--------|----------|
+| **Gate0 决策锁定** | 锁定部署模式 / 一期性能口径 / 合规授权 / In-Out | 在①改客户 Profile 与决策表 → 本页手勾；未锁死勿承诺生产验收 |
+| **新建域（插段）** | 仅「新建域交付」 | 知识→业务本体建 YAML + 种子；标准交付整段 `skipped` |
+| **应用工厂并行** | 与③④可并行建最小可演示路径 | 「打开应用工厂」→ `/app/factory`；手勾；不替代④POC/⑤打包/⑦签收，不代点部署审批 |
+
+**持久化**：`~/.aiplat/fde_delivery_plans/{customer_namespace}.json`（API：`/api/platform/apps/fde/delivery-plan*`）。
+
+**判断标准**：
+
+| 完成了吗？ | 信号 |
+|:---|:---|
+| 计划已生成 | 下方有 phases；或磁盘存在对应 JSON |
+| Gate0 可进② | 四项决策已谈定并手勾（或团队书面确认） |
+| 进度可信 | 「刷新进度」后 auto 步与画面客户/域/诊断等一致 |
+
+---
+
 ### ② 评估域 — 看能力边界
+
+> **域名 ≠ 客户名**：本 Tab 列出全平台业务域（如「江苏锁安」=`lock-service` 显示名）。当前客户看页顶绿条。切换客户会清空/按建议重绑上一客户残留的域。
+
 
 **目标**：评估 aiPlat 哪些能力可复用，哪些需从零建设。
 
@@ -224,7 +264,7 @@ FDE 工作台提供两种执行方式。**工作流模式即 FDE Builder**：选
 
 ---
 
-### ⑤ 快速构建 — 打包部署
+### ⑤ 平台离线包 — 打包部署
 
 **目标**：把 POC 验证通过的方案打包为离线部署包。
 

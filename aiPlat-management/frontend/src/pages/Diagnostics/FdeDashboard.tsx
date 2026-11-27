@@ -15,6 +15,8 @@ import WeeklyReport from './WeeklyReport';
 import GrillPanel from '../../components/grilling/GrillPanel';
 import RapidInsightTab from './RapidInsightTab';
 import FdeDeliveryPlanTab from './FdeDeliveryPlanTab';
+import { fdeGlossaryPromptText } from './fdeGlossary';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
 import SimulationPanel from './SimulationPanel';
 import LineageViewer from './LineageViewer';
 import PurposeContext from '../../components/security/PurposeContext';
@@ -347,7 +349,7 @@ actions:
 // ── FDE 流程步骤 (按 FDE 七项能力 → 运营监控) ──
 const FDE_STEPS = [
   { key: 'customers',  label: '① 业务认知', icon: Users,      hint: '了解客户业务模式、痛点、关键流程' },
-  { key: 'plan',       label: '交付计划',   icon: ClipboardList, hint: '粘贴需求生成 FDE 实施计划，并检查进度（≠签收）' },
+  { key: 'plan',       label: '交付计划',   icon: ClipboardList, hint: '粘贴/上传需求→「生成计划」（不依赖诊断）；进度≠签收' },
   { key: 'capability', label: '② 评估域',   icon: Target,      hint: '查看各域数据成熟度、可用Skill、已知缺口' },
   { key: 'assess',     label: '③ 问题重构', icon: FileText,    hint: 'field_assessment 诊断 → 表层需求翻译为真实问题' },
   { key: 'poc',        label: '④ 验证价值', icon: Wrench,      hint: '行业模板 + 数据注入 → 快速POC验证 ROI' },
@@ -417,6 +419,40 @@ const FdeDashboard: React.FC = () => {
   const [showHealth, setShowHealth] = useState(true);
   const [showHealthDetail, setShowHealthDetail] = useState(false);
   const [healthData, setHealthData] = useState<any>({});
+  /** ① 客户列表快照（供小朱看见列表，不只是「当前选用」） */
+  const [customerListSnap, setCustomerListSnap] = useState<{
+    count: number;
+    summary: string;
+    duplicateHint: string;
+  }>({ count: 0, summary: '', duplicateHint: '' });
+
+  // Layer A：上报本页科目，避免小朱在无 pageData 时否认「新建客户」等真实入口
+  useEffect(() => {
+    reportPageData('/diagnostics/fde', {
+      screen: 'FDE 工作台：客户 Profile + 八步交付；①可新建客户，不是 CRM/租户页',
+      activeTab: tab,
+      hasCustomer: !!customer,
+      customerName: customer?.name || undefined,
+      customerNamespace: customer?.namespace || undefined,
+      // 列表实况：勿只用「当前选用」推断画面上有几个客户卡
+      customerListCount: customerListSnap.count,
+      customerListSummary: customerListSnap.summary || undefined,
+      customerListDuplicateHint: customerListSnap.duplicateHint || undefined,
+      hasDomain: !!domain,
+      domainId: domain?.id || undefined,
+      hasDiagnosis: !!diagnosis,
+      // hasDiagnosis 仅表示③问题重构是否已跑；交付计划不依赖它
+      deliveryPlanNeedsDiagnosis: false,
+      deliveryPlanHowTo:
+        '交付计划：选客户→粘贴/上传需求→「生成计划」。Gate0=进场决策手勾；应用工厂并行=/app/factory 并行建项目手勾；二者非①–⑧。勿要求先跑诊断。',
+      hasPoc: !!pocProfile,
+      hasDeploy: !!deployVersion,
+      canaryPassed: !!canaryResult?.passed,
+      adopted,
+      guideGlossary: fdeGlossaryPromptText(2800),
+    });
+    return () => clearPageData('/diagnostics/fde');
+  }, [tab, customer, customerListSnap, domain, diagnosis, pocProfile, deployVersion, canaryResult, adopted]);
 
   const MATURITY_COLORS: Record<string, string> = {
     'production-ready': 'text-green-400', 'stable': 'text-blue-400',
@@ -488,7 +524,7 @@ const FdeDashboard: React.FC = () => {
 
   const handleCustomerSelect = async (c: CustomerInfo) => {
     setCustomer(c);
-    // 有主本体推断时一并预选 ②，避免「列表有 Profile 但进度仍停在 ①」
+    // 域跟客户走：有建议则预选；无建议则清空，避免上一客户的 lock-service/江苏锁安 残留
     const onto = resolveCustomerOntologies(c);
     if (onto.primary) {
       setDomain((prev) => ({
@@ -496,6 +532,8 @@ const FdeDashboard: React.FC = () => {
         maturity: prev?.id === onto.primary ? (prev.maturity || 'growing') : 'growing',
         skillsAvailable: prev?.id === onto.primary ? (prev.skillsAvailable || 0) : 0,
       }));
+    } else {
+      setDomain(null);
     }
     if (!c.industry && (c.name || c.description)) {
       try {
@@ -690,9 +728,12 @@ const FdeDashboard: React.FC = () => {
         const onto = resolveCustomerOntologies(customer);
         const selectedId = domain?.id || '';
         return (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 rounded-lg border border-emerald-800/40 bg-emerald-950/20 text-xs">
+          <div className="sticky top-0 z-20 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 rounded-lg border border-emerald-800/40 bg-emerald-950/95 backdrop-blur-sm text-xs shadow-sm">
             <span className="text-gray-400">当前客户</span>
             <span className="text-emerald-100 font-medium">{customer.name}</span>
+            {customer.namespace && (
+              <span className="font-mono text-[10px] text-gray-500">{customer.namespace}</span>
+            )}
             <span className="text-gray-600">·</span>
             <span className="text-gray-400">建议主本体</span>
             {onto.primary ? (
@@ -704,13 +745,22 @@ const FdeDashboard: React.FC = () => {
                 {domainDisplayName(onto.primary)}
               </a>
             ) : (
-              <span className="text-amber-300">未指定</span>
+              <span className="text-amber-300">未指定 — 请在②手动选域</span>
             )}
             {selectedId && (
               <>
                 <span className="text-gray-600">·</span>
                 <span className="text-gray-400">② 已选评估域</span>
                 <span className="text-gray-200 font-medium">{domainDisplayName(selectedId)}</span>
+                {onto.primary && selectedId !== onto.primary && (
+                  <span className="text-amber-300/90">（与建议不一致，可在②改选）</span>
+                )}
+              </>
+            )}
+            {!selectedId && (
+              <>
+                <span className="text-gray-600">·</span>
+                <span className="text-amber-300">② 尚未选域</span>
               </>
             )}
             <span className="text-[10px] text-gray-500 w-full sm:w-auto sm:ml-auto">{onto.reason}</span>
@@ -860,6 +910,42 @@ const FdeDashboard: React.FC = () => {
           onSelect={handleCustomerSelect}
           diagnosis={diagnosis}
           selectedName={customer?.name || null}
+          onListChange={(items, raw) => {
+            const rows = (items || []).map((c: any) => ({
+              name: String(c.name || ''),
+              namespace: String(c.namespace || c.name || ''),
+            }));
+            const apiRows = (raw || items || []).map((c: any) => ({
+              name: String(c.name || ''),
+              namespace: String(c.namespace || c.name || ''),
+            }));
+            const nsCounts = new Map<string, number>();
+            for (const r of apiRows) {
+              const k = r.namespace || r.name;
+              if (!k) continue;
+              nsCounts.set(k, (nsCounts.get(k) || 0) + 1);
+            }
+            const dups = [...nsCounts.entries()].filter(([, n]) => n > 1).map(([k]) => k);
+            const summary = rows
+              .slice(0, 12)
+              .map((r) =>
+                r.namespace && r.namespace !== r.name
+                  ? `${r.name}@${r.namespace}`
+                  : r.name || r.namespace,
+              )
+              .filter(Boolean)
+              .join(' | ');
+            const hints: string[] = [];
+            if (dups.length) hints.push(`API重复namespace:${dups.join(',')}`);
+            if (apiRows.length > rows.length) {
+              hints.push(`API${apiRows.length}条→去重后${rows.length}条(双键缓存类)`);
+            }
+            setCustomerListSnap({
+              count: rows.length,
+              summary,
+              duplicateHint: hints.join('; '),
+            });
+          }}
         />
       )}
       {tab === 'plan' && (
@@ -881,6 +967,8 @@ const FdeDashboard: React.FC = () => {
       {tab === 'capability' && (
         <CapabilityBoundary
           industry={customer?.industry}
+          customerName={customer?.name || null}
+          customerNamespace={customer?.namespace || null}
           focusDomainId={domain?.id ?? null}
           onSelect={setDomain}
         />
@@ -2872,7 +2960,9 @@ const CustomersTab: React.FC<{
   readonly onSelect: (c: CustomerInfo) => void;
   readonly diagnosis: Readonly<DiagnosisInfo> | null;
   readonly selectedName?: string | null;
-}> = ({ onSelect, diagnosis, selectedName }) => {
+  /** 列表变化时上报给父级（小朱 Layer A）；raw=接口原样，items=去重后展示 */
+  readonly onListChange?: (items: any[], raw?: any[]) => void;
+}> = ({ onSelect, diagnosis, selectedName, onListChange }) => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState('');
@@ -2896,20 +2986,33 @@ const CustomersTab: React.FC<{
     domain_id: c.domain_id || c.primary_domain,
   });
 
-  const load = (opts?: { silent?: boolean }) => {
+  const load = (opts?: { silent?: boolean; attempt?: number }) => {
+    const attempt = opts?.attempt ?? 1;
     if (!opts?.silent) {
       setListLoading(true);
       setListError('');
     }
-    return fetch(API('/customers'))
+    // Profile 列表本身毫秒级；转圈过久几乎都是 platform:8003 挂死/未就绪。
+    const ac = new AbortController();
+    const timer = window.setTimeout(() => ac.abort(), 12_000);
+    return fetch(API('/customers'), { signal: ac.signal })
       .then(async (r) => {
         if (!r.ok) throw new Error(`加载失败 (${r.status})`);
         return r.json();
       })
       .then((d) => {
-        const items = d.items || [];
+        const raw = d.items || [];
+        // 按 namespace 去重（防御 ProfileManager 历史双键；同客户只显示一张卡）
+        const seen = new Set<string>();
+        const items = raw.filter((c: any) => {
+          const id = String(c.namespace || c.name || '');
+          if (!id || seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
         setCustomers(items);
         setListError('');
+        onListChange?.(items, raw);
         // 仅有 1 个 / 有默认 Profile 且当前未选 → 自动选用（刷新后也靠 session 恢复）
         if (!didAutoSelect.current && !selectedName && items.length > 0) {
           const pick = items.find((c: any) => c.default) || (items.length === 1 ? items[0] : null);
@@ -2919,11 +3022,24 @@ const CustomersTab: React.FC<{
           }
         }
       })
-      .catch((e: any) => {
-        setListError(e?.message || '客户列表加载失败');
+      .catch(async (e: any) => {
+        // One quiet retry after brief wait — covers platform worker recycle.
+        if (attempt < 2 && (e?.name === 'AbortError' || /Failed to fetch|NetworkError/i.test(String(e?.message || '')))) {
+          await new Promise((r) => setTimeout(r, 800));
+          return load({ silent: opts?.silent, attempt: attempt + 1 });
+        }
+        const msg =
+          e?.name === 'AbortError'
+            ? '超时：platform(8003) 无响应。请点重试；仍失败则 ./restart.sh 或看 ~/.aiplat/logs/platform.log'
+            : e?.message || '客户列表加载失败';
+        setListError(msg);
         setCustomers([]);
+        onListChange?.([]);
       })
-      .finally(() => setListLoading(false));
+      .finally(() => {
+        window.clearTimeout(timer);
+        setListLoading(false);
+      });
   };
   useEffect(() => { load(); }, []);
 

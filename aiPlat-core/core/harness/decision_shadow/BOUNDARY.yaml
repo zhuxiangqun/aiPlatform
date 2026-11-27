@@ -3,5 +3,8 @@ rationale: |
   Harness 子模块目录（decision_shadow）。符合 boundary-standard.md §3.1——Harness 是
   AI Runtime Kernel，本目录为 Ollaya typed-decision 旁路骨架（默认 enabled=false，
   无 DomainRouter.classify 钩子）。平台经 CoreFacade 访问；≠ 在线决策流量 / ≠ 省 token。
+  操作原则（2026-11-27 锁定）：固定选项 / 打分 / yes-no 类「选择题」优先规则、
+  embedding、typed-decision（Ollaya 等）；禁止为选择题新建生成式 LLM 主路径；
+  现有 T3（DomainRouter._llm_classify）仅作末档，影子/替换须书面采样 Go，不可用人签替代。
 known_debt:
   - "Phase 1b: DomainRouter.classify hook + sample traffic still require written Go"

@@ -817,6 +817,58 @@ def _evolution_line() -> str:
     return f"自演进上次运行: {bit} → /governance（不含步骤正文）"
 
 
+def _dh_evolution_proposals_line() -> str:
+    """小朱待批进化提案一行（受控自演进可见面）。"""
+    try:
+        from core.harness.digital_human.evolution_proposals import (
+            evolution_proposals_brief_line,
+        )
+
+        return evolution_proposals_brief_line()
+    except Exception:
+        logger.debug("dh evolution proposals brief failed", exc_info=True)
+        return "小朱进化提案: (简报未见)"
+
+
+def _dh_evo_pilot_line() -> str:
+    """平台三试点 + evo 台账一行（与小朱提案同词状态）。"""
+    try:
+        from core.harness.digital_human.evolution_proposals import (
+            evo_pilot_candidates_brief_line,
+        )
+
+        return evo_pilot_candidates_brief_line()
+    except Exception:
+        logger.debug("dh evo pilot brief failed", exc_info=True)
+        return "平台试点演化: (简报未见)"
+
+
+def _dh_purpose_bind_line() -> str:
+    """顾问 purpose 绑定回执一行。"""
+    try:
+        from core.harness.digital_human.consultant_purpose_bind import (
+            purpose_bind_brief_line,
+        )
+
+        return purpose_bind_brief_line()
+    except Exception:
+        logger.debug("dh purpose bind brief failed", exc_info=True)
+        return "顾问 purpose 绑定: (简报未见)"
+
+
+def _dh_domain_evolution_line() -> str:
+    """FDE/评测/知识三域进化待批一行。"""
+    try:
+        from core.harness.digital_human.domain_evolution_bridge import (
+            domain_evolution_brief_line,
+        )
+
+        return domain_evolution_brief_line()
+    except Exception:
+        logger.debug("dh domain evolution brief failed", exc_info=True)
+        return "领域进化(FDE/评测/知识): (简报未见)"
+
+
 def _experience_feedback_line() -> str:
     """rule_id + status counts only. Never content body."""
     path = _aiplat_home() / "experience_feedback.json"
@@ -1409,7 +1461,19 @@ def refers_to_current_screen(text: str) -> bool:
     t = (text or "").strip()
     return any(
         k in t
-        for k in ("这个画面", "这个页面", "当前画面", "当前页", "本页", "这页")
+        for k in (
+            "这个画面",
+            "这个页面",
+            "当前画面",
+            "当前页",
+            "本页",
+            "这页",
+            "画面上",
+            "页面上",
+            "列表里",
+            "列表上",
+            "卡片上",
+        )
     )
 
 
@@ -1886,6 +1950,10 @@ def build_platform_status_brief(
             _governance_cycle_line(),
             _awareness_log_line(),
             _evolution_line(),
+            _dh_evolution_proposals_line(),
+            _dh_evo_pilot_line(),
+            _dh_purpose_bind_line(),
+            _dh_domain_evolution_line(),
             _experience_feedback_line(),
             f"图示文件 ({len(diagrams)}): "
             + _summarize_names(diagrams, limit=name_limit)

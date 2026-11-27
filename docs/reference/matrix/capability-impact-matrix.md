@@ -8,7 +8,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3583 capabilities (caps_count) | 3583 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3614 capabilities (caps_count) | 3614 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -30,7 +30,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | FDE 能力自描述 |
 
 ### aiPlat-platform/apps/fde/api/router.py
 
@@ -43,7 +43,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | harness-execution-engine | §一 Harness 执行引擎 | 873 | evo_compute G0/G1/G2/G3 + production deepen 门面入口 |
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | N02 ObjectType publish Facade 入口 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | N02 ObjectType publish Facade 入口 |
 | skill-system | §六 Skill 系统 | 224 | CoreFacade 暴露 skill compat |
 | evaluation-system | §十三 评估系统 | 669 | CoreFacade 暴露 m2 deferred estimate |
 | diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
@@ -60,7 +60,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 345 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 375 | Agent REST 端点 |
 
 ### core/api/routers/diagnostics.py
 
@@ -85,14 +85,14 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
 
 ### core/api/routers/wiki_ontology_engine.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | 本体引擎 REST API |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | 本体引擎 REST API |
 
 ### core/api/routers/workspace_tools.py
 
@@ -142,7 +142,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
 | management-and-quality | §二十五 管理 & 质量 | 119 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
-| agent-system | §五 Agent 系统 | 345 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 375 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
@@ -159,19 +159,19 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | 10层上下文注入 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | 10层上下文注入 |
 
 ### core/harness/knowledge/domain_maturity.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | 域成熟度评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | 域成熟度评分 |
 
 ### core/harness/knowledge/ontology_completeness.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | OCS 本体完整性六维评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | OCS 本体完整性六维评分 |
 
 ### core/harness/maintenance/asset_compat.py
 
@@ -287,7 +287,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/apps/agents/discovery.py** — AgentDiscovery 实现/导出
 - **core/api/core_facade.py** — CoreFacade 再导出 A2A 能力
 
-### §五 Agent 系统 (345 caps)
+### §五 Agent 系统 (375 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 调度 Agent
 - **core/api/routers/agents.py** — Agent REST 端点
@@ -359,7 +359,7 @@ doc_id: CAPABILITY_IMPACT_MATRIX
 - **core/harness/utils/model_injection.py** — ModelManager 缓存
 - **aiPlat-infra/infra/management/model/config_loader.py** — adapters 发现与 CredentialPool 共用 DB 路径
 
-### §三 知识引擎（本体） (837 caps)
+### §三 知识引擎（本体） (838 caps)
 
 - **core/api/routers/wiki.py** — Wiki CRUD + index + ingest 端点
 - **core/api/routers/wiki_ontology_engine.py** — 本体引擎 REST API

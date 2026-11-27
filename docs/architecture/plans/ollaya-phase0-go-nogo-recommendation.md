@@ -22,6 +22,7 @@ purpose: 阶段 0 Go/No-Go 工程建议（≠ 正式会签；≠ 开采样）
 | 有条件豁免（默关骨架） | **维持 Go** | #616 已合入；`enabled=false`；`classify_hook_wired=false` |
 | **开采样 + 挂 classify** | **No-Go** | 缺 staging/prod ≥7 天窗口；本机 `t3_hits` 远低于 100；0.6 C7/C8 未会签 |
 | 阶段 1b 替换 T3 | **No-Go** | 未达阶段 1 退出门槛 |
+| 操作原则 | **锁定** | 少用生成式 LLM 做选择题（见实施计划 §0.1）；**不等于**已开采样 |
 
 ## 对照 §0.7 默认阈值
 
@@ -48,6 +49,7 @@ purpose: 阶段 0 Go/No-Go 工程建议（≠ 正式会签；≠ 开采样）
 | 日采 harness + Day-0 台账 | ✅ `scripts/ollaya_phase0_daily_collect.sh` + `ollaya-window-ledger.md`（**dev**；≠ staging Go） |
 | staging/prod 满窗 / C7 / C8 / 采样 Go | ☐ 仍待（2026-11-27：**暂无 staging URL** → 满窗不可启动） |
 | 2026-11-27 Prep 单（可打印） | ✅ `reports/architecture/human-gates/ollaya-06-meeting-prep-sheet.md`；Day-1 实采 total=0 / shadow 默关（dev；≠ Go） |
+| 2026-11-27 Day-2 | ✅ 原则 §0.1 锁定 + 日采 `day2-principle-lock`（total=0 / shadow off）；选择题守卫测试；**仍 No-Go 采样** |
 
 ## 明确不交付
 

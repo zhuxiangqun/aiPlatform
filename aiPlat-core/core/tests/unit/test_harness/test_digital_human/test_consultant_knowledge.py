@@ -129,6 +129,13 @@ def test_on_demand_skips_when_page_glossary_field_question():
     assert pack == ""
 
 
+def test_on_demand_skips_page_duplicate_customer_symptom():
+    """「为什么…画面上两个客户」不得因「为什么」拉 CAPABILITIES/Wiki。"""
+    q = "为什么我新建了一个客户后在画面上出现相同的两个客户？"
+    assert build_on_demand_pack(q) == ""
+    assert build_on_demand_pack(q, page_has_glossary=True) == ""
+
+
 def test_wiki_excerpts_disabled_by_empty_allowlist(monkeypatch, tmp_path):
     monkeypatch.setenv("AIPLAT_CONSULTANT_WIKI_COLLECTIONS", "")
     assert build_controlled_wiki_excerpts("FDE 交付引擎怎么用？") == ""

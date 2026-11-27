@@ -71,20 +71,30 @@ if [[ -f "$LEDGER" ]]; then
       if grep -q '^## Honesty' "$LEDGER"; then
         python3 - <<PY
 from pathlib import Path
+import re
 ledger = Path("$LEDGER")
 text = ledger.read_text(encoding="utf-8")
 row = """$ROW""".strip()
-marker = "## Honesty"
 if row in text:
     print("ledger: skip duplicate")
-elif marker not in text:
-    print("ledger: skip (no Honesty marker)")
 else:
-    # 插在 Honesty 前；若表尾有空行则吃掉，保持 markdown 表连续
-    idx = text.index(marker)
-    head, tail = text[:idx].rstrip("\n"), text[idx:]
-    ledger.write_text(head + "\n" + row + "\n\n" + tail, encoding="utf-8")
-    print(f"ledger: appended row under table → {ledger}")
+    # Prefer insert after last daily table row (before notes / Honesty)
+    matches = list(re.finditer(r"(?m)^\| (?:dev|staging|prod) \|", text))
+    if matches:
+        last = matches[-1]
+        line_end = text.find("\n", last.start())
+        if line_end < 0:
+            line_end = len(text)
+        head, tail = text[:line_end].rstrip("\n"), text[line_end:].lstrip("\n")
+        ledger.write_text(head + "\n" + row + "\n\n" + tail, encoding="utf-8")
+        print(f"ledger: appended after last table row → {ledger}")
+    elif "## Honesty" in text:
+        idx = text.index("## Honesty")
+        head, tail = text[:idx].rstrip("\n"), text[idx:]
+        ledger.write_text(head + "\n" + row + "\n\n" + tail, encoding="utf-8")
+        print(f"ledger: appended before Honesty → {ledger}")
+    else:
+        print("ledger: skip (no table row / Honesty marker)")
 PY
       else
         echo "$ROW" >>"$LEDGER"

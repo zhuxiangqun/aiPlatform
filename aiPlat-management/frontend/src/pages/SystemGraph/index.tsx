@@ -7,8 +7,18 @@ import LayerLegend from './LayerLegend';
 import ArchitectureView from './ArchitectureView';
 import RulesPanel from './RulesPanel';
 
+/** Curated entry points — always available even if tour scan is slow. */
+const STARTER_CENTERS: { file: string; label: string; layer: string }[] = [
+  { file: 'aiPlat-core/core/server.py', label: 'Core HTTP 入口', layer: 'core' },
+  { file: 'aiPlat-core/core/api/core_facade.py', label: 'CoreFacade 门面', layer: 'core' },
+  { file: 'aiPlat-platform/api/rest/routes.py', label: 'Platform API', layer: 'platform' },
+  { file: 'aiPlat-infra/infra/management/llm/manager.py', label: 'Infra LLM 管理', layer: 'infra' },
+  { file: 'aiPlat-management/frontend/src/App.tsx', label: '管理端路由', layer: 'management' },
+];
+
 const SystemGraph: React.FC = () => {
-  const [tab, setTab] = useState<'code' | 'capability' | 'wiki' | 'architecture' | 'domain' | 'rules'>('code');
+  // Understanding-first: architecture overview before code hairball.
+  const [tab, setTab] = useState<'code' | 'capability' | 'wiki' | 'architecture' | 'domain' | 'rules'>('architecture');
   const [codeMode, setCodeMode] = useState<'file' | 'symbol'>('file');
   const [graphData, setGraphData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -25,9 +35,13 @@ const SystemGraph: React.FC = () => {
   const [globalOpen, setGlobalOpen] = useState(false);
   const [globalQuery, setGlobalQuery] = useState('');
   const lastCenter = useRef('');
+  const [showAllLabels, setShowAllLabels] = useState(false);
   const [tourMode, setTourMode] = useState(false);
   const [tourSteps, setTourSteps] = useState<{ file: string; layer: string; in_degree: number; out_degree: number; symbols: string[]; routes?: string[] }[]>([]);
   const [tourIdx, setTourIdx] = useState(0);
+  /** Suggested centers for code-tab empty state (no need to guess filenames). */
+  const [entryHints, setEntryHints] = useState<{ file: string; label: string; layer?: string }[]>([]);
+  const [entryHintsLoading, setEntryHintsLoading] = useState(false);
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -90,7 +104,84 @@ const SystemGraph: React.FC = () => {
     finally { setLoading(false); }
   }, [tab, codeMode]);
 
-  useEffect(() => { if (tab === 'code') { fetchGraph(lastCenter.current || 'core/server', 2); } else { setGraphData(null); fetchGraph(); } }, [fetchGraph, tab]);
+  // Code tab: no auto center — empty until search / URL / explicit expand.
+  useEffect(() => {
+    if (tab === 'code') {
+      if (lastCenter.current) void fetchGraph(lastCenter.current, 2);
+      else {
+        setGraphData(null);
+        setLoading(false);
+      }
+    } else {
+      setGraphData(null);
+      void fetchGraph();
+    }
+  }, [fetchGraph, tab]);
+
+  // Load clickable entry hints when code tab is empty (tour hubs + curated starters).
+  useEffect(() => {
+    if (tab !== 'code' || graphData || lastCenter.current) return;
+    let cancelled = false;
+    setEntryHintsLoading(true);
+    setEntryHints(STARTER_CENTERS);
+    (async () => {
+      try {
+        const r = await fetch('/api/platform/apps/diagnostics/code-intel/tour?limit=8');
+        if (!r.ok) return;
+        const d = await r.json();
+        const tour = (d?.tour || []) as { file?: string; layer?: string; in_degree?: number; out_degree?: number }[];
+        if (cancelled || !tour.length) return;
+        const fromTour = tour
+          .filter((t) => String(t.file || '').trim())
+          .slice(0, 8)
+          .map((t) => {
+            const file = String(t.file);
+            const short = file.split('/').slice(-2).join('/');
+            const deg = Number(t.in_degree || 0) + Number(t.out_degree || 0);
+            return {
+              file,
+              label: deg > 0 ? `${short} · deg ${deg}` : short,
+              layer: String(t.layer || ''),
+            };
+          });
+        // Prefer live hubs, keep 2 curated starters for orientation.
+        const curatedKeep = STARTER_CENTERS.slice(0, 2);
+        const seen = new Set(fromTour.map((x) => x.file));
+        const merged = [
+          ...fromTour,
+          ...curatedKeep.filter((c) => !seen.has(c.file)),
+        ].slice(0, 10);
+        if (!cancelled) setEntryHints(merged);
+      } catch {
+        /* keep curated starters */
+      } finally {
+        if (!cancelled) setEntryHintsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, graphData]);
+
+  // Deep-link: ?tab=code&node=path
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const t = sp.get('tab');
+      const node = sp.get('node');
+      if (t === 'code' || t === 'capability' || t === 'wiki' || t === 'architecture' || t === 'domain' || t === 'rules') {
+        setTab(t);
+      }
+      if (node) {
+        setTab('code');
+        lastCenter.current = node;
+        void fetchGraph(node, 2);
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Guided Tour ──
   const startTour = useCallback(async () => {
@@ -150,15 +241,26 @@ const SystemGraph: React.FC = () => {
         <div className="flex items-center gap-3">
           <Brain className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-semibold text-gray-100">系统图谱</h1>
-          {/* Tab switcher */}
+          <span className="text-[10px] text-gray-600 hidden lg:inline">理解优先：先看架构，再搜中心展开邻域</span>
+          {/* Tab switcher — Architecture first */}
           <div className="flex gap-0.5 bg-dark-bg rounded-lg p-0.5 border border-dark-border">
+            <button
+              onClick={() => { setTab('architecture'); setActiveLayers(new Set()); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
+                tab === 'architecture'
+                  ? 'bg-sky-500/25 text-sky-200 ring-1 ring-sky-500/40'
+                  : 'text-sky-400/80 hover:text-sky-300'
+              }`}
+            >
+              <Layers className="w-3 h-3" />架构全景
+            </button>
             <button
               onClick={() => { setTab('code'); setActiveLayers(new Set()); setGraphData(null); }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 tab === 'code' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-300'
               }`}
             >
-              <Code className="w-3 h-3" />代码图谱
+              <Code className="w-3 h-3" />代码邻域
             </button>
             <button
               onClick={() => { setTab('capability'); setActiveLayers(new Set(['agent', 'skill', 'tool', 'mcp_server', 'workflow', 'entry_point'])); }}
@@ -175,14 +277,6 @@ const SystemGraph: React.FC = () => {
               }`}
             >
               <BookOpen className="w-3 h-3" />知识图谱
-            </button>
-            <button
-              onClick={() => { setTab('architecture'); setActiveLayers(new Set()); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                tab === 'architecture' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-300'
-              }`}
-            >
-              <Layers className="w-3 h-3" />架构全景
             </button>
             <button
               onClick={() => { setTab('domain'); setActiveLayers(new Set()); }}
@@ -239,6 +333,13 @@ const SystemGraph: React.FC = () => {
                     className="text-gray-500 hover:text-gray-300">✕ 清除</button>
                   <button onClick={() => fetchGraph(lastCenter.current, 3)}
                     className="text-gray-500 hover:text-gray-300">+ 展开</button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllLabels((v) => !v)}
+                    className="text-gray-500 hover:text-gray-300"
+                  >
+                    {showAllLabels ? '标签：全开' : '标签：悬停'}
+                  </button>
                 </div>
               )}
             </>
@@ -384,10 +485,59 @@ const SystemGraph: React.FC = () => {
                <RefreshCw className="w-6 h-6 animate-spin" />
              </div>
             ) : tab === 'code' && !graphData ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center text-gray-500">
-                  <p className="text-sm mb-2">依赖子图浏览器</p>
-                  <p className="text-xs text-gray-600">← 使用顶部全局搜索框搜索代码文件</p>
+              <div className="flex items-center justify-center h-full px-6 overflow-y-auto">
+                <div className="text-center text-gray-500 max-w-lg space-y-4 py-6">
+                  <div>
+                    <p className="text-sm text-gray-200">不用猜文件名——点一个入口开始</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      邻域图围绕「中心文件」展开。下面是常用入口与枢纽；点一下即可画图。
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {(entryHints.length ? entryHints : STARTER_CENTERS).map((h) => (
+                      <button
+                        key={h.file}
+                        type="button"
+                        onClick={() => void fetchGraph(h.file, 2)}
+                        className="text-left text-[11px] px-2.5 py-1.5 rounded-lg border border-dark-border bg-dark-card text-gray-200 hover:border-sky-500/50 hover:text-sky-100 max-w-[220px]"
+                        title={h.file}
+                      >
+                        {h.layer ? (
+                          <span className="text-[10px] text-gray-500 mr-1">{h.layer}</span>
+                        ) : null}
+                        {h.label}
+                      </button>
+                    ))}
+                  </div>
+                  {entryHintsLoading ? (
+                    <p className="text-[10px] text-gray-600">正在补充枢纽建议…</p>
+                  ) : null}
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => void startTour()}
+                      className="text-xs px-3 py-1.5 rounded border border-amber-700/40 text-amber-200 hover:border-amber-500/50"
+                    >
+                      开始导览
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.querySelector<HTMLInputElement>('input[placeholder="全局搜索..."]');
+                        el?.focus();
+                      }}
+                      className="text-xs px-3 py-1.5 rounded border border-dark-border text-sky-300 hover:border-sky-500/40"
+                    >
+                      自己搜文件
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTab('architecture')}
+                      className="text-xs text-sky-400 hover:underline"
+                    >
+                      ← 先看架构全景
+                    </button>
+                  </div>
                 </div>
               </div>
            ) : tab === 'domain' && graphData ? (
@@ -444,6 +594,8 @@ const SystemGraph: React.FC = () => {
               tab={tab as any}
               activeLayers={activeLayers}
               diffNodes={diffNodes}
+              showAllLabels={showAllLabels}
+              centerId={lastCenter.current || undefined}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500 text-sm">

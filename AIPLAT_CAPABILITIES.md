@@ -1,5 +1,5 @@
 ---
-total_capabilities: 4427
+total_capabilities: 4450
 last_updated: 2026-11-25
 version: "30.14"
 auto_sync: true
@@ -1634,6 +1634,7 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| build_wiki_graph | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_wiki_rebuild_product_gate | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
 | run_wiki_rebuild_product_suite | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
 | list_wiki_rebuild_pages_product | `core/harness/knowledge_pipeline/wiki_rebuild.py` | ✅ | 自动同步 | 已合入 |
@@ -2666,6 +2667,12 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| collect_live_knowledge_cases | `core/harness/digital_human/domain_evolution_bridge.py` | ✅ | 自动同步 | 已合入 |
+| propose_purpose_bind_from_latest | `core/harness/digital_human/evolution_proposals.py` | ✅ | 自动同步 | 已合入 |
+| ensure_digital_human_pilot_proposals | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| propose_digital_human_pilot_config | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| create_digital_human_evolution_proposal | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| list_digital_human_evolution_proposals | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | save_delivery_plan | `core/apps/fde/service/delivery_plan.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_fde_operational_bundle | `core/apps/fde/service/operational_contracts.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_eval_operational_bundle | `core/apps/eval/service/operational_gates.py` | ✅ | 自动同步 | 已合入 |
@@ -2949,6 +2956,22 @@ scan_hash: 8f9548ec24f4
 | ensure_generic_disclaimer | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 外部泛知识答句前置「非本平台资产」标注 | 已合入 |
 | load_personal_notes | `core/harness/digital_human/consultant_personal.py` | ✅ | 租户级小朱个人笔记 | 已合入 |
 | remember_from_turn | `core/harness/digital_human/consultant_personal.py` | ✅ | 从对话轮次写入持久笔记 | 已合入 |
+| remember_correction | `core/harness/digital_human/consultant_personal.py` | ✅ | 「不对/应该是」纠偏写入个人笔记；生成物适用：不适用（顾问横切） | 本批 |
+| maybe_submit_digital_human_sft | `core/harness/digital_human/consultant_sft_loop.py` | ✅ | 策展达标自动 Dataset+Job（不切生产路由）；生成物适用：不适用（顾问横切） | 本批 |
+| submit_digital_human_curated_sft | `core/api/core_facade.py` | ✅ | CoreFacade 薄封装 maybe_submit；生成物适用：不适用 | 本批 |
+| create_evolution_proposal / list_evolution_proposals / decide_evolution_proposal | `core/harness/digital_human/evolution_proposals.py` | ✅ | 小朱受控进化提案台账（HUMAN_GATE；production_model_changed 恒 false）；生成物适用：不适用（顾问横切） | 本批 |
+| maybe_propose_from_feedback / maybe_propose_sft_promote | `core/harness/digital_human/evolution_proposals.py` | ✅ | 反馈/SFT 成功→提案；生成物适用：不适用 | 本批 |
+| list/create/decide_digital_human_evolution_proposal | `core/api/core_facade.py` | ✅ | CoreFacade 进化提案入口；生成物适用：不适用 | 本批 |
+| propose_pilot_config / ensure_pilot_config_proposals / evo_pilot_candidates_brief_line | `core/harness/digital_human/evolution_proposals.py` | ✅ | Phase2：三试点→HUMAN_GATE；批准→evo台账+沙箱Canary（禁 use_global_router）；生成物适用：不适用 | 本批 |
+| propose/ensure_digital_human_pilot_* | `core/api/core_facade.py` | ✅ | CoreFacade 试点提案入口；生成物适用：不适用 | 本批 |
+| evaluate_sft_promote_gate | `core/harness/digital_human/consultant_sft_gate.py` | ✅ | sft_promote 最小 holdout 结构门（失败→APPROVED 不 APPLIED；不改选模）；生成物适用：不适用 | 本批 |
+| evaluate_digital_human_sft_promote_gate | `core/api/core_facade.py` | ✅ | CoreFacade 薄封装；生成物适用：不适用 | 本批 |
+| write_purpose_bind / active_consultant_bind_meta / purpose_bind_brief_line | `core/harness/digital_human/consultant_purpose_bind.py` | ✅ | 第二道人批绑定回执；默认不改选模；`AIPLAT_DH_PURPOSE_BIND=1` 才顾问热路径可读；生成物适用：不适用 | 本批 |
+| maybe_propose_purpose_bind / propose_digital_human_purpose_bind / get_digital_human_purpose_bind | `evolution_proposals` + `core_facade` | ✅ | sft_promote APPLIED 后链式待批；生成物适用：不适用 | 本批 |
+| scan_domain_evolution_proposals / apply_domain_evolution_proposal | `core/harness/digital_human/domain_evolution_bridge.py` | ✅ | FDE/评测/知识→HUMAN_GATE；批准只写回执；e5_claimed 恒 false；生成物适用：不适用 | 本批 |
+| build_fde_inventory_from_delivery_plans / refresh_domain_inventories | `core/harness/digital_human/domain_evolution_bridge.py` | ✅ | FDE 证据库存：交付计划骨架 required + 落盘计划 done→covered；scan only_missing 补写；生成物适用：不适用 | 本批 |
+| build_digital_human_fde_inventory / refresh_digital_human_domain_inventories | `core/api/core_facade.py` | ✅ | CoreFacade FDE 库存生成/刷新；生成物适用：不适用 | 本批 |
+| scan_digital_human_domain_evolution | `core/api/core_facade.py` | ✅ | CoreFacade 三域扫描入口；生成物适用：不适用 | 本批 |
 | refresh_consultant_prompt | `core/harness/digital_human/consultant_reload.py` | ✅ | AGENT.md/心智卡 mtime 热载 | 已合入 |
 | captureVisiblePage | `frontend/src/lib/captureVisiblePage.ts` | ✅ | 可见页 chrome 短摘（非 DOM dump） | 已合入 |
 | evaluate_four_questions | `core/apps/fde/service/four_questions.py` | ✅ | 自动同步 | 已合入 |
@@ -5330,10 +5353,10 @@ scan_hash: 8f9548ec24f4
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 955 | 1 | 956 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 911 | 9 | 920 |
+| 知识引擎（本体） | 912 | 9 | 921 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 327 | 0 | 327 |
+| Agent 系统 | 349 | 0 | 349 |
 | Skill 系统 | 215 | 0 | 215 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
@@ -5373,7 +5396,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 9 | 0 | 9 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4416** | **11** | **4427** |
+| **总计** | **4439** | **11** | **4450** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

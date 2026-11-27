@@ -3,6 +3,7 @@ import {
   clearAssetAuditPageFields,
   clearPageData,
   clearSmokeEvalPageFields,
+  consultantPagePayload,
   formatAuditIssueForPage,
   getPageData,
   pageDataToText,
@@ -10,6 +11,7 @@ import {
   reportAssetAuditToPage,
   reportPageData,
 } from './pageDataBridge';
+import { fdeGlossaryPromptText } from '../pages/Diagnostics/fdeGlossary';
 
 describe('formatAuditIssueForPage', () => {
   it('uses Chinese suggestion instead of truncated English message', () => {
@@ -76,6 +78,71 @@ describe('reportAssetAuditToPage', () => {
     expect(cleared.issue0).toBeUndefined();
     expect(cleared.guideGlossary).toBe('Skill=可复用动作');
     expect(pageDataToText(cleared)).toMatch(/guideGlossary/);
+  });
+});
+
+describe('FDE guideGlossary reaches 小朱 payload', () => {
+  const route = '/diagnostics/fde';
+
+  beforeEach(() => {
+    (globalThis as any).window = (globalThis as any).window || {};
+    (globalThis as any).window.__AIPLAT_PAGE_DATA__ = {};
+  });
+
+  afterEach(() => {
+    clearPageData(route);
+  });
+
+  it('keeps Gate0 and 应用工厂并行 inside consultantPagePayload', () => {
+    const gloss = fdeGlossaryPromptText(2800);
+    reportPageData(route, {
+      activeTab: 'plan',
+      guideGlossary: gloss,
+      deliveryPlanGate0HowTo: '进场前锁定部署模式后手勾',
+      deliveryPlanFactoryHowTo: '打开 /app/factory 并行建项目',
+    });
+    const text = pageDataToText(getPageData(route), 3200);
+    expect(text).toMatch(/Gate0/);
+    expect(text).toMatch(/应用工厂并行/);
+    const payload = consultantPagePayload(route, 4000);
+    expect(payload).toMatch(/Gate0/);
+    expect(payload).toMatch(/应用工厂并行|\/app\/factory/);
+  });
+});
+
+describe('deliveryPlan tab patch preservation', () => {
+  const route = '/diagnostics/fde';
+
+  beforeEach(() => {
+    (globalThis as any).window = (globalThis as any).window || {};
+    (globalThis as any).window.__AIPLAT_PAGE_DATA__ = {};
+  });
+
+  afterEach(() => {
+    clearPageData(route);
+  });
+
+  it('keeps deliveryPlan* after parent reportPageData refresh', () => {
+    reportPageData(route, {
+      activeTab: 'plan',
+      hasDiagnosis: false,
+      deliveryPlanNeedsDiagnosis: false,
+    });
+    patchPageData(route, {
+      deliveryPlanReadyToGenerate: true,
+      deliveryPlanRequirementChars: 120,
+      deliveryPlanNextStep: '点本页「生成计划」按钮（不需要先跑问题重构/诊断）',
+    });
+    reportPageData(route, {
+      activeTab: 'plan',
+      hasDiagnosis: false,
+      deliveryPlanNeedsDiagnosis: false,
+    });
+    const after = getPageData(route)!;
+    expect(after.deliveryPlanReadyToGenerate).toBe(true);
+    expect(after.deliveryPlanRequirementChars).toBe(120);
+    expect(String(after.deliveryPlanNextStep)).toMatch(/生成计划/);
+    expect(after.deliveryPlanNeedsDiagnosis).toBe(false);
   });
 });
 

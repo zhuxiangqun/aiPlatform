@@ -95,12 +95,21 @@ const SEVERITY_CONFIG: Record<string, { icon: any; color: string }> = {
 
 interface CapabilityBoundaryProps {
   readonly industry?: string | null;
+  /** 当前 FDE 客户（域名≠客户名；勿把「江苏锁安」当成已选客户） */
+  readonly customerName?: string | null;
+  readonly customerNamespace?: string | null;
   /** 当前 FDE 已选评估域 — 置顶并默认展开，避免 20+ 域淹没交付建议 */
   readonly focusDomainId?: string | null;
   readonly onSelect?: ((domain: { id: string; maturity: string; skillsAvailable: number }) => void) | null;
 }
 
-const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, focusDomainId, onSelect }) => {
+const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({
+  industry,
+  customerName,
+  customerNamespace,
+  focusDomainId,
+  onSelect,
+}) => {
   const [data, setData] = useState<CapabilityBoundaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -193,15 +202,33 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, focus
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-gray-700/50 bg-gray-900/40 px-4 py-2.5 text-xs text-gray-400">
+        {customerName ? (
+          <>
+            为客户{' '}
+            <span className="text-emerald-200 font-medium">{customerName}</span>
+            {customerNamespace ? (
+              <span className="font-mono text-[10px] text-gray-500 ml-1">({customerNamespace})</span>
+            ) : null}{' '}
+            选交付域。下方列表是<strong className="text-gray-300 font-normal">全平台业务域目录</strong>
+            （如「江苏锁安」是 lock-service 域的显示名），不是客户档案。
+          </>
+        ) : (
+          <>请先在①选用客户；本页列出全平台域成熟度，点选一行即绑定为当前客户的②评估域。</>
+        )}
+      </div>
       {focusDomainId && (
         <div className="rounded-lg border border-sky-700/40 bg-sky-950/25 px-4 py-3 space-y-2">
           <div className="text-sm text-sky-100 font-medium">
+            {customerName ? (
+              <span className="text-emerald-200/90 font-normal mr-2">{customerName} →</span>
+            ) : null}
             当前交付域：{focusMeta?.name || focusDomainId}
             <span className="ml-2 font-mono text-[11px] text-gray-500">{focusDomainId}</span>
           </div>
           <div className="text-[11px] text-gray-400 leading-relaxed">
-            FDE 主路径看上方蓝条（通常是「前往 ③ 问题重构」）。下面「交付下一步」才是图数据缺口；
-            Skill / Golden / llm_prompt 已收进「平台完善（可选）」，不是进场阻塞。
+            「{focusMeta?.name || focusDomainId}」是业务域，不是客户名。FDE 主路径看上方进度条（通常下一步是③问题重构）。
+            下面「交付下一步」才是图数据缺口；Skill / Golden 在「平台完善（可选）」，不是进场阻塞。
           </div>
           <div className="flex items-center gap-3 text-[11px]">
             <button

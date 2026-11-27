@@ -4,6 +4,8 @@
  */
 import React, { useEffect, useState } from 'react';
 import { storedIdentityHeaders } from '../../services/identityHeaders';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
+import { orgPilotGlossaryText } from '../../lib/consultantLayerA';
 
 const API = (path: string) => `/api/platform/apps/org${path}`;
 
@@ -230,6 +232,17 @@ const OrgPilotPage: React.FC = () => {
   useEffect(() => {
     load().catch(() => setMsg('加载失败'));
   }, []);
+
+  useEffect(() => {
+    reportPageData('/org/pilot', {
+      screen: '组织试点：Org 闸门/周 KPI；不是 FDE①新建客户 Profile，也不是多租户',
+      hasPost: !!post,
+      prepComplete: !!prep?.prep_complete,
+      m4ClaimAllowed: !!(prep?.m4_claim_allowed ?? fieldOps?.m4_claim_allowed),
+      guideGlossary: orgPilotGlossaryText(),
+    });
+    return () => clearPageData('/org/pilot');
+  }, [post, prep, fieldOps]);
 
   const openSnapshot = async (item: InboxItem) => {
     if (!item.kind || !item.id) return;

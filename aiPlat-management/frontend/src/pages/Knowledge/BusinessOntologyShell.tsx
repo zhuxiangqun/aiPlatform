@@ -1,8 +1,10 @@
-import React, { Suspense, useMemo } from 'react';
+import React, { Suspense, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import DualTrackBanner from '../../components/knowledge/DualTrackBanner';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
+import { knowledgeBusinessGlossaryText } from '../../lib/consultantLayerA';
 
 const KnowledgeFactoryPage = lazyWithRetry(() => import('../KnowledgeFactory/KnowledgeFactoryPage'));
 const OntologyManager = lazyWithRetry(() => import('../Infra/Ontology/OntologyManager'));
@@ -52,6 +54,15 @@ const BusinessOntologyShell: React.FC = () => {
   };
 
   const active = TABS.find((t) => t.id === tab) || TABS[0];
+
+  useEffect(() => {
+    reportPageData('/knowledge/business', {
+      screen: '业务说明书：本体轨；不是 FDE 新建客户，也不是知识库检索',
+      activeTab: tab,
+      guideGlossary: knowledgeBusinessGlossaryText(),
+    });
+    return () => clearPageData('/knowledge/business');
+  }, [tab]);
 
   return (
     <div className="min-h-full flex flex-col">

@@ -5,7 +5,7 @@
     "/system-overview": "平台总览与健康入口",
     "/app/factory": "应用工厂：从需求到可部署应用的整条流水线",
     "/app/apps": "已部署应用列表与运行入口",
-    "/diagnostics/fde": "FDE 交付工作台：诊断、证据与签收",
+    "/diagnostics/fde": "FDE 工作台：选客户→交付计划粘贴/上传需求后点生成计划（不依赖诊断）→②–⑧",
     "/workspace/agents": "应用库 Agent：注册与执行平台内角色，不是整条工厂流水线",
     "/workspace/skills": "Skill 库：可复用动作与 SOP",
     "/workspace/tools": "Tool 库：原子操作与脚本",
@@ -486,7 +486,7 @@
       "id": "fde",
       "title": "FDE 交付工作台",
       "menu": "/diagnostics/fde",
-      "when": "交付诊断、证据、签收类，不走研发流水线"
+      "when": "现场交付：客户 Profile、交付计划（上传/粘贴需求生成，不依赖诊断）、诊断与签收；不走研发流水线"
     },
     {
       "id": "video_simple",

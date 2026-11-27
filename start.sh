@@ -282,15 +282,27 @@ verify_import () {
 
 kill_port_if_any () {
   port="$1"
-  # Kill ALL processes tied to this port (LISTEN + ESTABLISHED workers)
+  # Kill LISTEN holders first (gunicorn master/worker); then any leftover fd on port.
   local pids
-  pids=$(lsof -ti :$port 2>/dev/null | grep -v "^$(pgrep -x 'clash-meta' 2>/dev/null || echo '99999')$" || true)
+  pids=$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
+  if [ -z "$pids" ]; then
+    pids=$(lsof -ti :"$port" 2>/dev/null | grep -v "^$(pgrep -x 'clash-meta' 2>/dev/null || echo '99999')$" || true)
+  fi
   if [ -n "$pids" ]; then
     echo "端口 $port 清理残留进程: $pids"
     for pid in $pids; do
-      kill -9 $pid 2>/dev/null || true
+      kill -9 "$pid" 2>/dev/null || true
     done
-    sleep 1
+    local i
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+      if ! lsof -tiTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+        break
+      fi
+      sleep 0.3
+    done
+    if lsof -tiTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+      echo "⚠ 端口 $port 仍被占用，启动可能失败。请先: ./stop.sh 或 lsof -nP -iTCP:$port -sTCP:LISTEN"
+    fi
   fi
 }
 
@@ -403,6 +415,10 @@ echo "============================================================"
 find "$PROJECT_ROOT/aiPlat-core" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
 kill_port_if_any 8002
+# Extra: ensure no stale gunicorn worker still holds 8002 after soft kill
+pkill -f "gunicorn.*server:app" 2>/dev/null || true
+sleep 0.5
+kill_port_if_any 8002
 verify_import "core" "import server"
 
 export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-hash}"
@@ -415,6 +431,7 @@ PYTHONPATH="$PROJECT_ROOT/aiPlat-core:$PROJECT_ROOT/aiPlat-platform:$PROJECT_ROO
   nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 server:app > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
+echo "  (改代码后请用 ./restart.sh 或 ./stop.sh && ./start.sh；勿只杀端口再手工起残缺进程)"
 
 sleep 3
 # 1 次 /api/core/health 返回 200 即就绪
