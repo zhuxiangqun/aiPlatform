@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-27T11:07:18+08:00",
+  "reviewed_at": "2026-11-27T21:32:40+08:00",
   "base_ref": "origin/main",
-  "merge_base": "607cdb3ce3ac0a61c918f8c869c1fcfae8cf4c82",
-  "diff_sha256": "4fb80f13918729d9eccb56b7c752f4ed15e0b128550de5dce0c2bb44e9d31671",
-  "head_sha": "04c89542ec8c8e66b5287138c7ad78058e9db9b8",
+  "merge_base": "d9d04d009e8b73b973bb3db7e52b77570c434d06",
+  "diff_sha256": "e28a4c8837f1f57e21be9be795fe47fa73f8a120a4bb056367928e045fbc1fc4",
+  "head_sha": "99ee813eb93f9b803d0782f02c6e99c8238b3ee6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Zero findings: dual paste/upload intake for FDE delivery plan; no SRS body persisted. Local lock only."
+  "note": "FDE inventory auto-gen prefers delivery_plan skeleton+plans; scan only_missing avoids overwriting manual inventories; e5_claimed/production_write stay false. Local lock only."
 }
