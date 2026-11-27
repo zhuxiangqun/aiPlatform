@@ -69,6 +69,7 @@ async def fde_dashboard():
 
     # Recent activity (last 5 sessions)
     recent = []
+    fd = None
     try:
         from core.api.core_facade import GraphIndex
         fd = GraphIndex.load(fde_graph_domain(), tenant_id=fde_graph_tenant())
@@ -86,23 +87,25 @@ async def fde_dashboard():
     # Active alerts (error-level only, top 3)
     alerts = []
     try:
-        alert_data = list(fd._nodes.items())
-        for nid, node in alert_data:
-            if getattr(node, "class_name", "") != "DiagnosisSession":
-                continue
-            nb = fd.get_neighbor_edges(nid, direction="outgoing")
-            for neighbor_id, edge in nb:
-                if edge.relation_name == "has_transition":
-                    tn = fd.get_node(neighbor_id)
-                    if tn and "blocked" in (tn.entity_name or "").lower():
-                        alerts.append({
-                            "session": node.entity_name[:50],
-                            "type": "blocked_action",
-                            "severity": "error",
-                        })
-                        break
-            if len(alerts) >= 3:
-                break
+        # 为什么：上一段 Graph 失败时 fd 可能未赋值；勿 NameError 吞成空告警却掩盖根因
+        if fd is not None:
+            alert_data = list(fd._nodes.items())
+            for nid, node in alert_data:
+                if getattr(node, "class_name", "") != "DiagnosisSession":
+                    continue
+                nb = fd.get_neighbor_edges(nid, direction="outgoing")
+                for neighbor_id, edge in nb:
+                    if edge.relation_name == "has_transition":
+                        tn = fd.get_node(neighbor_id)
+                        if tn and "blocked" in (tn.entity_name or "").lower():
+                            alerts.append({
+                                "session": node.entity_name[:50],
+                                "type": "blocked_action",
+                                "severity": "error",
+                            })
+                            break
+                if len(alerts) >= 3:
+                    break
     except Exception:
         logging.getLogger(__name__).debug('fde_dashboard failed', exc_info=True)
 
@@ -111,18 +114,21 @@ async def fde_dashboard():
         "good" if metrics["delivery_rate"] >= 30 else "growing"
     )
 
+    # 为什么：response_model=FdeItemResponse 只认 data 字段；顶层 metrics 会被滤成 data={}
     return {
-        "metrics": metrics,
-        "recent_activity": recent,
-        "active_alerts": alerts,
-        "governance_health": gov_health,
-        "quick_actions": [
-            "POST /fde/ask — 追问已有诊断",
-            "POST /fde/delivery/feedback — 更新交付状态",
-            "GET /fde/governance — 查看治理能力矩阵",
-            "GET /fde/alerts — 查看完整告警列表",
-        ],
-        "elapsed_ms": round((_td.time() - t0) * 1000),
+        "data": {
+            "metrics": metrics,
+            "recent_activity": recent,
+            "active_alerts": alerts,
+            "governance_health": gov_health,
+            "quick_actions": [
+                "POST /fde/ask — 追问已有诊断",
+                "POST /fde/delivery/feedback — 更新交付状态",
+                "GET /fde/governance — 查看治理能力矩阵",
+                "GET /fde/alerts — 查看完整告警列表",
+            ],
+            "elapsed_ms": round((_td.time() - t0) * 1000),
+        }
     }
 
 
