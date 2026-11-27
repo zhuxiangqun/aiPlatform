@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-27T02:26:07Z"
+generated_at: "2026-11-27T15:31:57Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e"
-caps_sha256: "112696e999168415338493120bde29c047960b907d8641c148947af091545378"
+caps_sha256: "dccd7cb460e6a956c25d4871fc40a54001e3c1a5da5df125de5750eedd1cd4cb"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=112696e999168415338493120bde29c047960b907d8641c148947af091545378 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=1641cccf71efaa130f3b0370ae0c988e50303e56d5e830b273e9915cd8613a2e caps_sha256=dccd7cb460e6a956c25d4871fc40a54001e3c1a5da5df125de5750eedd1cd4cb scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-27T02:26:07Z` |
-| CAPABILITIES sha256 | `112696e99916…` |
+| 生成时间 (UTC) | `2026-11-27T15:31:57Z` |
+| CAPABILITIES sha256 | `dccd7cb460e6…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -128,11 +128,11 @@ language: zh-CN
 | **建域 / 工厂 apply / 应用库 Agent** | [创建本体+Agent 合册](../../../docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) | ✅ |
 | **it-ops 组织试点与签收准备（八闸门）** | [ORG_L5_RUNBOOK](../../../docs/contracts/ORG_L5_RUNBOOK.md) · [ORG_M4_SIGNOFF_PACK](../../../docs/contracts/ORG_M4_SIGNOFF_PACK.md) · 管理端 `/org/pilot` | ✅ |
 
-> **勿混淆**：本目录「⑦ 验收移交 / 客户签收」指 **FDE 项目交付签收单**；it-ops **Org M4 签收准备**（材料齐可送审，程序不打开 `m4_claim`）在仪表盘 **组织试点**，不在 FDE 工作台九步主流程里完成。
+> **勿混淆**：本目录「⑦ 验收移交 / 客户签收」指 **FDE 项目交付签收单**；it-ops **Org M4 签收准备**（材料齐可送审，程序不打开 `m4_claim`）在仪表盘 **组织试点**，不在 FDE 工作台编号主流程里完成。
 
-##### FDE 工作台工具箱（v28.0 新增）
+##### FDE 工作台工具箱
 
-工具栏包含 10+ 跨阶段工具，按用途分三组：
+工具栏包含跨阶段工具，按用途分三组：
 
 | 组 | 工具 | 用途 |
 |:--|------|------|
@@ -142,15 +142,26 @@ language: zh-CN
 
 > 工具栏收纳策略：沙盒推演/决策血缘/蜂群推演始终可见，其余通过「更多▼」展开。
 
-##### FDE 九步交付流程
+##### FDE 工作台主路径（与画面 Tab 对齐，2026-11-27）
+
+画面 `FDE_STEPS`（`FdeDashboard.tsx`）当前顺序：
 
 ```
-① 业务认知  →  ② 评估域  →  ③ 问题重构  →  ④ 验证价值  →  ⑤ 快速构建
-    选客户         选域           诊断           POC演示        打包部署
+① 业务认知 → 【交付计划】→ ② 评估域 → ③ 问题重构 → ④ 验证价值
+     选客户      上传/粘贴需求生成清单      选域           诊断           POC
 
-⑥ 评测护栏  →  ⑦ 验收移交  →  ⑧ 运营监控  →  ⑨ 快速认知
-   灰度测试        客户签收        持续运维        48h行业认知
+⑤ 平台离线包 → ⑥ 评测护栏 → ⑥b 上线前检查 → ⑦ 验收移交 → ⑧ 运营监控 → ⑨ 快速认知
+   打包（≠客户应用）   灰度/质量门      security 预检         项目签收         运维          48h 行业认知
 ```
+
+**交付计划**（Tab `plan`，不编号进 ①–⑧）：
+
+- 先选用客户 → 本页粘贴或上传需求（≥20 字）→「生成计划」；**不依赖** ③ 诊断。
+- 骨架含插段：**Gate0 决策锁定**（进场前手勾部署/性能/合规/范围）、**新建域（插段）**（标准交付可 skipped）、**应用工厂并行**（`/app/factory`，手勾，不替代 ④–⑦）。
+- 完成度 ≠ ⑦ 签收；需求原文不落盘；计划 JSON 在 `~/.aiplat/fde_delivery_plans/`。
+- 真源：`aiPlat-core/workspace_seeds/fde/delivery_plan_skeleton.yaml` + `FdeDeliveryPlanTab.tsx`。
+
+> 验证：`grep -n "key: 'plan'" aiPlat-management/frontend/src/pages/Diagnostics/FdeDashboard.tsx`；`grep -n "id: gate0" aiPlat-core/workspace_seeds/fde/delivery_plan_skeleton.yaml`。
 
 ##### 阅读路线图
 
@@ -1316,10 +1327,10 @@ _(节选；全文见权威源)_
 |------|:---:|:---:|:---:|
 | Harness 执行引擎 | 955 | 1 | 956 |
 | 记忆子系统 | 93 | 0 | 93 |
-| 知识引擎（本体） | 911 | 9 | 920 |
+| 知识引擎（本体） | 912 | 9 | 921 |
 | RAG 检索 | 60 | 0 | 60 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 327 | 0 | 327 |
+| Agent 系统 | 378 | 0 | 378 |
 | Skill 系统 | 215 | 0 | 215 |
 | 安全与治理 | 126 | 0 | 126 |
 | 可观测性 | 43 | 0 | 43 |
@@ -1359,7 +1370,7 @@ _(节选；全文见权威源)_
 | Skill 目录标准化 | 9 | 0 | 9 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **4416** | **11** | **4427** |
+| **总计** | **4468** | **11** | **4479** |
 
 ### 3.2 上手路径（节选）
 
@@ -1490,7 +1501,7 @@ git pull origin main
 ### Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 3583 capabilities (caps_count) | 3583 symbols (provides)
+> Version: 1.1.0 | 34 domains | 3654 capabilities (caps_count) | 3654 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -1512,7 +1523,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | FDE 能力自描述 |
 
 ##### aiPlat-platform/apps/fde/api/router.py
 
@@ -1525,7 +1536,7 @@ git pull origin main
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | harness-execution-engine | §一 Harness 执行引擎 | 873 | evo_compute G0/G1/G2/G3 + production deepen 门面入口 |
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | N02 ObjectType publish Facade 入口 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | N02 ObjectType publish Facade 入口 |
 | skill-system | §六 Skill 系统 | 224 | CoreFacade 暴露 skill compat |
 | evaluation-system | §十三 评估系统 | 669 | CoreFacade 暴露 m2 deferred estimate |
 | diagnosis-system | §十三-b 诊断系统 | 20 | CoreFacade 暴露 get_diagnosis_store |
@@ -1542,7 +1553,7 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 345 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 415 | Agent REST 端点 |
 
 ##### core/api/routers/diagnostics.py
 
@@ -1567,14 +1578,14 @@ git pull origin main
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
 
 ##### core/api/routers/wiki_ontology_engine.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 837 | 本体引擎 REST API |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 838 | 本体引擎 REST API |
 
 ##### core/api/routers/workspace_tools.py
 
@@ -1624,7 +1635,7 @@ git pull origin main
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
 | management-and-quality | §二十五 管理 & 质量 | 119 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
-| agent-system | §五 Agent 系统 | 345 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 415 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | extension-and-learning | §十一 扩展
 

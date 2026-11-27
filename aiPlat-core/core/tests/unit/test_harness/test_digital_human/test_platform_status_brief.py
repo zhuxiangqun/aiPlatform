@@ -415,6 +415,13 @@ def test_screen_deixis_omits_inventory_keeps_audit(tmp_path, monkeypatch):
     brief_mod.clear_brief_cache()
     assert brief_mod.refers_to_current_screen("根据这个画面的审核结果，我应该怎么做？")
     assert brief_mod.refers_to_current_screen("这个画面的功能是什么")
+    assert brief_mod.refers_to_current_screen(
+        "为什么我新建了一个客户后在画面上出现相同的两个客户？"
+    )
+    assert brief_mod.use_page_only_brief(
+        "为什么我新建了一个客户后在画面上出现相同的两个客户？",
+        "guideGlossary: 客户卡片重复=…",
+    )
     assert not brief_mod.refers_to_current_screen("设备报修该怎么建")
     assert brief_mod.use_page_only_brief(
         "能不能把解读精简一点解释？",

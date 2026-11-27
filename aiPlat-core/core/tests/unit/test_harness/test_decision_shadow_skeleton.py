@@ -67,8 +67,12 @@ def test_enabled_queue_full_drops():
 
 
 def test_domain_router_has_no_decision_shadow_import():
+    """classify 不得 import/调用 decision_shadow（文档提及 typed-decision 允许）。"""
     src = Path(inspect.getsourcefile(domain_router_mod)).read_text(encoding="utf-8")
-    assert "decision_shadow" not in src
+    assert "from core.harness.decision_shadow" not in src
+    assert "import decision_shadow" not in src
+    assert "decision_shadow_try_enqueue" not in src
+    assert "get_shadow_dispatcher" not in src
 
 
 def test_facade_and_diagnostics_status():

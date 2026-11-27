@@ -93,24 +93,40 @@ class ProfileManager:
         if self._loaded:
             return
         self._loaded = True
+        self._profiles = {}
         if not os.path.isdir(self._profiles_dir):
             return
         for entry in sorted(os.listdir(self._profiles_dir)):
             if not entry.endswith(".yaml") or entry == ".registry.yaml":
                 continue
+            # Skip non-profile config dumps in the same directory
+            if entry in ("control_presets.yaml",):
+                continue
             fp = os.path.join(self._profiles_dir, entry)
             cfg = ProfileConfig.from_yaml(fp)
             if cfg:
-                self._profiles[cfg.name] = cfg
+                # Canonical key = namespace（name 可与 namespace 不同，禁止双键导致 list 重复）
+                key = (cfg.namespace or cfg.name or "").strip()
+                if key:
+                    self._profiles[key] = cfg
 
     def get(self, name: str) -> Optional[ProfileConfig]:
-        """get。
+        """按 namespace 或展示名查找 Profile。
 
         Args:
-            name: name 参数。
+            name: namespace 或 profile.name。
         """
         self._ensure_loaded()
-        return self._profiles.get(name)
+        key = (name or "").strip()
+        if not key:
+            return None
+        hit = self._profiles.get(key)
+        if hit:
+            return hit
+        for cfg in self._profiles.values():
+            if cfg.name == key or cfg.namespace == key:
+                return cfg
+        return None
 
     def get_default(self) -> ProfileConfig:
         """获取 default。
@@ -142,10 +158,17 @@ class ProfileManager:
             return []
 
     def list_all(self) -> List[ProfileConfig]:
-        """列出 all。
-        """
+        """列出全部 Profile（按 namespace 去重）。"""
         self._ensure_loaded()
-        return list(self._profiles.values())
+        seen: set[str] = set()
+        out: List[ProfileConfig] = []
+        for cfg in self._profiles.values():
+            key = (cfg.namespace or cfg.name or "").strip()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            out.append(cfg)
+        return out
 
     def create(self, name: str, namespace: str = "", description: str = "",
                industry: str = "", deployment_mode: str = "online",
@@ -183,9 +206,10 @@ class ProfileManager:
             metadata={"industry": industry, "deployment_mode": deployment_mode},
             profile_type=profile_type,
         )
-        self._profiles[cfg.name] = cfg
-        self._profiles[ns] = cfg
-        return cfg
+        # 只按 namespace 索引：写盘后强制重载，避免 name≠ns 双键导致 list 重复
+        self._loaded = False
+        self._ensure_loaded()
+        return self.get(ns) or cfg
 
     def delete(self, namespace: str) -> bool:
         """Delete a profile YAML file and remove from cache.

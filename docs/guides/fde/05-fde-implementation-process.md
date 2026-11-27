@@ -1,7 +1,7 @@
 ---
 doc_type: Guide
 doc_id: DOC_05_FDE_IMPLEMENTATION_PROCESS_BBB2B8
-last_reviewed: 2026-11-15
+last_reviewed: 2026-11-27
 status: active
 authority: supporting
 ---
@@ -11,7 +11,7 @@ authority: supporting
 
 > **定位**：FDE 交付方法论——定义角色、阶段、输入输出和验收标准。
 > **受众**：FDE 交付团队、项目经理、客户对接人。
-> **阅读建议**：先看 §一～三 理解整体框架，再按交付步骤逐段对照执行。
+> **阅读建议**：先看 §一～三 理解整体框架，再按交付步骤逐段对照执行；**画面操作细节以 [02](./02-fde-delivery.md) + `FDE_STEPS` 为准**（含交付计划 / Gate0 / ⑥b / ⑨）。
 > **勿混淆**：文中「验收签收 / `signoff_approval`」指 **FDE 项目签收单**；it-ops **Org M4 签收准备**在管理端 `/org/pilot`（见 [`ORG_M4_SIGNOFF_PACK`](../../contracts/ORG_M4_SIGNOFF_PACK.md)），两套流程独立。
 > **模板**：[交付手册模板](./templates/fde-delivery-manual.md) · **操作**：[02](./02-fde-delivery.md) · **契约**：[FDE_WORKBENCH_CONTRACT](../../contracts/FDE_WORKBENCH_CONTRACT.md)
 
@@ -157,23 +157,23 @@ FDE 提供两种执行方式，适应不同的交付场景：
 
 > **工作流模式 = FDE Builder**：选中客户后，系统自动串联 4 个 Agent（BA→SA→DE→DM），通过 `run_fde_agent_one_shot()` 完成 60-70% 的交付标准工作（客户 Profile → 域评估 → 诊断报告 → POC 验证 → 交付手册）。FDE 不再需要逐个点击 Tab，只需在关键节点审核确认 AI 的输出结果，必要时补充修正。
 
-### 3.2 八步流水线（自由模式）
+### 3.2 八步流水线（自由模式）+ 交付计划
 
 ```
-① 业务认知 → ② 评估域 → ③ 问题重构 → ④ 验证价值 →
-⑤ 快速构建 → ⑥ 评测护栏 → ⑦ 验收移交 → ⑧ 运营监控
+① 业务认知 → 【交付计划】→ ② 评估域 → ③ 问题重构 → ④ 验证价值 →
+⑤ 平台离线包 → ⑥ 评测护栏 →（⑥b 上线前检查）→ ⑦ 验收移交 → ⑧ 运营监控
 ```
 
-每个阶段的输出通过 Pipeline 传递给下游阶段，上游不可修改下游的写入。
+编号阶段的输出通过 Pipeline 传递给下游；**交付计划**是并行清单（骨架 + LLM 填空），含 Gate0 / 新建域 / 应用工厂插段，**不替代** pipeline key，完成度 ≠ ⑦ 签收。画面 Tab 真源：`FDE_STEPS`（另有 ⑨ 快速认知）。
 
 ### 3.3 数据传递关系
 
 ```
-① 选中客户 ──→ ② 评估域 ──→ ③ 问题重构 ──→ ④ 验证价值
-     │              │              │              │
-     │  industry     │  domain_id   │  diagnosis   │  poc_profile
-     ↓              ↓              ↓              ↓
-⑧ 监控过滤         ③④ 表单预填   ① 回显 badge   ⑤ 打包输入
+① 选中客户 ──→ 【交付计划 ns】──→ ② 评估域 ──→ ③ 问题重构 ──→ ④ 验证价值
+     │              │                  │              │              │
+     │  industry     │  plan JSON        │  domain_id   │  diagnosis   │  poc_profile
+     ↓              ↓                  ↓              ↓              ↓
+⑧ 监控过滤    Gate0/工厂手勾         ③④ 表单预填   ① 回显 badge   ⑤ 打包输入
 ```
 
 ### 3.4 生态集成层 — 插件化数据源接入

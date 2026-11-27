@@ -9925,6 +9925,7 @@ from core.harness.learning.skill_simulator import SkillSimulator  # v2.5  # noqa
 from core.services.execution_store import get_execution_store  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.services.tenant_store_protocol import get_tenant_store, set_tenant_store  # P0-A3  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.knowledge.wiki_engine import delete_page, read_page  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.knowledge.wiki_engine import build_graph as build_wiki_graph  # noqa: boundary — distinct from code_graph.build_graph
 from core.harness.observation.run_graph import (  # noqa: boundary — RunGraph ExecutionViewer projection
     open_node as open_run_graph_node,
     close_node as close_run_graph_node,
@@ -22578,3 +22579,365 @@ from core.harness.execution.prd_quality_gate import matched_domain_packs  # noqa
 from core.harness.execution.prd_quality_gate import matched_packs_for_text  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import normalize_constraints  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.execution.prd_quality_gate import render_prd_markdown  # noqa: boundary — CoreFacade canonical re-export
+
+# Digital human curated SFT loop (platform MUST import via CoreFacade)
+from core.harness.digital_human.consultant_sft_loop import (  # noqa: boundary — CoreFacade canonical re-export
+    maybe_submit_digital_human_sft,
+)
+from core.harness.digital_human.consultant_personal import (  # noqa: boundary — CoreFacade canonical re-export
+    remember_correction,
+)
+from core.harness.digital_human.evolution_proposals import (  # noqa: boundary — CoreFacade canonical re-export
+    create_evolution_proposal,
+    decide_evolution_proposal,
+    ensure_pilot_config_proposals,
+    list_evolution_proposals,
+    maybe_propose_from_feedback,
+    maybe_propose_purpose_bind,
+    maybe_propose_sft_promote,
+    pending_human_gate_count,
+    propose_pilot_config,
+    propose_purpose_bind_from_latest,
+    rollback_evolution_proposal,
+)
+from core.harness.digital_human.evolution_status import (  # noqa: boundary — CoreFacade canonical re-export
+    get_evolution_status_snapshot,
+)
+from core.harness.digital_human.consultant_sft_gate import (  # noqa: boundary — CoreFacade canonical re-export
+    evaluate_sft_promote_gate,
+)
+from core.harness.digital_human.consultant_purpose_bind import (  # noqa: boundary — CoreFacade canonical re-export
+    active_consultant_bind_meta,
+    load_purpose_bind,
+    purpose_bind_enabled,
+    write_purpose_bind,
+)
+from core.harness.digital_human.domain_evolution_bridge import (  # noqa: boundary — CoreFacade canonical re-export
+    build_fde_inventory_from_delivery_plans,
+    refresh_domain_inventories,
+    scan_domain_evolution_proposals,
+)
+from core.harness.digital_human.evolution_goals import (  # noqa: boundary — CoreFacade canonical re-export
+    list_evolution_goals,
+    measure_all_evolution_goals,
+    measure_evolution_goal,
+)
+from core.harness.digital_human.evolution_optimize import (  # noqa: boundary — CoreFacade canonical re-export
+    optimize_pilot_genes_sandbox,
+    propose_from_low_rated_trajectories,
+)
+
+
+def submit_digital_human_curated_sft(
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+):
+    """策展达标后提交小朱微调任务（不切换顾问生产路由）。
+
+    Args:
+        force: 忽略指纹防抖。
+        dry_run: 只统计不提交。
+
+    Returns:
+        maybe_submit_digital_human_sft 结果 dict。
+    """
+    return maybe_submit_digital_human_sft(force=force, dry_run=dry_run)
+
+
+def list_digital_human_evolution_proposals(
+    *,
+    status: str | None = None,
+    kind: str | None = None,
+    limit: int = 50,
+):
+    """列出小朱进化提案。
+
+    Args:
+        status: 状态过滤。
+        kind: 类型过滤。
+        limit: 条数上限。
+    """
+    return list_evolution_proposals(status=status, kind=kind, limit=limit)
+
+
+def create_digital_human_evolution_proposal(
+    *,
+    kind: str,
+    title: str,
+    summary: str = "",
+    payload: dict | None = None,
+    tenant_id: str = "",
+    session_id: str = "",
+    status: str = "HUMAN_GATE",
+):
+    """创建小朱进化提案（默认 HUMAN_GATE）。
+
+    Args:
+        kind: 提案类型。
+        title: 标题。
+        summary: 摘要。
+        payload: 载荷。
+        tenant_id: 租户。
+        session_id: 会话。
+        status: 初始状态。
+    """
+    return create_evolution_proposal(
+        kind=kind,
+        title=title,
+        summary=summary,
+        payload=payload,
+        tenant_id=tenant_id,
+        session_id=session_id,
+        status=status,
+    )
+
+
+def decide_digital_human_evolution_proposal(
+    *,
+    decision: str,
+    proposal_id: str = "",
+    index: int | None = None,
+    actor: str = "user",
+    apply: bool = True,
+):
+    """批准/拒绝小朱进化提案（批准可有界应用；永不改生产选模）。
+
+    Args:
+        decision: approve|reject。
+        proposal_id: 提案 id。
+        index: 待批 1-based 序号。
+        actor: 决策人。
+        apply: 批准后是否应用。
+    """
+    return decide_evolution_proposal(
+        decision=decision,
+        proposal_id=proposal_id,
+        index=index,
+        actor=actor,
+        apply=apply,
+    )
+
+
+def rollback_digital_human_evolution_proposal(
+    *,
+    proposal_id: str,
+    actor: str = "user",
+    reason: str = "",
+):
+    """回滚已应用/已批准进化提案（有界撤销；永不改生产选模）。
+
+    Args:
+        proposal_id: 提案 id。
+        actor: 操作人。
+        reason: 纠偏原因。
+    """
+    return rollback_evolution_proposal(
+        proposal_id=proposal_id,
+        actor=actor,
+        reason=reason,
+    )
+
+
+def get_digital_human_evolution_status(*, limit: int = 50):
+    """五域目标 + 提案台账 + 时间线聚合快照（管理端可见面）。
+
+    Args:
+        limit: 提案/时间线条数上限。
+    """
+    return get_evolution_status_snapshot(limit=limit)
+
+
+def propose_digital_human_pilot_config(
+    *,
+    genome_id: str,
+    title: str = "",
+    summary: str = "",
+    tenant_id: str = "",
+    session_id: str = "",
+):
+    """为 evo 三试点创建 pilot_config 待批提案。
+
+    Args:
+        genome_id: routing.weights.v1 等。
+        title: 标题。
+        summary: 摘要。
+        tenant_id: 租户。
+        session_id: 会话。
+    """
+    return propose_pilot_config(
+        genome_id=genome_id,
+        title=title,
+        summary=summary,
+        tenant_id=tenant_id,
+        session_id=session_id,
+    )
+
+
+def ensure_digital_human_pilot_proposals(*, tenant_id: str = ""):
+    """幂等确保三试点各有待批提案。
+
+    Args:
+        tenant_id: 租户。
+    """
+    return ensure_pilot_config_proposals(tenant_id=tenant_id)
+
+
+def evaluate_digital_human_sft_promote_gate(
+    *,
+    proposal: dict | None = None,
+    payload: dict | None = None,
+):
+    """小朱 sft_promote 最小 holdout 门（不改生产选模）。
+
+    Args:
+        proposal: 完整提案。
+        payload: 或直接传载荷。
+    """
+    return evaluate_sft_promote_gate(proposal=proposal, payload=payload)
+
+
+def propose_digital_human_purpose_bind(
+    *,
+    job_id: str = "",
+    model: str = "",
+    purpose: str = "auto",
+    source_proposal_id: str = "",
+    tenant_id: str = "",
+    session_id: str = "",
+    from_latest: bool = False,
+):
+    """创建 purpose_bind 待批提案（第二道人批）。
+
+    Args:
+        job_id: 微调任务 id（from_latest=False 时必填）。
+        model: 建议模型名。
+        purpose: purpose 名。
+        source_proposal_id: 上游提案。
+        tenant_id: 租户。
+        session_id: 会话。
+        from_latest: True 时从最近 sft_promote/SFT 状态推断。
+    """
+    if from_latest or not (job_id or "").strip():
+        return propose_purpose_bind_from_latest(
+            tenant_id=tenant_id,
+            session_id=session_id,
+        )
+    return maybe_propose_purpose_bind(
+        job_id=job_id,
+        model=model,
+        purpose=purpose,
+        source_proposal_id=source_proposal_id,
+        tenant_id=tenant_id,
+        session_id=session_id,
+    )
+
+
+def get_digital_human_purpose_bind():
+    """读取顾问 purpose 绑定回执（只读）。"""
+    return {
+        "ok": True,
+        "enabled": purpose_bind_enabled(),
+        "bind": load_purpose_bind(),
+        "active": active_consultant_bind_meta(),
+        "production_model_changed": False,
+        "feeds_global_routing": False,
+    }
+
+
+def scan_digital_human_domain_evolution(
+    *,
+    eval_inventory: dict | None = None,
+    fde_inventory: dict | None = None,
+    knowledge_cases: list | None = None,
+    include_evolver_snapshot: bool = True,
+    use_fixtures_if_empty: bool = False,
+    tenant_id: str = "",
+):
+    """扫描 FDE/评测/知识缺口并写入 HUMAN_GATE 提案。
+
+    Args:
+        eval_inventory: 评测库存。
+        fde_inventory: FDE 证据库存。
+        knowledge_cases: 高奖励案例列表。
+        include_evolver_snapshot: 是否读自演进 last_run。
+        use_fixtures_if_empty: 仅测试夹具。
+        tenant_id: 租户。
+    """
+    return scan_domain_evolution_proposals(
+        eval_inventory=eval_inventory,
+        fde_inventory=fde_inventory,
+        knowledge_cases=knowledge_cases,
+        include_evolver_snapshot=include_evolver_snapshot,
+        use_fixtures_if_empty=use_fixtures_if_empty,
+        tenant_id=tenant_id,
+    )
+
+
+def refresh_digital_human_domain_inventories(
+    *,
+    persist: bool = True,
+    only_missing: bool = False,
+):
+    """刷新顾问侧 eval/fde 库存文件（扫描前也会自动调用）。
+
+    Args:
+        persist: 是否落盘。
+        only_missing: True 时仅补写缺失库存（不覆盖已有人工文件）。
+    """
+    return refresh_domain_inventories(persist=persist, only_missing=only_missing)
+
+
+def build_digital_human_fde_inventory():
+    """从交付计划骨架 + 落盘计划生成 FDE 证据库存（不落盘）。
+
+    Returns:
+        build_fde_inventory_from_delivery_plans 结果。
+    """
+    return build_fde_inventory_from_delivery_plans()
+
+
+def list_digital_human_evolution_goals():
+    """列出五域机读进化目标规格。
+
+    Returns:
+        list_evolution_goals 结果。
+    """
+    return list_evolution_goals()
+
+
+def measure_digital_human_evolution_goal(goal_id: str):
+    """测量单域进化目标进度。
+
+    Args:
+        goal_id: 如 consultant.sft_quality.v1。
+    """
+    return measure_evolution_goal(goal_id)
+
+
+def measure_digital_human_evolution_goals():
+    """测量全部五域进化目标进度。
+
+    Returns:
+        measure_all_evolution_goals 汇总 dict。
+    """
+    return measure_all_evolution_goals()
+
+
+def propose_digital_human_low_rated_seeds(*, limit: int = 5, tenant_id: str = ""):
+    """从低好评轨迹生成 seed_qa 待批草稿。
+
+    Args:
+        limit: 最多新建条数。
+        tenant_id: 租户。
+    """
+    return propose_from_low_rated_trajectories(limit=limit, tenant_id=tenant_id)
+
+
+def optimize_digital_human_pilot_genes(genome_id: str):
+    """沙箱短程 DE 优化试点基因（不切全局路由）。
+
+    Args:
+        genome_id: 试点 genome id。
+    """
+    return optimize_pilot_genes_sandbox(genome_id)

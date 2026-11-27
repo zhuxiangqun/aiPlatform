@@ -18,6 +18,7 @@ import logging
 
 import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional
@@ -177,80 +178,175 @@ def get_code_graph(
 
 
 # ── Architecture View (Sankey + Treemap) ──────────────────────────
+# Full build_graph can take minutes (SQLite incremental + cross-call edges).
+# Architecture UI only needs layer aggregates — use a fast walk + shallow imports.
+
+_ARCH_VIEW_CACHE: Optional[Dict[str, Any]] = None
+_ARCH_VIEW_CACHE_TS: float = 0.0
+_ARCH_VIEW_TTL_SEC = 300.0
+_ARCH_SKIP_DIR_PARTS = {
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "node_modules",
+    "dist",
+    "build",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "coverage",
+}
+_ARCH_IMPORT_RE = re.compile(r"^\s*(?:from|import)\s+([a-zA-Z_][\w.]*)", re.M)
+_ARCH_PKG_TO_LAYER = {
+    "core": "core",
+    "infra": "infra",
+    "platform": "platform",
+    "app": "app",
+    "management": "management",
+}
+
+
+def _arch_layer_from_rel(path: str) -> str:
+    """Map repo-relative path to architecture layer name."""
+    top = path.split("/")[0] if "/" in path else path
+    return top.replace("aiPlat-", "") if top.startswith("aiPlat-") else top
+
+
+def _arch_import_layer(module: str) -> Optional[str]:
+    """Map Python import top-level package to layer (best-effort)."""
+    top = (module or "").split(".", 1)[0].strip()
+    return _ARCH_PKG_TO_LAYER.get(top)
+
+
+def _build_architecture_overview_fast(repo: Path, root_names: List[str]) -> Dict[str, Any]:
+    """Fast architecture overview: file walk + shallow import regex (no build_graph).
+
+    Args:
+        repo: Workspace root.
+        root_names: Top-level package dirs (e.g. aiPlat-core).
+
+    Returns:
+        Dict with sankey + treemap payloads for ArchitectureView.
+    """
+    from collections import defaultdict
+
+    repo = Path(repo).resolve()
+    layer_files: Dict[str, List[str]] = defaultdict(list)
+    sankey_flows: Dict[tuple, int] = defaultdict(int)
+    sankey_nodes_set: set = set()
+
+    for root_name in root_names:
+        # management：只扫前端 src，避免整仓 node_modules/构建产物拖慢首屏。
+        if root_name == "aiPlat-management":
+            root_dir = (repo / root_name / "frontend" / "src").resolve()
+        else:
+            root_dir = (repo / root_name).resolve()
+        if not root_dir.is_dir():
+            continue
+        for dirpath, dirnames, filenames in os.walk(root_dir):
+            dirnames[:] = [
+                d
+                for d in dirnames
+                if d not in _ARCH_SKIP_DIR_PARTS and d not in {"tests", "test", "__tests__"}
+            ]
+            for name in filenames:
+                lower = name.lower()
+                # Python packages: .py only. Frontend src: .ts/.tsx for treemap size.
+                if root_name == "aiPlat-management":
+                    if not (lower.endswith(".ts") or lower.endswith(".tsx")):
+                        continue
+                elif not lower.endswith(".py"):
+                    continue
+                if lower.endswith(("_test.py", ".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")):
+                    continue
+                fpath = Path(dirpath) / name
+                try:
+                    rel = str(fpath.relative_to(repo))
+                except ValueError:
+                    continue
+                src_layer = _arch_layer_from_rel(rel)
+                layer_files[src_layer].append(rel)
+
+                # Shallow import scan for .py only (TS cross-layer rare via package name).
+                if not lower.endswith(".py"):
+                    continue
+                try:
+                    head = fpath.read_bytes()[:4096].decode("utf-8", errors="ignore")
+                except OSError:
+                    continue
+                for mod in _ARCH_IMPORT_RE.findall(head):
+                    dst_layer = _arch_import_layer(mod)
+                    if not dst_layer or dst_layer == src_layer:
+                        continue
+                    sankey_nodes_set.add(src_layer)
+                    sankey_nodes_set.add(dst_layer)
+                    sankey_flows[(src_layer, dst_layer)] += 1
+
+    def _build_children(tree: dict) -> list:
+        children = []
+        for k, v in sorted(tree.items()):
+            if isinstance(v, dict):
+                children.append({"name": k, "children": _build_children(v)})
+            else:
+                children.append({"name": k, "value": int(v)})
+        return children
+
+    treemap: Dict[str, Any] = {}
+    for layer_name, paths in sorted(layer_files.items()):
+        mod_tree: dict = {}
+        for p in paths:
+            parts = p.split("/")[1:]
+            if len(parts) < 2:
+                continue
+            current = mod_tree
+            for part in parts[:-1]:
+                nxt = current.get(part)
+                if not isinstance(nxt, dict):
+                    nxt = {}
+                    current[part] = nxt
+                current = nxt
+            leaf = parts[-1]
+            prev = current.get(leaf)
+            if isinstance(prev, dict):
+                # Prefer directory node; count sibling file under synthetic leaf.
+                current[leaf + "#file"] = int(current.get(leaf + "#file", 0) or 0) + 1
+            else:
+                current[leaf] = int(prev or 0) + 1
+        treemap[layer_name] = {
+            "name": layer_name,
+            "file_count": len(paths),
+            "children": _build_children(mod_tree),
+        }
+
+    sankey_nodes = [{"name": n} for n in sorted(sankey_nodes_set)]
+    sankey_links = [
+        {"source": s, "target": t, "value": v}
+        for (s, t), v in sorted(sankey_flows.items(), key=lambda x: -x[1])
+    ]
+    return {
+        "sankey": {"nodes": sankey_nodes, "links": sankey_links},
+        "treemap": [treemap[k] for k in sorted(treemap.keys())],
+        "meta": {"mode": "fast_walk", "ttl_sec": _ARCH_VIEW_TTL_SEC},
+    }
+
 
 @router.get("/architecture", response_model=Dict[str, Any])
 def get_architecture_view() -> Dict[str, Any]:
-    """Return aggregated architecture data for Sankey (cross-layer flows) and Treemap (intra-layer module structure)."""
+    """Return aggregated architecture data for Sankey + Treemap (fast walk, cached)."""
+    global _ARCH_VIEW_CACHE, _ARCH_VIEW_CACHE_TS
     try:
-        from core.api.core_facade import build_graph, default_roots, repo_root
-        from collections import defaultdict
+        now = time.time()
+        if _ARCH_VIEW_CACHE is not None and (now - _ARCH_VIEW_CACHE_TS) < _ARCH_VIEW_TTL_SEC:
+            return _ARCH_VIEW_CACHE
+
+        from core.api.core_facade import default_roots, repo_root
 
         r = repo_root()
-        roots = [(r / d).resolve() for d in default_roots()]
-        nodes, edges, _ = build_graph(r, roots)
-
-        def _layer(p: str) -> str:
-            top = p.split("/")[0] if "/" in p else p
-            return top.replace("aiPlat-", "") if top.startswith("aiPlat-") else top
-
-        def _module(p: str, depth: int = 2) -> str:
-            parts = p.split("/")
-            return "/".join(parts[1:1+depth]) if len(parts) > 1 else p
-
-        # ── Sankey: cross-layer import flows (real architecture dependencies) ──
-        sankey_nodes_set = set()
-        sankey_flows = defaultdict(int)
-        for e in edges:
-            if e.get("kind", "import") != "import":
-                continue  # skip call edges — they're name-matching guesses, not real deps
-            src = _layer(e["from"])
-            dst = _layer(e["to"])
-            if src == dst:
-                continue
-            sankey_nodes_set.add(src)
-            sankey_nodes_set.add(dst)
-            sankey_flows[(src, dst)] += 1
-
-        sankey_nodes = [{"name": n} for n in sorted(sankey_nodes_set)]
-        sankey_links = [{"source": s, "target": t, "value": v}
-                        for (s, t), v in sorted(sankey_flows.items(), key=lambda x: -x[1])]
-
-        # ── Treemap: per-layer module file counts ──
-        layer_files = defaultdict(list)
-        for p in nodes:
-            layer_files[_layer(p)].append(p)
-
-        treemap = {}
-        for layer_name, paths in sorted(layer_files.items()):
-            mod_tree: dict = {}
-            for p in paths:
-                parts = p.split("/")[1:]  # skip top-level dir
-                if len(parts) < 2:
-                    continue
-                current = mod_tree
-                for part in parts[:-1]:
-                    current = current.setdefault(part, {})
-                current[parts[-1]] = current.get(parts[-1], 0) + 1
-
-            def _build_children(tree: dict) -> list:
-                children = []
-                for k, v in sorted(tree.items()):
-                    if isinstance(v, dict):
-                        children.append({"name": k, "children": _build_children(v)})
-                    else:
-                        children.append({"name": k, "value": v})
-                return children
-
-            treemap[layer_name] = {
-                "name": layer_name,
-                "file_count": len(paths),
-                "children": _build_children(mod_tree),
-            }
-
-        return {
-            "sankey": {"nodes": sankey_nodes, "links": sankey_links},
-            "treemap": [treemap[k] for k in sorted(treemap.keys())],
-        }
+        payload = _build_architecture_overview_fast(r, list(default_roots()))
+        _ARCH_VIEW_CACHE = payload
+        _ARCH_VIEW_CACHE_TS = now
+        return payload
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -329,8 +425,12 @@ def get_wiki_graph(
         max_nodes: max_nodes 参数。
     """
     try:
-        from core.api.core_facade import build_graph as build_wiki_graph
-        data = build_wiki_graph(category=category, keyword=keyword, source=source, max_nodes=max_nodes)
+        # Must use wiki_engine graph (category/keyword), NOT code_graph.build_graph.
+        from core.api.core_facade import build_wiki_graph
+
+        data = build_wiki_graph(
+            category=category, keyword=keyword, source=source, max_nodes=max_nodes
+        )
         return {
             "nodes": data.get("nodes", []),
             "links": data.get("edges", []),

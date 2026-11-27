@@ -70,6 +70,18 @@ export const PRODUCTION_DEPTH_GLOSSARY: Gloss[] = [
   { term: '刷新', aliases: ['重新检查'], meaning: '重新拉取生产深度检查结果' },
 ];
 
+export const EVOLUTION_STATUS_GLOSSARY: Gloss[] = [
+  {
+    term: '自进化状态',
+    aliases: ['/diagnostics/evolution-status', '进化台账'],
+    meaning: '五域目标+小朱提案时间线；待批可拒、已应用可有界回滚；不是 FDE 演进 Tab，也不宣称 E5',
+  },
+  { term: 'pendingCount', aliases: ['待批数'], meaning: 'HUMAN_GATE 待批提案数' },
+  { term: 'appliedCount', aliases: ['已应用数'], meaning: '已 APPLIED、可回滚的提案数' },
+  { term: 'goalMetCount', aliases: ['达标目标'], meaning: '当前测量达标的五域目标数' },
+  { term: '回滚', aliases: ['rollback', '纠偏'], meaning: 'APPLIED→ROLLED_BACK 有界撤销；不改全局选模' },
+];
+
 export const SESSIONS_GLOSSARY: Gloss[] = [
   { term: '会话管理', aliases: ['/app/sessions'], meaning: '跨渠道用户对话会话列表与结束；不是工作区 Agent 编辑页' },
   { term: 'active', aliases: ['活跃'], meaning: '会话仍在进行，可结束' },
@@ -89,6 +101,59 @@ export const APPROVAL_GLOSSARY: Gloss[] = [
   { term: '运行时审批', aliases: ['/core/approvals', 'HITL'], meaning: '执行中人审，不是资产上架审批' },
 ];
 
+export const KNOWLEDGE_BUSINESS_GLOSSARY: Gloss[] = [
+  {
+    term: '业务说明书',
+    aliases: ['/knowledge/business', '业务本体'],
+    meaning: '业务本体轨：从文档生成 / 手动画类 / 高级 YAML；不是 FDE 客户 Profile，也不是知识库检索',
+  },
+  {
+    term: '从文档生成',
+    aliases: ['factory', 'tab=factory'],
+    meaning: '推荐日常路径：上传文档 → 分析 → 确认写入知识图；「写入说明书」只改类定义可跳过',
+  },
+  {
+    term: '手动画类',
+    aliases: ['domains', 'tab=domains'],
+    meaning: '看结构、删脏类、改关系；不负责从文档灌知识图',
+  },
+  {
+    term: '高级编辑',
+    aliases: ['editor', 'tab=editor', '/ontology-editor'],
+    meaning: '直接改域 YAML；日常请用「从文档生成」',
+  },
+];
+
+export const KNOWLEDGE_LIBRARY_GLOSSARY: Gloss[] = [
+  {
+    term: '知识库',
+    aliases: ['/knowledge/library', '知识检索'],
+    meaning: '检索轨：向量检索资料 / Wiki 阅读 / Vault 原始文件；不是业务本体编辑，也不是新建 FDE 客户',
+  },
+  { term: '检索资料', aliases: ['向量'], meaning: '向量检索页签' },
+  { term: '阅读资料', aliases: ['Wiki'], meaning: 'Wiki 页阅读' },
+  { term: '原始文件', aliases: ['Vault'], meaning: 'Vault 原始文件浏览' },
+];
+
+export const ORG_PILOT_GLOSSARY: Gloss[] = [
+  {
+    term: '组织试点',
+    aliases: ['/org/pilot', 'Org 试点', 'Org M4'],
+    meaning:
+      'it-ops 组织目标/闸门/周 KPI 与签收准备；不是 FDE①「新建客户 Profile」，也不是多租户管理',
+  },
+  {
+    term: '开跑',
+    aliases: ['start run', 'POST /goals'],
+    meaning: '通过组织目标 runs API 启动本周运行；无第二套 runner',
+  },
+  {
+    term: 'FDE 客户 Profile',
+    aliases: ['新建客户', '/diagnostics/fde'],
+    meaning: '现场交付客户上下文在 FDE 工作台①业务认知创建；勿在本页找「新建客户」',
+  },
+];
+
 export const governanceGlossaryText = () => pack(GOVERNANCE_GLOSSARY);
 export const alertsGlossaryText = () => pack(ALERTS_GLOSSARY);
 export const diagnosticsGlossaryText = () => pack(DIAGNOSTICS_GLOSSARY);
@@ -96,5 +161,9 @@ export const runsGlossaryText = () => pack(RUNS_GLOSSARY);
 export const observabilityGlossaryText = () => pack(OBSERVABILITY_GLOSSARY);
 export const ontologyGlossaryText = () => pack(ONTOLOGY_GLOSSARY);
 export const productionDepthGlossaryText = () => pack(PRODUCTION_DEPTH_GLOSSARY);
+export const evolutionStatusGlossaryText = () => pack(EVOLUTION_STATUS_GLOSSARY);
 export const approvalGlossaryText = () => pack(APPROVAL_GLOSSARY);
 export const sessionsGlossaryText = () => pack(SESSIONS_GLOSSARY);
+export const knowledgeBusinessGlossaryText = () => pack(KNOWLEDGE_BUSINESS_GLOSSARY);
+export const knowledgeLibraryGlossaryText = () => pack(KNOWLEDGE_LIBRARY_GLOSSARY);
+export const orgPilotGlossaryText = () => pack(ORG_PILOT_GLOSSARY);

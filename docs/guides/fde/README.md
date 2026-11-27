@@ -5,8 +5,8 @@ status: active
 authority: index
 purpose: FDE 操作手册总目录
 owner: 朱向群
-version: 1.0
-last_reviewed: 2026-11-15
+version: 1.1
+last_reviewed: 2026-11-27
 ---
 
 # FDE 现场交付体系 — 文档导航
@@ -36,11 +36,11 @@ last_reviewed: 2026-11-15
 | **建域 / 工厂 apply / 应用库 Agent** | [创建本体+Agent 合册](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) | ✅ |
 | **it-ops 组织试点与签收准备（八闸门）** | [ORG_L5_RUNBOOK](../../contracts/ORG_L5_RUNBOOK.md) · [ORG_M4_SIGNOFF_PACK](../../contracts/ORG_M4_SIGNOFF_PACK.md) · 管理端 `/org/pilot` | ✅ |
 
-> **勿混淆**：本目录「⑦ 验收移交 / 客户签收」指 **FDE 项目交付签收单**；it-ops **Org M4 签收准备**（材料齐可送审，程序不打开 `m4_claim`）在仪表盘 **组织试点**，不在 FDE 工作台九步主流程里完成。
+> **勿混淆**：本目录「⑦ 验收移交 / 客户签收」指 **FDE 项目交付签收单**；it-ops **Org M4 签收准备**（材料齐可送审，程序不打开 `m4_claim`）在仪表盘 **组织试点**，不在 FDE 工作台编号主流程里完成。
 
-### FDE 工作台工具箱（v28.0 新增）
+### FDE 工作台工具箱
 
-工具栏包含 10+ 跨阶段工具，按用途分三组：
+工具栏包含跨阶段工具，按用途分三组：
 
 | 组 | 工具 | 用途 |
 |:--|------|------|
@@ -50,15 +50,26 @@ last_reviewed: 2026-11-15
 
 > 工具栏收纳策略：沙盒推演/决策血缘/蜂群推演始终可见，其余通过「更多▼」展开。
 
-### FDE 九步交付流程
+### FDE 工作台主路径（与画面 Tab 对齐，2026-11-27）
+
+画面 `FDE_STEPS`（`FdeDashboard.tsx`）当前顺序：
 
 ```
-① 业务认知  →  ② 评估域  →  ③ 问题重构  →  ④ 验证价值  →  ⑤ 快速构建
-    选客户         选域           诊断           POC演示        打包部署
+① 业务认知 → 【交付计划】→ ② 评估域 → ③ 问题重构 → ④ 验证价值
+     选客户      上传/粘贴需求生成清单      选域           诊断           POC
 
-⑥ 评测护栏  →  ⑦ 验收移交  →  ⑧ 运营监控  →  ⑨ 快速认知
-   灰度测试        客户签收        持续运维        48h行业认知
+⑤ 平台离线包 → ⑥ 评测护栏 → ⑥b 上线前检查 → ⑦ 验收移交 → ⑧ 运营监控 → ⑨ 快速认知
+   打包（≠客户应用）   灰度/质量门      security 预检         项目签收         运维          48h 行业认知
 ```
+
+**交付计划**（Tab `plan`，不编号进 ①–⑧）：
+
+- 先选用客户 → 本页粘贴或上传需求（≥20 字）→「生成计划」；**不依赖** ③ 诊断。
+- 骨架含插段：**Gate0 决策锁定**（进场前手勾部署/性能/合规/范围）、**新建域（插段）**（标准交付可 skipped）、**应用工厂并行**（`/app/factory`，手勾，不替代 ④–⑦）。
+- 完成度 ≠ ⑦ 签收；需求原文不落盘；计划 JSON 在 `~/.aiplat/fde_delivery_plans/`。
+- 真源：`aiPlat-core/workspace_seeds/fde/delivery_plan_skeleton.yaml` + `FdeDeliveryPlanTab.tsx`。
+
+> 验证：`grep -n "key: 'plan'" aiPlat-management/frontend/src/pages/Diagnostics/FdeDashboard.tsx`；`grep -n "id: gate0" aiPlat-core/workspace_seeds/fde/delivery_plan_skeleton.yaml`。
 
 ### 阅读路线图
 

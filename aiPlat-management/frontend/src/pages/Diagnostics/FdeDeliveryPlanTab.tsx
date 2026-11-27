@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, toast } from '../../components/ui';
 import { ChevronDown, ChevronRight, ClipboardList, ExternalLink, FileUp, RefreshCw, Upload } from 'lucide-react';
+import { patchPageData } from '../../lib/pageDataBridge';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
 
@@ -14,6 +15,75 @@ const TEXT_REQ_EXTS = new Set([
   '.json', '.yaml', '.yml', '.html', '.htm', '.xml', '.log',
 ]);
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+/** 切 Tab 会卸载本组件；需求草稿进 session，避免「文件名没了但计划还在」的错觉。 */
+const DRAFT_KEY_PREFIX = 'aiplat.fde.delivery_plan_draft.v1:';
+const MAX_DRAFT_CHARS = 200_000;
+
+type InputMode = 'paste' | 'upload';
+
+/** 阶段怎么做（骨架/LLM 的 ops 常过短；画面用此补说明）。 */
+const PHASE_HOWTO: Record<string, string> = {
+  gate0:
+    '进场前人工决策，不在八步编号内。去①业务认知打开客户 Profile：勾选/写清部署模式、一期性能口径、合规授权、In/Out；谈定后在本页勾选对应项（无 auto）。未锁死勿承诺生产验收。',
+  fde1: '①：新建或「切换至此」当前客户；自动步 auto:customer 在选中后变 ✓。',
+  domain_new:
+    '仅「新建域交付」需要：在知识→业务说明书建域 YAML 并注入脱敏种子；标准交付整段 skipped。',
+  fde2: '②：在评估域点选本客户的业务域；auto:domain 选中后变 ✓。域名≠客户名。',
+  fde3: '③：跑问题重构/诊断并人工审核；auto:diagnosis。',
+  factory:
+    '与③④可并行：打开应用工厂建/推进项目，接线最小可演示路径。本步需手勾；不会代点部署/审批。FDE④验证价值仍要回到工作台做 POC。',
+  fde4: '④：POC 与黄金路径演示；auto:pocProfile 等。',
+  fde5: '⑤：按部署模式打包，记录版本；auto:deployVersion。',
+  fde6: '⑥：灰度/质量门通过才进签收；auto:canaryResult。',
+  fde7: '⑦：对照签收清单完成客户签收；auto:adopted。≠ /org/pilot。',
+  fde8: '⑧：按客户 namespace 看运营指标与护航；多为手勾。',
+};
+
+type RequirementDraft = {
+  title: string;
+  requirementText: string;
+  uploadedName: string | null;
+  inputMode: InputMode;
+};
+
+function draftKey(ns: string): string {
+  return `${DRAFT_KEY_PREFIX}${ns}`;
+}
+
+function loadDraft(ns: string): RequirementDraft | null {
+  if (!ns || typeof sessionStorage === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(draftKey(ns));
+    if (!raw) return null;
+    const d = JSON.parse(raw) as Partial<RequirementDraft>;
+    if (typeof d.requirementText !== 'string') return null;
+    return {
+      title: typeof d.title === 'string' ? d.title : '',
+      requirementText: d.requirementText.slice(0, MAX_DRAFT_CHARS),
+      uploadedName: typeof d.uploadedName === 'string' ? d.uploadedName : null,
+      inputMode: d.inputMode === 'upload' ? 'upload' : 'paste',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(ns: string, draft: RequirementDraft): void {
+  if (!ns || typeof sessionStorage === 'undefined') return;
+  try {
+    const payload: RequirementDraft = {
+      ...draft,
+      requirementText: draft.requirementText.slice(0, MAX_DRAFT_CHARS),
+    };
+    if (!payload.requirementText.trim() && !payload.uploadedName && !payload.title.trim()) {
+      sessionStorage.removeItem(draftKey(ns));
+      return;
+    }
+    sessionStorage.setItem(draftKey(ns), JSON.stringify(payload));
+  } catch {
+    /* quota / private mode — ignore */
+  }
+}
 
 function fileExt(name: string): string {
   const i = name.lastIndexOf('.');
@@ -80,8 +150,6 @@ type DeliveryPlan = {
   plan?: null;
 };
 
-type InputMode = 'paste' | 'upload';
-
 function unwrapPlan(payload: any): DeliveryPlan | null {
   const d = payload?.data ?? payload;
   if (!d || d.plan === null) return null;
@@ -103,6 +171,9 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
   pipeline,
   onGotoTab,
 }) => {
+  const ns = (customerNamespace || '').trim();
+  const draftHydrating = useRef(true);
+
   const [title, setTitle] = useState('');
   const [requirementText, setRequirementText] = useState('');
   const [inputMode, setInputMode] = useState<InputMode>('paste');
@@ -113,8 +184,6 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
   const [generating, setGenerating] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const ns = (customerNamespace || '').trim();
 
   const loadPlan = useCallback(async () => {
     if (!ns) {
@@ -137,9 +206,64 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
     void loadPlan();
   }, [loadPlan]);
 
+  // 切 Tab 卸载后再进 / 换客户：按 namespace 恢复草稿（含上传文件名）
   useEffect(() => {
-    if (!title && customerName) setTitle(`${customerName} 交付计划`);
-  }, [customerName, title]);
+    draftHydrating.current = true;
+    const d = ns ? loadDraft(ns) : null;
+    setTitle(d?.title || (customerName ? `${customerName} 交付计划` : ''));
+    setRequirementText(d?.requirementText || '');
+    setUploadedName(d?.uploadedName ?? null);
+    setInputMode(d?.inputMode || (d?.uploadedName ? 'upload' : 'paste'));
+  }, [ns, customerName]);
+
+  // 草稿丢失时，仍从已生成计划的 source 回填文件名（原文按设计不落盘）
+  useEffect(() => {
+    if (!plan?.source) return;
+    const fn = (plan.source.filename || '').trim();
+    const fromUpload = plan.source.kind === 'upload' || !!fn;
+    if (!fromUpload) return;
+    setUploadedName((prev) => prev || fn || null);
+    setInputMode((prev) => (prev === 'paste' && !requirementText.trim() ? 'upload' : prev));
+    if (plan.source.title) {
+      setTitle((prev) => prev || plan.source!.title || '');
+    }
+  }, [plan]);
+
+  useEffect(() => {
+    if (!ns) return;
+    if (draftHydrating.current) {
+      draftHydrating.current = false;
+      return;
+    }
+    saveDraft(ns, { title, requirementText, uploadedName, inputMode });
+  }, [ns, title, requirementText, uploadedName, inputMode]);
+
+  // Layer A：计划实况 + Gate0/工厂插段说明（勿因「八步 glossary」假装本页无此概念）
+  useEffect(() => {
+    const chars = requirementText.trim().length;
+    const ready = Boolean(ns) && chars >= 20;
+    const hasPlan = Boolean(plan?.plan_id || plan?.phases?.length);
+    patchPageData('/diagnostics/fde', {
+      deliveryPlanTab: true,
+      deliveryPlanHasCustomer: Boolean(ns),
+      deliveryPlanRequirementChars: chars,
+      deliveryPlanUploadedName: uploadedName || plan?.source?.filename || undefined,
+      deliveryPlanReadyToGenerate: ready,
+      deliveryPlanHasExisting: hasPlan,
+      deliveryPlanSourceKind: plan?.source?.kind || undefined,
+      deliveryPlanGate0HowTo: PHASE_HOWTO.gate0,
+      deliveryPlanFactoryHowTo: PHASE_HOWTO.factory,
+      deliveryPlanInsertPhases:
+        'Gate0与应用工厂并行是交付计划骨架插段（非①–⑧编号）；展开阶段看怎么做；无auto手勾，有auto去对应Tab后刷新进度',
+      deliveryPlanNextStep: !ns
+        ? '先在①业务认知选用客户'
+        : !hasPlan && !ready
+          ? '在本页粘贴或上传需求文本(≥20字)后点「生成计划」'
+          : hasPlan
+            ? '已有计划：展开 Gate0/应用工厂并行 看怎么做；或「刷新进度」'
+            : '点本页「生成计划」按钮（不需要先跑问题重构/诊断）',
+    });
+  }, [ns, requirementText, uploadedName, plan]);
 
   const pct = plan?.progress?.pct ?? 0;
   const progressLabel = useMemo(() => {
@@ -306,6 +430,30 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
           />
         </label>
 
+        {(uploadedName || plan?.source?.filename) && (
+          <div className="rounded border border-emerald-800/40 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-100/90 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <FileUp className="w-3.5 h-3.5 shrink-0" />
+              <span className="font-medium">已用文件生成计划：</span>
+              <span className="text-emerald-50">
+                {uploadedName || plan?.source?.filename}
+              </span>
+              {requirementText.trim().length > 0 ? (
+                <span className="text-gray-500">（本页草稿 {requirementText.length} 字）</span>
+              ) : (
+                <span className="text-amber-200/90">
+                  （需求原文不落盘；上方输入区为空属正常，下方计划即该文件产物）
+                </span>
+              )}
+            </div>
+            {!requirementText.trim() && (
+              <p className="text-[11px] text-gray-500 pl-5">
+                若要改需求再生成：切到「上传文件」重新选择，或「粘贴需求」后点「生成计划」。
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-1 rounded-md border border-gray-700/60 p-0.5 w-fit">
           <button
             type="button"
@@ -428,6 +576,10 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
           <div className="h-2 rounded bg-gray-800 overflow-hidden">
             <div className="h-full bg-blue-500 transition-all" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
           </div>
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+            ①–⑧是 FDE 主路径。Gate0（进场决策）与「应用工厂并行」（在 /app/factory 做产品）是插段：前者先锁口径再承诺，后者可与诊断/POC 并行，不替代④–⑦。
+            展开阶段看「怎么做」；无 auto 的项谈定后手勾，有 auto 的项去对应 Tab 做完再「刷新进度」。
+          </p>
           {plan.summary?.summary_note && (
             <p className="text-xs text-gray-400">{plan.summary.summary_note}</p>
           )}
@@ -475,6 +627,11 @@ const FdeDeliveryPlanTab: React.FC<Props> = ({
                   </button>
                   {open && (
                     <div className="border-t border-gray-700/40 px-3 py-2 space-y-2">
+                      {PHASE_HOWTO[ph.id] && (
+                        <p className="text-[11px] text-sky-200/80 leading-relaxed px-1">
+                          {PHASE_HOWTO[ph.id]}
+                        </p>
+                      )}
                       {steps.map((st) => {
                         const isAuto = !!st.auto_check;
                         const isDone = st.status === 'done';

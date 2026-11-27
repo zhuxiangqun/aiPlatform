@@ -209,13 +209,16 @@ class JobManager:
 
 
 
-        # Check provider quota
-
-        quota = prov.check_quota()
-
-        if quota.get("available", 0) <= 0:
-
-            raise ValueError(f"Provider {req.provider.value} has no available quota ({quota.get('used',0)}/{quota.get('total',0)} used)")
+        # Check provider quota（local 等可能只回 used/total，无 available）
+        quota = prov.check_quota() or {}
+        avail = quota.get("available")
+        if avail is None:
+            avail = max(0, int(quota.get("total", 0)) - int(quota.get("used", 0)))
+        if int(avail) <= 0:
+            raise ValueError(
+                f"Provider {req.provider.value} has no available quota "
+                f"({quota.get('used', 0)}/{quota.get('total', 0)} used)"
+            )
 
 
 

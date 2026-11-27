@@ -75,13 +75,22 @@ function _isLiveAuditKey(key: string): boolean {
   );
 }
 
-/** 上报页面数据；保留同 route 上未在本次 payload 出现的审核实况键（issueN / skillId 等）。 */
+/** Tab 子组件 patch 的字段：父级 reportPageData 全量刷新时不得冲掉。 */
+function _isTabPatchKey(key: string): boolean {
+  return key.startsWith('deliveryPlan');
+}
+
+function _shouldPreserveOnReport(key: string, data: PageData): boolean {
+  return !(key in data) && (_isLiveAuditKey(key) || _isTabPatchKey(key));
+}
+
+/** 上报页面数据；保留同 route 上未在本次 payload 出现的审核实况键 / Tab 补丁键。 */
 export function reportPageData(route: string, data: PageData): void {
   if (!route) return;
   const prev = getStore()[route] || {};
   const preserved: PageData = {};
   for (const [k, v] of Object.entries(prev)) {
-    if (_isLiveAuditKey(k) && !(k in data)) preserved[k] = v;
+    if (_shouldPreserveOnReport(k, data)) preserved[k] = v;
   }
   getStore()[route] = { ...preserved, ...data };
   _notify();
@@ -238,10 +247,17 @@ export function pageDataToText(data: PageData | undefined, maxLen = 1400): strin
     if (v === undefined || v === null || v === '') continue;
     const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
     // issue*/guide*/smoke* allow longer facts (Eval smoke matrix for 小朱).
+    // guideGlossary 需装下 FDE Gate0/工厂等科目；deliveryPlan* 是计划 Tab 实况说明
     const cap =
-      k.startsWith('issue') || k.startsWith('guide') || k.startsWith('smoke')
-        ? 900
-        : 120;
+      k === 'guideGlossary' || k === 'guideCatalog'
+        ? 2800
+        : k.startsWith('issue') ||
+            k.startsWith('guide') ||
+            k.startsWith('smoke') ||
+            k.startsWith('customerList') ||
+            k.startsWith('deliveryPlan')
+          ? 900
+          : 120;
     if (val.length > cap) {
       lines.push(`${k}: ${val.slice(0, cap)}…`);
     } else {
@@ -266,7 +282,7 @@ export function mergeConsultantPageText(
   return text;
 }
 
-/** Structured reportPageData + visible chrome (dialog/title/buttons). */
+/** Structured reportPageData + visible chrome（列表/卡片短摘；非全站 DOM dump）。 */
 export function consultantPagePayload(route: string, maxLen = 2000): string {
   const data = getPageData(route);
   const hasEditorFacts = Boolean(
@@ -281,10 +297,12 @@ export function consultantPagePayload(route: string, maxLen = 2000): string {
   const hasGuidePack = Boolean(
     data && (data.guideCatalog || data.guideGlossary || data.issueGuide),
   );
-  const reportedBudget = hasEditorFacts || hasGuidePack ? 1800 : 800;
+  // glossary 不能挤掉可见列表：有 guide 时仍保留足够可见快照预算
+  const reportedBudget = hasEditorFacts || hasGuidePack ? 3200 : 800;
+  const visibleBudget = hasEditorFacts ? 0 : hasGuidePack ? 800 : 1200;
   return mergeConsultantPageText(
     pageDataToText(data, reportedBudget),
-    hasEditorFacts ? '' : captureVisiblePage(hasGuidePack ? 500 : 1100),
-    Math.max(maxLen, hasGuidePack ? 2400 : maxLen),
+    visibleBudget > 0 ? captureVisiblePage(visibleBudget) : '',
+    Math.max(maxLen, hasGuidePack ? 4000 : maxLen),
   );
 }

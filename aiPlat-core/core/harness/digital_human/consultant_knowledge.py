@@ -101,10 +101,13 @@ def _wants_concept_pack(question: str) -> bool:
     q = (question or "").strip().lower()
     if len(q) < 2:
         return False
+    # 本页异常（含「为什么…画面上两个客户」）→ 简报/glossary，禁止概念包拖慢顾问
+    if _looks_page_symptom_question(question):
+        return False
     # Inventory / screen / audit → brief only
     skip = (
         "有哪些", "几个", "列表", "清单", "这个画面", "当前页", "本页",
-        "审核", "精简", "再说一遍", "叫我", "记住",
+        "画面上", "页面上", "审核", "精简", "再说一遍", "叫我", "记住",
     )
     if any(s in q for s in skip) and not any(
         k in q for k in ("是什么", "怎么", "为何", "区别", "选模", "架构", "边界")
@@ -201,11 +204,48 @@ def _registry_hits(question: str, *, limit: int = _MAX_REGISTRY_LINES) -> str:
     return "capability_registry 命中（符号级，非实时名单）:\n" + "\n".join(f"- {h}" for h in hits)
 
 
+def _looks_page_symptom_question(question: str) -> bool:
+    """本页异常/重复显示类问题：应走 pageData，勿因「为什么」拉 Wiki/CAPABILITIES。"""
+    q = (question or "").strip()
+    if len(q) < 4:
+        return False
+    on_screen = any(
+        k in q
+        for k in (
+            "画面",
+            "页面",
+            "本页",
+            "列表",
+            "卡片",
+            "新建了",
+            "新建一个",
+            "创建了",
+        )
+    )
+    symptom = any(
+        k in q
+        for k in (
+            "两个一样",
+            "相同的两个",
+            "一样的两个",
+            "出现两个",
+            "显示两个",
+            "重复",
+            "多出来",
+            "重复客户",
+            "两个客户",
+        )
+    )
+    return on_screen and symptom
+
+
 def _looks_page_field_question(question: str) -> bool:
     """True when the ask is about an on-screen field/term (prefer Layer A glossary)."""
     q = (question or "").strip().lower()
     if len(q) < 2:
         return False
+    if _looks_page_symptom_question(question):
+        return True
     field_hints = (
         "什么意思",
         "是什么意思",

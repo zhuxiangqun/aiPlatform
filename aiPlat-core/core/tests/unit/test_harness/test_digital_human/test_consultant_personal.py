@@ -3,7 +3,9 @@ from pathlib import Path
 from core.harness.digital_human.consultant_personal import (
     load_personal_notes,
     looks_like_lasting_note,
+    looks_like_work_pref,
     memory_path,
+    remember_correction,
     remember_from_turn,
     remember_from_user,
     sanitize_tenant_id,
@@ -53,6 +55,23 @@ def test_tenant_isolation(monkeypatch, tmp_path):
     assert "乙租户" in b and "甲租户" not in b
     assert memory_path("tenant_a") == tmp_path / "memory" / "tenants" / "tenant_a" / "xiaozhu.md"
     assert memory_path("tenant_b") == tmp_path / "memory" / "tenants" / "tenant_b" / "xiaozhu.md"
+
+
+def test_remember_correction_and_work_pref(monkeypatch, tmp_path):
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    assert not remember_correction("api_key=sk-abcdefghijklmnop")
+    assert remember_correction("不对，应该是先走交付计划再评估域")
+    notes = load_personal_notes()
+    assert "纠偏：" in notes
+    assert "交付计划" in notes
+    # 去重
+    assert not remember_correction("不对，应该是先走交付计划再评估域")
+    assert looks_like_work_pref("以后 FDE 先讲下一步")
+    assert remember_from_turn("以后 MTW 优先看交付计划")
+    assert "MTW" in load_personal_notes()
+    # 纠偏句仍可由 remember_from_turn 入库
+    assert remember_from_turn("不对，应该是点生成计划")
+    assert "生成计划" in load_personal_notes()
 
 
 def test_default_legacy_fallback(monkeypatch, tmp_path):

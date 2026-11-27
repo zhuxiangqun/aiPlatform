@@ -6,7 +6,11 @@ Zero hardcoded keywords. All routing info from ontology YAMLs.
 
 Tier 1 (<1ms):  label match — invert class.labels + categories + synonyms
 Tier 2 (~50ms): embedding cosine similarity — weighted domain vectors
-Tier 3 (~300ms): LLM binary classification — rare edge cases only
+Tier 3 (~300ms): generative LLM domain-id choice — **last resort only**
+
+Choice principle (2026-11-27): prefer rule/embedding/typed-decision over
+generative LLM for fixed-option routing. Do not expand T3; Ollaya shadow /
+T3 replace need written sampling Go (harness typed-decision module, default off).
 
 Callers:
   - core/apps/agents/materials_chat.py (primary — classify & config)
@@ -215,7 +219,8 @@ class DomainRouter:
             # Had embedding signal but failed gates → going to T3
             self._record_side_counter("t2_reject_hits")
 
-        # ── Tier 3: LLM classification (~300ms, rare) ──
+        # ── Tier 3: generative LLM choice (rare last resort; ≠ Ollaya) ──
+        # Prefer T1/T2; typed-decision shadow/replace needs sampling Go.
         t0 = time.perf_counter()
         did = self._llm_classify(query)
         self._record_route_hit(

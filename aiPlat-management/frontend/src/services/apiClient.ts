@@ -196,6 +196,33 @@ export const diagnosticsApi = {
     return apiClient.get<any>('/core/diagnostics/production-depth');
   },
 
+  getEvolutionStatus: async (params: { limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    const qs = q.toString();
+    return apiClient.get<any>(`/core/digital-human/evolution/status${qs ? '?' + qs : ''}`);
+  },
+
+  decideEvolutionProposal: async (
+    proposalId: string,
+    body: { decision: 'approve' | 'reject'; apply?: boolean; actor?: string },
+  ) => {
+    return apiClient.post<any>(
+      `/core/digital-human/evolution/proposals/${encodeURIComponent(proposalId)}/decide`,
+      body,
+    );
+  },
+
+  rollbackEvolutionProposal: async (
+    proposalId: string,
+    body: { reason?: string; actor?: string } = {},
+  ) => {
+    return apiClient.post<any>(
+      `/core/digital-human/evolution/proposals/${encodeURIComponent(proposalId)}/rollback`,
+      body,
+    );
+  },
+
   getExecBackendMetricsSummary: async (params: { window_hours?: number; limit?: number } = {}) => {
     const q = new URLSearchParams();
     if (params.window_hours != null) q.set('window_hours', String(params.window_hours));

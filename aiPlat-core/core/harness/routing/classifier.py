@@ -1,10 +1,14 @@
 """
-Routing classifier — 规则 + LLM 双重意图分类引擎。
+Routing classifier — 规则为主的意图分类；LLM 路径仅遗留 opt-in。
 
 Architecture:
-  1. Rule-based keyword matching (~0.5ms)
-  2. If confidence < threshold → LLM fallback (opt-in, ~3s)
+  1. Rule-based keyword matching (~0.5ms) — **生产主路径**
+  2. classify_with_llm：低置信时生成式枚举（实现存在、**无生产 caller**）
   3. Returns unified RoutingResult
+
+Choice principle (2026-11-27): 意图是选择题 → 勿把 classify_with_llm 接成
+默认热路径；优先规则 / 澄清（should_clarify）；typed-decision 旁路另见
+decision_shadow（须采样 Go）。禁止为省事新建「生成式意图主路径」。
 """
 
 from __future__ import annotations
@@ -292,10 +296,13 @@ def _build_clarification_prompt(message: str, ctx: RoutingContext) -> str:
 
 
 async def classify_with_llm(ctx: RoutingContext) -> RoutingResult:
-    """LLM-based classification fallback for ambiguous cases.
+    """生成式意图枚举（遗留）。无生产 caller；勿接成热路径。
+
+    选择题应走规则/`classify()` 低置信澄清，或未来 typed-decision 旁路，
+    而不是默认 sys_llm / adapter 生成 JSON。
 
     Args:
-        ctx: ctx 参数。
+        ctx: 路由上下文（user_message / agent 元数据）。
     """
     result = classify(ctx)
     if result.confidence >= _RULE_CONFIDENCE_MEDIUM:

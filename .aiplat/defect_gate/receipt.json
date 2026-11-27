@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-27T11:07:18+08:00",
+  "reviewed_at": "2026-11-27T23:50:20+08:00",
   "base_ref": "origin/main",
-  "merge_base": "607cdb3ce3ac0a61c918f8c869c1fcfae8cf4c82",
-  "diff_sha256": "4fb80f13918729d9eccb56b7c752f4ed15e0b128550de5dce0c2bb44e9d31671",
-  "head_sha": "04c89542ec8c8e66b5287138c7ad78058e9db9b8",
+  "merge_base": "d9d04d009e8b73b973bb3db7e52b77570c434d06",
+  "diff_sha256": "8fc893877b84402cfa4b8c8ebef365d93903d121198947be7b93cb37b56d7afc",
+  "head_sha": "f7e81161847f8da5b052d2472464da9f945a6117",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Zero findings: dual paste/upload intake for FDE delivery plan; no SRS body persisted. Local lock only."
+  "note": "Bridge test facade mocks + whitepaper sync. Local lock only."
 }

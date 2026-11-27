@@ -49,10 +49,10 @@ authority: supporting
 |:---:|------|------|
 | 1 | [FDE 文档导航](fde/README.md) | **从这里开始** |
 | 2 | [快速入门](fde/01-fde-quickstart.md) | 新人 5 分钟 |
-| 3 | [交付操作](fde/02-fde-delivery.md) | 八步 SOP + 模板 |
+| 3 | [交付操作](fde/02-fde-delivery.md) | ①–⑧ + **交付计划**/Gate0/工厂插段 SOP |
 | 4 | [运维自演进](fde/03-fde-operations.md) | 巡检 + 反馈 |
 | 5 | [管理与扩展](fde/04-fde-admin.md) | Agent / CLI / API |
-| 6 | [管理端创建本体+Agent 合册](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) | 真实菜单路径 |
+| 6 | [管理端创建本体+Agent 合册](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) | 真实菜单路径（含交付计划入口） |
 | 7 | [Org L5 运行手册](../contracts/ORG_L5_RUNBOOK.md) | `/org/pilot` |
 
 > 旧版散乱 FDE 文已在 `fde/_archive/`（过程/归档）。M4 签收包见下方「过程与降权」。

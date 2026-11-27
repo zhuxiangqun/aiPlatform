@@ -198,8 +198,31 @@ def _answer_from_injected_page(page_data: str) -> str:
 
 
 def _consultant_model_meta(user_text: str = "") -> dict:
-    """Infer purpose from the question, then infra unified_pipeline."""
+    """Infer purpose from the question, then infra unified_pipeline.
+
+    仅当 ``AIPLAT_DH_PURPOSE_BIND=1`` 且存在已批绑定模型时，顾问热路径优先用回执模型
+   （不改全局 best_model_for_purpose）。
+    """
     global _LAST_CONSULTANT_MODEL, _LAST_CONSULTANT_PURPOSE
+    try:
+        from core.harness.digital_human.consultant_purpose_bind import (
+            active_consultant_bind_meta,
+        )
+
+        bind_meta = active_consultant_bind_meta()
+        if bind_meta.get("bind_active") and bind_meta.get("model"):
+            meta = {
+                "model": str(bind_meta.get("model") or "").strip(),
+                "model_purpose": str(bind_meta.get("model_purpose") or "auto").strip(),
+                "dh_purpose_bind": True,
+                "production_model_changed": False,
+            }
+            _LAST_CONSULTANT_MODEL = meta["model"]
+            _LAST_CONSULTANT_PURPOSE = meta["model_purpose"]
+            return meta
+    except Exception:
+        logger.debug("consultant purpose bind lookup failed", exc_info=True)
+
     msgs = [{"role": "user", "content": user_text}] if (user_text or "").strip() else None
     meta: dict = {}
     try:
@@ -442,6 +465,110 @@ async def generate_answer(
     brief = ""
     page_only_brief = False
 
+    # 进化提案口头批准/拒绝 / 准备试点提案（跳过 LLM）
+    try:
+        t_strip = (text or "").strip()
+        if any(
+            k in t_strip
+            for k in ("准备试点提案", "生成试点提案", "确保试点提案", "三试点提案")
+        ):
+            from core.harness.digital_human.evolution_proposals import (
+                ensure_pilot_config_proposals,
+            )
+
+            ens = ensure_pilot_config_proposals(tenant_id=str(tenant_id or "default"))
+            reply = (
+                f"已处理试点提案：新建 {len(ens.get('created') or [])}，"
+                f"跳过 {len(ens.get('skipped') or [])}，"
+                f"当前待批 {ens.get('pending')}。"
+                "批准后只跑沙箱 Canary，不切全局路由。"
+            )
+            try:
+                from core.harness.digital_human.trajectory_collector import collect_turn
+
+                collect_turn(session_id, "user", text)
+                collect_turn(session_id, "assistant", reply)
+            except Exception:
+                logger.debug("ensure pilot trajectory failed", exc_info=True)
+            return reply, b""
+
+        if any(
+            k in t_strip
+            for k in ("扫描领域进化", "扫描三域进化", "领域进化扫描", "FDE评测知识进化")
+        ):
+            from core.harness.digital_human.domain_evolution_bridge import (
+                scan_domain_evolution_proposals,
+            )
+
+            scan = scan_domain_evolution_proposals(
+                tenant_id=str(tenant_id or "default"),
+                use_fixtures_if_empty=False,
+            )
+            reply = (
+                f"领域进化扫描完成：新建 {len(scan.get('created') or [])}，"
+                f"跳过 {len(scan.get('skipped') or [])}，待批 {scan.get('pending')}。"
+                "批准只写回执，不宣称 E5、不自动改生产。"
+            )
+            try:
+                from core.harness.digital_human.trajectory_collector import collect_turn
+
+                collect_turn(session_id, "user", text)
+                collect_turn(session_id, "assistant", reply)
+            except Exception:
+                logger.debug("domain evolution scan trajectory failed", exc_info=True)
+            return reply, b""
+
+        if any(
+            k in t_strip
+            for k in ("申请绑定", "申请模型绑定", "绑定顾问模型", "生成绑定提案")
+        ):
+            from core.harness.digital_human.evolution_proposals import (
+                propose_purpose_bind_from_latest,
+            )
+
+            pb = propose_purpose_bind_from_latest(
+                tenant_id=str(tenant_id or "default"),
+                session_id=session_id or "",
+            )
+            if pb.get("ok"):
+                prop = pb.get("proposal") or {}
+                reply = (
+                    f"已生成 purpose_bind 待批「{prop.get('title') or prop.get('id')}」。"
+                    "再批准后只写绑定回执；默认不改选模。"
+                    "若要顾问热路径读取，需 AIPLAT_DH_PURPOSE_BIND=1。"
+                )
+            else:
+                reply = (
+                    f"未能申请绑定：{pb.get('reason')}。"
+                    "需要先有已通过的 sft_promote 或已提交的策展微调 Job。"
+                )
+            try:
+                from core.harness.digital_human.trajectory_collector import collect_turn
+
+                collect_turn(session_id, "user", text)
+                collect_turn(session_id, "assistant", reply)
+            except Exception:
+                logger.debug("purpose bind propose trajectory failed", exc_info=True)
+            return reply, b""
+
+        from core.harness.digital_human.evolution_proposals import (
+            try_handle_evolution_utterance,
+        )
+
+        evo_handled = try_handle_evolution_utterance(text, actor=str(tenant_id or "user"))
+        if evo_handled and evo_handled.get("handled"):
+            reply = str(evo_handled.get("reply") or "已处理进化提案。")
+            try:
+                from core.harness.digital_human.trajectory_collector import collect_turn
+
+                collect_turn(session_id, "user", text)
+                collect_turn(session_id, "assistant", reply)
+            except Exception:
+                logger.debug("evolution decide trajectory failed", exc_info=True)
+            return reply, b""
+    except Exception:
+        logger.debug("evolution utterance path failed", exc_info=True)
+
     # Pure praise / short correction: rate prior turn; skip LLM for pure "讲得对"
     try:
         from core.harness.digital_human.trajectory_collector import (
@@ -453,7 +580,35 @@ async def generate_answer(
         inferred_early = infer_feedback_from_user(text)
         if inferred_early and inferred_early.get("rating") == "good":
             mark_feedback(session_id, "good")
+            try:
+                from core.harness.digital_human.evolution_proposals import (
+                    maybe_propose_from_feedback,
+                )
+
+                maybe_propose_from_feedback(
+                    rating="good",
+                    tenant_id=tenant_id,
+                    session_id=session_id or "",
+                )
+            except Exception:
+                logger.debug("evolution propose after verbal good failed", exc_info=True)
             export_curated_sharegpt_dataset(session_filter=session_id)
+            try:
+                from core.harness.digital_human.consultant_sft_loop import (
+                    maybe_submit_digital_human_sft,
+                )
+
+                sft_r = maybe_submit_digital_human_sft()
+                try:
+                    from core.harness.digital_human.evolution_proposals import (
+                        maybe_propose_sft_promote,
+                    )
+
+                    maybe_propose_sft_promote(sft_r)
+                except Exception:
+                    logger.debug("sft_promote after verbal good failed", exc_info=True)
+            except Exception:
+                logger.debug("auto sft after verbal good failed", exc_info=True)
             collect_ack = "收到，这条我会记成可用样本。"
             try:
                 from core.harness.digital_human.trajectory_collector import collect_turn
@@ -464,12 +619,50 @@ async def generate_answer(
                 logger.debug("praise ack trajectory failed", exc_info=True)
             return collect_ack, b""
         if inferred_early and inferred_early.get("rating") == "bad":
+            corr = inferred_early.get("correction") or ""
             mark_feedback(
                 session_id,
                 "bad",
-                correction=inferred_early.get("correction") or "",
+                correction=corr,
             )
+            try:
+                from core.harness.digital_human.consultant_personal import (
+                    remember_correction,
+                )
+
+                remember_correction(corr, tenant_id=tenant_id)
+            except Exception:
+                logger.debug("remember_correction on verbal bad failed", exc_info=True)
+            try:
+                from core.harness.digital_human.evolution_proposals import (
+                    maybe_propose_from_feedback,
+                )
+
+                maybe_propose_from_feedback(
+                    rating="bad",
+                    correction=corr,
+                    tenant_id=tenant_id,
+                    session_id=session_id or "",
+                )
+            except Exception:
+                logger.debug("evolution propose after verbal bad failed", exc_info=True)
             export_curated_sharegpt_dataset(session_filter=session_id)
+            try:
+                from core.harness.digital_human.consultant_sft_loop import (
+                    maybe_submit_digital_human_sft,
+                )
+
+                sft_r = maybe_submit_digital_human_sft()
+                try:
+                    from core.harness.digital_human.evolution_proposals import (
+                        maybe_propose_sft_promote,
+                    )
+
+                    maybe_propose_sft_promote(sft_r)
+                except Exception:
+                    logger.debug("sft_promote after verbal bad failed", exc_info=True)
+            except Exception:
+                logger.debug("auto sft after verbal bad failed", exc_info=True)
             # Continue to LLM so 小朱 can acknowledge + restate with correction in context
     except Exception:
         logger.debug("early feedback path failed", exc_info=True)
@@ -807,15 +1000,213 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
                     )
 
                     result = mark_feedback(conn_session, rating, correction=correction)
+                    if result.get("ok") and rating == "bad" and correction:
+                        try:
+                            from core.harness.digital_human.consultant_personal import (
+                                remember_correction,
+                            )
+
+                            remember_correction(correction, tenant_id=conn_tenant)
+                        except Exception:
+                            logger.debug(
+                                "remember_correction on feedback failed",
+                                exc_info=True,
+                            )
+                    proposal_id = ""
                     if result.get("ok") and rating in ("good", "bad"):
+                        try:
+                            from core.harness.digital_human.evolution_proposals import (
+                                maybe_propose_from_feedback,
+                                maybe_propose_sft_promote,
+                            )
+
+                            prop = maybe_propose_from_feedback(
+                                rating=rating,
+                                correction=correction,
+                                tenant_id=conn_tenant,
+                                session_id=conn_session,
+                            )
+                            if prop.get("ok") and prop.get("proposal"):
+                                proposal_id = str(prop["proposal"].get("id") or "")
+                        except Exception:
+                            logger.debug(
+                                "evolution propose after feedback failed",
+                                exc_info=True,
+                            )
                         export_curated_sharegpt_dataset(session_filter=conn_session)
-                    await websocket.send_text(
-                        json.dumps({"type": "feedback_ack", "ok": bool(result.get("ok")), **{k: v for k, v in result.items() if k != "ok"}})
-                    )
+                        try:
+                            from core.harness.digital_human.consultant_sft_loop import (
+                                maybe_submit_digital_human_sft,
+                            )
+
+                            sft_r = maybe_submit_digital_human_sft()
+                            try:
+                                from core.harness.digital_human.evolution_proposals import (
+                                    maybe_propose_sft_promote,
+                                )
+
+                                maybe_propose_sft_promote(sft_r)
+                            except Exception:
+                                logger.debug(
+                                    "sft_promote after feedback failed",
+                                    exc_info=True,
+                                )
+                        except Exception:
+                            logger.debug(
+                                "auto sft after feedback failed",
+                                exc_info=True,
+                            )
+                    ack = {
+                        "type": "feedback_ack",
+                        "ok": bool(result.get("ok")),
+                        **{k: v for k, v in result.items() if k != "ok"},
+                    }
+                    if proposal_id:
+                        ack["proposal_id"] = proposal_id
+                    await websocket.send_text(json.dumps(ack))
                 except Exception as e:
                     logger.debug("feedback mark failed", exc_info=True)
                     await websocket.send_text(
                         json.dumps({"type": "feedback_ack", "ok": False, "error": str(e)[:120]})
+                    )
+
+            elif msg_type == "evolution_decide":
+                decision = str(msg.get("decision") or msg.get("data") or "").strip()
+                proposal_id = str(msg.get("proposal_id") or "").strip()
+                index_raw = msg.get("index")
+                try:
+                    from core.harness.digital_human.evolution_proposals import (
+                        decide_evolution_proposal,
+                        pending_human_gate_count,
+                    )
+
+                    idx = int(index_raw) if index_raw is not None and str(index_raw).strip() else None
+                    decided = decide_evolution_proposal(
+                        decision=decision,
+                        proposal_id=proposal_id,
+                        index=idx,
+                        actor=str(conn_tenant or "user"),
+                    )
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "evolution_decide_ack",
+                                "ok": bool(decided.get("ok")),
+                                "pending": pending_human_gate_count(),
+                                **{
+                                    k: v
+                                    for k, v in decided.items()
+                                    if k != "ok" and k != "proposal"
+                                },
+                                "proposal": decided.get("proposal"),
+                                "production_model_changed": False,
+                            },
+                            default=str,
+                        )
+                    )
+                except Exception as e:
+                    logger.debug("evolution_decide failed", exc_info=True)
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "evolution_decide_ack",
+                                "ok": False,
+                                "error": str(e)[:120],
+                                "production_model_changed": False,
+                            }
+                        )
+                    )
+
+            elif msg_type == "evolution_list":
+                try:
+                    from core.harness.digital_human.evolution_proposals import (
+                        list_evolution_proposals,
+                        pending_human_gate_count,
+                    )
+
+                    pending = list_evolution_proposals(status="HUMAN_GATE", limit=20)
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "evolution_list_ack",
+                                "ok": True,
+                                "pending": pending_human_gate_count(),
+                                "proposals": [
+                                    {
+                                        "id": p.get("id"),
+                                        "kind": p.get("kind"),
+                                        "title": p.get("title"),
+                                        "summary": p.get("summary"),
+                                        "status": p.get("status"),
+                                    }
+                                    for p in pending
+                                ],
+                            },
+                            ensure_ascii=False,
+                        )
+                    )
+                except Exception as e:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "evolution_list_ack",
+                                "ok": False,
+                                "error": str(e)[:120],
+                            }
+                        )
+                    )
+
+            elif msg_type == "evolution_scan":
+                try:
+                    from core.harness.digital_human.domain_evolution_bridge import (
+                        scan_domain_evolution_proposals,
+                    )
+                    from core.harness.digital_human.evolution_proposals import (
+                        list_evolution_proposals,
+                        pending_human_gate_count,
+                    )
+
+                    scan = scan_domain_evolution_proposals(
+                        tenant_id=str(conn_tenant or "default"),
+                        use_fixtures_if_empty=False,
+                    )
+                    pending = list_evolution_proposals(status="HUMAN_GATE", limit=20)
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "evolution_scan_ack",
+                                "ok": True,
+                                "created": scan.get("created") or [],
+                                "skipped": scan.get("skipped") or [],
+                                "live": scan.get("live") or {},
+                                "pending": pending_human_gate_count(),
+                                "e5_claimed": False,
+                                "production_write": False,
+                                "proposals": [
+                                    {
+                                        "id": p.get("id"),
+                                        "kind": p.get("kind"),
+                                        "title": p.get("title"),
+                                        "summary": p.get("summary"),
+                                        "status": p.get("status"),
+                                    }
+                                    for p in pending
+                                ],
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        )
+                    )
+                except Exception as e:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "evolution_scan_ack",
+                                "ok": False,
+                                "error": str(e)[:120],
+                                "e5_claimed": False,
+                            }
+                        )
                     )
 
             elif msg_type == "text":
@@ -921,5 +1312,15 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
 
             export_curated_sharegpt_dataset(session_filter=conn_session)
             export_seed_sharegpt_dataset()
+            try:
+                from core.harness.digital_human.consultant_sft_loop import (
+                    maybe_submit_digital_human_sft,
+                )
+
+                maybe_submit_digital_human_sft()
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "auto sft on session end failed", exc_info=True
+                )
         except Exception:
             logging.getLogger(__name__).debug('trajectory export failed', exc_info=True)

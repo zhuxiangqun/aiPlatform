@@ -1,6 +1,8 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import DualTrackBanner from '../../components/knowledge/DualTrackBanner';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
+import { knowledgeLibraryGlossaryText } from '../../lib/consultantLayerA';
 
 const KnowledgeBasePage = lazy(() => import('../Platform/KnowledgeBase'));
 
@@ -13,6 +15,14 @@ const Loading = () => (
 
 /** Shell: 知识检索轨 — 向量 | Wiki | Vault（及评估/健康等） */
 const KnowledgeLibraryShell: React.FC = () => {
+  useEffect(() => {
+    reportPageData('/knowledge/library', {
+      screen: '知识库检索轨：向量/Wiki/Vault；不是业务本体，也不是 FDE 新建客户',
+      guideGlossary: knowledgeLibraryGlossaryText(),
+    });
+    return () => clearPageData('/knowledge/library');
+  }, []);
+
   return (
     <div className="min-h-full flex flex-col">
       <DualTrackBanner track="library" />

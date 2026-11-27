@@ -5,9 +5,39 @@ export type Message = { role: 'user' | 'assistant'; text: string; audio?: string
 
 /** How long the UI waits for an answer once status=thinking (agent + optional TTS). */
 const THINKING_TIMEOUT_MS = 120_000;
-/** How long to wait for the WebSocket to become OPEN. */
-const CONNECT_TIMEOUT_MS = 8_000;
+/** How long to wait for the WebSocket to become OPEN (cold start can exceed 8s). */
+const CONNECT_TIMEOUT_MS = 15_000;
 const CONSULTANT_SESSION_KEY = 'aiplat.digital_human.session';
+
+/** Probe Core HTTP health via same-origin proxy (or direct) so WS errors are not mislabeled. */
+async function probeCoreHealth(): Promise<'ok' | 'down' | 'unknown'> {
+  const tryFetch = async (url: string): Promise<'ok' | 'down' | 'unknown'> => {
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), 2500);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+      return r.ok ? 'ok' : 'down';
+    } catch {
+      return 'unknown';
+    } finally {
+      window.clearTimeout(timer);
+    }
+  };
+  const viaProxy = await tryFetch('/api/core/health');
+  if (viaProxy !== 'unknown') return viaProxy;
+  return tryFetch('http://127.0.0.1:8002/api/core/health');
+}
+
+async function explainConnectFailure(serviceLabel: string): Promise<string> {
+  const health = await probeCoreHealth();
+  if (health === 'ok') {
+    return `${serviceLabel} WebSocket 暂不可用（Core HTTP 正常）。请再试一次；若持续失败检查 Vite /ws 代理或刷新页面`;
+  }
+  if (health === 'down') {
+    return `${serviceLabel}未就绪：Core(8002) 健康检查失败。若刚重启，冷启动约需 1–2 分钟后再问`;
+  }
+  return `${serviceLabel}连接失败（无法确认 Core）。请确认 8002 已监听且前端代理指向 core`;
+}
 
 function loadConsultantSessionId(): string {
   try {
@@ -36,6 +66,14 @@ function activeTenantId(): string {
   return 'default';
 }
 
+export type EvolutionProposalChip = {
+  id: string;
+  kind?: string;
+  title?: string;
+  summary?: string;
+  status?: string;
+};
+
 export type UseVoiceChatOptions = {
   /** When true: never request mic, never play TTS (小朱 text consultant). */
   textOnly?: boolean;
@@ -49,6 +87,8 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
   const [answer, setAnswer] = useState('');
   const [modelName, setModelName] = useState('');
   const [modelPurpose, setModelPurpose] = useState('');
+  const [evolutionPending, setEvolutionPending] = useState(0);
+  const [evolutionProposals, setEvolutionProposals] = useState<EvolutionProposalChip[]>([]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -135,13 +175,59 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
           } else if (data.type === 'error') {
             setError(data.data);
             setStatus('idle');
+          } else if (data.type === 'evolution_list_ack') {
+            if (data.ok) {
+              setEvolutionPending(Number(data.pending) || 0);
+              const rows = Array.isArray(data.proposals) ? data.proposals : [];
+              setEvolutionProposals(
+                rows.map((p: EvolutionProposalChip) => ({
+                  id: String(p?.id || ''),
+                  kind: p?.kind,
+                  title: p?.title,
+                  summary: p?.summary,
+                  status: p?.status,
+                })).filter((p: EvolutionProposalChip) => !!p.id),
+              );
+            }
+          } else if (data.type === 'evolution_decide_ack') {
+            if (typeof data.pending === 'number') {
+              setEvolutionPending(data.pending);
+            }
+            if (data.ok) {
+              setEvolutionProposals((prev) =>
+                prev.filter((p) => p.id !== String(data.proposal?.id || '')),
+              );
+            }
+          } else if (data.type === 'evolution_scan_ack') {
+            if (data.ok) {
+              setEvolutionPending(Number(data.pending) || 0);
+              const rows = Array.isArray(data.proposals) ? data.proposals : [];
+              setEvolutionProposals(
+                rows
+                  .map((p: EvolutionProposalChip) => ({
+                    id: String(p?.id || ''),
+                    kind: p?.kind,
+                    title: p?.title,
+                    summary: p?.summary,
+                    status: p?.status,
+                  }))
+                  .filter((p: EvolutionProposalChip) => !!p.id),
+              );
+            }
+          } else if (data.type === 'feedback_ack' && data.proposal_id) {
+            // 反馈产生提案后刷新待批列表
+            try {
+              ws.send(JSON.stringify({ type: 'evolution_list', session: sessionRef.current }));
+            } catch {
+              /* ignore */
+            }
           }
         } catch {
           /* ignore malformed frames */
         }
       };
       ws.onerror = () => {
-        setError(`${serviceLabel}未启动（需要后端 8002 端口运行）`);
+        void explainConnectFailure(serviceLabel).then(setError);
         setStatus('idle');
       };
       ws.onclose = () => {
@@ -152,15 +238,8 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
     [serviceLabel, textOnly],
   );
 
-  const ensureConnected = useCallback((): Promise<boolean> => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return Promise.resolve(true);
-    }
-    if (connectPromiseRef.current) {
-      return connectPromiseRef.current;
-    }
-
-    const promise = new Promise<boolean>((resolve) => {
+  const openSocketOnce = useCallback((): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
       try {
         const ws = new WebSocket(buildWsUrl());
         wsRef.current = ws;
@@ -173,7 +252,6 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
             } catch {
               /* ignore */
             }
-            setError(`${serviceLabel}未启动（需要后端 8002 端口运行）`);
             connectPromiseRef.current = null;
             resolve(false);
           }
@@ -206,15 +284,39 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
           resolve(true);
         };
       } catch {
-        setError(`无法连接${serviceLabel}`);
         connectPromiseRef.current = null;
         resolve(false);
       }
     });
+  }, [attachHandlers, buildWsUrl]);
+
+  const ensureConnected = useCallback((): Promise<boolean> => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      return Promise.resolve(true);
+    }
+    if (connectPromiseRef.current) {
+      return connectPromiseRef.current;
+    }
+
+    const promise = (async () => {
+      let ok = await openSocketOnce();
+      if (!ok) {
+        // One retry: covers Core restart / brief proxy blip without blaming "未启动".
+        await new Promise((r) => setTimeout(r, 600));
+        ok = await openSocketOnce();
+      }
+      if (!ok) {
+        setError(await explainConnectFailure(serviceLabel));
+      } else {
+        setError('');
+      }
+      connectPromiseRef.current = null;
+      return ok;
+    })();
 
     connectPromiseRef.current = promise;
     return promise;
-  }, [attachHandlers, buildWsUrl, serviceLabel]);
+  }, [openSocketOnce, serviceLabel]);
 
   useEffect(() => {
     return () => wsRef.current?.close();
@@ -223,11 +325,15 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
   useEffect(() => {
     if (status !== 'thinking') return;
     const id = setTimeout(() => {
-      setError('处理超时，请重试（知识检索较慢时可再问一次）');
+      setError(
+        textOnly
+          ? '处理超时，请重试（本页问题可再问一次；本地模型较慢时稍候）'
+          : '处理超时，请重试（知识检索较慢时可再问一次）',
+      );
       setStatus('idle');
     }, THINKING_TIMEOUT_MS);
     return () => clearTimeout(id);
-  }, [status]);
+  }, [status, textOnly]);
 
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop();
@@ -295,7 +401,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
       setStatus('thinking');
       const ok = await ensureConnected();
       if (!ok || wsRef.current?.readyState !== WebSocket.OPEN) {
-        setError(`${serviceLabel}未连接，请确认后端已启动 (port 8002)`);
+        setError(await explainConnectFailure(serviceLabel));
         setStatus('idle');
         return;
       }
@@ -354,6 +460,57 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
     [ensureConnected, serviceLabel],
   );
 
+  const refreshEvolutionProposals = useCallback(async () => {
+    const ok = await ensureConnected();
+    if (!ok || wsRef.current?.readyState !== WebSocket.OPEN) return false;
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'evolution_list',
+        session: sessionRef.current,
+        tenant_id: activeTenantId(),
+      }),
+    );
+    return true;
+  }, [ensureConnected]);
+
+  const decideEvolutionProposal = useCallback(
+    async (decision: 'approve' | 'reject', proposalId?: string, index?: number) => {
+      const ok = await ensureConnected();
+      if (!ok || wsRef.current?.readyState !== WebSocket.OPEN) {
+        setError(`${serviceLabel}未连接，无法处理进化提案`);
+        return false;
+      }
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'evolution_decide',
+          decision,
+          proposal_id: proposalId || '',
+          index: index ?? null,
+          session: sessionRef.current,
+          tenant_id: activeTenantId(),
+        }),
+      );
+      return true;
+    },
+    [ensureConnected, serviceLabel],
+  );
+
+  const scanDomainEvolution = useCallback(async () => {
+    const ok = await ensureConnected();
+    if (!ok || wsRef.current?.readyState !== WebSocket.OPEN) {
+      setError(`${serviceLabel}未连接，无法扫描领域进化`);
+      return false;
+    }
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'evolution_scan',
+        session: sessionRef.current,
+        tenant_id: activeTenantId(),
+      }),
+    );
+    return true;
+  }, [ensureConnected, serviceLabel]);
+
   const wake = useCallback(async () => {
     if (textOnly) {
       setError('小朱已关闭语音，请使用文字输入');
@@ -361,7 +518,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
     }
     const ok = await ensureConnected();
     if (!ok) {
-      setError(`${serviceLabel}未连接，请确认后端已启动 (port 8002)`);
+      setError(await explainConnectFailure(serviceLabel));
       return;
     }
     setStatus('wake');
@@ -377,10 +534,15 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
     answer,
     modelName,
     modelPurpose,
+    evolutionPending,
+    evolutionProposals,
     wake,
     sendText,
     sendContext,
     sendFeedback,
+    refreshEvolutionProposals,
+    decideEvolutionProposal,
+    scanDomainEvolution,
     minimize,
     audioRef,
     setStatus,

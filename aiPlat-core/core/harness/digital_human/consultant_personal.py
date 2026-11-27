@@ -60,6 +60,19 @@ _PAGE = ("这个画面", "这个页面", "审核结果", "当前页")
 _FEEDBACK = ("讲得对", "不对", "应该是", "你说错", "纠正")
 _SHORT_STYLE = ("精简", "太长", "太啰嗦", "简单点", "短一点", "少说两句")
 _STYLE_LINE = "偏好：回答先结论、尽量短，不要套模板。"
+# 工作偏好短句（非纠偏、非审核页）
+_WORK_PREF = (
+    "以后",
+    "优先",
+    "先讲下一步",
+    "FDE 先",
+    "fde 先",
+    "交付计划先",
+    "下次先",
+)
+_CORR_STRIP = re.compile(
+    r"^(不对[，,。]?|错了[，,。]?|不是这样[，,。]?|纠正[:：]\s*|应该是\s*)+",
+)
 
 
 def sanitize_tenant_id(tenant_id: Optional[str]) -> str:
@@ -117,6 +130,24 @@ def _contains_secret(text: str) -> bool:
     return bool(_SECRET.search(text or ""))
 
 
+def looks_like_work_pref(text: str) -> bool:
+    """是否像可持久的工作偏好短句（非纠偏、非审核页）。
+
+    Args:
+        text: 用户原文。
+    """
+    t = (text or "").strip()
+    if len(t) < 6 or len(t) > 200:
+        return False
+    if _contains_secret(t) or any(k in t for k in _PAGE):
+        return False
+    if any(k in t for k in _FEEDBACK):
+        return False
+    if any(k in t for k in _QUESTION):
+        return False
+    return any(k in t for k in _WORK_PREF)
+
+
 def looks_like_lasting_note(text: str) -> bool:
     """looks_like_lasting_note。
 
@@ -132,6 +163,8 @@ def looks_like_lasting_note(text: str) -> bool:
         return False
     # 显式「记住」优先；身份句不含问句词才自动记（去掉易误触的「我是」）
     if any(k in t for k in _REMEMBER):
+        return True
+    if looks_like_work_pref(t):
         return True
     if any(k in t for k in _QUESTION):
         return False
@@ -238,20 +271,47 @@ def remember_style_pref(text: str, *, tenant_id: Optional[str] = None) -> bool:
     return _append_line(f"- ({stamp}) {_STYLE_LINE}", tenant_id=tenant_id)
 
 
+def remember_correction(
+    correction: str,
+    *,
+    tenant_id: Optional[str] = None,
+) -> bool:
+    """把「不对，应该是…」类纠正写入个人笔记（纠偏行）。
+
+    Args:
+        correction: 用户纠正原文或金标正文。
+        tenant_id: 租户 ID。
+    """
+    raw = (correction or "").strip()
+    if len(raw) < 2 or len(raw) > 400:
+        return False
+    if _contains_secret(raw) or any(k in raw for k in _PAGE):
+        return False
+    gold = _CORR_STRIP.sub("", raw).strip() or raw
+    if len(gold) < 2:
+        return False
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    return _append_line(f"- ({stamp}) 纠偏：{gold}", tenant_id=tenant_id)
+
+
 def remember_from_turn(
     user_text: str,
     assistant_text: str = "",
     *,
     tenant_id: Optional[str] = None,
 ) -> bool:
-    """Grow notes from explicit 记住, identity, and repeated style — not from page audit.
+    """Grow notes from 记住 / 身份 / 短答偏好 / 工作偏好 — 不含审核页 dump。
 
     Args:
-        user_text: user_text 参数。
-        assistant_text: assistant_text 参数。
+        user_text: 用户本轮文本。
+        assistant_text: 助手回复（保留形参，不入库）。
         tenant_id: 租户 ID。
     """
     del assistant_text  # reserved; do not store model dumps as biography
     wrote = remember_from_user(user_text, tenant_id=tenant_id)
     wrote = remember_style_pref(user_text, tenant_id=tenant_id) or wrote
+    # 纠偏句：looks_like_lasting_note 会跳过 _FEEDBACK，单独处理
+    t = (user_text or "").strip()
+    if any(k in t for k in ("不对", "应该是", "纠正", "你说错", "错了")):
+        wrote = remember_correction(t, tenant_id=tenant_id) or wrote
     return wrote

@@ -65,9 +65,14 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
     answer,
     modelName,
     modelPurpose,
+    evolutionPending,
+    evolutionProposals,
     sendText,
     sendContext,
     sendFeedback,
+    refreshEvolutionProposals,
+    decideEvolutionProposal,
+    scanDomainEvolution,
     audioRef,
   } = useVoiceChat({
     textOnly: true,
@@ -76,30 +81,48 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
   const [handoffCard, setHandoffCard] = useState<{ route: string; label: string } | null>(null);
 
   useEffect(() => {
+    if (!minimized) {
+      void refreshEvolutionProposals();
+    }
+  }, [minimized, refreshEvolutionProposals]);
+
+  useEffect(() => {
     setRatedLast('');
   }, [answer]);
 
-  useEffect(() => {
-    const send = () => {
-      if (!currentRoute) return;
-      const meta = getPageInfo(currentRoute);
-      const pageData = consultantPagePayload(currentRoute);
-      if (meta) {
-        sendContext({
-          route: currentRoute,
-          label: meta.label,
-          group: meta.group,
-          groupLabel: meta.groupLabel,
-          purpose: meta.purpose,
-          data: pageData,
-        });
-      } else {
-        sendContext({ route: currentRoute, data: pageData });
-      }
-    };
-    send();
-    return subscribePageData(send);
+  /** 每次提问前刷新可见快照 + reportPageData（小朱通用感知，不依赖各页手写列表字段） */
+  const pushLiveContext = useCallback(() => {
+    if (!currentRoute) return;
+    const meta = getPageInfo(currentRoute);
+    const pageData = consultantPagePayload(currentRoute);
+    if (meta) {
+      sendContext({
+        route: currentRoute,
+        label: meta.label,
+        group: meta.group,
+        groupLabel: meta.groupLabel,
+        purpose: meta.purpose,
+        data: pageData,
+      });
+    } else {
+      sendContext({ route: currentRoute, data: pageData });
+    }
   }, [currentRoute, sendContext]);
+
+  useEffect(() => {
+    pushLiveContext();
+    return subscribePageData(pushLiveContext);
+  }, [pushLiveContext]);
+
+  const askText = useCallback(
+    (raw: string) => {
+      const text = (raw || '').trim();
+      if (!text) return;
+      pushLiveContext();
+      void sendText(text);
+    },
+    [pushLiveContext, sendText],
+  );
 
   useEffect(() => {
     if (!answer) {
@@ -495,21 +518,128 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
                             color: '#FCA5A5',
                             cursor: ratedLast ? 'default' : 'pointer',
                           }}
-                          title="答得不对；可再打字「不对，应该是…」写入金标"
+                          title="答得不对。请在输入框打：「不对，应该是…」写入金标并记入习性笔记"
                         >
                           不对
                         </button>
                         {ratedLast === 'good' && (
-                          <span style={{ fontSize: 10, color: '#6B7280' }}>已记入策展</span>
+                          <span style={{ fontSize: 10, color: '#6B7280' }}>已记入策展+进化提案</span>
                         )}
                         {ratedLast === 'bad' && (
-                          <span style={{ fontSize: 10, color: '#6B7280' }}>可打字纠正</span>
+                          <span style={{ fontSize: 10, color: '#FCA5A5' }}>
+                            请输入「不对，应该是…」写入金标+笔记+待批提案
+                          </span>
                         )}
                       </div>
                     )}
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {!collapsed && (
+            <div
+              style={{
+                margin: '0 12px 8px',
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => void scanDomainEvolution().then(() => refreshEvolutionProposals())}
+                style={{
+                  fontSize: 10,
+                  padding: '3px 8px',
+                  borderRadius: 4,
+                  border: '1px solid rgba(96,165,250,0.45)',
+                  background: 'transparent',
+                  color: '#93C5FD',
+                  cursor: 'pointer',
+                }}
+                title="扫描 FDE/评测/知识缺口，写入待批提案"
+              >
+                扫描领域进化
+              </button>
+            </div>
+          )}
+
+          {!collapsed && evolutionPending > 0 && (
+            <div
+              style={{
+                margin: '0 12px 8px',
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1px solid rgba(251,191,36,0.35)',
+                background: 'rgba(251,191,36,0.08)',
+                fontSize: 11,
+                color: '#FDE68A',
+              }}
+            >
+              <div style={{ marginBottom: 6 }}>
+                进化待批 {evolutionPending} 条（批准≠换生产模型；purpose_bind 仅写回执）
+              </div>
+              {(evolutionProposals.length ? evolutionProposals : []).slice(0, 3).map((p, idx) => (
+                <div
+                  key={p.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    marginBottom: 4,
+                  }}
+                >
+                  <span style={{ flex: 1, color: '#E5E7EB' }}>
+                    {idx + 1}.
+                    {p.kind === 'purpose_bind'
+                      ? ' [绑定] '
+                      : p.kind === 'pilot_config'
+                        ? ' [试点] '
+                        : p.kind === 'sft_promote'
+                          ? ' [SFT] '
+                          : p.kind === 'knowledge_evolve'
+                            ? ' [知识] '
+                            : p.kind === 'eval_coverage'
+                              ? ' [评测] '
+                              : p.kind === 'fde_evolve'
+                                ? ' [FDE] '
+                                : ' '}
+                    {p.title || p.id}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void decideEvolutionProposal('approve', p.id)}
+                    style={{
+                      fontSize: 10,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      border: '1px solid rgba(52,211,153,0.4)',
+                      background: 'transparent',
+                      color: '#6EE7B7',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    同意
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void decideEvolutionProposal('reject', p.id)}
+                    style={{
+                      fontSize: 10,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      border: '1px solid rgba(248,113,113,0.4)',
+                      background: 'transparent',
+                      color: '#FCA5A5',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    拒绝
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
@@ -577,7 +707,11 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
           >
             <input
               type="text"
-              placeholder="问平台怎么建、这个页面怎么用…"
+              placeholder={
+                ratedLast === 'bad'
+                  ? '不对，应该是…（写入金标+习性笔记）'
+                  : '问平台怎么建、这个页面怎么用…'
+              }
               style={{
                 flex: 1,
                 height: 36,
@@ -592,7 +726,7 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
               disabled={status === 'thinking'}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  sendText((e.target as HTMLInputElement).value);
+                  askText((e.target as HTMLInputElement).value);
                   (e.target as HTMLInputElement).value = '';
                 }
               }}
